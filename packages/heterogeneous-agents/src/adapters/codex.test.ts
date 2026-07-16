@@ -494,6 +494,19 @@ describe('CodexAdapter', () => {
   it('preserves completed web_search query details for tool rendering', () => {
     const adapter = new CodexAdapter();
     const query = 'OpenAI Codex CLI install official documentation';
+    const results = [
+      {
+        snippet: 'Official Codex documentation',
+        title: 'Codex',
+        url: 'https://developers.openai.com/codex',
+      },
+    ];
+    const citations = [
+      {
+        source: 'OpenAI Developers',
+        sourceUrl: 'https://developers.openai.com/codex',
+      },
+    ];
 
     const started = adapter.adapt({
       item: {
@@ -513,6 +526,8 @@ describe('CodexAdapter', () => {
         },
         id: 'ws_search',
         query,
+        citations,
+        results,
         status: 'completed',
         type: 'web_search',
       },
@@ -548,7 +563,9 @@ describe('CodexAdapter', () => {
             query,
             type: 'search',
           },
+          citations,
           query,
+          results,
           status: 'completed',
         },
         toolCallId: 'ws_search',

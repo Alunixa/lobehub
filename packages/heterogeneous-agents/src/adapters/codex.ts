@@ -75,6 +75,7 @@ interface CodexMcpToolCallItem extends CodexBaseItem {
 }
 
 interface CodexWebSearchItem extends CodexBaseItem {
+  [key: string]: unknown;
   action?: unknown;
   query?: unknown;
 }
@@ -222,14 +223,14 @@ const getWebSearchQuery = (item: CodexWebSearchItem): string | undefined => {
 
 const synthesizeWebSearchPluginState = (item: CodexWebSearchItem) => {
   const query = getWebSearchQuery(item);
+  const pluginState: Record<string, unknown> = { ...item };
 
-  if (item.action === undefined && !query && !item.status) return;
+  delete pluginState.id;
+  delete pluginState.type;
 
-  return {
-    ...(item.action === undefined ? {} : { action: item.action }),
-    ...(query ? { query } : {}),
-    ...(item.status ? { status: item.status } : {}),
-  };
+  if (query) pluginState.query = query;
+
+  return Object.keys(pluginState).length > 0 ? pluginState : undefined;
 };
 
 const unwrapMcpResultEnvelope = (value: unknown): unknown => {

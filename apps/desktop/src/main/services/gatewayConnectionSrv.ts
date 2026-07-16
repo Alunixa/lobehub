@@ -111,6 +111,7 @@ interface DeviceRegistrar {
  * Extracted from GatewayConnectionCtr so other controllers can reuse connect/disconnect.
  */
 export default class GatewayConnectionService extends ServiceModule {
+  private authFailedRefreshAttempted = false;
   private client: GatewayClient | null = null;
   private status: GatewayConnectionStatus = 'disconnected';
   private deviceId: string | null = null;
@@ -276,10 +277,12 @@ export default class GatewayConnectionService extends ServiceModule {
     if (this.status === 'connected' || this.status === 'connecting') {
       return { success: true };
     }
+    this.authFailedRefreshAttempted = false;
     return this.doConnect();
   }
 
   async disconnect(): Promise<{ success: boolean }> {
+    this.authFailedRefreshAttempted = false;
     if (this.client) {
       await this.client.disconnect();
       this.client = null;
@@ -348,6 +351,14 @@ export default class GatewayConnectionService extends ServiceModule {
       this.setStatus(status);
     });
 
+    client.on('connected', () => {
+      this.authFailedRefreshAttempted = false;
+    });
+
+    client.on('auth_failed', (reason) => {
+      void this.handleAuthFailed(reason);
+    });
+
     client.on('tool_call_request', (request) => {
       this.handleToolCallRequest(request, client);
     });
@@ -369,7 +380,6 @@ export default class GatewayConnectionService extends ServiceModule {
     });
 
     client.on('auth_expired', () => {
-      logger.warn('Received auth_expired, will reconnect with refreshed token');
       this.handleAuthExpired();
     });
 
@@ -380,15 +390,31 @@ export default class GatewayConnectionService extends ServiceModule {
 
   // ─── Auth Expired Handling ───
 
+  private async handleAuthFailed(reason: string) {
+    if (this.authFailedRefreshAttempted) {
+      logger.error(`Authentication failed after token refresh: ${reason}`);
+      this.setStatus('disconnected');
+      return;
+    }
+
+    this.authFailedRefreshAttempted = true;
+    logger.warn(`Authentication failed: ${reason}. Attempting token refresh`);
+    await this.refreshTokenAndReconnect();
+  }
+
   private async handleAuthExpired() {
-    // Disconnect the current client
+    logger.warn('Received auth_expired, will reconnect with refreshed token');
+    await this.refreshTokenAndReconnect();
+  }
+
+  private async refreshTokenAndReconnect() {
     if (this.client) {
       await this.client.disconnect();
       this.client = null;
     }
 
     if (!this.tokenRefresher) {
-      logger.error('No token refresher configured, cannot handle auth_expired');
+      logger.error('No token refresher configured, cannot recover gateway authentication');
       this.setStatus('disconnected');
       return;
     }

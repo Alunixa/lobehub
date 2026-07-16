@@ -107,6 +107,10 @@ const { ipcMainHandleMock, MockGatewayClient } = vi.hoisted(() => {
       this.emit('auth_expired');
     }
 
+    simulateAuthFailed(reason: string) {
+      this.emit('auth_failed', reason);
+    }
+
     simulateError(message: string) {
       this.emit('error', new Error(message));
     }
@@ -813,6 +817,47 @@ describe('GatewayConnectionCtr', () => {
       client.simulateAuthExpired();
       await vi.advanceTimersByTimeAsync(0);
 
+      expect(mockBroadcast).toHaveBeenCalledWith('gatewayConnectionStatusChanged', {
+        status: 'disconnected',
+      });
+    });
+  });
+
+  describe('auth_failed handling', () => {
+    it('should refresh token and reconnect when the gateway rejects an expired token', async () => {
+      ctr.afterAppReady();
+      await vi.advanceTimersByTimeAsync(0);
+      const client1 = MockGatewayClient.lastInstance!;
+      client1.simulateConnected();
+      vi.mocked(mockRemoteServerConfigCtr.getAccessToken).mockResolvedValueOnce(
+        'refreshed-access-token',
+      );
+
+      client1.simulateAuthFailed('token expired');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(mockRemoteServerConfigCtr.refreshAccessToken).toHaveBeenCalledTimes(1);
+      expect(MockGatewayClient.lastInstance).not.toBe(client1);
+      expect(MockGatewayClient.lastOptions.token).toBe('refreshed-access-token');
+      expect(MockGatewayClient.lastInstance!.connect).toHaveBeenCalled();
+    });
+
+    it('should stop retrying when authentication still fails after refresh', async () => {
+      ctr.afterAppReady();
+      await vi.advanceTimersByTimeAsync(0);
+      const client1 = MockGatewayClient.lastInstance!;
+      client1.simulateConnected();
+
+      client1.simulateAuthFailed('token expired');
+      await vi.advanceTimersByTimeAsync(0);
+      const client2 = MockGatewayClient.lastInstance!;
+      mockBroadcast.mockClear();
+
+      client2.simulateAuthFailed('invalid refreshed token');
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(mockRemoteServerConfigCtr.refreshAccessToken).toHaveBeenCalledTimes(1);
+      expect(MockGatewayClient.lastInstance).toBe(client2);
       expect(mockBroadcast).toHaveBeenCalledWith('gatewayConnectionStatusChanged', {
         status: 'disconnected',
       });
