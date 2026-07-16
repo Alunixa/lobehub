@@ -1,5 +1,6 @@
 import * as runtimeModule from '@lobechat/model-runtime';
 import type { AIImageModelCard, EnabledAiModel, ModelParamsSchema, Pricing } from 'model-bank';
+import { CHAT_MODEL_IMAGE_GENERATION_PARAMS } from 'model-bank';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -159,6 +160,77 @@ describe('aiProvider action helpers', () => {
       expect(fallbackSpy).toHaveBeenCalledWith('stable-diffusion', 'parameters', 'stability');
       expect(fallbackSpy).toHaveBeenCalledWith('stable-diffusion', 'pricing', 'stability');
       expect(fallbackSpy).toHaveBeenCalledWith('stable-diffusion', 'description', 'stability');
+    });
+
+    it('uses the image variant parameter schema when a runtime image id has no suffix', async () => {
+      const imageParameters = {
+        aspectRatio: { default: 'auto', enum: ['auto', '1:1'] },
+        prompt: { default: '' },
+      } satisfies ModelParamsSchema;
+      const fallbackSpy = vi
+        .mocked(runtimeModule.getModelPropertyWithFallback)
+        .mockImplementation(async (id, key) => {
+          if (id === 'gemini-3.1-flash-image-preview:image' && key === 'parameters') {
+            return imageParameters;
+          }
+          return undefined;
+        });
+
+      const result = await normalizeImageModel(
+        createImageModel({
+          id: 'gemini-3.1-flash-image-preview',
+          providerId: 'custom-google-compatible',
+          parameters: undefined,
+        }),
+      );
+
+      expect(result.parameters).toEqual(imageParameters);
+      expect(fallbackSpy).toHaveBeenCalledWith(
+        'gemini-3.1-flash-image-preview',
+        'parameters',
+        'custom-google-compatible',
+      );
+      expect(fallbackSpy).toHaveBeenCalledWith(
+        'gemini-3.1-flash-image-preview:image',
+        'parameters',
+        'custom-google-compatible',
+      );
+    });
+
+    it('merges an empty runtime schema with the canonical image model schema', async () => {
+      const canonicalParameters = {
+        imageUrls: { default: [], maxCount: 1 },
+        prompt: { default: '' },
+        size: { default: 'auto', enum: ['auto', '1024x1024', '2048x2048'] },
+      } satisfies ModelParamsSchema;
+      vi.mocked(runtimeModule.getModelPropertyWithFallback).mockImplementation(
+        async (id, key) => {
+          if (id === 'gpt-image-2' && key === 'parameters') return canonicalParameters;
+          return undefined;
+        },
+      );
+
+      const result = await normalizeImageModel(
+        createImageModel({
+          id: 'gpt-image-2',
+          parameters: {} as ModelParamsSchema,
+          providerId: 'custom-image-provider',
+        }),
+      );
+
+      expect(result.parameters).toEqual(canonicalParameters);
+    });
+
+    it('uses safe defaults when a custom image model exposes no parameter schema', async () => {
+      const result = await normalizeImageModel(
+        createImageModel({
+          id: 'custom-image-model',
+          providerId: 'custom-provider',
+          parameters: undefined,
+        }),
+      );
+
+      expect(result.parameters).toEqual(CHAT_MODEL_IMAGE_GENERATION_PARAMS);
     });
   });
 

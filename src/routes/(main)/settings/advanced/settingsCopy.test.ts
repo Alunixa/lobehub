@@ -15,6 +15,8 @@ describe('settings copy', () => {
   it('uses non-repeating Advanced page group titles', () => {
     expect(setting['tab.advanced.toolsAndDiagnostics.title']).toBe('Tools and diagnostics');
     expect(setting['tab.advanced.appUpdates.title']).toBe('App updates');
+    expect(setting['tab.advanced.automaticUpdates.title']).toBe('Automatic updates');
+    expect(setting['tab.advanced.automaticUpdates.desc']).toContain('Manual update checks');
     expect(setting['tab.advanced.updateChannel.title']).toBe('Update channel');
   });
 });

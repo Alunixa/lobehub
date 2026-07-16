@@ -50,6 +50,11 @@ export default class UpdaterCtr extends ControllerModule {
     return this.app.storeManager.get('updateChannel') ?? UPDATE_CHANNEL;
   }
 
+  @IpcMethod()
+  async getAutomaticUpdatesEnabled(): Promise<boolean> {
+    return this.app.storeManager.get('automaticUpdatesEnabled') ?? false;
+  }
+
   /**
    * Get the build-time channel (stable, canary, beta, or legacy nightly).
    * Used for display in About page to distinguish pre-release builds.
@@ -71,6 +76,13 @@ export default class UpdaterCtr extends ControllerModule {
     logger.info(`Set update channel requested: ${channel}`);
     this.app.storeManager.set('updateChannel', channel);
     this.app.updaterManager.switchChannel(channel);
+  }
+
+  @IpcMethod()
+  async setAutomaticUpdatesEnabled(enabled: boolean): Promise<void> {
+    logger.info(`Set automatic updates requested: ${enabled}`);
+    this.app.storeManager.set('automaticUpdatesEnabled', enabled);
+    this.app.updaterManager.setAutomaticUpdatesEnabled(enabled);
   }
 
   @IpcMethod()

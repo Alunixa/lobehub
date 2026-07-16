@@ -5,7 +5,7 @@ import {
   type RuntimeImageGenParamsKeys,
   type RuntimeImageGenParamsValue,
 } from 'model-bank';
-import { extractDefaultValues } from 'model-bank';
+import { CHAT_MODEL_IMAGE_GENERATION_PARAMS, extractDefaultValues } from 'model-bank';
 
 import { aiProviderSelectors, getAiInfraStoreState } from '@/store/aiInfra';
 import { useGlobalStore } from '@/store/global';
@@ -46,7 +46,11 @@ export function getModelAndDefaults(model: string, provider: string) {
     );
   }
 
-  const parametersSchema = activeModel.parameters as ModelParamsSchema;
+  const activeModelParameters = activeModel.parameters as ModelParamsSchema | undefined;
+  const parametersSchema = {
+    ...(activeModelParameters ?? CHAT_MODEL_IMAGE_GENERATION_PARAMS),
+    prompt: activeModelParameters?.prompt ?? CHAT_MODEL_IMAGE_GENERATION_PARAMS.prompt,
+  };
   const defaultValues = extractDefaultValues(parametersSchema);
 
   return { defaultValues, activeModel, parametersSchema };

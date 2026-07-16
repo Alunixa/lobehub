@@ -32,6 +32,7 @@ const mockDownloadUpdate = vi.fn();
 const mockInstallNow = vi.fn();
 const mockInstallLater = vi.fn();
 const mockGetUpdaterState = vi.fn();
+const mockSetAutomaticUpdatesEnabled = vi.fn();
 const mockSwitchChannel = vi.fn();
 const mockStoreGet = vi.fn();
 const mockStoreSet = vi.fn();
@@ -47,6 +48,7 @@ const mockApp = {
     getUpdaterState: mockGetUpdaterState,
     installNow: mockInstallNow,
     installLater: mockInstallLater,
+    setAutomaticUpdatesEnabled: mockSetAutomaticUpdatesEnabled,
     switchChannel: mockSwitchChannel,
   },
 } as unknown as App;
@@ -117,6 +119,27 @@ describe('UpdaterCtr', () => {
 
       expect(mockStoreSet).not.toHaveBeenCalled();
       expect(mockSwitchChannel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('automatic updates', () => {
+    it('should default automatic updates to disabled', async () => {
+      mockStoreGet.mockReturnValueOnce(undefined);
+
+      await expect(updaterCtr.getAutomaticUpdatesEnabled()).resolves.toBe(false);
+    });
+
+    it('should return the stored automatic update setting', async () => {
+      mockStoreGet.mockReturnValueOnce(true);
+
+      await expect(updaterCtr.getAutomaticUpdatesEnabled()).resolves.toBe(true);
+    });
+
+    it('should persist and apply automatic update changes', async () => {
+      await updaterCtr.setAutomaticUpdatesEnabled(true);
+
+      expect(mockStoreSet).toHaveBeenCalledWith('automaticUpdatesEnabled', true);
+      expect(mockSetAutomaticUpdatesEnabled).toHaveBeenCalledWith(true);
     });
   });
 

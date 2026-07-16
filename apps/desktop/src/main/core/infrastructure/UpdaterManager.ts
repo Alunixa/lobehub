@@ -24,6 +24,10 @@ const logger = createLogger('core:UpdaterManager');
 
 export class UpdaterManager {
   private app: AppCore;
+  private automaticUpdatesEnabled: boolean = false;
+  private automaticUpdateInterval?: ReturnType<typeof setInterval>;
+  private automaticUpdateTimeout?: ReturnType<typeof setTimeout>;
+  private activeCheckIsManual: boolean = false;
   private checking: boolean = false;
   private downloading: boolean = false;
   private updateAvailable: boolean = false;
@@ -109,6 +113,8 @@ export class UpdaterManager {
 
     // Read persisted channel from store (defaults to build-time UPDATE_CHANNEL)
     this.currentChannel = this.app.storeManager.get('updateChannel') ?? UPDATE_CHANNEL;
+    this.automaticUpdatesEnabled =
+      this.app.storeManager.get('automaticUpdatesEnabled') ?? false;
 
     autoUpdater.autoDownload = false;
     autoUpdater.autoInstallOnAppQuit = false;
@@ -131,10 +137,7 @@ export class UpdaterManager {
 
     this.registerEvents();
 
-    if (updaterConfig.app.autoCheckUpdate) {
-      setTimeout(() => this.checkForUpdates(), 60 * 1000);
-      setInterval(() => this.checkForUpdates(), updaterConfig.app.checkUpdateInterval);
-    }
+    if (this.automaticUpdatesEnabled) this.startAutomaticUpdateChecks();
 
     logger.debug(
       `Initialized with channel: ${autoUpdater.channel}, allowPrerelease: ${autoUpdater.allowPrerelease}`,
@@ -166,8 +169,29 @@ export class UpdaterManager {
     this.checkGeneration++;
     if (this.checking) {
       this.pendingRecheck = true;
-    } else {
+    } else if (this.automaticUpdatesEnabled) {
       this.checkForUpdates();
+    }
+  };
+
+  public setAutomaticUpdatesEnabled = (enabled: boolean) => {
+    if (this.automaticUpdatesEnabled === enabled) return;
+
+    this.automaticUpdatesEnabled = enabled;
+    autoUpdater.autoInstallOnAppQuit = false;
+
+    if (enabled) {
+      logger.info('Automatic updates enabled');
+      this.startAutomaticUpdateChecks();
+      return;
+    }
+
+    logger.info('Automatic updates disabled');
+    this.stopAutomaticUpdateChecks();
+
+    if (this.checking && !this.activeCheckIsManual) {
+      this.checkGeneration++;
+      this.pendingRecheck = false;
     }
   };
 
@@ -175,9 +199,11 @@ export class UpdaterManager {
    * Check for updates
    */
   public checkForUpdates = async ({ manual = false }: { manual?: boolean } = {}) => {
+    if (!manual && !this.automaticUpdatesEnabled) return;
     if (this.checking || this.downloading) return;
 
     this.checking = true;
+    this.activeCheckIsManual = manual;
     this.activeGeneration = this.checkGeneration;
 
     autoUpdater.allowPrerelease = this.currentChannel !== 'stable';
@@ -441,6 +467,30 @@ export class UpdaterManager {
     }
   }
 
+  private startAutomaticUpdateChecks() {
+    this.stopAutomaticUpdateChecks();
+
+    this.automaticUpdateTimeout = setTimeout(
+      () => this.checkForUpdates(),
+      updaterConfig.app.initialCheckDelay,
+    );
+    this.automaticUpdateInterval = setInterval(
+      () => this.checkForUpdates(),
+      updaterConfig.app.checkUpdateInterval,
+    );
+  }
+
+  private stopAutomaticUpdateChecks() {
+    if (this.automaticUpdateTimeout) {
+      clearTimeout(this.automaticUpdateTimeout);
+      this.automaticUpdateTimeout = undefined;
+    }
+    if (this.automaticUpdateInterval) {
+      clearInterval(this.automaticUpdateInterval);
+      this.automaticUpdateInterval = undefined;
+    }
+  }
+
   private registerEvents() {
     logger.debug('Registering updater events');
 
@@ -456,6 +506,7 @@ export class UpdaterManager {
       );
 
       if (this.isStaleCheck()) return;
+      if (!this.activeCheckIsManual && !this.automaticUpdatesEnabled) return;
 
       this.maybeClearInstallLaterGuard(info.version);
 

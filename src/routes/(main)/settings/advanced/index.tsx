@@ -3,7 +3,7 @@
 import { isDesktop } from '@lobechat/const';
 import { type FormGroupItemType, type FormItemProps } from '@lobehub/ui';
 import { Form, Icon, Skeleton } from '@lobehub/ui';
-import { Select, Switch } from '@lobehub/ui/base-ui';
+import { Select, Switch, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Loader2Icon } from 'lucide-react';
@@ -72,19 +72,46 @@ const Page = memo(() => {
   const hasGatewayUrl = useServerConfigStore((s) => !!s.serverConfig.agentGatewayUrl);
 
   const [channel, setChannel] = useState<UpdateChannelValue>('stable');
+  const [automaticUpdatesEnabled, setAutomaticUpdatesEnabled] = useState(false);
+  const [automaticUpdatesLoading, setAutomaticUpdatesLoading] = useState(true);
 
   useEffect(() => {
     if (!isDesktop) return;
-    autoUpdateService
-      .getUpdateChannel()
-      .then(setChannel)
-      .catch(() => {});
-  }, []);
+    Promise.all([
+      autoUpdateService.getUpdateChannel(),
+      autoUpdateService.getAutomaticUpdatesEnabled(),
+    ])
+      .then(([storedChannel, enabled]) => {
+        setChannel(storedChannel);
+        setAutomaticUpdatesEnabled(enabled);
+      })
+      .catch((error) => {
+        console.error('Failed to load desktop update settings:', error);
+        toast.error(t('tab.advanced.automaticUpdates.loadError'));
+      })
+      .finally(() => setAutomaticUpdatesLoading(false));
+  }, [t]);
 
   const handleChannelChange = useCallback((value: UpdateChannelValue) => {
     setChannel(value);
     autoUpdateService.setUpdateChannel(value);
   }, []);
+
+  const handleAutomaticUpdatesChange = useCallback(
+    async (enabled: boolean) => {
+      setAutomaticUpdatesLoading(true);
+      try {
+        await autoUpdateService.setAutomaticUpdatesEnabled(enabled);
+        setAutomaticUpdatesEnabled(enabled);
+      } catch (error) {
+        console.error('Failed to save automatic update setting:', error);
+        toast.error(t('tab.advanced.automaticUpdates.saveError'));
+      } finally {
+        setAutomaticUpdatesLoading(false);
+      }
+    },
+    [t],
+  );
 
   const handleGatewayModeChange = useCallback(
     (checked: boolean) => {
@@ -147,6 +174,18 @@ const Page = memo(() => {
 
   const updateChannelGroup: FormGroupItemType = {
     children: [
+      {
+        children: (
+          <Switch
+            checked={automaticUpdatesEnabled}
+            loading={automaticUpdatesLoading}
+            onChange={handleAutomaticUpdatesChange}
+          />
+        ),
+        desc: t('tab.advanced.automaticUpdates.desc'),
+        label: t('tab.advanced.automaticUpdates.title'),
+        minWidth: undefined,
+      },
       {
         children: (
           <Select options={channelOptions} value={channel} onChange={handleChannelChange} />

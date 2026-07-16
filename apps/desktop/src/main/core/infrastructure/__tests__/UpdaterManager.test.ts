@@ -68,9 +68,9 @@ vi.mock('@/modules/updater/configs', () => ({
   UPDATE_SERVER_URL: 'https://mock.update.server',
   updaterConfig: {
     app: {
-      autoCheckUpdate: false,
       autoDownloadUpdate: true,
       checkUpdateInterval: 60 * 60 * 1000,
+      initialCheckDelay: 60 * 1000,
     },
     enableAppUpdate: true,
   },
@@ -129,7 +129,7 @@ describe('UpdaterManager', () => {
         rebuildAppMenu: vi.fn(),
       },
       storeManager: {
-        get: vi.fn().mockReturnValue('stable'),
+        get: vi.fn((key: string) => (key === 'automaticUpdatesEnabled' ? true : 'stable')),
         set: vi.fn(),
       },
     } as unknown as AppCore;
@@ -168,6 +168,18 @@ describe('UpdaterManager', () => {
       expect(autoUpdater.on).toHaveBeenCalledWith('download-progress', expect.any(Function));
       expect(autoUpdater.on).toHaveBeenCalledWith('update-downloaded', expect.any(Function));
     });
+
+    it('should not schedule automatic checks when automatic updates are disabled', async () => {
+      vi.mocked(mockApp.storeManager.get).mockImplementation((key) =>
+        key === 'automaticUpdatesEnabled' ? false : ('stable' as never),
+      );
+      const disabledManager = new UpdaterManager(mockApp);
+
+      await disabledManager.initialize();
+      await vi.advanceTimersByTimeAsync(2 * 60 * 60 * 1000);
+
+      expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+    });
   });
 
   describe('checkForUpdates', () => {
@@ -180,6 +192,22 @@ describe('UpdaterManager', () => {
       await updaterManager.checkForUpdates();
 
       expect(autoUpdater.checkForUpdates).toHaveBeenCalled();
+    });
+
+    it('should skip background checks after automatic updates are disabled', async () => {
+      updaterManager.setAutomaticUpdatesEnabled(false);
+
+      await updaterManager.checkForUpdates({ manual: false });
+
+      expect(autoUpdater.checkForUpdates).not.toHaveBeenCalled();
+    });
+
+    it('should still allow manual checks after automatic updates are disabled', async () => {
+      updaterManager.setAutomaticUpdatesEnabled(false);
+
+      await updaterManager.checkForUpdates({ manual: true });
+
+      expect(autoUpdater.checkForUpdates).toHaveBeenCalledTimes(1);
     });
 
     it('should broadcast updaterStateChanged with checking stage when checking', async () => {
@@ -543,6 +571,25 @@ describe('UpdaterManager', () => {
         handler?.({ version: '2.0.0' });
 
         expect(autoUpdater.downloadUpdate).toHaveBeenCalled();
+      });
+
+      it('should not download when automatic updates are disabled during a background check', async () => {
+        let resolveCheck: (() => void) | undefined;
+        vi.mocked(autoUpdater.checkForUpdates).mockImplementation(
+          () =>
+            new Promise<void>((resolve) => {
+              resolveCheck = resolve;
+            }) as any,
+        );
+
+        const check = updaterManager.checkForUpdates({ manual: false });
+        updaterManager.setAutomaticUpdatesEnabled(false);
+
+        registeredEvents.get('update-available')?.({ version: '2.0.0' });
+        resolveCheck?.();
+        await check;
+
+        expect(autoUpdater.downloadUpdate).not.toHaveBeenCalled();
       });
     });
 

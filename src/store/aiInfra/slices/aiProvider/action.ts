@@ -12,7 +12,7 @@ import type {
   ModelParamsSchema,
   Pricing,
 } from 'model-bank';
-import { isAiModelVisible } from 'model-bank';
+import { CHAT_MODEL_IMAGE_GENERATION_PARAMS, isAiModelVisible } from 'model-bank';
 import { type SWRResponse } from 'swr';
 
 import { mutate, useClientDataSWR } from '@/libs/swr';
@@ -102,13 +102,31 @@ export const normalizeChatModel = async (model: EnabledAiModel): Promise<Provide
 export const normalizeImageModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
-  const fallbackParametersPromise = model.parameters
-    ? Promise.resolve<ModelParamsSchema | undefined>(model.parameters)
-    : getModelPropertyWithFallback<ModelParamsSchema | undefined>(
-        model.id,
+  const fallbackParametersPromise = (async () => {
+    let canonicalParameters = await getModelPropertyWithFallback<
+      ModelParamsSchema | undefined
+    >(model.id, 'parameters', model.providerId);
+
+    if (!canonicalParameters && !model.id.endsWith(':image')) {
+      canonicalParameters = await getModelPropertyWithFallback<ModelParamsSchema | undefined>(
+        `${model.id}:image`,
         'parameters',
         model.providerId,
       );
+    }
+
+    const inlineParameters = model.parameters as ModelParamsSchema | undefined;
+    const parameters = canonicalParameters
+      ? { ...canonicalParameters, ...inlineParameters }
+      : inlineParameters
+        ? { prompt: CHAT_MODEL_IMAGE_GENERATION_PARAMS.prompt, ...inlineParameters }
+        : CHAT_MODEL_IMAGE_GENERATION_PARAMS;
+
+    return {
+      ...parameters,
+      prompt: parameters.prompt ?? CHAT_MODEL_IMAGE_GENERATION_PARAMS.prompt,
+    };
+  })();
 
   const fallbackPricingPromise = getModelProperty<Pricing>(model, 'pricing');
   const fallbackDescriptionPromise = getModelProperty<string>(model, 'description');
@@ -119,7 +137,7 @@ export const normalizeImageModel = async (
     fallbackDescriptionPromise,
   ]);
 
-  const parameters = model.parameters ?? fallbackParameters;
+  const parameters = fallbackParameters;
   const pricing = fallbackPricing;
   const description = fallbackDescription;
   const { price, approximatePrice } = resolveImageSinglePrice(pricing);

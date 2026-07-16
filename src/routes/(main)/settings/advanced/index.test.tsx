@@ -1,7 +1,8 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { autoUpdateService } from '@/services/electron/autoUpdate';
 import { initServerConfigStore, Provider } from '@/store/serverConfig/store';
 import { useUserStore } from '@/store/user';
 
@@ -64,7 +65,20 @@ vi.mock('@lobehub/ui', () => ({
 
 vi.mock('@lobehub/ui/base-ui', () => ({
   Select: () => <button />,
-  Switch: () => <button />,
+  Switch: ({
+    checked,
+    onChange,
+  }: {
+    checked?: boolean;
+    onChange?: (checked: boolean) => void;
+  }) => (
+    <button aria-pressed={checked} onClick={() => onChange?.(!checked)}>
+      switch
+    </button>
+  ),
+  toast: {
+    error: vi.fn(),
+  },
 }));
 
 vi.mock('@/routes/(main)/settings/features/SettingHeader', () => ({
@@ -73,7 +87,9 @@ vi.mock('@/routes/(main)/settings/features/SettingHeader', () => ({
 
 vi.mock('@/services/electron/autoUpdate', () => ({
   autoUpdateService: {
+    getAutomaticUpdatesEnabled: vi.fn().mockResolvedValue(false),
     getUpdateChannel: vi.fn().mockResolvedValue('stable'),
+    setAutomaticUpdatesEnabled: vi.fn(),
     setUpdateChannel: vi.fn(),
   },
 }));
@@ -116,5 +132,29 @@ describe('Advanced settings page', () => {
     render(<Page />, { wrapper: createWrapper() });
 
     expect(screen.getByText('features.agentDocumentFloatingChatPanel.title')).toBeDefined();
+  });
+
+  it('renders automatic updates disabled by default and persists a toggle', async () => {
+    useUserStore.setState({
+      isUserStateInit: true,
+      setSettings: vi.fn(),
+      updateLab: vi.fn(),
+    });
+
+    render(<Page />, { wrapper: createWrapper() });
+
+    expect(screen.getByText('tab.advanced.automaticUpdates.title')).toBeDefined();
+
+    const automaticUpdateSwitch = screen
+      .getByText('tab.advanced.automaticUpdates.title')
+      .parentElement?.querySelector('button');
+    expect(automaticUpdateSwitch).not.toBeNull();
+    expect(automaticUpdateSwitch).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(automaticUpdateSwitch!);
+
+    await waitFor(() => {
+      expect(autoUpdateService.setAutomaticUpdatesEnabled).toHaveBeenCalledWith(true);
+    });
   });
 });

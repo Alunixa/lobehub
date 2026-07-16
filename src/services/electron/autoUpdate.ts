@@ -23,12 +23,20 @@ class AutoUpdateService {
     return ensureElectronIpc().autoUpdate.getUpdateChannel();
   };
 
+  getAutomaticUpdatesEnabled = async (): Promise<boolean> => {
+    return ensureElectronIpc().autoUpdate.getAutomaticUpdatesEnabled();
+  };
+
   getBuildChannel = async (): Promise<string> => {
     return ensureElectronIpc().autoUpdate.getBuildChannel();
   };
 
   setUpdateChannel = async (channel: UpdateChannel): Promise<void> => {
     return ensureElectronIpc().autoUpdate.setUpdateChannel(channel);
+  };
+
+  setAutomaticUpdatesEnabled = async (enabled: boolean): Promise<void> => {
+    return ensureElectronIpc().autoUpdate.setAutomaticUpdatesEnabled(enabled);
   };
 
   getUpdaterState = async (): Promise<UpdaterState> => {

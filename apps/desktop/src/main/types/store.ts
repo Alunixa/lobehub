@@ -7,6 +7,7 @@ import type {
 
 export interface ElectronMainStore {
   appTrayVisible: boolean;
+  automaticUpdatesEnabled: boolean;
   dataSyncConfig: DataSyncConfig;
   encryptedTokens: {
     accessToken?: string;

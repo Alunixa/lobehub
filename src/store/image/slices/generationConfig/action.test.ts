@@ -4,7 +4,11 @@ import {
   type ModelParamsSchema,
   type RuntimeImageGenParams,
 } from 'model-bank';
-import { extractDefaultValues, fluxSchnellParamsSchema } from 'model-bank';
+import {
+  CHAT_MODEL_IMAGE_GENERATION_PARAMS,
+  extractDefaultValues,
+  fluxSchnellParamsSchema,
+} from 'model-bank';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useImageStore } from '@/store/image';
@@ -92,6 +96,19 @@ const testImageModels: AIImageModelCard[] = [
     parameters: sizeOnlyModelSchema,
     releasedAt: '2024-01-01',
   },
+  {
+    id: 'parameterless-model',
+    displayName: 'Parameterless Model',
+    type: 'image',
+    releasedAt: '2024-01-01',
+  },
+  {
+    id: 'empty-schema-model',
+    displayName: 'Empty Schema Model',
+    type: 'image',
+    parameters: {} as ModelParamsSchema,
+    releasedAt: '2024-01-01',
+  },
 ];
 
 const mockProviders = [
@@ -114,6 +131,16 @@ const mockProviders = [
     id: 'size-only-provider',
     name: 'Size Only Provider',
     children: [testImageModels[3]],
+  },
+  {
+    id: 'parameterless-provider',
+    name: 'Parameterless Provider',
+    children: [testImageModels[4]],
+  },
+  {
+    id: 'empty-schema-provider',
+    name: 'Empty Schema Provider',
+    children: [testImageModels[5]],
   },
 ];
 
@@ -258,6 +285,40 @@ describe('GenerationConfigAction', () => {
         prompt: 'initial prompt',
       });
       expect(result.current.parametersSchema).toEqual(customModelSchema);
+    });
+
+    it('should switch to a runtime image model without a parameter schema', () => {
+      const { result } = renderHook(() => useImageStore());
+
+      act(() => {
+        result.current.setParamOnInput('prompt', 'keep this prompt');
+        result.current.setModelAndProviderOnSelect(
+          'parameterless-model',
+          'parameterless-provider',
+        );
+      });
+
+      expect(result.current.model).toBe('parameterless-model');
+      expect(result.current.provider).toBe('parameterless-provider');
+      expect(result.current.parameters).toEqual({
+        imageUrls: [],
+        prompt: 'keep this prompt',
+      });
+      expect(result.current.parametersSchema).toEqual(CHAT_MODEL_IMAGE_GENERATION_PARAMS);
+    });
+
+    it('should switch to a runtime image model with an empty parameter schema', () => {
+      const { result } = renderHook(() => useImageStore());
+
+      act(() => {
+        result.current.setParamOnInput('prompt', 'keep this prompt');
+        result.current.setModelAndProviderOnSelect('empty-schema-model', 'empty-schema-provider');
+      });
+
+      expect(result.current.model).toBe('empty-schema-model');
+      expect(result.current.provider).toBe('empty-schema-provider');
+      expect(result.current.parameters).toEqual({ prompt: 'keep this prompt' });
+      expect(result.current.parametersSchema).toEqual({ prompt: { default: '' } });
     });
 
     it('should preserve prompt and image inputs when switching models', () => {
