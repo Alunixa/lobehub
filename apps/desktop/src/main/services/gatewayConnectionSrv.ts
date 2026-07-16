@@ -26,6 +26,7 @@ import { ServiceModule } from './index';
 const logger = createLogger('services:GatewayConnectionSrv');
 
 const DEFAULT_GATEWAY_URL = 'https://device-gateway.lobehub.com';
+const SELF_HOST_GATEWAY_PATH = '/device-gateway';
 
 /**
  * Result envelope a tool-call handler must return. Mirrors
@@ -121,6 +122,7 @@ export default class GatewayConnectionService extends ServiceModule {
 
   private tokenProvider: (() => Promise<string | null>) | null = null;
   private tokenRefresher: (() => Promise<{ error?: string; success: boolean }>) | null = null;
+  private serverUrlProvider: (() => Promise<string | null | undefined>) | null = null;
   private toolCallHandler: ToolCallHandler | null = null;
   private mcpCallHandler: McpCallHandler | null = null;
   private messageApiHandler: MessageApiHandler | null = null;
@@ -135,6 +137,15 @@ export default class GatewayConnectionService extends ServiceModule {
    */
   setTokenProvider(provider: () => Promise<string | null>) {
     this.tokenProvider = provider;
+  }
+
+  /**
+   * Set LobeHub server URL provider. Used both as GatewayClient `serverUrl`
+   * (gateway may call back for token verification) and to derive the
+   * self-hosted device-gateway path when no explicit gateway URL is set.
+   */
+  setServerUrlProvider(provider: () => Promise<string | null | undefined>) {
+    this.serverUrlProvider = provider;
   }
 
   /**
@@ -309,7 +320,8 @@ export default class GatewayConnectionService extends ServiceModule {
       return { error: 'No access token available', success: false };
     }
 
-    const gatewayUrl = this.getGatewayUrl();
+    const serverUrl = await this.resolveServerUrl();
+    const gatewayUrl = this.getGatewayUrl(serverUrl);
     const userId = this.extractUserIdFromToken(token);
     logger.info(`Connecting to device gateway: ${gatewayUrl}, userId: ${userId || 'unknown'}`);
 
@@ -334,7 +346,9 @@ export default class GatewayConnectionService extends ServiceModule {
       deviceId: this.getDeviceId(),
       gatewayUrl,
       logger,
+      serverUrl: serverUrl || undefined,
       token,
+      tokenType: 'jwt',
       userAgent: getDesktopUserAgent(),
       userId: userId || undefined,
     });
@@ -656,14 +670,51 @@ export default class GatewayConnectionService extends ServiceModule {
 
   // ─── Gateway URL ───
 
-  private getGatewayUrl(): string {
-    // Env override wins (dev: point at a local `wrangler dev` gateway), then the
-    // user-configured store value, then the production default.
-    return (
-      getDesktopEnv().DEVICE_GATEWAY_URL ||
-      this.app.storeManager.get('gatewayUrl') ||
-      DEFAULT_GATEWAY_URL
-    );
+  private async resolveServerUrl(): Promise<string | undefined> {
+    if (!this.serverUrlProvider) return undefined;
+    try {
+      const url = await this.serverUrlProvider();
+      return typeof url === 'string' && url.trim() ? url.trim().replace(/\/+$/, '') : undefined;
+    } catch (error) {
+      logger.warn(`Failed to resolve server URL: ${(error as Error).message}`);
+      return undefined;
+    }
+  }
+
+  private getGatewayUrl(serverUrl?: string): string {
+    // Env override wins (dev: point at a local `wrangler dev` gateway).
+    const envUrl = getDesktopEnv().DEVICE_GATEWAY_URL;
+    if (envUrl) return envUrl;
+
+    const stored = this.app.storeManager.get('gatewayUrl') as string | undefined;
+    // Self-host: derive `<server>/device-gateway` unless the user has explicitly
+    // overridden the gateway URL away from the cloud default. Stale installs
+    // still carry the cloud default from STORE_DEFAULTS, which would reject
+    // self-issued OIDC tokens and bounce the titlebar switch closed.
+    const derivedSelfHostGateway = this.deriveSelfHostGatewayUrl(serverUrl);
+    if (derivedSelfHostGateway) {
+      if (!stored || stored === DEFAULT_GATEWAY_URL) {
+        return derivedSelfHostGateway;
+      }
+      return stored;
+    }
+
+    return stored || DEFAULT_GATEWAY_URL;
+  }
+
+  private deriveSelfHostGatewayUrl(serverUrl?: string): string | undefined {
+    if (!serverUrl) return undefined;
+    try {
+      const parsed = new URL(serverUrl);
+      // Official cloud already has its own device-gateway hostname; only
+      // self-hosted deployments serve the gateway under /device-gateway.
+      if (parsed.hostname === 'app.lobehub.com' || parsed.hostname === 'lobehub.com') {
+        return undefined;
+      }
+      return `${parsed.origin}${SELF_HOST_GATEWAY_PATH}`;
+    } catch {
+      return undefined;
+    }
   }
 
   // ─── Token Helpers ───

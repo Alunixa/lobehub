@@ -199,6 +199,7 @@ export default class GatewayConnectionCtr extends ControllerModule {
     // Wire up token provider and refresher
     srv.setTokenProvider(() => this.remoteServerConfigCtr.getAccessToken());
     srv.setTokenRefresher(() => this.remoteServerConfigCtr.refreshAccessToken());
+    srv.setServerUrlProvider(() => this.remoteServerConfigCtr.getRemoteServerUrl());
 
     // Wire up tool call handler
     srv.setToolCallHandler((apiName, args) => this.executeToolCall(apiName, args));

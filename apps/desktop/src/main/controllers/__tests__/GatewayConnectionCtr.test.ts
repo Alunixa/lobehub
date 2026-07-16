@@ -335,7 +335,11 @@ describe('GatewayConnectionCtr', () => {
       expect(options).not.toBeNull();
       expect(options.token).toBe('mock-access-token');
       expect(options.deviceId).toBe('stored-device-id');
-      expect(options.gatewayUrl).toBe('https://device-gateway.lobehub.com');
+      // Mock remote server is self-host, so the gateway is derived under /device-gateway
+      // instead of the official cloud hostname (which would reject self-issued tokens).
+      expect(options.gatewayUrl).toBe('https://server.example.com/device-gateway');
+      expect(options.serverUrl).toBe('https://server.example.com');
+      expect(options.tokenType).toBe('jwt');
       expect(options.logger).toBeDefined();
       expect(options.userAgent).toBe('LobeHub Desktop/1.2.3');
     });
@@ -352,6 +356,47 @@ describe('GatewayConnectionCtr', () => {
       await vi.advanceTimersByTimeAsync(0);
 
       expect(MockGatewayClient.lastOptions.gatewayUrl).toBe('http://localhost:8787');
+    });
+
+    it('should ignore the stored cloud default and derive self-host gateway URL', async () => {
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'gatewayEnabled') return true;
+        // Stale default from STORE_DEFAULTS — must not pin self-host installs
+        // onto the official cloud gateway.
+        if (key === 'gatewayUrl') return 'https://device-gateway.lobehub.com';
+        return undefined;
+      });
+
+      ctr = new GatewayConnectionCtr(mockApp);
+      ctr.afterAppReady();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(MockGatewayClient.lastOptions.gatewayUrl).toBe(
+        'https://server.example.com/device-gateway',
+      );
+    });
+
+    it('should keep the official cloud gateway when remote server is official cloud', async () => {
+      vi.mocked(mockRemoteServerConfigCtr.getRemoteServerUrl).mockResolvedValue(
+        'https://app.lobehub.com',
+      );
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'gatewayEnabled') return true;
+        if (key === 'gatewayUrl') return undefined;
+        return undefined;
+      });
+
+      ctr = new GatewayConnectionCtr(mockApp);
+      ctr.afterAppReady();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(MockGatewayClient.lastOptions.gatewayUrl).toBe('https://device-gateway.lobehub.com');
+      expect(MockGatewayClient.lastOptions.serverUrl).toBe('https://app.lobehub.com');
+
+      // Restore the shared mock so later agent-run cases still see self-host.
+      vi.mocked(mockRemoteServerConfigCtr.getRemoteServerUrl).mockResolvedValue(
+        'https://server.example.com',
+      );
     });
 
     it('should return success:false when no access token', async () => {
@@ -974,9 +1019,10 @@ describe('GatewayConnectionCtr', () => {
     });
 
     it('sends rejected ack when remote server URL is not configured', async () => {
-      vi.mocked(mockRemoteServerConfigCtr.getRemoteServerUrl).mockResolvedValueOnce('');
-
       const client = await connectAndOpen();
+      // After connect has already resolved the gateway URL, force the next
+      // agent-run lookup to see an empty remote server.
+      vi.mocked(mockRemoteServerConfigCtr.getRemoteServerUrl).mockResolvedValueOnce('');
       client.simulateAgentRunRequest('openclaw', 'op-fail');
       await vi.advanceTimersByTimeAsync(0);
 

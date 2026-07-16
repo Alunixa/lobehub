@@ -79,7 +79,10 @@ const DeviceGateway = memo(() => {
   });
 
   const isConnected = gatewayStatus === 'connected';
-  const isConnecting = gatewayStatus === 'connecting' || gatewayStatus === 'reconnecting';
+  const isConnecting =
+    gatewayStatus === 'connecting' ||
+    gatewayStatus === 'reconnecting' ||
+    gatewayStatus === 'authenticating';
 
   const [localName, setLocalName] = useState<string | undefined>();
   const [localDescription, setLocalDescription] = useState<string | undefined>();
