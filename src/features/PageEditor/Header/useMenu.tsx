@@ -23,7 +23,6 @@ import { useDocumentTransferMenuItem } from '@/business/client/hooks/useDocument
 import { useResourcePermissionMenuItem } from '@/features/ResourcePermission/useResourcePermissionMenuItem';
 import VisibilityConfirmContent from '@/features/VisibilityConfirmContent';
 import { usePermission } from '@/hooks/usePermission';
-import { resourcePermissionService } from '@/services/resourcePermission';
 import { useDocumentStore } from '@/store/document';
 import { editorSelectors } from '@/store/document/slices/editor';
 import { useFileStore } from '@/store/file';
@@ -124,12 +123,7 @@ export const useMenu = (): { menuItems: any[] } => {
       okText: t('continue', { ns: 'common' }),
       onOk: async () => {
         try {
-          await publishPageToWorkspace(documentId);
-          await resourcePermissionService.setAccessLevel(
-            'document',
-            documentId,
-            accessLevelRef.current,
-          );
+          await publishPageToWorkspace(documentId, accessLevelRef.current);
           message.success(t('pageList.publishSuccess'));
         } catch (error) {
           console.error('Failed to publish page:', error);

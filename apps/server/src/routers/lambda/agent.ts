@@ -129,14 +129,19 @@ export const agentRouter = router({
    */
   publishAgentToWorkspace: agentProcedure
     .use(withScopedPermission('agent:update'))
-    .input(z.object({ id: z.string() }))
+    .input(
+      z.object({
+        accessLevel: z.enum(RESOURCE_ACCESS_LEVELS_BY_TYPE.agent).optional(),
+        id: z.string(),
+      }),
+    )
     .mutation(async ({ input, ctx }) => {
       const result = await ctx.agentModel.publishToWorkspace(input.id);
       if (ctx.workspaceId) {
         await new ResourcePermissionModel(ctx.serverDB, ctx.workspaceId).setAccessLevel(
           'agent',
           input.id,
-          DEFAULT_RESOURCE_ACCESS_LEVELS.agent,
+          input.accessLevel ?? DEFAULT_RESOURCE_ACCESS_LEVELS.agent,
           ctx.userId,
         );
       }

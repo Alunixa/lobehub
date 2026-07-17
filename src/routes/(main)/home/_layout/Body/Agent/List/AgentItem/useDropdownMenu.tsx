@@ -29,7 +29,6 @@ import VisibilityConfirmContent from '@/features/VisibilityConfirmContent';
 import { usePermission } from '@/hooks/usePermission';
 import { useResourceManageable } from '@/hooks/useResourceManageable';
 import { agentService } from '@/services/agent';
-import { resourcePermissionService } from '@/services/resourcePermission';
 import { useGlobalStore } from '@/store/global';
 import { useHomeStore } from '@/store/home';
 import { homeAgentListSelectors } from '@/store/home/selectors';
@@ -247,9 +246,7 @@ export const useAgentDropdownMenu = ({
                           }),
                           onOk: async () => {
                             try {
-                              await agentService.publishAgentToWorkspace(id);
-                              await resourcePermissionService.setAccessLevel(
-                                'agent',
+                              await agentService.publishAgentToWorkspace(
                                 id,
                                 accessLevelRef.current,
                               );

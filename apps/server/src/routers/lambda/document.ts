@@ -501,7 +501,7 @@ export const documentRouter = router({
    */
   publishDocumentToWorkspace: documentProcedure
     .use(withScopedPermission('document:update'))
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ accessLevel: z.enum(['view', 'edit']).optional(), id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       // Same guard as the sibling `setDocumentVisibility` — publishing is a
       // visibility change and stays creator-only.
@@ -531,7 +531,7 @@ export const documentRouter = router({
         await new ResourcePermissionModel(ctx.serverDB, ctx.workspaceId).setAccessLevel(
           'document',
           input.id,
-          DEFAULT_RESOURCE_ACCESS_LEVELS.document,
+          input.accessLevel ?? DEFAULT_RESOURCE_ACCESS_LEVELS.document,
           ctx.userId,
         );
       }

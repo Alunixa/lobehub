@@ -15,7 +15,6 @@ import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwar
 import { buildWorkspaceAwarePath } from '@/features/Workspace/workspaceAwarePath';
 import { usePermission } from '@/hooks/usePermission';
 import { useResourceManageable } from '@/hooks/useResourceManageable';
-import { resourcePermissionService } from '@/services/resourcePermission';
 import { useElectronStore } from '@/store/electron';
 import { pageSelectors, usePageStore } from '@/store/page';
 import { useUserStore } from '@/store/user';
@@ -116,12 +115,7 @@ export const useDropdownMenu = ({
       okText: t('continue'),
       onOk: async () => {
         try {
-          await publishPageToWorkspace(pageId);
-          await resourcePermissionService.setAccessLevel(
-            'document',
-            pageId,
-            accessLevelRef.current,
-          );
+          await publishPageToWorkspace(pageId, accessLevelRef.current);
           message.success(t('pageList.publishSuccess', { ns: 'file' }));
         } catch (error) {
           console.error('Failed to publish page:', error);

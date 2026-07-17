@@ -271,7 +271,7 @@ export class DocumentModel {
       const result = await (trx as LobeChatDatabase)
         .update(documents)
         .set({ updatedAt: new Date(), visibility })
-        .where(and(eq(documents.id, rootId), eq(documents.userId, this.userId)))
+        .where(and(eq(documents.id, rootId), this.ownership(), eq(documents.userId, this.userId)))
         .returning({ id: documents.id });
 
       if (result.length === 0) throw new Error('Document not found');

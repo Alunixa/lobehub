@@ -414,6 +414,27 @@ describe('DocumentModel.setVisibility', () => {
     const stillPublic = await callerA.findById(root.id);
     expect(stillPublic?.visibility).toBe('public');
   });
+
+  it('refuses to flip a workspace document from a personal (no-workspace) context', async () => {
+    const callerA = new DocumentModel(serverDB, userA, workspaceId);
+    const root = await callerA.create({
+      fileType: 'custom/folder',
+      source: '',
+      sourceType: 'api',
+      title: 'ws-scoped-root',
+      totalCharCount: 0,
+      totalLineCount: 0,
+    });
+
+    // Same user, but personal scope (workspace_id IS NULL) — ownership() must
+    // exclude the workspace row so a wrong-context request can't bypass the
+    // workspace's RBAC / resource_permissions flow.
+    const personalCaller = new DocumentModel(serverDB, userA);
+    await expect(personalCaller.setVisibility(root.id, 'public')).rejects.toThrow(/not found/i);
+
+    const row = await callerA.findById(root.id);
+    expect(row?.visibility).toBe('private');
+  });
 });
 
 describe('DocumentModel.update — independent parent visibility', () => {
