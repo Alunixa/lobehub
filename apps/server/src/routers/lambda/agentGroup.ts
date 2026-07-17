@@ -348,6 +348,17 @@ export const agentGroupRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      // Duplicating copies the group config + virtual member agent details,
+      // which a use-only member must not be able to inspect — same edit gate
+      // as `updateGroup`, mirroring the UI's `canEditResource` guard.
+      await assertCanEditResource({
+        db: ctx.serverDB,
+        resourceId: input.groupId,
+        resourceType: 'agentGroup',
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId ?? undefined,
+      });
+
       const result = await ctx.agentGroupRepo.duplicate(input.groupId, input.newTitle);
       if (ctx.workspaceId && result) {
         const permissionModel = new ResourcePermissionModel(ctx.serverDB, ctx.workspaceId);

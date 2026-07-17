@@ -438,6 +438,17 @@ export const agentRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      // Duplicating copies the full config (prompt/plugins/etc.), which a
+      // use-only member must not be able to inspect — same edit gate as
+      // `updateAgentConfig`, mirroring the UI's `canConfigure` guard.
+      await assertCanEditResource({
+        db: ctx.serverDB,
+        resourceId: input.agentId,
+        resourceType: 'agent',
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId ?? undefined,
+      });
+
       const result = await ctx.agentModel.duplicate(input.agentId, input.newTitle);
       if (ctx.workspaceId && result) {
         await new ResourcePermissionModel(ctx.serverDB, ctx.workspaceId).setAccessLevel(

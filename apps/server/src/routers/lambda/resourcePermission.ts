@@ -57,6 +57,11 @@ export const resourcePermissionRouter = router({
     if (!meta || meta.workspaceId !== ctx.workspaceId) {
       throw new TRPCError({ code: 'NOT_FOUND', message: 'Resource not found' });
     }
+    // Private rows are creator-only (mirrors `canPerformResourceAction`):
+    // don't leak existence/creator of another member's private resource.
+    if (meta.visibility === 'private' && meta.userId !== ctx.userId) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Resource not found' });
+    }
 
     const [accessLevel, canManage] = await Promise.all([
       ctx.permissionModel.getEffectiveAccessLevel(input.resourceType, input.resourceId),
@@ -98,6 +103,10 @@ export const resourcePermissionRouter = router({
     .mutation(async ({ ctx, input }) => {
       const meta = await getResourceMeta(ctx.serverDB, input.resourceType, input.resourceId);
       if (!meta || meta.workspaceId !== ctx.workspaceId) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Resource not found' });
+      }
+      // Same private-row existence guard as `getGeneralAccess`.
+      if (meta.visibility === 'private' && meta.userId !== ctx.userId) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Resource not found' });
       }
 
