@@ -276,6 +276,12 @@ export const messageRouter = router({
       }
 
       await assertCanUseConversationTargets(guardCtx(ctx), [{ agentId, groupId: input.groupId }]);
+      // The declared agent/group is client-supplied and can be omitted or
+      // forged while still inserting into `topicId` — guard the topic's own
+      // DB-resolved target as well.
+      if (input.topicId) {
+        await assertCanUseTopicTargets(guardCtx(ctx), [input.topicId]);
+      }
 
       // Create message with the resolved agentId
       return ctx.messageService.createMessage({ ...input, agentId } as any);

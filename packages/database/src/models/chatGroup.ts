@@ -311,6 +311,32 @@ export class ChatGroupModel {
       .where(and(eq(chatGroups.id, id), this.ownership()))
       .returning();
 
+    if (updated) {
+      // Keep the synthetic supervisor's visibility in lockstep (mirrors
+      // publishToWorkspace): a promoted group must expose its supervisor to
+      // members, a demoted group must not leave the supervisor public.
+      await this.db
+        .update(agents)
+        .set({ updatedAt: new Date(), visibility })
+        .where(
+          and(
+            ne(agents.visibility, visibility),
+            inArray(
+              agents.id,
+              this.db
+                .select({ id: chatGroupsAgents.agentId })
+                .from(chatGroupsAgents)
+                .where(
+                  and(
+                    eq(chatGroupsAgents.chatGroupId, id),
+                    eq(chatGroupsAgents.role, 'supervisor'),
+                  ),
+                ),
+            ),
+          ),
+        );
+    }
+
     return updated ?? null;
   }
 

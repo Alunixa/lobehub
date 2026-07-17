@@ -1,6 +1,6 @@
 import { inArray } from 'drizzle-orm';
 
-import { messages, topics } from '@/database/schemas';
+import { agentsToSessions, messages, topics } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
 import {
   assertCanPerformResourceAction,
@@ -110,9 +110,27 @@ export const assertCanUseTopicTargets = async (
   if (!ctx.workspaceId || topicIds.length === 0) return;
 
   const rows = await ctx.db
-    .select({ agentId: topics.agentId, groupId: topics.groupId })
+    .select({ agentId: topics.agentId, groupId: topics.groupId, sessionId: topics.sessionId })
     .from(topics)
     .where(inArray(topics.id, topicIds));
 
-  await assertCanUseConversationTargets(ctx, rows);
+  // Backwards-compatible topics may carry only `sessionId` — resolve those
+  // through `agentsToSessions`, otherwise a session-backed topic would pass an
+  // empty target and skip the guard entirely.
+  const unresolvedSessionIds = [
+    ...new Set(
+      rows
+        .filter((row) => !row.agentId && !row.groupId && row.sessionId)
+        .map((row) => row.sessionId!),
+    ),
+  ];
+  const sessionTargets: ConversationTarget[] =
+    unresolvedSessionIds.length > 0
+      ? await ctx.db
+          .select({ agentId: agentsToSessions.agentId })
+          .from(agentsToSessions)
+          .where(inArray(agentsToSessions.sessionId, unresolvedSessionIds))
+      : [];
+
+  await assertCanUseConversationTargets(ctx, [...rows, ...sessionTargets]);
 };

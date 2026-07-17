@@ -18,6 +18,7 @@ import {
   assertCanEditResource,
   assertCanPerformResourceAction,
   buildResourcePermissionState,
+  getResourceMeta,
 } from '@/server/services/resourcePermission';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
 import { TransferErrorCode } from '@/types/transferError';
@@ -30,6 +31,32 @@ import {
   saveDocumentHistoryInputSchema,
   updateDocumentInputSchema,
 } from './_schema/documentHistory';
+
+/**
+ * Creating a child modifies the parent's tree — viewers of a workspace-shared
+ * parent must not be able to insert under it. Parents outside the current
+ * workspace (personal docs, foreign ids) fall through; the model's ownership
+ * WHERE keeps those unreachable anyway.
+ */
+const assertCanCreateUnderParent = async (
+  ctx: {
+    serverDB: Parameters<typeof getResourceMeta>[0];
+    userId: string;
+    workspaceId?: string | null;
+  },
+  parentId: string | undefined,
+) => {
+  if (!ctx.workspaceId || !parentId) return;
+  const meta = await getResourceMeta(ctx.serverDB, 'document', parentId);
+  if (!meta || meta.workspaceId !== ctx.workspaceId) return;
+  await assertCanEditResource({
+    db: ctx.serverDB,
+    resourceId: parentId,
+    resourceType: 'document',
+    userId: ctx.userId,
+    workspaceId: ctx.workspaceId,
+  });
+};
 
 const getFreeDocumentHistorySince = () => {
   const now = Date.now();
@@ -79,6 +106,8 @@ export const documentRouter = router({
           resolvedParentId = docBySlug.id;
         }
       }
+
+      await assertCanCreateUnderParent(ctx, resolvedParentId);
 
       // Parse editorData from JSON string to object
       const editorData = input.editorData ? JSON.parse(input.editorData) : undefined;
@@ -140,6 +169,14 @@ export const documentRouter = router({
           };
         }),
       );
+
+      // Same parent-edit guard as `createDocument`, deduped across the batch.
+      const parentIds = [
+        ...new Set(processedDocuments.map((doc) => doc.parentId).filter(Boolean)),
+      ] as string[];
+      for (const parentId of parentIds) {
+        await assertCanCreateUnderParent(ctx, parentId);
+      }
 
       const createdDocuments = await ctx.documentService.createDocuments(processedDocuments);
       if (ctx.workspaceId) {
