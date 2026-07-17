@@ -23,7 +23,45 @@ const quotaProcedure = authedProcedure.use(serverDatabase).use(async (opts) => {
 
 const providerSchema = z.enum(['claude-code', 'codex']);
 
+const readingSchema = z.object({
+  capturedAt: z.number(),
+  isActive: z.boolean().optional(),
+  limitKind: z.string(),
+  rateLimited: z.boolean().optional(),
+  resetsAt: z.number().nullable(),
+  scopeKey: z.string(),
+  severity: z.string().optional(),
+  utilization: z.number(),
+});
+
 export const agentQuotaRouter = router({
+  // ── ingestion (desktop sampler → DB) ──────────────────────────────────────
+  ingestSnapshot: quotaProcedure
+    .input(
+      z.object({
+        deviceId: z.string().optional(),
+        identity: z.object({
+          displayName: z.string().optional(),
+          email: z.string().optional(),
+          externalAccountId: z.string().optional(),
+          organizationId: z.string().optional(),
+          planTier: z.string().optional(),
+          rateLimitTier: z.string().optional(),
+        }),
+        provider: providerSchema,
+        readings: z.array(readingSchema),
+      }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      ctx.quotaService.ingestSnapshot({
+        credentialRef: { origin: 'keychain' },
+        deviceId: input.deviceId,
+        identity: input.identity,
+        provider: input.provider,
+        readings: input.readings,
+      }),
+    ),
+
   // ── accounts ────────────────────────────────────────────────────────────
   createAccount: quotaProcedure
     .input(

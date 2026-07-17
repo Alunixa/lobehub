@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 
 import { heterogeneousAgentService } from '@/services/electron/heterogeneousAgent';
 
+import QuotaAccountSwitcher from './QuotaAccountSwitcher';
 import type { FetchQuotaOptions, QuotaWindowItem } from './QuotaMenu';
 import QuotaMenu, { createQuotaSourceKey } from './QuotaMenu';
 
@@ -113,6 +114,7 @@ const ClaudeCodeQuotaMenu = memo<ClaudeCodeQuotaMenuProps>(({ env }) => {
       getRefreshErrorText={getRefreshErrorText}
       getUnavailableText={getUnavailableText}
       getWindows={getWindows}
+      renderFooter={(quota) => <QuotaAccountSwitcher snapshot={quota} />}
       sourceKey={sourceKey}
       title={t('heteroAgent.claudeQuota.title')}
       tooltip={t('heteroAgent.claudeQuota.tooltip')}

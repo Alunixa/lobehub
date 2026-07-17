@@ -278,6 +278,9 @@ export default {
   'heteroAgent.fullAccess.label': 'Full access',
   'heteroAgent.fullAccess.tooltip':
     'The local coding agent runs with full read/write access to the working directory. Switching permission modes is not available yet.',
+  'heteroAgent.claudeQuota.accountActive': 'In use',
+  'heteroAgent.claudeQuota.accountSwitch': 'Switch',
+  'heteroAgent.claudeQuota.accounts': 'Accounts',
   'heteroAgent.claudeQuota.errorRateLimited':
     'Claude Code quota is temporarily rate limited. Please try again later.',
   'heteroAgent.claudeQuota.refreshRateLimited':
