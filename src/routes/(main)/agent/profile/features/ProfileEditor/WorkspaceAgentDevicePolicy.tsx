@@ -133,7 +133,11 @@ const WorkspaceAgentDevicePolicy = memo<WorkspaceAgentDevicePolicyProps>(
               </Flexbox>
               <Switch
                 checked={isFixed}
-                disabled={saving || isLoading || !boundDevice}
+                // Turning the policy OFF must stay possible even when the
+                // bound device has been removed or made non-public (stale
+                // `boundDeviceId`); only enabling fixed requires a selectable
+                // public bound device.
+                disabled={saving || isLoading || (!isFixed && !boundDevice)}
                 onChange={(checked) =>
                   void saveAgencyConfig({
                     deviceSelectionPolicy: checked ? 'fixed' : 'member',

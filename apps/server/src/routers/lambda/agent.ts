@@ -349,6 +349,20 @@ export const agentRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      // Mutating the group's roster is a group edit — same ACL as
+      // `agentGroup.addAgentsToGroup`. Check before creating the agent so a
+      // denied call doesn't leave an orphan agent behind.
+      if (ctx.workspaceId) {
+        await assertCanPerformResourceAction({
+          action: 'edit',
+          db: ctx.serverDB,
+          resourceId: input.groupId,
+          resourceType: 'agentGroup',
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
+      }
+
       // Create the agent entity only (no session)
       const agent = await ctx.agentModel.create(input.config ?? {});
 
