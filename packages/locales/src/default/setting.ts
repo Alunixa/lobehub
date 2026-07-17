@@ -214,6 +214,26 @@ export default {
   'agentTab.prompt': 'Agent Profile',
   'agentTab.selfIteration': 'Self-Iteration',
   'agentTab.tts': 'Voice Service',
+  'permission.accessTag.useOnlyTip':
+    'Your member permission here is "Can use" — you can view and use it, but not edit. Ask the creator or a workspace owner for edit access.',
+  'permission.accessTag.viewOnlyTip':
+    'Your member permission here is "Can view" — you can view it, but not use or edit. Ask the creator or a workspace owner for more access.',
+  'permission.generalAccess.label': 'Member Permissions',
+  'permission.generalAccess.trigger': 'Members: {{level}}',
+  'permission.generalAccess.editable': 'Can edit',
+  'permission.generalAccess.editableDesc': 'Members can view, use, and edit',
+  'permission.generalAccess.editableDocumentDesc': 'Members can view and edit',
+  'permission.generalAccess.usable': 'Can use',
+  'permission.generalAccess.usableDesc': 'Members can view and use, but cannot edit',
+  'permission.generalAccess.viewable': 'Can view',
+  'permission.generalAccess.viewableDesc': 'Members can view, but cannot use or edit',
+  'permission.generalAccess.viewableDocumentDesc': 'Members can view, but cannot edit',
+  'permission.loadFailed': 'Failed to load permission settings',
+  'permission.noManagePermission': 'Only the creator or a workspace owner can change permissions',
+  'permission.saveNoEditPermission':
+    'You have view-only access to this page, so your changes were not saved',
+  'permission.updateError': 'Failed to update permission',
+  'permission.viewOnlySendTip': 'You have view-only access and cannot send messages',
   'agentDocuments.createSuccess': 'Documents created from template',
   'agentDocuments.createWithTemplate': 'Create with this template',
   'agentDocuments.columns.actions': 'Actions',
@@ -719,6 +739,20 @@ export default {
   'settingAgent.agentTools.tabAgent': 'Agent Tools',
   'settingAgent.agentTools.tabUser': 'User Tools',
   'settingAgent.agentTools.tabWorkspace': 'Workspace Tools',
+  'settingAgent.devicePolicy.defaultDevice': 'Default device',
+  'settingAgent.devicePolicy.defaultDeviceDesc':
+    'Members use this device by default and may choose their own device unless it is fixed.',
+  'settingAgent.devicePolicy.fixed': 'Fix device for members',
+  'settingAgent.devicePolicy.fixedDesc':
+    'Everyone uses this workspace device and cannot change it while chatting.',
+  'settingAgent.devicePolicy.memberDesc':
+    'Members may override the default device for their own conversations.',
+  'settingAgent.devicePolicy.noPublicDevice':
+    'Publish a workspace device before fixing it to this Agent.',
+  'settingAgent.devicePolicy.offline': 'Offline',
+  'settingAgent.devicePolicy.online': 'Online',
+  'settingAgent.devicePolicy.selectDevice': 'Select a public workspace device',
+  'settingAgent.devicePolicy.title': 'Execution device',
   'settingAgent.runtimeConfig.title': 'Model & Tools',
   'settingAgent.submit': 'Update Agent',
   'settingAgent.tag.desc': 'Agent tags will be displayed in the Agent Community',

@@ -2,6 +2,7 @@ import { Center, Flexbox, Tooltip } from '@lobehub/ui';
 import { createStaticStyles, cx } from 'antd-style';
 import { ChevronDownIcon } from 'lucide-react';
 import { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useBusinessModelModeConfig } from '@/business/client/hooks/useBusinessAgentMode';
 import ModelSwitchPanel from '@/features/ModelSwitchPanel';
@@ -11,6 +12,7 @@ import { agentByIdSelectors } from '@/store/agent/selectors';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 
 import { useAgentId } from '../../hooks/useAgentId';
+import { useChatInputResourceAccess } from '../../hooks/useChatInputResourceAccess';
 import { useActionBarContext } from '../context';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
@@ -37,7 +39,6 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
   triggerDisabled: css`
     cursor: not-allowed;
-    opacity: 0.5;
 
     :hover {
       background: transparent;
@@ -46,8 +47,16 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 const ModelLabel = memo(() => {
+  const { t } = useTranslation('setting');
   const { dropdownPlacement } = useActionBarContext();
   const { allowed: canCreateContent, reason } = usePermission('create_content');
+  const { canConfigureResource, isAccessLoading } = useChatInputResourceAccess();
+  const canSelectModel = canCreateContent && canConfigureResource && !isAccessLoading;
+  const disabledReason = !canCreateContent
+    ? reason
+    : isAccessLoading
+      ? t('checkingPermissions')
+      : t('permission.accessTag.useOnlyTip');
 
   const agentId = useAgentId();
   const [model, provider, updateAgentConfigById] = useAgentStore((s) => [
@@ -62,17 +71,19 @@ const ModelLabel = memo(() => {
 
   const handleModelChange = useCallback(
     async (params: { model: string; provider: string }) => {
-      if (!canCreateContent) return;
+      if (!canSelectModel) return;
 
       await updateAgentConfigById(agentId, applyBusinessModelModeConfig(params));
     },
-    [agentId, applyBusinessModelModeConfig, canCreateContent, updateAgentConfigById],
+    [agentId, applyBusinessModelModeConfig, canSelectModel, updateAgentConfigById],
   );
 
   const trigger = (
     <Center
       horizontal
-      className={cx(styles.trigger, !canCreateContent && styles.triggerDisabled)}
+      aria-disabled={!canSelectModel}
+      aria-label={displayName}
+      className={cx(styles.trigger, !canSelectModel && styles.triggerDisabled)}
       height={28}
       paddingInline={6}
     >
@@ -83,9 +94,9 @@ const ModelLabel = memo(() => {
     </Center>
   );
 
-  if (!canCreateContent)
+  if (!canSelectModel)
     return (
-      <Tooltip title={reason}>
+      <Tooltip title={disabledReason}>
         <div>{trigger}</div>
       </Tooltip>
     );

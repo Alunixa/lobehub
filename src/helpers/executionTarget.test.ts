@@ -336,6 +336,21 @@ describe('resolveExecutionPlan', () => {
   const ONLINE_A = ['device-a'];
   const ONLINE_AB = ['device-a', 'device-b'];
 
+  it('ignores an explicit request override when the shared device policy is fixed', () => {
+    expect(
+      resolveExecutionPlan({
+        agencyConfig: cfg({
+          boundDeviceId: 'device-a',
+          deviceSelectionPolicy: 'fixed',
+          executionTarget: 'device',
+        }),
+        clientExecutionAvailable: false,
+        onlineDeviceIds: ONLINE_AB,
+        requestedDeviceId: 'device-b',
+      }),
+    ).toEqual({ deviceId: 'device-a', kind: 'device', target: 'device' });
+  });
+
   describe('none — never routes to a device', () => {
     it('stays none even with a bound device and exactly one device online', () => {
       // the historical bug: single-online-device auto-activation used to

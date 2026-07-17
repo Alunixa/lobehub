@@ -204,6 +204,44 @@ export class AgentModel {
     }
   };
 
+  /**
+   * A fixed workspace agent is a shared execution contract, so its target must
+   * resolve to one public device in the same workspace. Use one generic error
+   * for missing/private/cross-workspace rows so the write path never reveals a
+   * device the caller cannot otherwise see.
+   */
+  private assertFixedDeviceBinding = async (
+    agentWorkspaceId: string | null,
+    agencyConfig: LobeAgentAgencyConfig | null | undefined,
+  ): Promise<void> => {
+    if (!agentWorkspaceId || agencyConfig?.deviceSelectionPolicy !== 'fixed') return;
+
+    if (agencyConfig.executionTarget !== 'device' || !agencyConfig.boundDeviceId) {
+      throw new TRPCError({
+        cause: { data: { code: 'FixedAgentRequiresDeviceTarget' } },
+        code: 'BAD_REQUEST',
+        message: 'A fixed workspace agent requires executionTarget=device and a bound device.',
+      });
+    }
+
+    const row = await this.db.query.devices.findFirst({
+      columns: { deviceId: true },
+      where: and(
+        eq(devices.workspaceId, agentWorkspaceId),
+        eq(devices.deviceId, agencyConfig.boundDeviceId),
+        eq(devices.visibility, 'public'),
+      ),
+    });
+
+    if (!row) {
+      throw new TRPCError({
+        cause: { data: { code: 'FixedAgentRequiresPublicWorkspaceDevice' } },
+        code: 'PRECONDITION_FAILED',
+        message: 'A fixed workspace agent requires a public device from the same workspace.',
+      });
+    }
+  };
+
   getAgentConfigById = async (id: string) => {
     const agent = await this.db.query.agents.findFirst({
       where: and(eq(agents.id, id), this.ownership()),
@@ -747,6 +785,7 @@ export class AgentModel {
    */
   create = async (config: Partial<AgentItem>): Promise<AgentItem> => {
     await this.assertWorkspaceDeviceBinding(this.workspaceId ?? null, config.agencyConfig);
+    await this.assertFixedDeviceBinding(this.workspaceId ?? null, config.agencyConfig);
 
     const [result] = await this.db
       .insert(agents)
@@ -770,6 +809,13 @@ export class AgentModel {
    */
   batchCreate = async (configs: Partial<AgentItem>[]): Promise<AgentItem[]> => {
     if (configs.length === 0) return [];
+
+    await Promise.all(
+      configs.flatMap((config) => [
+        this.assertWorkspaceDeviceBinding(this.workspaceId ?? null, config.agencyConfig),
+        this.assertFixedDeviceBinding(this.workspaceId ?? null, config.agencyConfig),
+      ]),
+    );
 
     return this.db
       .insert(agents)
@@ -1003,6 +1049,8 @@ export class AgentModel {
     // agencyConfig.workingDirByDevice: a per-device entry is cleared by sending
     // `undefined`, which merge() skips — prune those keys so the delete persists.
     pruneWorkingDirByDeviceDeletes(mergedValue.agencyConfig, data.agencyConfig);
+
+    await this.assertFixedDeviceBinding(agent.workspaceId, mergedValue.agencyConfig);
 
     // Final cleanup: ensure no undefined or null values enter the database
     if (mergedValue.params) {
@@ -1325,7 +1373,29 @@ export class AgentModel {
             }
             cleaned.workingDirByDevice = Object.keys(filtered).length > 0 ? filtered : undefined;
           }
+          if (
+            cleaned.deviceSelectionPolicy === 'fixed' &&
+            (!cleaned.boundDeviceId || !allowed.has(cleaned.boundDeviceId))
+          ) {
+            cleaned.deviceSelectionPolicy = 'member';
+          }
           nextAgencyConfig = cleaned;
+        }
+
+        if (nextAgencyConfig.deviceSelectionPolicy === 'fixed') {
+          if (!nextAgencyConfig.boundDeviceId) {
+            nextAgencyConfig.deviceSelectionPolicy = 'member';
+          } else {
+            const publicDevice = await trx.query.devices.findFirst({
+              columns: { deviceId: true },
+              where: and(
+                eq(devices.workspaceId, targetWorkspaceId),
+                eq(devices.deviceId, nextAgencyConfig.boundDeviceId),
+                eq(devices.visibility, 'public'),
+              ),
+            });
+            if (!publicDevice) nextAgencyConfig.deviceSelectionPolicy = 'member';
+          }
         }
       }
 

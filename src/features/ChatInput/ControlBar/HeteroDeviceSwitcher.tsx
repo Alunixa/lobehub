@@ -24,6 +24,7 @@ import { memo, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { DOWNLOAD_URL } from '@/const/url';
+import { useChatInputResourceAccess } from '@/features/ChatInput/hooks/useChatInputResourceAccess';
 import { useSelectExecutionTarget } from '@/features/ChatInput/hooks/useSelectExecutionTarget';
 import { useDeviceList } from '@/features/DeviceManager/useDeviceList';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -55,6 +56,15 @@ const styles = createStaticStyles(({ css }) => ({
     &:hover {
       color: ${cssVar.colorText};
       background: ${cssVar.colorFillSecondary};
+    }
+  `,
+  buttonDisabled: css`
+    cursor: not-allowed;
+    opacity: 0.5;
+
+    &:hover {
+      color: ${cssVar.colorTextSecondary};
+      background: transparent;
     }
   `,
   buttonLabel: css`
@@ -342,6 +352,8 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
   const { t } = useTranslation('chat');
   const [open, setOpen] = useState(false);
   const navigate = useWorkspaceAwareNavigate();
+  const { canUseResource, isGroupContext } = useChatInputResourceAccess();
+  const viewOnly = !canUseResource;
 
   const agentWorkspaceId = useAgentStore((s) => s.agentMap[agentId]?.workspaceId);
   const isWorkspaceAgent = Boolean(agentWorkspaceId);
@@ -351,6 +363,8 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
   // what the picker shows and what dispatch will actually do always agree.
   const { agencyConfig, isPreferenceLoading: isWorkspacePreferenceLoading } =
     useEffectiveAgencyConfig(agentId);
+
+  const isFixedDevice = isWorkspaceAgent && agencyConfig?.deviceSelectionPolicy === 'fixed';
 
   const heteroType = agencyConfig?.heterogeneousProvider?.type;
   const boundDeviceId = agencyConfig?.boundDeviceId;
@@ -423,6 +437,10 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
   // default would clobber it.
   useEffect(() => {
     if (!isDesktop) return;
+    // View-only members must not write anything — not even the harmless
+    // per-user local-device default.
+    if (viewOnly) return;
+    if (isFixedDevice) return;
     if (isWorkspacePreferenceLoading) return;
     if (agencyConfig?.executionTarget !== undefined) return;
     if (agencyConfig?.boundDeviceId !== undefined) return;
@@ -434,6 +452,8 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
     agencyConfig?.boundDeviceId,
     currentDeviceId,
     isWorkspacePreferenceLoading,
+    isFixedDevice,
+    viewOnly,
   ]);
 
   // Don't render for remote hetero agents — they use RemoteAgentConfigCard in profile.
@@ -692,6 +712,32 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
     </Flexbox>
   );
 
+  const selectionDisabled = viewOnly || isFixedDevice;
+  const chip = (
+    <div className={cx(styles.button, selectionDisabled && styles.buttonDisabled)}>
+      {chipIcon}
+      <span className={styles.buttonLabel}>{chipLabel}</span>
+      <Icon icon={ChevronDownIcon} size={12} />
+    </div>
+  );
+
+  // View-level General access: the whole input area is read-only, so the
+  // execution-target picker stays visible but inert (disabled, not hidden).
+  if (selectionDisabled)
+    return (
+      <Tooltip
+        title={t(
+          isFixedDevice
+            ? 'heteroAgent.executionTarget.fixedTip'
+            : isGroupContext
+              ? 'input.viewOnlyGroup'
+              : 'input.viewOnlyAgent',
+        )}
+      >
+        {chip}
+      </Tooltip>
+    );
+
   return (
     <Popover
       content={content}
@@ -701,11 +747,7 @@ const HeteroDeviceSwitcher = memo<HeteroDeviceSwitcherProps>(({ agentId }) => {
       trigger="click"
       onOpenChange={setOpen}
     >
-      <div className={styles.button}>
-        {chipIcon}
-        <span className={styles.buttonLabel}>{chipLabel}</span>
-        <Icon icon={ChevronDownIcon} size={12} />
-      </div>
+      {chip}
     </Popover>
   );
 });

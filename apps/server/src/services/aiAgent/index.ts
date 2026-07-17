@@ -98,6 +98,7 @@ import {
   isDeviceCapablePlan,
   isDeviceLockedPlan,
   resolveExecutionPlan,
+  resolveToolMode,
 } from '@/helpers/executionTarget';
 import { shouldEnableBuiltinSkill } from '@/helpers/skillFilters';
 import { buildConnectorManifests } from '@/libs/mcp/buildConnectorManifests';
@@ -1532,7 +1533,12 @@ export class AiAgentService {
     // 3. Handle topic creation: if no topicId provided, create a new topic; otherwise reuse existing
     let topicId = appContext?.topicId;
     const isNewTopic = !topicId;
-    const topicBoundDeviceId = requestedDeviceId;
+    const isFixedDeviceSelection =
+      !!this.workspaceId && agentConfig.agencyConfig?.deviceSelectionPolicy === 'fixed';
+    const effectiveRequestedDeviceId = isFixedDeviceSelection ? undefined : requestedDeviceId;
+    const topicBoundDeviceId = isFixedDeviceSelection
+      ? agentConfig.agencyConfig?.boundDeviceId
+      : requestedDeviceId;
     if (!topicId) {
       if (resume) {
         throw new Error('Resume mode requires the parent message to belong to a topic');
@@ -1542,10 +1548,10 @@ export class AiAgentService {
       // client-supplied initial metadata (e.g. repos selected before first message).
       const initialTopicMeta = appContext?.initialTopicMetadata;
       const metadata =
-        cronJobId || operationTaskId || botContext || requestedDeviceId || initialTopicMeta
+        cronJobId || operationTaskId || botContext || topicBoundDeviceId || initialTopicMeta
           ? {
               bot: botContext,
-              boundDeviceId: requestedDeviceId,
+              boundDeviceId: topicBoundDeviceId,
               cronJobId: cronJobId || undefined,
               taskId: operationTaskId,
               ...(initialTopicMeta?.repos && { repos: initialTopicMeta.repos }),
@@ -1927,7 +1933,7 @@ export class AiAgentService {
       };
 
       const remoteDeviceId =
-        requestedDeviceId || agentConfig.agencyConfig?.boundDeviceId || undefined;
+        effectiveRequestedDeviceId || agentConfig.agencyConfig?.boundDeviceId || undefined;
 
       // Register the run's lifecycle hooks so the hetero terminal path fires
       // onComplete/onError through the same `hookDispatcher` the normal LLM
@@ -2837,6 +2843,33 @@ export class AiAgentService {
         requestedDeviceId,
         trigger: requestTriggerMetadata?.trigger,
       });
+      // A fixed workspace agent must never degrade to the cloud sandbox or a
+      // different device. Persist a visible assistant error and fail the RPC
+      // before tool/runtime preparation so no operation can start elsewhere.
+      if (
+        isFixedDeviceSelection &&
+        resolveToolMode(agentConfig.chatConfig ?? undefined) !== 'chat' &&
+        executionPlan.kind !== 'device'
+      ) {
+        const detail =
+          executionPlan.kind === 'device-unrouted' &&
+          executionPlan.reason === 'bound-device-offline'
+            ? 'The device fixed by this agent is offline. Ask an editor to bring it online or change the agent device policy.'
+            : 'The device fixed by this agent is unavailable for this run. Ask an editor to check the agent device policy.';
+        await this.messageModel.update(assistantMessageRecord.id, {
+          content: '',
+          error: {
+            body: { detail },
+            message: 'Fixed agent device unavailable',
+            type: 'ServerAgentRuntimeError',
+          },
+        });
+        throw new TRPCError({
+          cause: { data: { code: 'FixedAgentDeviceUnavailable' } },
+          code: 'PRECONDITION_FAILED',
+          message: detail,
+        });
+      }
       // Device tools (local-system / remote-device proxy) only exist in a
       // device-capable session — `none` and `sandbox` sessions must never see
       // them, not even the proxy that could activate a device mid-run.

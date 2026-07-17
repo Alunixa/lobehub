@@ -22,7 +22,13 @@ beforeEach(async () => {
     .values([{ id: wsId, name: 'WS', slug: 'ws', primaryOwnerId: userId }]);
   await serverDB.insert(devices).values([
     { userId, deviceId: personalDeviceId, identitySource: 'machine-id' },
-    { userId, workspaceId: wsId, deviceId: workspaceDeviceId, identitySource: 'machine-id' },
+    {
+      userId,
+      workspaceId: wsId,
+      deviceId: workspaceDeviceId,
+      identitySource: 'machine-id',
+      visibility: 'public',
+    },
   ]);
 });
 
@@ -71,9 +77,71 @@ describe('AgentModel workspace device binding', () => {
         }),
       ).rejects.toThrow(/Workspace agent can only bind devices/);
     });
+
+    it('allows fixed policy only with a public workspace device target', async () => {
+      const wsModel = new AgentModel(serverDB, userId, wsId);
+      const agent = await wsModel.create({
+        title: 'Fixed WS agent',
+        agencyConfig: {
+          boundDeviceId: workspaceDeviceId,
+          deviceSelectionPolicy: 'fixed',
+          executionTarget: 'device',
+        },
+      });
+
+      expect(agent.agencyConfig?.deviceSelectionPolicy).toBe('fixed');
+    });
+
+    it('rejects fixed policy without a device target', async () => {
+      const wsModel = new AgentModel(serverDB, userId, wsId);
+      await expect(
+        wsModel.create({
+          title: 'Invalid fixed WS agent',
+          agencyConfig: { deviceSelectionPolicy: 'fixed', executionTarget: 'sandbox' },
+        }),
+      ).rejects.toThrow(/requires executionTarget=device/);
+    });
+
+    it('rejects fixed policy with a private workspace device', async () => {
+      const privateDeviceId = 'workspace-private-device';
+      await serverDB.insert(devices).values({
+        deviceId: privateDeviceId,
+        identitySource: 'machine-id',
+        userId,
+        visibility: 'private',
+        workspaceId: wsId,
+      });
+      const wsModel = new AgentModel(serverDB, userId, wsId);
+
+      await expect(
+        wsModel.create({
+          title: 'Private fixed WS agent',
+          agencyConfig: {
+            boundDeviceId: privateDeviceId,
+            deviceSelectionPolicy: 'fixed',
+            executionTarget: 'device',
+          },
+        }),
+      ).rejects.toThrow(/requires a public device/);
+    });
   });
 
   describe('updateConfig', () => {
+    it('enables fixed policy through the normal config update path', async () => {
+      const wsModel = new AgentModel(serverDB, userId, wsId);
+      const agent = await wsModel.create({
+        title: 'WS agent',
+        agencyConfig: { boundDeviceId: workspaceDeviceId, executionTarget: 'device' },
+      });
+
+      await wsModel.updateConfig(agent.id, {
+        agencyConfig: { deviceSelectionPolicy: 'fixed' },
+      });
+
+      const result = await serverDB.query.agents.findFirst({ where: eq(agents.id, agent.id) });
+      expect(result?.agencyConfig?.deviceSelectionPolicy).toBe('fixed');
+    });
+
     it('allows clearing boundDeviceId on a workspace agent', async () => {
       const wsModel = new AgentModel(serverDB, userId, wsId);
       const agent = await wsModel.create({

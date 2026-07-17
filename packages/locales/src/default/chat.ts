@@ -38,6 +38,10 @@ export default {
   'agentDocument.openAsPage': 'Open as full page',
   'agentNotFound.desc':
     'This agent does not exist or is no longer accessible — it may have been deleted or set to private by its owner.',
+  'permission.configAccess.agentChatOnly':
+    'Only collaborators with Can edit can configure this Agent. You were returned to chat.',
+  'permission.configAccess.groupChatOnly':
+    'Only collaborators with Can edit can configure this Agent Group. You were returned to chat.',
   'agentNotFound.title': 'Agent Unavailable',
   'groupNotFound.desc':
     'This group does not exist or is no longer accessible — it may have been deleted or set to private by its owner.',
@@ -386,6 +390,8 @@ export default {
   'heteroAgent.executionTarget.auto': 'Auto',
   'heteroAgent.executionTarget.autoDesc':
     'Use an online device automatically, picking one when several are available',
+  'heteroAgent.executionTarget.fixedTip':
+    'This Agent uses a device fixed by its editor. Ask an editor to change it.',
   'heteroAgent.executionTarget.infoTooltip':
     'Pick a device and the agent uses it as its runtime environment — reading and writing files and operating the computer. Cloud sandbox is provided by LobeHub Marketplace.',
   'heteroAgent.executionTarget.gateway': 'Gateway',
@@ -441,6 +447,10 @@ export default {
   'input.inputCompletionError.title': 'Input suggestions paused',
   'input.modelUnavailable':
     'The current model is no longer available. Choose another model to continue.',
+  'input.viewOnlyAgent':
+    'You have view-only access to this agent, so messages cannot be sent. Ask the creator or a workspace owner for access.',
+  'input.viewOnlyGroup':
+    'You have view-only access to this group, so messages cannot be sent. Ask the creator or a workspace owner for access.',
   'input.heteroPlus.tooltip': 'Formatting and scheduling',
   'input.more': 'More',
   'input.schedule.cancel': 'Cancel',

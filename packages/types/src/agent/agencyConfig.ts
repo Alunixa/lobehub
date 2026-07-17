@@ -515,6 +515,16 @@ export const buildHeteroExecArgs = (
 export type DeviceExecutionTarget = 'auto' | 'device' | 'local' | 'none' | 'sandbox';
 
 /**
+ * Whether a workspace member may override the agent's shared execution device.
+ *
+ * - `member`: the shared config is a default; each member may override it
+ * - `fixed`: every caller must use the shared `device` + `boundDeviceId`
+ *
+ * Missing values intentionally resolve as `member` for backwards compatibility.
+ */
+export type DeviceSelectionPolicy = 'fixed' | 'member';
+
+/**
  * Agent agency configuration.
  * Contains settings for agent execution modes and device binding.
  */
@@ -525,6 +535,11 @@ export interface LobeAgentAgencyConfig {
    * hetero agents `openclaw` / `hermes`).
    */
   boundDeviceId?: string;
+  /**
+   * Workspace device-selection policy. `fixed` is valid only with a public
+   * workspace device and `executionTarget === 'device'`.
+   */
+  deviceSelectionPolicy?: DeviceSelectionPolicy;
   /**
    * Execution target for the hetero agent. When omitted, resolves to a
    * platform default: `'local'` on desktop, `'none'` on web (or `'device'` for
@@ -584,6 +599,7 @@ export interface LobeAgentAgencyConfig {
  * consistent "effective" config.
  *
  * Rules:
+ * - `fixed` shared config ignores the caller override entirely
  * - `override.executionTarget` wins when set; falls back to shared
  * - `override.boundDeviceId` wins when set; falls back to shared
  * - Nothing else (heterogeneousProvider, verifyRubricId, workingDirByDevice)
@@ -598,6 +614,7 @@ export const resolveAgencyConfig = (
   override: Pick<LobeAgentAgencyConfig, 'boundDeviceId' | 'executionTarget'> | null | undefined,
 ): LobeAgentAgencyConfig | undefined => {
   const base = agencyConfig ?? undefined;
+  if (base?.deviceSelectionPolicy === 'fixed') return base;
   if (!override) return base;
   const hasTarget = override.executionTarget !== undefined;
   const hasDevice = override.boundDeviceId !== undefined;

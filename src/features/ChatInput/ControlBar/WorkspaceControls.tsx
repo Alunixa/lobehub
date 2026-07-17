@@ -1,8 +1,11 @@
 'use client';
 
 import { isDesktop } from '@lobechat/const';
+import { Tooltip } from '@lobehub/ui';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import { useChatInputResourceAccess } from '@/features/ChatInput/hooks/useChatInputResourceAccess';
 import { resolveExecutionTarget } from '@/helpers/executionTarget';
 import { useIsGatewayModeEnabled } from '@/helpers/gatewayMode';
 import { useEffectiveAgencyConfig } from '@/hooks/useEffectiveAgencyConfig';
@@ -35,6 +38,8 @@ interface WorkspaceControlsProps {
  */
 const WorkspaceControls = memo<WorkspaceControlsProps>(
   ({ agentId, alwaysShowWorkspace = false }) => {
+    const { t } = useTranslation('chat');
+    const { canUseResource, isGroupContext } = useChatInputResourceAccess();
     const runtimeMode = useAgentStore(chatConfigByIdSelectors.getRuntimeModeById(agentId));
     const isHeterogeneous = useAgentStore(agentByIdSelectors.isAgentHeterogeneousById(agentId));
     // Effective config = shared row + this member's device override (LOBE-11689),
@@ -73,10 +78,37 @@ const WorkspaceControls = memo<WorkspaceControlsProps>(
       return null;
     };
 
+    // View-only General access: the directory picker and git controls write
+    // shared agent config / run device git mutations, so the whole cluster
+    // goes inert (disabled, not hidden). The device switcher handles its own
+    // disabled state.
+    const workspace = renderWorkspace();
+
     return (
       <>
         <HeteroDeviceSwitcher agentId={agentId} />
-        {renderWorkspace()}
+        {workspace &&
+          (canUseResource ? (
+            workspace
+          ) : (
+            <Tooltip title={t(isGroupContext ? 'input.viewOnlyGroup' : 'input.viewOnlyAgent')}>
+              {/* Outer div catches hover for the tooltip; the inner one makes
+                  the controls inert. */}
+              <div style={{ alignItems: 'center', display: 'flex', gap: 4 }}>
+                <div
+                  style={{
+                    alignItems: 'center',
+                    display: 'flex',
+                    gap: 4,
+                    opacity: 0.5,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {workspace}
+                </div>
+              </div>
+            </Tooltip>
+          ))}
       </>
     );
   },

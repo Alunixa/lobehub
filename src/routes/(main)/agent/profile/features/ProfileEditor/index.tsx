@@ -21,6 +21,7 @@ import AgentTool from './AgentTool';
 import CloudHeterogeneousConfig from './CloudHeterogeneousConfig';
 import HeterogeneousAgentStatusCard from './HeterogeneousAgentStatusCard';
 import RemoteAgentConfigCard from './RemoteAgentConfigCard';
+import WorkspaceAgentDevicePolicy from './WorkspaceAgentDevicePolicy';
 
 const styles = createStaticStyles(({ css }) => ({
   configLabel: css`
@@ -73,7 +74,7 @@ const ProfileEditor = memo(() => {
 
   const updateBoundDeviceId = async (boundDeviceId: string) => {
     await updateAgentConfigById(agentId, {
-      agencyConfig: { ...config.agencyConfig, boundDeviceId },
+      agencyConfig: { ...config.agencyConfig, boundDeviceId, executionTarget: 'device' },
     });
   };
 
@@ -129,6 +130,7 @@ const ProfileEditor = memo(() => {
               provider={heterogeneousProvider}
               onBoundDeviceChange={updateBoundDeviceId}
             />
+            <WorkspaceAgentDevicePolicy agentId={agentId} showDevicePicker={false} />
           </Flexbox>
         ) : isHeterogeneous && heterogeneousProvider ? (
           // Local CLI agents: Claude Code supports cloud config; Codex is desktop-only for now.
@@ -164,6 +166,7 @@ const ProfileEditor = memo(() => {
             </Flexbox>
           </>
         )}
+        {!isRemoteHetero && <WorkspaceAgentDevicePolicy agentId={agentId} />}
       </Flexbox>
       {/* Main Content: Prompt Editor — built-in model runtime only. Hetero agents
           (Claude Code / Codex + remote platforms) run an external CLI with its own

@@ -9,6 +9,7 @@ import { labPreferSelectors } from '@/store/user/slices/preference/selectors';
 
 import { type ActionKey, type ActionKeys } from '../ActionBar/config';
 import { actionMap } from '../ActionBar/config';
+import { useChatInputResourceAccess } from '../hooks/useChatInputResourceAccess';
 import { useChatInputStore } from '../store';
 import { type DropdownPlacement } from './context';
 import { ActionBarContext } from './context';
@@ -48,6 +49,44 @@ const mapActionsToItems = (
     };
   });
 
+const CHAT_ONLY_ACTIONS = new Set<ActionKey>([
+  'clear',
+  'fileUpload',
+  'history',
+  'mention',
+  'model',
+  'modelLabel',
+  'plus',
+  'promptTransform',
+  'typo',
+]);
+
+const normalizeChatOnlyAction = (action: ActionKey): ActionKey =>
+  action === 'model' ? 'modelLabel' : action;
+
+export const filterChatOnlyActions = (actions: ActionKeys[]): ActionKeys[] => {
+  const visibleActions: ActionKeys[] = [];
+
+  for (const action of actions) {
+    if (Array.isArray(action)) {
+      const visibleGroup = action
+        .filter((item) => CHAT_ONLY_ACTIONS.has(item))
+        .map(normalizeChatOnlyAction);
+      if (visibleGroup.length > 0) visibleActions.push(visibleGroup);
+      continue;
+    }
+
+    if (action === '---') {
+      visibleActions.push(action);
+      continue;
+    }
+
+    if (CHAT_ONLY_ACTIONS.has(action)) visibleActions.push(normalizeChatOnlyAction(action));
+  }
+
+  return visibleActions;
+};
+
 export interface ActionToolbarProps {
   borderRadius?: number;
   disableCollapse?: boolean;
@@ -62,10 +101,12 @@ const ActionToolbar = memo<ActionToolbarProps>(
       s.toggleExpandInputActionbar,
     ]);
     const enableRichRender = useUserStore(labPreferSelectors.enableInputMarkdown);
+    const { canConfigureResource } = useChatInputResourceAccess();
 
-    const leftActions = useChatInputStore((s) =>
-      s.leftActions.filter((item) => (enableRichRender ? true : item !== 'typo')),
-    );
+    const leftActions = useChatInputStore((s) => {
+      const actions = s.leftActions.filter((item) => (enableRichRender ? true : item !== 'typo'));
+      return canConfigureResource ? actions : filterChatOnlyActions(actions);
+    });
 
     const mobile = useChatInputStore((s) => s.mobile);
 
