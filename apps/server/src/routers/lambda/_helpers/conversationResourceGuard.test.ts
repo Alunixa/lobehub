@@ -13,14 +13,19 @@ import {
   assertCanUseMessageTargets,
   assertCanUseTopicTargets,
 } from './conversationResourceGuard';
+import { getWorkspaceAgentParentGroupIds } from './workspaceAgentGuard';
 
 vi.mock('@/server/services/resourcePermission', () => ({
   assertCanPerformResourceAction: vi.fn(),
   getResourceMeta: vi.fn(),
 }));
+vi.mock('./workspaceAgentGuard', () => ({
+  getWorkspaceAgentParentGroupIds: vi.fn(),
+}));
 
 const getResourceMetaMock = vi.mocked(getResourceMeta);
 const assertActionMock = vi.mocked(assertCanPerformResourceAction);
+const getParentGroupIdsMock = vi.mocked(getWorkspaceAgentParentGroupIds);
 
 /** Minimal drizzle stub: every select().from().where() resolves `rows`. */
 const createDb = (rowsPerCall: any[][]) => {
@@ -45,6 +50,7 @@ const wsMeta = { userId: 'creator', visibility: 'public', workspaceId: 'ws-1' };
 beforeEach(() => {
   vi.clearAllMocks();
   getResourceMetaMock.mockResolvedValue(wsMeta as any);
+  getParentGroupIdsMock.mockResolvedValue([]);
 });
 
 describe('assertCanUseConversationTargets', () => {
@@ -73,12 +79,29 @@ describe('assertCanUseConversationTargets', () => {
     );
   });
 
-  it('prefers the group over the agent for group conversations', async () => {
+  it('checks both the group and agent when both contexts are supplied', async () => {
     await assertCanUseConversationTargets(baseCtx(createDb([])), [
       { agentId: 'supervisor-1', groupId: 'group-1' },
     ]);
 
-    expect(assertActionMock).toHaveBeenCalledTimes(1);
+    expect(assertActionMock).toHaveBeenCalledTimes(2);
+    expect(assertActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'group-1', resourceType: 'agentGroup' }),
+    );
+    expect(assertActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'supervisor-1', resourceType: 'agent' }),
+    );
+  });
+
+  it('also checks parent groups for an agent-only virtual member target', async () => {
+    getParentGroupIdsMock.mockResolvedValueOnce(['group-1']);
+
+    await assertCanUseConversationTargets(baseCtx(createDb([])), [{ agentId: 'agent-1' }]);
+
+    expect(assertActionMock).toHaveBeenCalledTimes(2);
+    expect(assertActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'agent-1', resourceType: 'agent' }),
+    );
     expect(assertActionMock).toHaveBeenCalledWith(
       expect.objectContaining({ resourceId: 'group-1', resourceType: 'agentGroup' }),
     );

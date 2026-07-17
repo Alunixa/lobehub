@@ -7,6 +7,8 @@ import {
   getResourceMeta,
 } from '@/server/services/resourcePermission';
 
+import { getWorkspaceAgentParentGroupIds } from './workspaceAgentGuard';
+
 interface ConversationGuardCtx {
   db: LobeChatDatabase;
   userId: string;
@@ -52,9 +54,23 @@ export const assertCanUseConversationTargets = async (
         resourceId: target.groupId,
         resourceType: 'agentGroup',
       });
-    } else if (target.agentId) {
+    }
+    if (target.agentId) {
       refs.set(`agent:${target.agentId}`, { resourceId: target.agentId, resourceType: 'agent' });
     }
+  }
+
+  // Agent-only context is client-supplied and may point directly at a virtual
+  // group member. Its conversation capability cannot exceed any parent group,
+  // matching the execution and configuration guards.
+  const agentRefs = [...refs.values()].filter((ref) => ref.resourceType === 'agent');
+  const parentGroupIds = await Promise.all(
+    agentRefs.map((ref) =>
+      getWorkspaceAgentParentGroupIds({ agentId: ref.resourceId, db: ctx.db, workspaceId }),
+    ),
+  );
+  for (const groupId of parentGroupIds.flat()) {
+    refs.set(`agentGroup:${groupId}`, { resourceId: groupId, resourceType: 'agentGroup' });
   }
 
   for (const { resourceId, resourceType } of refs.values()) {

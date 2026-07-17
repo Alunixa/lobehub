@@ -493,6 +493,20 @@ export const documentRouter = router({
         }
       }
 
+      // The transfer rehomes every descendant document and anchored file. A
+      // non-owner member may transfer their own root only when the entire
+      // subtree is theirs; workspace owners retain the administrative override.
+      if (
+        isWorkspaceNonOwner(ctx) &&
+        (await ctx.documentModel.subtreeHasForeignRows(input.documentId))
+      ) {
+        throw new TRPCError({
+          cause: { data: { code: TransferErrorCode.OwnerOnly } },
+          code: 'FORBIDDEN',
+          message: "Only workspace owners can transfer a document tree containing others' content",
+        });
+      }
+
       const additionalSize = await ctx.documentModel.countFileUsageInSubtree(input.documentId);
       await businessFileTransferStorageCheck({
         additionalSize,

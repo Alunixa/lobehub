@@ -48,6 +48,7 @@ import {
   batchResolveAgentIdFromSessions,
   resolveAgentIdFromSession,
   resolveContext,
+  resolveContextWithAgentId,
 } from './_helpers/resolveContext';
 import { basicContextSchema } from './_schema/context';
 
@@ -236,23 +237,24 @@ export const topicRouter = router({
       ),
     )
     .mutation(async ({ input, ctx }): Promise<BatchTaskResult> => {
-      await assertCanUseConversationTargets(
-        guardCtx(ctx),
-        input.map((item) => ({ agentId: item.agentId, groupId: item.groupId })),
-      );
-
-      // Resolve sessionId for each topic
+      // Resolve both directions before authorization: legacy callers may send
+      // only sessionId, while the ACL is attached to the owning agent.
       const resolvedTopics = await Promise.all(
         input.map(async (item) => {
           const { agentId, ...rest } = item;
-          const resolved = await resolveContext(
-            { agentId, sessionId: rest.sessionId },
+          const resolved = await resolveContextWithAgentId(
+            { agentId, groupId: rest.groupId, sessionId: rest.sessionId },
             ctx.serverDB,
             ctx.userId,
             ctx.workspaceId ?? undefined,
           );
-          return { ...rest, sessionId: resolved.sessionId };
+          return { ...rest, agentId: resolved.agentId, sessionId: resolved.sessionId };
         }),
+      );
+
+      await assertCanUseConversationTargets(
+        guardCtx(ctx),
+        resolvedTopics.map((item) => ({ agentId: item.agentId, groupId: item.groupId })),
       );
 
       const data = await ctx.topicModel.batchCreate(resolvedTopics as any);
@@ -373,15 +375,21 @@ export const topicRouter = router({
     )
     .mutation(async ({ input, ctx }) => {
       const { agentId, ...rest } = input;
-      await assertCanUseConversationTargets(guardCtx(ctx), [{ agentId, groupId: rest.groupId }]);
-      const resolved = await resolveContext(
-        { agentId, sessionId: rest.sessionId },
+      const resolved = await resolveContextWithAgentId(
+        { agentId, groupId: rest.groupId, sessionId: rest.sessionId },
         ctx.serverDB,
         ctx.userId,
         ctx.workspaceId ?? undefined,
       );
+      await assertCanUseConversationTargets(guardCtx(ctx), [
+        { agentId: resolved.agentId, groupId: rest.groupId },
+      ]);
 
-      const data = await ctx.topicModel.create({ ...rest, sessionId: resolved.sessionId });
+      const data = await ctx.topicModel.create({
+        ...rest,
+        agentId: resolved.agentId,
+        sessionId: resolved.sessionId,
+      });
 
       return data.id;
     }),

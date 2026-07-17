@@ -91,6 +91,25 @@ export const resolveAgentIdFromSession = async (
 };
 
 /**
+ * Resolve a context in both directions so authorization always receives the
+ * canonical agent id even from legacy session-only callers.
+ */
+export const resolveContextWithAgentId = async (
+  input: ConversationContextInput,
+  db: LobeChatDatabase,
+  userId: string,
+  workspaceId?: string,
+): Promise<ResolvedContext> => {
+  const agentId =
+    input.agentId ??
+    (input.sessionId
+      ? await resolveAgentIdFromSession(input.sessionId, db, userId, workspaceId)
+      : undefined);
+
+  return resolveContext({ ...input, agentId }, db, userId, workspaceId);
+};
+
+/**
  * Batch reverse resolution: Get agentId mapping from multiple sessionIds
  *
  * Used in scenarios requiring batch sessionId -> agentId resolution (e.g., recentTopics)
