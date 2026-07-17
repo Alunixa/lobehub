@@ -30,6 +30,34 @@ import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermiss
 import { TransferErrorCode } from '@/types/transferError';
 
 import { isWorkspaceNonOwner } from './_helpers/assertWorkspaceRowManageable';
+import { getResourceConfigAccess, redactAgentConfig } from './_helpers/resourceConfigGuard';
+
+const protectAgentConfig = async <T extends Record<string, any>>(
+  ctx: {
+    serverDB: Parameters<typeof getResourceConfigAccess>[0]['db'];
+    userId: string;
+    workspaceId?: string | null;
+    workspacePermissionCodes?: string[];
+  },
+  agentId: string,
+  config: T | null | undefined,
+): Promise<T | null> => {
+  if (!config) return null;
+
+  const access = await getResourceConfigAccess(
+    {
+      db: ctx.serverDB,
+      grantedPermissions: ctx.workspacePermissionCodes,
+      userId: ctx.userId,
+      workspaceId: ctx.workspaceId,
+    },
+    'agent',
+    agentId,
+  );
+
+  if (access === 'none') return null;
+  return access === 'profile' ? redactAgentConfig(config) : config;
+};
 
 const agentProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) => {
   const { ctx } = opts;
@@ -514,7 +542,8 @@ export const agentRouter = router({
       if (!session) throw new Error(`Session [${input.sessionId}] not found`);
       const sessionId = session.id;
 
-      return ctx.agentModel.findBySessionId(sessionId);
+      const config = await ctx.agentModel.findBySessionId(sessionId);
+      return config?.id ? protectAgentConfig(ctx, config.id, config) : config;
     }),
 
   getAgentConfigById: agentProcedure
@@ -524,7 +553,8 @@ export const agentRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      return ctx.agentService.getAgentConfigById(input.agentId);
+      const config = await ctx.agentService.getAgentConfigById(input.agentId);
+      return protectAgentConfig(ctx, input.agentId, config);
     }),
 
   /**
@@ -538,7 +568,8 @@ export const agentRouter = router({
       }),
     )
     .query(async ({ input, ctx }) => {
-      return ctx.agentService.getBuiltinAgent(input.slug);
+      const config = await ctx.agentService.getBuiltinAgent(input.slug);
+      return config?.id ? protectAgentConfig(ctx, config.id, config) : config;
     }),
 
   getKnowledgeBasesAndFiles: agentProcedure
@@ -549,6 +580,14 @@ export const agentRouter = router({
       }),
     )
     .query(async ({ ctx, input }): Promise<KnowledgeItem[]> => {
+      await assertCanEditResource({
+        db: ctx.serverDB,
+        resourceId: input.agentId,
+        resourceType: 'agent',
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId ?? undefined,
+      });
+
       // Look up the target agent's visibility so we can (a) apply the
       // "public agent cannot reach caller's private rows" defensive filter
       // in the model layer, and (b) hard-force `visibility='public'` when

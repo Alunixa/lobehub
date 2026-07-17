@@ -18,6 +18,11 @@ export interface ConversationTarget {
   groupId?: string | null;
 }
 
+export interface CreateMessageTarget extends ConversationTarget {
+  parentId?: string | null;
+  topicId?: string | null;
+}
+
 /**
  * Workspace General-access guard for conversation writes.
  *
@@ -133,4 +138,30 @@ export const assertCanUseTopicTargets = async (
       : [];
 
   await assertCanUseConversationTargets(ctx, [...rows, ...sessionTargets]);
+};
+
+/**
+ * Guard every authority-bearing field accepted by message creation. Explicit
+ * agent/group ids are not authoritative: a caller may omit or forge them while
+ * appending through an existing topic or parent message, so all three sources
+ * are checked independently.
+ */
+export const assertCanUseCreateMessageTargets = async (
+  ctx: ConversationGuardCtx,
+  createMessages: CreateMessageTarget[],
+): Promise<void> => {
+  if (!ctx.workspaceId || createMessages.length === 0) return;
+
+  const topicIds = [
+    ...new Set(createMessages.map((message) => message.topicId).filter(Boolean) as string[]),
+  ];
+  const parentIds = [
+    ...new Set(createMessages.map((message) => message.parentId).filter(Boolean) as string[]),
+  ];
+
+  await Promise.all([
+    assertCanUseConversationTargets(ctx, createMessages),
+    assertCanUseTopicTargets(ctx, topicIds),
+    assertCanUseMessageTargets(ctx, parentIds),
+  ]);
 };

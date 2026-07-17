@@ -9,6 +9,7 @@ import {
 
 import {
   assertCanUseConversationTargets,
+  assertCanUseCreateMessageTargets,
   assertCanUseMessageTargets,
   assertCanUseTopicTargets,
 } from './conversationResourceGuard';
@@ -140,6 +141,38 @@ describe('assertCanUseTopicTargets', () => {
 
     expect(assertActionMock).toHaveBeenCalledWith(
       expect.objectContaining({ resourceId: 'group-1', resourceType: 'agentGroup' }),
+    );
+  });
+});
+
+describe('assertCanUseCreateMessageTargets', () => {
+  it('guards topic and existing parent rows even when explicit context is omitted', async () => {
+    const db = createDb([
+      [{ agentId: null, groupId: 'group-1', sessionId: null }],
+      [{ agentId: 'agent-2', groupId: null, topicId: 'topic-1' }],
+    ]);
+
+    await assertCanUseCreateMessageTargets(baseCtx(db), [
+      { parentId: 'parent-1', topicId: 'topic-1' },
+    ]);
+
+    expect(assertActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'group-1', resourceType: 'agentGroup' }),
+    );
+    expect(assertActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'agent-2', resourceType: 'agent' }),
+    );
+  });
+
+  it('also guards the explicit target so forged context cannot replace row authority', async () => {
+    const db = createDb([[], []]);
+
+    await assertCanUseCreateMessageTargets(baseCtx(db), [
+      { agentId: 'agent-1', parentId: 'parent-1', topicId: 'topic-1' },
+    ]);
+
+    expect(assertActionMock).toHaveBeenCalledWith(
+      expect.objectContaining({ resourceId: 'agent-1', resourceType: 'agent' }),
     );
   });
 });

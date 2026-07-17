@@ -23,6 +23,7 @@ import { type MessageBatchOperation, MessageService } from '@/server/services/me
 
 import {
   assertCanUseConversationTargets,
+  assertCanUseCreateMessageTargets,
   assertCanUseMessageTargets,
   assertCanUseTopicTargets,
 } from './_helpers/conversationResourceGuard';
@@ -152,13 +153,9 @@ export const messageRouter = router({
         guardCtx(ctx),
         operations.flatMap((op) => (op.type === 'createMessage' ? [] : [op.id])),
       );
-      await assertCanUseConversationTargets(
+      await assertCanUseCreateMessageTargets(
         guardCtx(ctx),
-        operations.flatMap((op) =>
-          op.type === 'createMessage'
-            ? [{ agentId: op.message.agentId, groupId: op.message.groupId }]
-            : [],
-        ),
+        operations.flatMap((op) => (op.type === 'createMessage' ? [op.message] : [])),
       );
 
       return ctx.messageService.batchMutate(operations);

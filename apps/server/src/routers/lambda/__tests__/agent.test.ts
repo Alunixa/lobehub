@@ -18,6 +18,8 @@ import { publishResourceEvent } from '@/server/services/resourceEvents';
 import {
   assertCanEditResource,
   assertCanPerformResourceAction,
+  canPerformResourceAction,
+  getResourceMeta,
 } from '@/server/services/resourcePermission';
 import { hasWorkspaceScopedPermission } from '@/server/services/workspacePermission';
 import { KnowledgeType } from '@/types/knowledgeBase';
@@ -25,6 +27,9 @@ import { KnowledgeType } from '@/types/knowledgeBase';
 import { agentRouter } from '../agent';
 
 vi.mock('@/server/services/resourceEvents', () => ({ publishResourceEvent: vi.fn() }));
+vi.mock('../_helpers/workspaceAgentGuard', () => ({
+  getWorkspaceAgentParentGroupIds: vi.fn().mockResolvedValue([]),
+}));
 
 const publishResourceEventMock = vi.mocked(publishResourceEvent);
 
@@ -77,6 +82,8 @@ vi.mock('@/server/services/resourcePermission', () => ({
     ...params,
     generalAccess: params.accessLevel === 'edit' ? 'editor' : 'viewer',
   })),
+  canPerformResourceAction: vi.fn(),
+  getResourceMeta: vi.fn(),
 }));
 
 describe('agentRouter', () => {
@@ -94,6 +101,11 @@ describe('agentRouter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(assertCanPerformResourceAction).mockResolvedValue();
+    vi.mocked(getResourceMeta).mockResolvedValue({
+      userId: 'creator-1',
+      visibility: 'public',
+      workspaceId: 'ws-1',
+    });
     resourcePermissionModelMock = {
       getEffectiveAccessLevel: vi.fn().mockResolvedValue('use'),
       removeAll: vi.fn(),
@@ -193,6 +205,59 @@ describe('agentRouter', () => {
 
       expect(agentModelMock.findBySessionId).toHaveBeenCalledWith('session1');
       expect(result).toEqual(DEFAULT_AGENT_CONFIG);
+    });
+  });
+
+  describe('configuration read guard', () => {
+    const fullConfig = {
+      avatar: 'avatar.png',
+      id: 'agent-1',
+      model: 'private-model',
+      openingMessage: 'Hello',
+      plugins: ['private-tool'],
+      systemRole: 'private prompt',
+      title: 'Public title',
+      userId: 'creator-1',
+      visibility: 'public',
+      workspaceId: 'ws-1',
+    };
+
+    it('redacts getAgentConfigById for a member who can view but not edit', async () => {
+      agentServiceMock.getAgentConfigById = vi.fn().mockResolvedValue(fullConfig);
+      vi.mocked(canPerformResourceAction).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+      const result = await caller.getAgentConfigById({ agentId: 'agent-1' });
+
+      expect(result).toEqual({
+        avatar: 'avatar.png',
+        id: 'agent-1',
+        openingMessage: 'Hello',
+        title: 'Public title',
+        userId: 'creator-1',
+        visibility: 'public',
+        workspaceId: 'ws-1',
+      });
+      expect(result).not.toHaveProperty('systemRole');
+      expect(result).not.toHaveProperty('plugins');
+      expect(result).not.toHaveProperty('model');
+    });
+
+    it('returns the full config to a member who can edit', async () => {
+      agentServiceMock.getAgentConfigById = vi.fn().mockResolvedValue(fullConfig);
+      vi.mocked(canPerformResourceAction).mockResolvedValueOnce(true);
+
+      const caller = agentRouter.createCaller({
+        ...mockCtx,
+        serverDB: {},
+        workspaceId: 'ws-1',
+      });
+
+      await expect(caller.getAgentConfigById({ agentId: 'agent-1' })).resolves.toEqual(fullConfig);
     });
   });
 

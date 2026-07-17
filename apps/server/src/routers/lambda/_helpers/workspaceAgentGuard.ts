@@ -13,6 +13,30 @@ interface WorkspaceAgentGuardParams {
   workspaceId?: string | null;
 }
 
+export const getWorkspaceAgentParentGroupIds = async ({
+  agentId,
+  db,
+  workspaceId,
+}: {
+  agentId: string;
+  db: LobeChatDatabase;
+  workspaceId: string;
+}): Promise<string[]> => {
+  const linkedGroups = await db
+    .select({ groupId: chatGroupsAgents.chatGroupId })
+    .from(chatGroupsAgents)
+    .innerJoin(agents, eq(chatGroupsAgents.agentId, agents.id))
+    .where(
+      and(
+        eq(chatGroupsAgents.agentId, agentId),
+        eq(chatGroupsAgents.workspaceId, workspaceId),
+        eq(agents.virtual, true),
+      ),
+    );
+
+  return [...new Set(linkedGroups.map((row) => row.groupId))];
+};
+
 /**
  * Workspace `use` guard for agent execution entrypoints.
  *
@@ -43,18 +67,9 @@ export const assertCanUseWorkspaceAgent = async ({
   }
   if (!resourceId) return;
 
-  const linkedGroups = await db
-    .select({ groupId: chatGroupsAgents.chatGroupId })
-    .from(chatGroupsAgents)
-    .innerJoin(agents, eq(chatGroupsAgents.agentId, agents.id))
-    .where(
-      and(
-        eq(chatGroupsAgents.agentId, resourceId),
-        eq(chatGroupsAgents.workspaceId, workspaceId),
-        eq(agents.virtual, true),
-      ),
-    );
-  const groupIds = new Set(linkedGroups.map((row) => row.groupId));
+  const groupIds = new Set(
+    await getWorkspaceAgentParentGroupIds({ agentId: resourceId, db, workspaceId }),
+  );
   if (groupId) groupIds.add(groupId);
 
   await Promise.all([
