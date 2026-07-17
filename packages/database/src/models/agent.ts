@@ -877,7 +877,7 @@ export class AgentModel {
    * one with these authorization rules.
    */
   publishToWorkspace = async (agentId: string) => {
-    return this.db
+    const [result] = await this.db
       .update(agents)
       .set({ updatedAt: new Date(), visibility: 'public' })
       .where(
@@ -887,7 +887,14 @@ export class AgentModel {
           eq(agents.userId, this.userId),
           eq(agents.visibility, 'private'),
         ),
-      );
+      )
+      .returning();
+
+    if (!result) {
+      throw new Error('Agent not found, already published, or access denied');
+    }
+
+    return result;
   };
 
   /**

@@ -428,6 +428,16 @@ export const documentRouter = router({
         workspaceId: ctx.workspaceId ?? undefined,
       });
 
+      // A move mutates the destination tree as well as the document. Only
+      // check when the parent really changes: several editor paths include the
+      // current parentId in ordinary metadata/autosave updates.
+      if (input.parentId) {
+        const currentDocument = await ctx.documentModel.findById(input.id);
+        if (currentDocument?.parentId !== input.parentId) {
+          await assertCanCreateUnderParent(ctx, input.parentId);
+        }
+      }
+
       const { id, editorData: editorDataString, ...params } = input;
       // Parse editorData from JSON string to object if present
       const editorData = editorDataString ? JSON.parse(editorDataString) : undefined;

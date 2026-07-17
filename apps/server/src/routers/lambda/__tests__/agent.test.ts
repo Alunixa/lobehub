@@ -121,6 +121,7 @@ describe('agentRouter', () => {
       findBySessionId: vi.fn(),
       getAgentAssignedKnowledge: vi.fn(),
       getAgentVisibility: vi.fn().mockResolvedValue(null),
+      publishToWorkspace: vi.fn(),
       toggleFile: vi.fn(),
       toggleKnowledgeBase: vi.fn(),
       update: vi.fn(),
@@ -461,6 +462,40 @@ describe('agentRouter', () => {
       await caller.updateAgentPinned(mockInput);
 
       expect(agentModelMock.update).toHaveBeenCalledWith(mockInput.id, { pinned: false });
+    });
+  });
+
+  describe('publishAgentToWorkspace', () => {
+    const wsCtx = () => ({ ...mockCtx, workspaceId: 'ws-1' });
+
+    it('writes general access only after the private agent is actually published', async () => {
+      agentModelMock.publishToWorkspace.mockResolvedValue({
+        id: 'agent-1',
+        visibility: 'public',
+      });
+
+      const caller = agentRouter.createCaller(wsCtx());
+      await caller.publishAgentToWorkspace({ accessLevel: 'view', id: 'agent-1' });
+
+      expect(resourcePermissionModelMock.setAccessLevel).toHaveBeenCalledWith(
+        'agent',
+        'agent-1',
+        'view',
+        userId,
+      );
+    });
+
+    it('does not write general access when the guarded publish updates no row', async () => {
+      agentModelMock.publishToWorkspace.mockRejectedValue(
+        new Error('Agent not found, already published, or access denied'),
+      );
+
+      const caller = agentRouter.createCaller(wsCtx());
+
+      await expect(caller.publishAgentToWorkspace({ id: 'agent-1' })).rejects.toThrow(
+        'Agent not found, already published, or access denied',
+      );
+      expect(resourcePermissionModelMock.setAccessLevel).not.toHaveBeenCalled();
     });
   });
 

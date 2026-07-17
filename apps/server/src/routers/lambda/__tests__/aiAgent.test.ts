@@ -15,7 +15,10 @@ import { eq } from 'drizzle-orm';
 import type * as ModelBankModule from 'model-bank';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { assertCanPerformResourceAction } from '@/server/services/resourcePermission';
+import {
+  assertCanPerformResourceAction,
+  getResourceMeta,
+} from '@/server/services/resourcePermission';
 
 import { aiAgentRouter } from '../aiAgent';
 import { cleanupTestUser, createTestUser } from './integration/setup';
@@ -69,6 +72,7 @@ vi.mock('@/server/services/file', () => ({
 // RBAC evaluation is covered by its service tests).
 vi.mock('@/server/services/resourcePermission', () => ({
   assertCanPerformResourceAction: vi.fn(),
+  getResourceMeta: vi.fn(),
 }));
 
 // Mock model-bank with dynamic import to preserve other exports
@@ -469,6 +473,11 @@ describe('AI Agent Router Integration Tests', () => {
         })
         .returning();
       wsAgentId = wsAgent.id;
+      vi.mocked(getResourceMeta).mockResolvedValue({
+        userId,
+        visibility: 'public',
+        workspaceId,
+      });
     });
 
     const wsCtx = () => ({ ...createTestContext(), workspaceId });
@@ -485,6 +494,42 @@ describe('AI Agent Router Integration Tests', () => {
       });
 
       expect(assertCanPerformResourceAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'use',
+          resourceId: wsAgentId,
+          resourceType: 'agent',
+          userId,
+          workspaceId,
+        }),
+      );
+    });
+
+    it('rejects an agent run that appends to a view-only topic', async () => {
+      const [topic] = await serverDB
+        .insert(topics)
+        .values({
+          agentId: wsAgentId,
+          title: 'View-only topic',
+          userId,
+          workspaceId,
+        })
+        .returning();
+      vi.mocked(assertCanPerformResourceAction)
+        .mockResolvedValueOnce(undefined)
+        .mockRejectedValueOnce(new TRPCError({ code: 'FORBIDDEN', message: 'denied' }));
+
+      const caller = aiAgentRouter.createCaller(wsCtx());
+
+      await expect(
+        caller.execAgent({
+          agentId: wsAgentId,
+          appContext: { topicId: topic.id },
+          prompt: 'hi',
+        }),
+      ).rejects.toMatchObject({ code: 'FORBIDDEN' });
+
+      expect(assertCanPerformResourceAction).toHaveBeenNthCalledWith(
+        2,
         expect.objectContaining({
           action: 'use',
           resourceId: wsAgentId,

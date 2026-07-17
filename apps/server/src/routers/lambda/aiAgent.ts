@@ -25,6 +25,10 @@ import { heteroAuthedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { signUserJWT } from '@/libs/trpc/utils/internalJwt';
 import { createStreamEventManager } from '@/server/modules/AgentRuntime/factory';
+import {
+  assertCanUseMessageTargets,
+  assertCanUseTopicTargets,
+} from '@/server/routers/lambda/_helpers/conversationResourceGuard';
 import { assertCanUseWorkspaceAgent } from '@/server/routers/lambda/_helpers/workspaceAgentGuard';
 import { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { AiAgentService } from '@/server/services/aiAgent';
@@ -62,6 +66,29 @@ const assertCanUseOperationAgent = async (params: {
     userId,
     workspaceId,
   });
+};
+
+/**
+ * Resolve client-supplied conversation ids before an agent run writes through
+ * AiAgentService. Checking only the requested agent/group is insufficient: an
+ * existing topic or parent message can belong to a different, view-only
+ * workspace resource.
+ */
+const assertCanUseAgentRunConversation = async (params: {
+  db: LobeChatDatabase;
+  messageIds?: Array<string | null | undefined>;
+  topicId?: string | null;
+  userId: string;
+  workspaceId?: string | null;
+}) => {
+  const { db, messageIds = [], topicId, userId, workspaceId } = params;
+  if (!workspaceId) return;
+
+  const uniqueMessageIds = [...new Set(messageIds.filter(Boolean) as string[])];
+  await Promise.all([
+    assertCanUseTopicTargets({ db, userId, workspaceId }, topicId ? [topicId] : []),
+    assertCanUseMessageTargets({ db, userId, workspaceId }, uniqueMessageIds),
+  ]);
 };
 
 const createUiMessageFileUrlResolver = () => {
@@ -611,6 +638,13 @@ export const aiAgentRouter = router({
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
         });
+        await assertCanUseAgentRunConversation({
+          db: ctx.serverDB,
+          messageIds: [parentMessageId],
+          topicId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
 
         // 1. Create Thread for isolated task execution
         // Use subAgentId as the thread's agentId (the executing agent)
@@ -711,6 +745,13 @@ export const aiAgentRouter = router({
           agentId,
           db: ctx.serverDB,
           groupId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
+        await assertCanUseAgentRunConversation({
+          db: ctx.serverDB,
+          messageIds: [parentMessageId],
+          topicId,
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
         });
@@ -819,6 +860,18 @@ export const aiAgentRouter = router({
         db: ctx.serverDB,
         groupId: appContext?.groupId,
         slug,
+        userId: ctx.userId,
+        workspaceId: ctx.workspaceId,
+      });
+      await assertCanUseAgentRunConversation({
+        db: ctx.serverDB,
+        messageIds: [
+          ...existingMessageIds,
+          parentMessageId,
+          resumeApproval?.parentMessageId,
+          resumeToolResult?.parentMessageId,
+        ],
+        topicId: appContext?.topicId,
         userId: ctx.userId,
         workspaceId: ctx.workspaceId,
       });
@@ -941,6 +994,18 @@ export const aiAgentRouter = router({
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
         });
+        await assertCanUseAgentRunConversation({
+          db: ctx.serverDB,
+          messageIds: [
+            ...existingMessageIds,
+            parentMessageId,
+            task.resumeApproval?.parentMessageId,
+            task.resumeToolResult?.parentMessageId,
+          ],
+          topicId: appContext?.topicId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
         const result = await ctx.aiAgentService.execAgent({
           agentId,
           appContext,
@@ -1018,6 +1083,13 @@ export const aiAgentRouter = router({
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
         });
+        await assertCanUseAgentRunConversation({
+          db: ctx.serverDB,
+          messageIds: newTopic?.topicMessageIds,
+          topicId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
         // Execute group agent
         const result = await ctx.aiAgentService.execGroupAgent({
           agentId,
@@ -1085,6 +1157,13 @@ export const aiAgentRouter = router({
           agentId,
           db: ctx.serverDB,
           groupId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
+        await assertCanUseAgentRunConversation({
+          db: ctx.serverDB,
+          messageIds: [parentMessageId],
+          topicId,
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
         });
