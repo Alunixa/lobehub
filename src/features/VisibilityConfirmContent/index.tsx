@@ -266,31 +266,32 @@ const VisibilityConfirmContent = memo<VisibilityConfirmContentProps>(
                       },
                     ]
                   : []),
-                ...(resourceType === 'document'
-                  ? [
-                      {
-                        label: (
-                          <Flexbox horizontal align={'center'} className={styles.optionRow} gap={8}>
-                            <Icon icon={EyeIcon} size={14} />
-                            <Text style={{ fontSize: 13, fontWeight: 500 }}>
-                              {t('permission.generalAccess.viewable', { ns: 'setting' })}
-                            </Text>
-                            <Text
-                              style={{
-                                color: cssVar.colorTextTertiary,
-                                fontSize: 12,
-                                marginInlineStart: 'auto',
-                              }}
-                            >
-                              {t('permission.generalAccess.viewableDesc', { ns: 'setting' })}
-                            </Text>
-                          </Flexbox>
-                        ),
-                        title: t('permission.generalAccess.viewable', { ns: 'setting' }),
-                        value: 'view' as const,
-                      },
-                    ]
-                  : []),
+                {
+                  label: (
+                    <Flexbox horizontal align={'center'} className={styles.optionRow} gap={8}>
+                      <Icon icon={EyeIcon} size={14} />
+                      <Text style={{ fontSize: 13, fontWeight: 500 }}>
+                        {t('permission.generalAccess.viewable', { ns: 'setting' })}
+                      </Text>
+                      <Text
+                        style={{
+                          color: cssVar.colorTextTertiary,
+                          fontSize: 12,
+                          marginInlineStart: 'auto',
+                        }}
+                      >
+                        {t(
+                          resourceType === 'document'
+                            ? 'permission.generalAccess.viewableDocumentDesc'
+                            : 'permission.generalAccess.viewableDesc',
+                          { ns: 'setting' },
+                        )}
+                      </Text>
+                    </Flexbox>
+                  ),
+                  title: t('permission.generalAccess.viewable', { ns: 'setting' }),
+                  value: 'view' as const,
+                },
               ]}
               onChange={(nextAccessLevel) => {
                 if (!nextAccessLevel) return;

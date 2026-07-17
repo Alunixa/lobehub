@@ -50,14 +50,16 @@ export const useResourcePermissionMenuItem = (
         value: 'use',
       });
     }
-    if (resourceType === 'document') {
-      levels.push({
-        desc: t('permission.generalAccess.viewableDocumentDesc'),
-        icon: EyeIcon,
-        label: t('permission.generalAccess.viewable'),
-        value: 'view',
-      });
-    }
+    levels.push({
+      desc: t(
+        resourceType === 'document'
+          ? 'permission.generalAccess.viewableDocumentDesc'
+          : 'permission.generalAccess.viewableDesc',
+      ),
+      icon: EyeIcon,
+      label: t('permission.generalAccess.viewable'),
+      value: 'view',
+    });
     return levels;
   }, [resourceType, t]);
 

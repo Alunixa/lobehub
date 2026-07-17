@@ -50,8 +50,10 @@ describe('ResourcePermissionModel', () => {
   );
 
   it.each([
+    ['agent', 'view'],
     ['agent', 'use'],
     ['agent', 'edit'],
+    ['agentGroup', 'view'],
     ['agentGroup', 'use'],
     ['agentGroup', 'edit'],
     ['document', 'view'],
@@ -65,9 +67,9 @@ describe('ResourcePermissionModel', () => {
 
   it.each([
     ['agent', 'use', true],
-    ['agent', 'view', false],
+    ['agent', 'view', true],
     ['agentGroup', 'use', true],
-    ['agentGroup', 'view', false],
+    ['agentGroup', 'view', true],
     ['document', 'view', true],
     ['document', 'use', false],
   ] as const)('validates %s %s as %s', (resourceType, accessLevel, expected) => {

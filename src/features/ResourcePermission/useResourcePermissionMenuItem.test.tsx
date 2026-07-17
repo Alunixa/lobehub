@@ -59,4 +59,20 @@ describe('useResourcePermissionMenuItem', () => {
       label: 'permission.generalAccess.trigger',
     });
   });
+
+  it('offers edit, use, and view access for manageable agents', () => {
+    permissionMock.data = {
+      accessLevel: 'use',
+      canManage: true,
+    };
+
+    const { result } = renderHook(() => useResourcePermissionMenuItem('agent', 'agent-1'));
+    const item = result.current as { children: { key: string }[] };
+
+    expect(item.children.map(({ key }) => key)).toEqual([
+      'member-permission-edit',
+      'member-permission-use',
+      'member-permission-view',
+    ]);
+  });
 });

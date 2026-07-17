@@ -59,7 +59,7 @@ describe('VisibilityConfirmContent', () => {
     expect(screen.getAllByText('visibilityConfirm.irreversible')).toHaveLength(1);
   });
 
-  it('offers edit/use and defaults to use when publishing an agent', () => {
+  it('offers edit/use/view and defaults to use when publishing an agent', () => {
     render(
       <VisibilityConfirmContent
         accessLevelRef={{ current: 'use' }}
@@ -71,7 +71,7 @@ describe('VisibilityConfirmContent', () => {
     expect(screen.getByTestId('access-select').dataset.value).toBe('use');
     expect(document.querySelector('[data-option="edit"]')).toBeTruthy();
     expect(document.querySelector('[data-option="use"]')).toBeTruthy();
-    expect(document.querySelector('[data-option="view"]')).toBeNull();
+    expect(document.querySelector('[data-option="view"]')).toBeTruthy();
   });
 
   it('offers edit/view and defaults to view when publishing a document', () => {

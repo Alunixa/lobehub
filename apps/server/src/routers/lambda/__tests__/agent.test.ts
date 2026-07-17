@@ -531,17 +531,27 @@ describe('agentRouter', () => {
       );
     });
 
-    it('rejects document-only view access for an agent', async () => {
-      const caller = agentRouter.createCaller(wsCtx());
+    it('stores explicit view access when publishing an agent', async () => {
+      agentModelMock.getAgentVisibilityMeta.mockResolvedValue({
+        slug: null,
+        userId,
+        visibility: 'private',
+      });
 
-      await expect(
-        caller.setAgentVisibility({
-          accessLevel: 'view',
-          id: 'agent-1',
-          visibility: 'public',
-        } as any),
-      ).rejects.toBeDefined();
-      expect(agentModelMock.setVisibility).not.toHaveBeenCalled();
+      const caller = agentRouter.createCaller(wsCtx());
+      await caller.setAgentVisibility({
+        accessLevel: 'view',
+        id: 'agent-1',
+        visibility: 'public',
+      });
+
+      expect(agentModelMock.setVisibility).toHaveBeenCalledWith('agent-1', 'public');
+      expect(resourcePermissionModelMock.setAccessLevel).toHaveBeenCalledWith(
+        'agent',
+        'agent-1',
+        'view',
+        userId,
+      );
     });
   });
 

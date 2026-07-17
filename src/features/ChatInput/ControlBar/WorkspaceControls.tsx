@@ -38,8 +38,8 @@ interface WorkspaceControlsProps {
  */
 const WorkspaceControls = memo<WorkspaceControlsProps>(
   ({ agentId, alwaysShowWorkspace = false }) => {
-    const { t } = useTranslation('chat');
-    const { canUseResource, isGroupContext } = useChatInputResourceAccess();
+    const { t } = useTranslation('setting');
+    const { canConfigureResource, canUseResource } = useChatInputResourceAccess();
     const runtimeMode = useAgentStore(chatConfigByIdSelectors.getRuntimeModeById(agentId));
     const isHeterogeneous = useAgentStore(agentByIdSelectors.isAgentHeterogeneousById(agentId));
     // Effective config = shared row + this member's device override (LOBE-11689),
@@ -78,20 +78,25 @@ const WorkspaceControls = memo<WorkspaceControlsProps>(
       return null;
     };
 
-    // View-only General access: the directory picker and git controls write
-    // shared agent config / run device git mutations, so the whole cluster
-    // goes inert (disabled, not hidden). The device switcher handles its own
-    // disabled state.
+    // The directory picker and git controls write shared agent config / run
+    // device git mutations, so members without edit access see the whole
+    // cluster disabled. The device switcher handles its own use-level gate.
     const workspace = renderWorkspace();
 
     return (
       <>
         <HeteroDeviceSwitcher agentId={agentId} />
         {workspace &&
-          (canUseResource ? (
+          (canConfigureResource ? (
             workspace
           ) : (
-            <Tooltip title={t(isGroupContext ? 'input.viewOnlyGroup' : 'input.viewOnlyAgent')}>
+            <Tooltip
+              title={t(
+                canUseResource
+                  ? 'permission.accessTag.useOnlyTip'
+                  : 'permission.accessTag.viewOnlyTip',
+              )}
+            >
               {/* Outer div catches hover for the tooltip; the inner one makes
                   the controls inert. */}
               <div style={{ alignItems: 'center', display: 'flex', gap: 4 }}>
