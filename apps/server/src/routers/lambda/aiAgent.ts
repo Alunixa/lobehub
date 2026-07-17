@@ -19,57 +19,20 @@ import { wsCompatProcedure } from '@/business/server/trpc-middlewares/workspaceA
 import { MessageModel } from '@/database/models/message';
 import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
-import { agentOperations, agents, topics } from '@/database/schemas';
+import { agentOperations, topics } from '@/database/schemas';
 import type { LobeChatDatabase } from '@/database/type';
 import { heteroAuthedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { signUserJWT } from '@/libs/trpc/utils/internalJwt';
 import { createStreamEventManager } from '@/server/modules/AgentRuntime/factory';
+import { assertCanUseWorkspaceAgent } from '@/server/routers/lambda/_helpers/workspaceAgentGuard';
 import { AgentRuntimeService } from '@/server/services/agentRuntime';
 import { AiAgentService } from '@/server/services/aiAgent';
 import { AiChatService } from '@/server/services/aiChat';
 import { getFileProxyUrl } from '@/server/services/file';
 import { HeterogeneousAgentService } from '@/server/services/heterogeneousAgent';
-import { assertCanPerformResourceAction } from '@/server/services/resourcePermission';
 
 const log = debug('lobe-server:ai-agent-router');
-
-/**
- * Workspace `use` guard for exec calls identified by agentId or slug. Slug-only
- * callers resolve the slug within the workspace first so they can't bypass the
- * guard; an unresolvable slug falls through unchanged and keeps the service's
- * existing not-found behavior. No-op in personal mode (no workspaceId).
- */
-const assertCanUseWorkspaceAgent = async (params: {
-  agentId?: string;
-  db: LobeChatDatabase;
-  slug?: string;
-  userId: string;
-  workspaceId?: string | null;
-}) => {
-  const { agentId, db, slug, userId, workspaceId } = params;
-  if (!workspaceId) return;
-
-  let resourceId = agentId;
-  if (!resourceId && slug) {
-    const [row] = await db
-      .select({ id: agents.id })
-      .from(agents)
-      .where(and(eq(agents.slug, slug), eq(agents.workspaceId, workspaceId)))
-      .limit(1);
-    resourceId = row?.id;
-  }
-  if (!resourceId) return;
-
-  await assertCanPerformResourceAction({
-    action: 'use',
-    db,
-    resourceId,
-    resourceType: 'agent',
-    userId,
-    workspaceId,
-  });
-};
 
 /**
  * Workspace `use` guard for operation-keyed endpoints: resolve the operation
@@ -93,11 +56,9 @@ const assertCanUseOperationAgent = async (params: {
     .limit(1);
   if (!row?.agentId) return;
 
-  await assertCanPerformResourceAction({
-    action: 'use',
+  await assertCanUseWorkspaceAgent({
+    agentId: row.agentId,
     db,
-    resourceId: row.agentId,
-    resourceType: 'agent',
     userId,
     workspaceId,
   });
@@ -643,26 +604,13 @@ export const aiAgentRouter = router({
       log('createClientGroupAgentTaskThread: subAgentId=%s, groupId=%s', subAgentId, groupId);
 
       try {
-        if (ctx.workspaceId) {
-          await Promise.all([
-            assertCanPerformResourceAction({
-              action: 'use',
-              db: ctx.serverDB,
-              resourceId: groupId,
-              resourceType: 'agentGroup',
-              userId: ctx.userId,
-              workspaceId: ctx.workspaceId,
-            }),
-            assertCanPerformResourceAction({
-              action: 'use',
-              db: ctx.serverDB,
-              resourceId: subAgentId,
-              resourceType: 'agent',
-              userId: ctx.userId,
-              workspaceId: ctx.workspaceId,
-            }),
-          ]);
-        }
+        await assertCanUseWorkspaceAgent({
+          agentId: subAgentId,
+          db: ctx.serverDB,
+          groupId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
 
         // 1. Create Thread for isolated task execution
         // Use subAgentId as the thread's agentId (the executing agent)
@@ -759,16 +707,13 @@ export const aiAgentRouter = router({
       log('createClientTaskThread: agentId=%s, groupId=%s', agentId, groupId);
 
       try {
-        if (ctx.workspaceId) {
-          await assertCanPerformResourceAction({
-            action: 'use',
-            db: ctx.serverDB,
-            resourceId: agentId,
-            resourceType: 'agent',
-            userId: ctx.userId,
-            workspaceId: ctx.workspaceId,
-          });
-        }
+        await assertCanUseWorkspaceAgent({
+          agentId,
+          db: ctx.serverDB,
+          groupId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
 
         // 1. Create Thread for isolated task execution
         const startedAt = new Date().toISOString();
@@ -872,6 +817,7 @@ export const aiAgentRouter = router({
       await assertCanUseWorkspaceAgent({
         agentId,
         db: ctx.serverDB,
+        groupId: appContext?.groupId,
         slug,
         userId: ctx.userId,
         workspaceId: ctx.workspaceId,
@@ -934,6 +880,13 @@ export const aiAgentRouter = router({
       log('scheduleAgentRun: identifier=%s, runAt=%s', input.agentId || input.slug, input.runAt);
 
       try {
+        await assertCanUseWorkspaceAgent({
+          agentId: input.agentId,
+          db: ctx.serverDB,
+          slug: input.slug,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
         return await ctx.aiAgentService.scheduleAgentRun(input);
       } catch (error: any) {
         if (error instanceof TRPCError) throw error;
@@ -983,6 +936,7 @@ export const aiAgentRouter = router({
         await assertCanUseWorkspaceAgent({
           agentId,
           db: ctx.serverDB,
+          groupId: appContext?.groupId,
           slug,
           userId: ctx.userId,
           workspaceId: ctx.workspaceId,
@@ -1057,26 +1011,13 @@ export const aiAgentRouter = router({
       log('execGroupAgent: agentId=%s, groupId=%s', agentId, groupId);
 
       try {
-        if (ctx.workspaceId) {
-          await Promise.all([
-            assertCanPerformResourceAction({
-              action: 'use',
-              db: ctx.serverDB,
-              resourceId: groupId,
-              resourceType: 'agentGroup',
-              userId: ctx.userId,
-              workspaceId: ctx.workspaceId,
-            }),
-            assertCanPerformResourceAction({
-              action: 'use',
-              db: ctx.serverDB,
-              resourceId: agentId,
-              resourceType: 'agent',
-              userId: ctx.userId,
-              workspaceId: ctx.workspaceId,
-            }),
-          ]);
-        }
+        await assertCanUseWorkspaceAgent({
+          agentId,
+          db: ctx.serverDB,
+          groupId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
         // Execute group agent
         const result = await ctx.aiAgentService.execGroupAgent({
           agentId,
@@ -1140,16 +1081,13 @@ export const aiAgentRouter = router({
       log('execSubAgentTask: agentId=%s, groupId=%s', agentId, groupId);
 
       try {
-        if (ctx.workspaceId) {
-          await assertCanPerformResourceAction({
-            action: 'use',
-            db: ctx.serverDB,
-            resourceId: agentId,
-            resourceType: 'agent',
-            userId: ctx.userId,
-            workspaceId: ctx.workspaceId,
-          });
-        }
+        await assertCanUseWorkspaceAgent({
+          agentId,
+          db: ctx.serverDB,
+          groupId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId,
+        });
 
         // External procedure name stays `execSubAgentTask`; the service method is `execSubAgent`.
         return await ctx.aiAgentService.execSubAgent({

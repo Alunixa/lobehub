@@ -129,13 +129,11 @@ export const canPerformResourceAction = async (params: {
   });
   const hasCapability = hasAllScope || hasOwnerScope;
   if (!hasCapability) return false;
-  const hasResourceAllScope = action !== 'use' && hasAllScope;
-
   if (action === 'changeVisibility' || action === 'transfer') return isCreator;
-  if (action === 'manage') return isCreator || (!isPrivate && hasResourceAllScope);
-  if (action === 'delete') return isCreator || (!isPrivate && hasResourceAllScope);
+  if (action === 'manage') return isCreator || (!isPrivate && hasAllScope);
+  if (action === 'delete') return isCreator || (!isPrivate && hasAllScope);
 
-  if (isCreator || (!isPrivate && hasResourceAllScope)) return true;
+  if (isCreator || (!isPrivate && hasAllScope)) return true;
   if (isPrivate) return false;
 
   const accessLevel = await new ResourcePermissionModel(db, workspaceId).getEffectiveAccessLevel(
