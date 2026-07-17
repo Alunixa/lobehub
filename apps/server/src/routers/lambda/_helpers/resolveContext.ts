@@ -100,13 +100,16 @@ export const resolveContextWithAgentId = async (
   userId: string,
   workspaceId?: string,
 ): Promise<ResolvedContext> => {
-  const agentId =
-    input.agentId ??
-    (input.sessionId
-      ? await resolveAgentIdFromSession(input.sessionId, db, userId, workspaceId)
-      : undefined);
+  const resolved = await resolveContext(input, db, userId, workspaceId);
+  if (!resolved.sessionId) return resolved;
 
-  return resolveContext({ ...input, agentId }, db, userId, workspaceId);
+  // Canonicalize the agent from the session that actually won resolution.
+  // This preserves the legacy fallback contract when a stale/non-existent
+  // agentId is sent together with a valid sessionId, instead of carrying the
+  // stale id into a foreign-keyed write.
+  const agentId = await resolveAgentIdFromSession(resolved.sessionId, db, userId, workspaceId);
+
+  return { ...resolved, agentId: agentId ?? resolved.agentId };
 };
 
 /**

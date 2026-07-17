@@ -245,7 +245,7 @@ describe('resolveContext', () => {
         threadId: null,
         topicId: 'topic-1',
       });
-      expect(mockDb.select).toHaveBeenCalledTimes(2);
+      expect(mockDb.select).toHaveBeenCalledTimes(1);
     });
 
     it('keeps an unresolved legacy session without inventing an agent id', async () => {
@@ -260,6 +260,23 @@ describe('resolveContext', () => {
       expect(result.agentId).toBeNull();
       expect(result.sessionId).toBe('legacy-session');
       expect(mockDb.select).toHaveBeenCalledTimes(1);
+    });
+
+    it('replaces a stale agent id with the agent linked to the fallback session', async () => {
+      const mockDb = createMockDb();
+      mockDb._mocks.mockLimit
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ agentId: 'fallback-agent' }]);
+
+      const result = await resolveContextWithAgentId(
+        { agentId: 'stale-agent', sessionId: 'fallback-session' },
+        mockDb,
+        mockUserId,
+      );
+
+      expect(result.agentId).toBe('fallback-agent');
+      expect(result.sessionId).toBe('fallback-session');
+      expect(mockDb.select).toHaveBeenCalledTimes(2);
     });
   });
 
