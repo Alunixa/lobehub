@@ -10,12 +10,12 @@ import { useTranslation } from 'react-i18next';
 import { useAgentId } from '@/features/ChatInput/hooks/useAgentId';
 import { agentQuotaService } from '@/services/agentQuota';
 
-const styles = createStaticStyles({
-  root: {
-    borderBlockStart: `1px solid ${cssVar.colorBorderSecondary}`,
-    paddingBlockStart: 8,
-  },
-});
+const styles = createStaticStyles(({ css }) => ({
+  root: css`
+    padding-block-start: 8px;
+    border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+  `,
+}));
 
 type Account = Awaited<ReturnType<typeof agentQuotaService.listAccounts>>[number];
 type Binding = Awaited<ReturnType<typeof agentQuotaService.listBindings>>[number];
