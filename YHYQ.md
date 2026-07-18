@@ -21,6 +21,7 @@
 - 只读检查了服务器 LobeHub、RustFS、Nginx、证书、容器环境变量和相关日志。
 - 确认现有通配符证书有效，LobeHub 公网地址为 HTTPS `3210`。
 - 创建修复前 Git 回滚提交：`7647cb4637`。
+- 创建服务器配置备份：`/root/codex-backups/lobehub-mobile-upload-20260718-202050`。
 
 ### 待执行方案
 
