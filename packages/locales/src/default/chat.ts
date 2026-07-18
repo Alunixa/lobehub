@@ -716,6 +716,8 @@ export default {
   'newPlatformAgent': 'Connect Agent',
   'newGroupChat': 'Create Group',
   'agent.publishToWorkspace': 'Publish to Workspace',
+  'agent.publishToWorkspaceErrorFixedPrivateDevice':
+    'Publish the fixed device to the workspace, or let members choose a device, before publishing this Agent.',
   'agent.publishToWorkspaceSuccess': 'Published to workspace',
   'resources.publishToWorkspace.menu': 'Publish to Workspace',
   'resources.publishToWorkspace.confirm':

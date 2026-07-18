@@ -37,6 +37,7 @@ import { userProfileSelectors } from '@/store/user/selectors';
 import { isForbiddenError, isOwnerOnlyForbiddenError } from '@/utils/forbiddenError';
 
 import { useRevealSidebarSection } from '../../../../hooks';
+import { getAgentPublishErrorKey } from './agentMenuVisibility';
 
 const BUILTIN_SLUGS = new Set<string>(Object.values(BUILTIN_AGENT_SLUGS));
 
@@ -259,11 +260,14 @@ export const useAgentDropdownMenu = ({
                               );
                             } catch (error) {
                               console.error('Failed to publish agent:', error);
+                              const publishErrorKey = getAgentPublishErrorKey(error);
                               message.error(
-                                t('error', {
-                                  ns: 'common',
-                                  defaultValue: 'Operation failed',
-                                }),
+                                publishErrorKey
+                                  ? t(publishErrorKey)
+                                  : t('error', {
+                                      ns: 'common',
+                                      defaultValue: 'Operation failed',
+                                    }),
                               );
                             }
                           },

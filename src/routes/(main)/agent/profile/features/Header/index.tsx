@@ -115,10 +115,10 @@ const Header = memo(() => {
   const createdAt = useAgentStore(agentSelectors.currentAgentCreatedAt);
   const authorName = useAuthorInfo(authorId)?.fullName;
   const hasActiveWorkspace = useHasActiveWorkspace();
-  // Permissions only make sense for workspace-scoped agents; inbox/builtin
-  // agents can't change visibility.
-  const showPermissionsEntry =
-    hasActiveWorkspace && !!activeAgentId && !isInbox && visibility !== 'private';
+  // Resource permissions apply to every public workspace agent, including the
+  // workspace-scoped LobeAI row. Builtin restrictions only prevent visibility
+  // changes; they must not hide the independent General-access control.
+  const showPermissionsEntry = hasActiveWorkspace && !!activeAgentId && visibility !== 'private';
   const [showAgentBuilderPanel, toggleAgentBuilderPanel, isStatusInit] = useGlobalStore((s) => [
     systemStatusSelectors.showAgentBuilderPanel(s),
     s.toggleAgentBuilderPanel,

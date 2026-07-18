@@ -877,6 +877,25 @@ export class AgentModel {
    * one with these authorization rules.
    */
   publishToWorkspace = async (agentId: string) => {
+    const agent = await this.db.query.agents.findFirst({
+      columns: { agencyConfig: true, workspaceId: true },
+      where: and(
+        eq(agents.id, agentId),
+        this.ownership(),
+        eq(agents.userId, this.userId),
+        eq(agents.visibility, 'private'),
+      ),
+    });
+
+    if (!agent) {
+      throw new Error('Agent not found, already published, or access denied');
+    }
+
+    // Re-check at the publication boundary. A legacy/stale fixed binding may
+    // predate the config-write guard, and the shared Agent must never expose a
+    // device that workspace members cannot resolve.
+    await this.assertFixedDeviceBinding(agent.workspaceId, agent.agencyConfig);
+
     const [result] = await this.db
       .update(agents)
       .set({ updatedAt: new Date(), visibility: 'public' })
@@ -937,11 +956,22 @@ export class AgentModel {
     // would be emitted nowhere and vanish from the sidebar. Rehome it to the
     // ungrouped section of its new scope when the group no longer matches.
     const [current] = await this.db
-      .select({ groupVisibility: sessionGroups.visibility })
+      .select({
+        agencyConfig: agents.agencyConfig,
+        groupVisibility: sessionGroups.visibility,
+        workspaceId: agents.workspaceId,
+      })
       .from(agents)
       .leftJoin(sessionGroups, eq(agents.sessionGroupId, sessionGroups.id))
       .where(and(eq(agents.id, agentId), this.ownership()))
       .limit(1);
+
+    // `publishAgentToWorkspace` is the normal client path, but keep the
+    // bidirectional visibility mutation equally safe for direct API callers.
+    if (visibility === 'public' && current) {
+      await this.assertFixedDeviceBinding(current.workspaceId, current.agencyConfig);
+    }
+
     const groupVisibility = current?.groupVisibility as 'private' | 'public' | null | undefined;
     const clearGroup = groupVisibility != null && groupVisibility !== visibility;
 

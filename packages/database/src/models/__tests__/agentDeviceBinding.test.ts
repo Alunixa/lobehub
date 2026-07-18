@@ -209,6 +209,61 @@ describe('AgentModel workspace device binding', () => {
     });
   });
 
+  describe('publishToWorkspace', () => {
+    const createPrivateFixedAgent = async () => {
+      const wsModel = new AgentModel(serverDB, userId, wsId);
+      const agent = await wsModel.create({
+        agencyConfig: {
+          boundDeviceId: workspaceDeviceId,
+          deviceSelectionPolicy: 'fixed',
+          executionTarget: 'device',
+        },
+        title: 'Private fixed agent',
+        visibility: 'private',
+      });
+
+      return { agent, wsModel };
+    };
+
+    it('publishes a fixed agent while its device is public', async () => {
+      const { agent, wsModel } = await createPrivateFixedAgent();
+
+      const published = await wsModel.publishToWorkspace(agent.id);
+
+      expect(published.visibility).toBe('public');
+    });
+
+    it('blocks publishing when the fixed device is no longer public', async () => {
+      const { agent, wsModel } = await createPrivateFixedAgent();
+      await serverDB
+        .update(devices)
+        .set({ visibility: 'private' })
+        .where(eq(devices.deviceId, workspaceDeviceId));
+
+      await expect(wsModel.publishToWorkspace(agent.id)).rejects.toThrow(
+        /requires a public device/,
+      );
+
+      const stored = await serverDB.query.agents.findFirst({ where: eq(agents.id, agent.id) });
+      expect(stored?.visibility).toBe('private');
+    });
+
+    it('blocks the direct visibility API from bypassing the fixed-device check', async () => {
+      const { agent, wsModel } = await createPrivateFixedAgent();
+      await serverDB
+        .update(devices)
+        .set({ visibility: 'private' })
+        .where(eq(devices.deviceId, workspaceDeviceId));
+
+      await expect(wsModel.setVisibility(agent.id, 'public')).rejects.toThrow(
+        /requires a public device/,
+      );
+
+      const stored = await serverDB.query.agents.findFirst({ where: eq(agents.id, agent.id) });
+      expect(stored?.visibility).toBe('private');
+    });
+  });
+
   describe('transferAgent', () => {
     it('strips a personal-device binding when moving an agent into a workspace', async () => {
       const personalModel = new AgentModel(serverDB, userId);

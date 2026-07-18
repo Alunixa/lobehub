@@ -123,24 +123,21 @@ const ProfileEditor = memo(() => {
       >
         {/* Header: Avatar + Name + Description */}
         <AgentHeader />
-        {isRemoteHetero && heterogeneousProvider ? (
-          // Remote platform agents (openclaw / hermes): show device config panel
-          <Flexbox paddingBlock={'8px 0'}>
+        <Flexbox gap={8} paddingBlock={isRemoteHetero ? '8px 0' : undefined}>
+          {isRemoteHetero && heterogeneousProvider ? (
+            // Remote platform agents (openclaw / hermes): show device config panel
             <RemoteAgentConfigCard
               provider={heterogeneousProvider}
               onBoundDeviceChange={updateBoundDeviceId}
             />
-            <WorkspaceAgentDevicePolicy agentId={agentId} showDevicePicker={false} />
-          </Flexbox>
-        ) : isHeterogeneous && heterogeneousProvider ? (
-          // Local CLI agents: Claude Code supports cloud config; Codex is desktop-only for now.
-          <Tabs
-            defaultActiveKey={isDesktop || !showCloudHeterogeneousTab ? 'desktop' : 'cloud'}
-            items={heterogeneousTabItems}
-            size="small"
-          />
-        ) : (
-          <>
+          ) : isHeterogeneous && heterogeneousProvider ? (
+            // Local CLI agents: Claude Code supports cloud config; Codex is desktop-only for now.
+            <Tabs
+              defaultActiveKey={isDesktop || !showCloudHeterogeneousTab ? 'desktop' : 'cloud'}
+              items={heterogeneousTabItems}
+              size="small"
+            />
+          ) : (
             <Flexbox className={styles.configPanel} gap={10}>
               <Flexbox horizontal align={'center'} gap={12} justify={'space-between'}>
                 <div className={styles.configLabel}>{t('settingAgent.runtimeConfig.title')}</div>
@@ -164,9 +161,9 @@ const ProfileEditor = memo(() => {
               </Flexbox>
               <AgentTool />
             </Flexbox>
-          </>
-        )}
-        {!isRemoteHetero && <WorkspaceAgentDevicePolicy agentId={agentId} />}
+          )}
+          <WorkspaceAgentDevicePolicy agentId={agentId} showDevicePicker={!isRemoteHetero} />
+        </Flexbox>
       </Flexbox>
       {/* Main Content: Prompt Editor — built-in model runtime only. Hetero agents
           (Claude Code / Codex + remote platforms) run an external CLI with its own
