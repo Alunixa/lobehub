@@ -13,8 +13,13 @@ import type { FetchQuotaOptions, QuotaWindowItem } from './QuotaMenu';
 import QuotaMenu, { createQuotaSourceKey } from './QuotaMenu';
 import { buildClaudeSnapshotFromWindows, isQuotaStale } from './quotaViewModel';
 
-/** Only hit the live Anthropic usage API when the persisted data is this stale. */
-const QUOTA_REFRESH_MS = 5 * 60 * 1000;
+/**
+ * Only hit the live Anthropic usage API when the persisted data is this stale.
+ * Kept low-frequency (1h) — the panel reads from our DB, so it stays instant and
+ * fresh-enough without hammering the rate-limited usage endpoint. A manual
+ * refresh always forces a live fetch.
+ */
+const QUOTA_REFRESH_MS = 60 * 60 * 1000;
 
 const createErrorSnapshot = (error: unknown): ClaudeCodeQuotaSnapshot => ({
   error: error instanceof Error ? error.message : String(error),
