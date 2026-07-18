@@ -41,33 +41,11 @@ const QuotaAccountSwitcher = memo<{ snapshot: ClaudeCodeQuotaSnapshot }>(({ snap
     setBindings(binds);
   }, [agentId]);
 
-  // Persist the live reading, then refresh the account list.
+  // Ingestion now happens in ClaudeCodeQuotaMenu.fetchQuota (DB-first); the
+  // switcher just reloads the persisted account list whenever the panel gets a
+  // fresh snapshot (its `updatedAt` bumps after each refresh).
   useEffect(() => {
-    let cancelled = false;
-    const run = async () => {
-      if (
-        snapshot.status === 'ok' &&
-        snapshot.identity?.externalAccountId &&
-        snapshot.readings?.length
-      ) {
-        try {
-          await agentQuotaService.ingestClaudeSnapshot({
-            identity: snapshot.identity,
-            readings: snapshot.readings,
-          });
-        } catch {
-          /* persistence is best-effort; still show what's already stored */
-        }
-      }
-      if (!cancelled) await reload().catch(() => {});
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-    // `updatedAt` is the intentional trigger — it changes on every fresh snapshot,
-    // whereas identity/readings are new object refs each render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    void reload().catch(() => {});
   }, [snapshot.updatedAt, reload]);
 
   const pinnedId = bindings.find((b) => b.role === 'pinned')?.accountId;
