@@ -44,3 +44,23 @@
 
 - 修复前 Git 回滚提交：`7647cb4637`。
 - 服务器配置备份：`/root/codex-backups/lobehub-mobile-upload-20260718-202050`。
+
+## 2026-07-18：删除 LobeHub 的 443 到 3210 强制跳转
+
+### 用户要求
+
+- 删除服务器上把访问强制跳转到 HTTPS `3210` 的规则。
+- 用户计划通过 Lucky 穿透后使用公网 IPv4 IP 访问。
+- 保留现有 HTTPS `3210`、附件上传代理和其他服务配置。
+
+### 修改前确认
+
+- Nginx 存在独立的 `443` SSL 监听块，该块仅返回 `301 https://$host:3210$request_uri`。
+- HTTPS `3210` 主站和 `/lobe` 文件代理位于另一个独立服务块。
+- LobeHub 内部 HTTP 后端为 `127.0.0.1:13210`。
+- LobeHub 应用认证层仍使用固定 `APP_URL`，未登录的 IP/HTTP 请求会由应用自身跳回 HTTPS 域名，此行为不属于 Nginx 的 `443` 跳转。
+
+### 回滚信息
+
+- 修改前 Git 回滚提交：`6de666e69a`。
+- 服务器配置备份：`/root/codex-backups/lobehub-remove-443-redirect-20260718-221817`。
