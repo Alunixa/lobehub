@@ -9,6 +9,18 @@ import * as verifyServices from '@/server/services/verify';
 import { CompletionLifecycle } from '../CompletionLifecycle';
 import { hookDispatcher } from '../hooks';
 
+// Default async no-op implementation: the production code chains `.catch` on
+// the returned promise, so a bare vi.fn() (returning undefined) would throw
+// inside every unrelated `done`-path test. mockRestore/mockReset fall back to
+// this original implementation.
+const { mockNotifyAgentRunCompleted } = vi.hoisted(() => ({
+  mockNotifyAgentRunCompleted: vi.fn(async () => {}),
+}));
+
+vi.mock('@/business/server/agent-run/notifyAgentRunCompleted', () => ({
+  notifyAgentRunCompleted: mockNotifyAgentRunCompleted,
+}));
+
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const buildLifecycle = () => new CompletionLifecycle({} as any, 'user-1');
@@ -584,6 +596,94 @@ describe('CompletionLifecycle.dispatchHooks — async-tool park', () => {
 
     expect(dispatchSpy).toHaveBeenCalledWith('op-1', 'onComplete', expect.anything(), []);
     expect(unregisterSpy).toHaveBeenCalledWith('op-1');
+  });
+});
+
+describe('CompletionLifecycle.dispatchHooks — completion notification', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    mockNotifyAgentRunCompleted.mockClear();
+  });
+
+  const stubSideEffects = (lifecycle: CompletionLifecycle) => {
+    vi.spyOn(lifecycle as any, 'persistCompletion').mockResolvedValue(undefined);
+    vi.spyOn(lifecycle as any, 'createVerifyMessage').mockResolvedValue(undefined);
+    vi.spyOn(hookDispatcher, 'dispatch').mockResolvedValue(undefined as any);
+    vi.spyOn(hookDispatcher, 'unregister').mockImplementation(() => {});
+    vi.spyOn(verifyServices, 'runVerifyOnCompletion').mockResolvedValue(undefined);
+  };
+
+  it('notifies with fields mapped from the lifecycle event on a done completion', async () => {
+    const lifecycle = buildLifecycle();
+    stubSideEffects(lifecycle);
+    mockNotifyAgentRunCompleted.mockResolvedValue(undefined);
+
+    const createdAt = new Date(Date.now() - 90_000).toISOString();
+    const doneState = {
+      createdAt,
+      messages: [{ content: 'final reply', role: 'assistant' }],
+      metadata: { _hooks: [], agentId: 'agt_1', topicId: 'tpc_1', userId: 'user-2' },
+      status: 'done',
+    };
+    await lifecycle.dispatchHooks('op-1', doneState, 'done');
+
+    expect(mockNotifyAgentRunCompleted).toHaveBeenCalledTimes(1);
+    expect(mockNotifyAgentRunCompleted).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agentId: 'agt_1',
+        duration: expect.any(Number),
+        lastAssistantContent: 'final reply',
+        operationId: 'op-1',
+        topicId: 'tpc_1',
+        userId: 'user-2',
+      }),
+    );
+  });
+
+  it('does not notify for sub-agent completions', async () => {
+    const lifecycle = buildLifecycle();
+    stubSideEffects(lifecycle);
+    mockNotifyAgentRunCompleted.mockResolvedValue(undefined);
+
+    const doneState = {
+      metadata: { _hooks: [], agentId: 'agt_1', isSubAgent: true, topicId: 'tpc_1' },
+      status: 'done',
+    };
+    await lifecycle.dispatchHooks('op-1', doneState, 'done');
+
+    expect(mockNotifyAgentRunCompleted).not.toHaveBeenCalled();
+  });
+
+  it('does not notify on non-done terminals', async () => {
+    const lifecycle = buildLifecycle();
+    stubSideEffects(lifecycle);
+    mockNotifyAgentRunCompleted.mockResolvedValue(undefined);
+
+    await lifecycle.dispatchHooks(
+      'op-1',
+      { metadata: { _hooks: [], agentId: 'agt_1' }, status: 'error' },
+      'error',
+    );
+
+    expect(mockNotifyAgentRunCompleted).not.toHaveBeenCalled();
+  });
+
+  it('a notification rejection never breaks the dispatch pipeline', async () => {
+    const lifecycle = buildLifecycle();
+    stubSideEffects(lifecycle);
+    mockNotifyAgentRunCompleted.mockRejectedValue(new Error('push provider down'));
+
+    const doneState = { metadata: { _hooks: [], agentId: 'agt_1' }, status: 'done' };
+    await expect(lifecycle.dispatchHooks('op-1', doneState, 'done')).resolves.toBeUndefined();
+    await flushMicrotasks();
+
+    expect(hookDispatcher.dispatch).toHaveBeenCalledWith(
+      'op-1',
+      'onComplete',
+      expect.anything(),
+      [],
+    );
+    expect(hookDispatcher.unregister).toHaveBeenCalledWith('op-1');
   });
 });
 
