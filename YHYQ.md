@@ -23,11 +23,24 @@
 - 创建修复前 Git 回滚提交：`7647cb4637`。
 - 创建服务器配置备份：`/root/codex-backups/lobehub-mobile-upload-20260718-202050`。
 
-### 待执行方案
+### 实施结果
 
-- 备份服务器上的 LobeHub `.env`、Docker Compose 和 Nginx 配置。
-- 在现有 HTTPS `3210` 站点下增加同源 `/lobe` 文件路径代理，保留原始 Host 与端口以兼容 S3 预签名。
-- 将 LobeHub S3 地址改为现有公网 HTTPS `3210` 地址。
-- 为 RustFS 的 `lobe` 存储桶配置精确的上传 CORS。
-- 仅平滑重新加载 Nginx并重建 LobeHub 容器。
-- 验证预签名上传、文件读取、LobeHub 登录/聊天接口和其他容器状态。
+- 在现有 HTTPS `3210` 站点下增加了同源 `/lobe` 与 `/lobe/` 文件路径代理。
+- RustFS 代理保留了原始 Host 和 `:3210` 端口，兼容 S3 SigV4 预签名校验。
+- 将 `S3_ENDPOINT`、`S3_PUBLIC_DOMAIN` 和 `NEXT_PUBLIC_S3_DOMAIN` 统一改为现有公网 HTTPS `3210` 地址。
+- 新增 `/mnt/sda1/lobehub/bucket.cors.xml`，并将精确来源 CORS 写入 RustFS 的 `lobe` 存储桶。
+- Nginx 配置通过语法检查并完成平滑重新加载。
+- 仅强制重建了 `lobehub` 容器；PostgreSQL、Redis、RustFS、SearXNG 和设备网关均未重启。
+
+### 验证结果
+
+- 公网 HTTPS 页面跟随登录跳转后返回 `200`，TLS 校验结果为 `0`。
+- HTTPS CORS 预检返回 `200`，并包含正确的允许来源、方法和请求头。
+- 在 `lobehub` 容器内完成真实 SigV4 预签名 `PUT → GET → DELETE` 闭环，状态分别为 `200 → 200 → 204`。
+- 下载内容与上传内容完全一致，临时测试对象删除后返回 `404`。
+- Nginx 最终语法检查通过，所有 LobeHub 相关容器均处于运行状态。
+
+### 回滚信息
+
+- 修复前 Git 回滚提交：`7647cb4637`。
+- 服务器配置备份：`/root/codex-backups/lobehub-mobile-upload-20260718-202050`。
