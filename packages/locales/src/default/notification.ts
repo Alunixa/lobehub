@@ -23,6 +23,8 @@ export default {
     'You received this email because of your notification settings on LobeHub.',
   'email.footer.system': 'This is an important account notification from LobeHub.',
   'email.viewDetails': 'View Details',
+  'agent_run_completed': '{{preview}}',
+  'agent_run_completed_title': 'Agent task completed',
   'image_generation_completed': 'Your image "{{prompt}}" is ready.',
   'image_generation_completed_title': 'Image generation completed',
   'inbox.archive': 'Archive',
