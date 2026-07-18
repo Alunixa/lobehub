@@ -64,3 +64,19 @@
 
 - 修改前 Git 回滚提交：`6de666e69a`。
 - 服务器配置备份：`/root/codex-backups/lobehub-remove-443-redirect-20260718-221817`。
+
+### 实施结果
+
+- 已从 `/etc/nginx/nginx.conf` 删除监听 `443` 并返回 `301 https://$host:3210$request_uri` 的独立服务块。
+- Nginx 配置检查通过并完成平滑重新加载。
+- 当前 Nginx 不再监听 `443`。
+- HTTPS `3210` 主站仍正常响应。
+- `/lobe` 附件存储代理仍能到达 RustFS。
+- 本次未重启或重建任何 Docker 容器。
+
+### Lucky IPv4 验证
+
+- Lucky 可以将 HTTP 后端指向路由器本机的 `127.0.0.1:13210`。
+- 该后端不经过已删除的 Nginx `443` 跳转。
+- 未登录请求仍会被 LobeHub 应用认证层跳转到固定 `APP_URL` 域名。
+- 如果需要使用公网 IPv4 IP 完成登录，还需要确定 Lucky 对外的 IPv4 地址和端口，并单独处理应用认证来源；这与 Nginx 的 `443` 跳转是两个独立问题。
