@@ -161,3 +161,27 @@
 - 构建新的本地 LobeHub 镜像后，仅使用 `--no-deps --force-recreate` 重建 `lobehub` 服务。
 - 不修改 Compose、`.env`、Nginx 或其他容器配置。
 - 在 `ygzzfyh123` 账号的 Fork 上触发 Windows-only GitHub Actions，并将构建产物发布为带完整修复说明的预发布 Release。
+
+### Windows EXE 构建与发布结果
+
+- 已将提交 `8830ad892a1a955ff9dadf36155da0cf2141b2b8` 推送到 Fork 分支 `codex/memory-search-20260719`。
+- GitHub Actions Windows-only 构建运行 `29693194166` 已成功完成。
+- `Build artifact on Windows` 与 `Upload artifact` 步骤均通过。
+- Windows 版本号为 `2.2.8-custom.20260719.1`。
+- 已创建预发布版本 `v2.2.8-custom.20260719.1`。
+- Release 地址：`https://github.com/ygzzfyh123/lobehub/releases/tag/v2.2.8-custom.20260719.1`。
+- 安装包已下载到 `C:\Users\Administrator\Desktop\LobeHub-2.2.8-custom.20260719.1\LobeHub-2.2.8-custom.20260719.1-setup.exe`。
+- 安装包大小为 `137609991` 字节。
+- 安装包 SHA-256 为 `A5F609CB76D3F42F208CD47E444245ABB073F60BAECAAFEED48328448DB2BA64`。
+- 安装包版本信息中的 `FileVersion` 与 `ProductVersion` 均为 `2.2.8-custom.20260719.1`。
+- 当前未配置 Windows 商业代码签名证书，安装包签名状态为 `NotSigned`。
+- Release 同时包含 `latest.yml` 和安装包 `.blockmap` 文件。
+
+### 服务端构建进行中
+
+- 当前线上 `lobehub` 仍使用原镜像 `sha256:1f223acf95d724db0a67d9e4ab683c20284b9d485fa1c781dbcd9bba87731cce`。
+- 原镜像备份标签为 `lobehub/lobehub:backup-20260719-8830ad892a`。
+- 新镜像目标标签为 `lobehub/lobehub:codex-8830ad892a`。
+- 构建日志为 `/mnt/sda1/lobehub/custom-build/build-8830ad892a.log`。
+- 构建已完成依赖安装，Docker 正在提交包含依赖的镜像层。
+- 截至本次记录，尚未替换或重启线上 `lobehub` 容器，其他容器也均未重启。
