@@ -1,0 +1,154 @@
+use_default_settings: true
+
+server:
+  secret_key: 'lobe-search-internal-4ee2e768f5e14d85a1f8a747'
+  limiter: false
+  image_proxy: true
+  method: 'GET'
+
+search:
+  safe_search: 0
+  autocomplete: ''
+  default_lang: 'auto'
+  ban_time_on_fail: 5
+  max_ban_time_on_fail: 120
+  formats:
+    - html
+    - json
+
+outgoing:
+  request_timeout: 12.0
+  max_request_timeout: 20.0
+  pool_connections: 100
+  pool_maxsize: 20
+  enable_http2: false
+  useragent_suffix: 'LobeHub-SelfHosted'
+
+engines:
+  # These upstreams currently rate-limit or challenge this WAN exit.
+  # Keep them out of the default aggregate so one blocked engine cannot
+  # turn an otherwise healthy search into "engines unavailable".
+  - name: brave
+    disabled: true
+
+  - name: duckduckgo
+    disabled: true
+
+  - name: google cse
+    disabled: true
+
+  - name: startpage
+    disabled: true
+
+  # Verified no-key general web engines available in this image.
+  - name: duckduckgo web
+    engine: duckduckgo_web
+    shortcut: ddgw
+    disabled: false
+    timeout: 12.0
+
+  - name: 360search
+    engine: 360search
+    shortcut: 360so
+    disabled: false
+    timeout: 12.0
+
+  - name: dogpile
+    engine: dogpile
+    shortcut: dog
+    dogpile_categ: search
+    categories: general
+    disabled: false
+    timeout: 12.0
+
+  - name: gmx
+    engine: gmx
+    shortcut: gmx
+    disabled: false
+    timeout: 12.0
+
+  - name: mojeek
+    engine: mojeek
+    shortcut: mjk
+    categories:
+      - general
+      - web
+    disabled: false
+    timeout: 12.0
+
+  - name: mwmbl
+    engine: mwmbl
+    shortcut: mwm
+    disabled: false
+    timeout: 12.0
+
+  - name: privacywall
+    engine: privacywall
+    categories: general
+    privacywall_category: general
+    paging: false
+    shortcut: pw
+    disabled: false
+    timeout: 12.0
+
+  - name: seznam
+    engine: seznam
+    shortcut: szn
+    disabled: false
+    timeout: 12.0
+
+  - name: sogou
+    engine: sogou
+    shortcut: sogou
+    disabled: false
+    timeout: 12.0
+
+  - name: wiby
+    engine: json_engine
+    paging: true
+    search_url: 'https://wiby.me/json/?q={query}&p={pageno}'
+    url_query: URL
+    title_query: Title
+    content_query: Snippet
+    categories:
+      - general
+      - blogs
+    shortcut: wib
+    disabled: false
+    timeout: 12.0
+
+  - name: yandex
+    engine: yandex
+    categories: general
+    search_type: web
+    shortcut: yd
+    disabled: false
+    timeout: 12.0
+
+  - name: yep
+    engine: yep
+    shortcut: yep
+    categories: general
+    disabled: false
+    timeout: 12.0
+
+  # Keep knowledge engines used by the default general category.
+  - name: wikipedia
+    engine: wikipedia
+    shortcut: wp
+    display_type:
+      - infobox
+    categories:
+      - general
+    disabled: false
+
+  - name: wikidata
+    engine: wikidata
+    shortcut: wd
+    timeout: 6.0
+    weight: 2
+    display_type:
+      - infobox
+    categories:
+      - general
+    disabled: false

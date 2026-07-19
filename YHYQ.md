@@ -129,7 +129,7 @@
 - 将记忆嵌入 `BaseURL` 与 `Key` 保存到现有用户 `keyVaults`，沿用 `KeyVaultsGateKeeper` AES-GCM 加密存储。
 - 新增共享记忆嵌入运行时解析器；关闭开关时不初始化模型运行时，搜索传空向量走 BM25，新增和更新记忆只写文本与空向量。
 - 开启开关时使用账户配置的 OpenAI 兼容嵌入接口；缺少配置或接口失败时保留真实错误，不做静默降级。
-- 在高级设置页新增“记忆嵌入模型”分组，开启后显示 `BaseURL`、`Key`、嵌入模型名称和保存按钮。
+- 在高级设置页新增 “记忆嵌入模型” 分组，开启后显示 `BaseURL`、`Key`、嵌入模型名称和保存按钮。
 - 统一增强记忆工具错误消息提取，兼容 `message`、嵌套 `error.message` 和 `errorType`，并在失败工具结果中附带结构化 `error`。
 - SearXNG 在零结果且存在 `unresponsive_engines` 时返回真实引擎故障；搜索服务遇到错误不再立即重复请求，并在所有提供商失败后保留最后错误。
 - 本地依赖恢复因仓库 overrides 与锁文件历史不一致，改用不写锁文件的方式补齐 Windows 校验工具；安装超时后终止了本次启动的 pnpm 进程。
@@ -213,7 +213,7 @@
 
 ### 用户要求
 
-- 修复手机版网页 LobeHub 聊天输入区中，模型选择器右侧“加号”无法点击的问题。
+- 修复手机版网页 LobeHub 聊天输入区中，模型选择器右侧 “加号” 无法点击的问题。
 - 本次只处理相关前端交互，不修改服务端、Nginx、数据库、Docker 或其他现有服务配置。
 
 ### 当前行动
@@ -288,12 +288,14 @@
 ### 用户要求
 
 - 继续处理 `SearXNG search engines unavailable: brave: too many requests; duckduckgo: timeout; google cse: timeout; startpage: timeout`。
-- 尽量把所有无需 API Key 的搜索引擎都加上。
-- 若可行，也修复 Brave、DuckDuckGo、Google CSE、Startpage 的超时或限流问题。
+- 加入当前 SearXNG 版本支持且无需 API Key 的通用网页搜索引擎。
+- 若可行，解决 Brave、DuckDuckGo、Google CSE 和 Startpage 的限流或超时。
 
-### 当前行动
+### 已执行与诊断
 
-- 已创建修改前 Git 回滚提交：`21bad2016f`。
-- 已确认当前 `SEARCH_PROVIDERS=searxng`，且 SearXNG 使用最小 `settings.yml`，只依赖默认引擎。
-- 已在服务器备份原配置到 `/root/codex-backups/searxng-engines-20260719-185700`。
-- 将只修改 SearXNG 配置并重建 `lobe-searxng`，不改动 Nginx、数据库、Redis、RustFS、设备网关和 LobeHub 主服务。
+- 已创建修改前 Git 回滚提交：`21bad2016f`，以及继续处理前回滚锚点：`532cbfdadc`。
+- 已确认只读挂载的服务端配置为 `/mnt/sda1/lobehub/searxng/settings.yml`。
+- 已确认 Brave 返回真实 HTTP 429，DuckDuckGo HTML 与 Startpage 返回验证码，Google CSE 连续调用后也会限流；这些属于上游针对当前出口 IP 的限制，不能通过单纯延长超时解决。
+- 已验证 DuckDuckGo Web、360 Search、Dogpile、GMX、Mojeek、Mwmbl、PrivacyWall、Seznam、搜狗、Yandex、Yep 等免 Key 通用网页引擎能够从当前容器出口正常返回结果。
+- 已准备仅针对 `lobe-searxng` 的配置草案，停用被限流或验证码拦截的默认引擎，启用实测可用的免 Key 替代引擎。
+- 本轮不会修改 Nginx、LobeHub、PostgreSQL、Redis、RustFS、设备网关、OpenClash 或其他服务。
