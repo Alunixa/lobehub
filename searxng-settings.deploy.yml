@@ -34,6 +34,9 @@ engines:
   - name: duckduckgo
     disabled: true
 
+  - name: duckduckgo web
+    disabled: true
+
   - name: google cse
     disabled: true
 
@@ -48,12 +51,6 @@ engines:
     disabled: true
 
   # Verified no-key general web engines available in this image.
-  - name: duckduckgo web
-    engine: duckduckgo_web
-    shortcut: ddgw
-    disabled: false
-    timeout: 12.0
-
   - name: 360search
     engine: 360search
     shortcut: 360so
