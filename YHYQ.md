@@ -303,4 +303,9 @@
 - 第三轮连续 12 组查询发现 DuckDuckGo Web 在部分请求中出现解析错误，因此将其排除；其余 8 个免 Key 通用引擎仍可持续返回搜索结果。
 - 第四轮连续 15 组压力查询发现 PrivacyWall 很快触发 429，GMX 在中文查询中偶发解析错误，因此将这两个引擎排除。
 - 第五轮连续查询发现 Yep 返回访问拒绝，因此将其排除；当前稳定集合收敛为 360 Search、Dogpile、Mwmbl、Wiby 和 Yandex。
-- 本轮不会修改 Nginx、LobeHub、PostgreSQL、Redis、RustFS、设备网关、OpenClash 或其他服务。
+- 最终临时容器连续完成 20 组中英文查询，共返回 1755 条结果，所有查询的 `unresponsive_engines` 均为空，最慢响应为 2.04 秒。
+- 已保留部署前配置备份 `/root/codex-backups/searxng-engines-20260719-185700/settings-before-final.yml`，其 SHA-256 为 `ab5e6bdc8709a0ea6dfeb198034d8fb7fc7865c7bdab9ec5e05ac91b38783eeb`。
+- 已将最终配置部署到 `/mnt/sda1/lobehub/searxng/settings.yml`，SHA-256 为 `75d2b034a3b6d2ff166661f3b1330cde73a9c917c7bcd3cf2fc34c1a2c254bd3`，并且只重启了 `lobe-searxng`。
+- 正式容器完成 10 组中英文查询，共返回 961 条结果，不可用引擎列表全部为空；从 LobeHub 主容器调用 SearXNG 返回 HTTP 200、16 条结果且无不可用引擎。
+- 已删除临时测试容器和临时配置文件。
+- 本轮未修改 Nginx、LobeHub、PostgreSQL、Redis、RustFS、设备网关、OpenClash 或其他服务。
