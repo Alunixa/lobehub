@@ -574,8 +574,9 @@ export class CompletionLifecycle {
         // away (push / inbox). Fire-and-forget through the `@/business` slot —
         // the default implementation is a no-op. Sub-agent / group member
         // completions are internal steps of a parent run, never a user-facing
-        // recall.
-        if (metadata?.isSubAgent !== true) {
+        // recall — in-group members carry `orchestrationRole: 'member'`
+        // WITHOUT `isSubAgent` (see execAgentMember), so guard both.
+        if (metadata?.isSubAgent !== true && metadata?.orchestrationRole !== 'member') {
           void notifyAgentRunCompleted({
             agentId: event.agentId || undefined,
             duration: event.duration,

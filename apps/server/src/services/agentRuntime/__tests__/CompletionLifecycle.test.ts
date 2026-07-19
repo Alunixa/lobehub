@@ -652,6 +652,21 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
     expect(mockNotifyAgentRunCompleted).not.toHaveBeenCalled();
   });
 
+  it('does not notify for in-group member completions (orchestrationRole without isSubAgent)', async () => {
+    const lifecycle = buildLifecycle();
+    stubSideEffects(lifecycle);
+
+    // execAgentMember stamps in-group members with orchestrationRole: 'member'
+    // but NOT isSubAgent — they are internal steps of the supervisor run.
+    const doneState = {
+      metadata: { _hooks: [], agentId: 'agt_1', orchestrationRole: 'member', topicId: 'tpc_1' },
+      status: 'done',
+    };
+    await lifecycle.dispatchHooks('op-1', doneState, 'done');
+
+    expect(mockNotifyAgentRunCompleted).not.toHaveBeenCalled();
+  });
+
   it('does not notify on non-done terminals', async () => {
     const lifecycle = buildLifecycle();
     stubSideEffects(lifecycle);
