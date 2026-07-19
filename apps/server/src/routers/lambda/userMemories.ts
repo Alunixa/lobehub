@@ -1,7 +1,5 @@
-import { BRANDING_PROVIDER, ENABLE_BUSINESS_FEATURES } from '@lobechat/business-const';
 import {
   DEFAULT_SEARCH_USER_MEMORY_TOP_K,
-  DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM,
   MEMORY_SEARCH_TOP_K_LIMITS,
 } from '@lobechat/const';
 import { type LobeChatDatabase } from '@lobechat/database';
@@ -16,6 +14,7 @@ import {
 } from '@lobechat/memory-user-memory';
 import type { QueryTaxonomyOptionsResult, SearchMemoryResult } from '@lobechat/types';
 import { LayersEnum, queryTaxonomyOptionsSchema, searchMemorySchema } from '@lobechat/types';
+import { getErrorMessage } from '@lobechat/utils/error';
 import { type SQL } from 'drizzle-orm';
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
 import pMap from 'p-map';
@@ -44,10 +43,9 @@ import {
 } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { getServerDefaultFilesConfig } from '@/server/globalConfig';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
-import type { UserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/embedding';
 import { embedUserMemoryTexts } from '@/server/services/memory/userMemory/embedding';
+import type { ResolvedUserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/runtime';
+import { resolveUserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/runtime';
 import { normalizeSearchMemoryParams } from '@/server/services/memory/userMemory/searchParams';
 
 const EMPTY_SEARCH_RESULT: SearchMemoryResult = {
@@ -121,20 +119,21 @@ const searchUserMemories = async (
   input: z.infer<typeof searchMemorySchema>,
 ): Promise<SearchMemoryResult> => {
   const normalizedInput = normalizeSearchMemoryParams(input);
-  const { provider, model: embeddingModel } =
-    getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
-  const modelRuntime = await initModelRuntimeFromDB(ctx.serverDB, ctx.userId, provider);
+  const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+    serverDB: ctx.serverDB,
+    userId: ctx.userId,
+  });
   const normalizedQueries = [
     ...new Set((normalizedInput.queries ?? []).map((query) => query.trim()).filter(Boolean)),
   ];
 
   const queryEmbeddings =
-    normalizedQueries.length > 0
+    embeddingRuntime && normalizedQueries.length > 0
       ? (
           await embedUserMemoryTexts({
             input: normalizedQueries,
-            model: embeddingModel,
-            runtime: modelRuntime,
+            model: embeddingRuntime.model,
+            runtime: embeddingRuntime.runtime,
             source: 'lambda:userMemories.search',
             userId: ctx.userId,
           })
@@ -161,31 +160,17 @@ const searchUserMemories = async (
   ) as Promise<SearchMemoryResult>;
 };
 
-const getEmbeddingRuntime = async (serverDB: LobeChatDatabase, userId: string) => {
-  const { provider, model: embeddingModel } =
-    getServerDefaultFilesConfig().embeddingModel || DEFAULT_USER_MEMORY_EMBEDDING_MODEL_ITEM;
-  // Read user's provider config from database
-  const agentRuntime = await initModelRuntimeFromDB(
-    serverDB,
-    userId,
-    ENABLE_BUSINESS_FEATURES ? BRANDING_PROVIDER : provider,
-  );
-
-  return { agentRuntime, embeddingModel };
-};
-
 const createEmbedder = (
-  agentRuntime: UserMemoryEmbeddingRuntime,
-  embeddingModel: string,
+  embeddingRuntime: ResolvedUserMemoryEmbeddingRuntime | undefined,
   userId: string,
 ) => {
   return async (value?: string | null): Promise<number[] | undefined> => {
-    if (!value || value.trim().length === 0) return undefined;
+    if (!embeddingRuntime || !value || value.trim().length === 0) return undefined;
 
     const [embedding] = await embedUserMemoryTexts({
       input: [value],
-      model: embeddingModel,
-      runtime: agentRuntime,
+      model: embeddingRuntime.model,
+      runtime: embeddingRuntime.runtime,
       source: 'lambda:userMemories.tool',
       userId,
     });
@@ -460,10 +445,12 @@ export const userMemoriesRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const options = input ?? {};
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        if (!embeddingRuntime) throw new Error('Memory embedding is disabled');
+
         const concurrency = options.concurrency ?? 10;
         const shouldProcess = (key: ReEmbedTableKey) =>
           !options.only || options.only.length === 0 || options.only.includes(key);
@@ -473,8 +460,8 @@ export const userMemoriesRouter = router({
 
           const response = await embedUserMemoryTexts({
             input: texts,
-            model: embeddingModel,
-            runtime: agentRuntime,
+            model: embeddingRuntime.model,
+            runtime: embeddingRuntime.runtime,
             source: 'lambda:userMemories.reEmbed',
             userId: ctx.userId,
           });
@@ -912,7 +899,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to re-embed memories:', error);
         return {
-          message: `Failed to re-embed memories: ${(error as Error).message}`,
+          message: `Failed to re-embed memories: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -974,11 +961,11 @@ export const userMemoriesRouter = router({
     .input(ActivityMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
-        const embed = createEmbedder(agentRuntime, embeddingModel, ctx.userId);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        const embed = createEmbedder(embeddingRuntime, ctx.userId);
 
         const summaryEmbedding = await embed(input.summary);
         const detailsEmbedding = await embed(input.details);
@@ -1026,7 +1013,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to save memory:', error);
         return {
-          message: `Failed to save memory: ${(error as Error).message}`,
+          message: `Failed to save memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -1036,11 +1023,11 @@ export const userMemoriesRouter = router({
     .input(ContextMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
-        const embed = createEmbedder(agentRuntime, embeddingModel, ctx.userId);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        const embed = createEmbedder(embeddingRuntime, ctx.userId);
 
         const summaryEmbedding = await embed(input.summary);
         const detailsEmbedding = await embed(input.details);
@@ -1081,7 +1068,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to save memory:', error);
         return {
-          message: `Failed to save memory: ${(error as Error).message}`,
+          message: `Failed to save memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -1091,11 +1078,11 @@ export const userMemoriesRouter = router({
     .input(ExperienceMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
-        const embed = createEmbedder(agentRuntime, embeddingModel, ctx.userId);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        const embed = createEmbedder(embeddingRuntime, ctx.userId);
 
         const summaryEmbedding = await embed(input.summary);
         const detailsEmbedding = await embed(input.details);
@@ -1137,7 +1124,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to save memory:', error);
         return {
-          message: `Failed to save memory: ${(error as Error).message}`,
+          message: `Failed to save memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -1147,11 +1134,11 @@ export const userMemoriesRouter = router({
     .input(AddIdentityActionSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
-        const embed = createEmbedder(agentRuntime, embeddingModel, ctx.userId);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        const embed = createEmbedder(embeddingRuntime, ctx.userId);
 
         const summaryEmbedding = await embed(input.summary);
         const detailsEmbedding = await embed(input.details);
@@ -1205,7 +1192,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to save identity memory:', error);
         return {
-          message: `Failed to save identity memory: ${(error as Error).message}`,
+          message: `Failed to save identity memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -1215,11 +1202,11 @@ export const userMemoriesRouter = router({
     .input(PreferenceMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
-        const embed = createEmbedder(agentRuntime, embeddingModel, ctx.userId);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        const embed = createEmbedder(embeddingRuntime, ctx.userId);
 
         const summaryEmbedding = await embed(input.summary);
         const detailsEmbedding = await embed(input.details);
@@ -1265,7 +1252,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to save memory:', error);
         return {
-          message: `Failed to save memory: ${(error as Error).message}`,
+          message: `Failed to save memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -1293,7 +1280,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to remove identity memory:', error);
         return {
-          message: `Failed to remove identity memory: ${(error as Error).message}`,
+          message: `Failed to remove identity memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }
@@ -1308,11 +1295,11 @@ export const userMemoriesRouter = router({
     .input(UpdateIdentityActionSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const { agentRuntime, embeddingModel } = await getEmbeddingRuntime(
-          ctx.serverDB,
-          ctx.userId,
-        );
-        const embed = createEmbedder(agentRuntime, embeddingModel, ctx.userId);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        });
+        const embed = createEmbedder(embeddingRuntime, ctx.userId);
 
         let summaryVector1024: number[] | null | undefined;
         if (input.set.summary !== undefined) {
@@ -1411,7 +1398,7 @@ export const userMemoriesRouter = router({
       } catch (error) {
         console.error('Failed to update identity memory:', error);
         return {
-          message: `Failed to update identity memory: ${(error as Error).message}`,
+          message: `Failed to update identity memory: ${getErrorMessage(error)}`,
           success: false,
         };
       }

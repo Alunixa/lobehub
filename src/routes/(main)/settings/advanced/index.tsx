@@ -18,6 +18,8 @@ import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfi
 import { useUserStore } from '@/store/user';
 import { labPreferSelectors, preferenceSelectors, settingsSelectors } from '@/store/user/selectors';
 
+import { useMemoryEmbeddingSettingsGroup } from './useMemoryEmbeddingSettingsGroup';
+
 type UpdateChannelValue = 'canary' | 'stable';
 
 const styles = createStaticStyles(({ css }) => ({
@@ -74,6 +76,7 @@ const Page = memo(() => {
   const [channel, setChannel] = useState<UpdateChannelValue>('stable');
   const [automaticUpdatesEnabled, setAutomaticUpdatesEnabled] = useState(false);
   const [automaticUpdatesLoading, setAutomaticUpdatesLoading] = useState(true);
+  const memoryEmbeddingGroup = useMemoryEmbeddingSettingsGroup();
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -305,8 +308,8 @@ const Page = memo(() => {
   };
 
   const items = isDesktop
-    ? [advancedGroup, updateChannelGroup, labsGroup]
-    : [advancedGroup, labsGroup];
+    ? [advancedGroup, updateChannelGroup, memoryEmbeddingGroup, labsGroup]
+    : [advancedGroup, memoryEmbeddingGroup, labsGroup];
 
   return (
     <>

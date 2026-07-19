@@ -22,6 +22,7 @@ import type {
   SearchMemoryResult,
   UpdateIdentityMemoryResult,
 } from '@lobechat/types';
+import { getErrorMessage } from '@lobechat/utils/error';
 import type { z } from 'zod';
 
 export interface MemoryRuntimeService {
@@ -57,10 +58,13 @@ export interface MemoryExecutionRuntimeOptions {
   toolPermission?: MemoryToolPermission;
 }
 
-const READ_ONLY_RESULT: BuiltinServerRuntimeOutput = {
-  content: 'Memory tool is in read-only mode for this chat',
+const failureResult = (message: string): BuiltinServerRuntimeOutput => ({
+  content: message,
+  error: { message },
   success: false,
-};
+});
+
+const READ_ONLY_RESULT = failureResult('Memory tool is in read-only mode for this chat');
 
 export class MemoryExecutionRuntime {
   private service: MemoryRuntimeService;
@@ -88,10 +92,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `searchUserMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`searchUserMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -107,10 +108,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `queryTaxonomyOptions with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`queryTaxonomyOptions with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -122,7 +120,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.addContextMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -131,10 +129,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `addContextMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`addContextMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -146,7 +141,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.addActivityMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -155,10 +150,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `addActivityMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`addActivityMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -170,7 +162,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.addExperienceMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -179,10 +171,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `addExperienceMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`addExperienceMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -194,7 +183,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.addIdentityMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -203,10 +192,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `addIdentityMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`addIdentityMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -218,7 +204,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.addPreferenceMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -227,10 +213,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `addPreferenceMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`addPreferenceMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -242,7 +225,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.updateIdentityMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -251,10 +234,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `updateIdentityMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`updateIdentityMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 
@@ -266,7 +246,7 @@ export class MemoryExecutionRuntime {
       const result = await this.service.removeIdentityMemory(params);
 
       if (!result.success) {
-        return { content: result.message, success: false };
+        return failureResult(result.message);
       }
 
       return {
@@ -275,10 +255,7 @@ export class MemoryExecutionRuntime {
         success: true,
       };
     } catch (e) {
-      return {
-        content: `removeIdentityMemory with error detail: ${(e as Error).message}`,
-        success: false,
-      };
+      return failureResult(`removeIdentityMemory with error detail: ${getErrorMessage(e)}`);
     }
   }
 }

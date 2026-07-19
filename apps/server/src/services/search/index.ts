@@ -1,4 +1,4 @@
-import type { SearchParams, SearchQuery } from '@lobechat/types';
+import type { SearchParams, SearchQuery, UniformSearchResponse } from '@lobechat/types';
 import type { Crawler, CrawlImplType, CrawlUniformResult } from '@lobechat/web-crawler';
 import debug from 'debug';
 import pMap from 'p-map';
@@ -196,6 +196,8 @@ export class SearchService {
       }
     } catch {}
 
+    let lastErrorResponse: UniformSearchResponse | undefined;
+
     for (const impl of this.searchImpList) {
       try {
         if (log.enabled) {
@@ -213,6 +215,10 @@ export class SearchService {
         searchTimeRange,
       });
       let data = await this.queryWithImpl(impl, query, currentParams);
+      if (data.errorDetail) {
+        lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
+        continue;
+      }
 
       // First retry: remove search engine restrictions if no results found
       if (data.results.length === 0 && currentParams?.searchEngines?.length) {
@@ -221,11 +227,19 @@ export class SearchService {
           searchTimeRange,
         });
         data = await this.queryWithImpl(impl, query, currentParams);
+        if (data.errorDetail) {
+          lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
+          continue;
+        }
       }
 
       // Second retry: remove all restrictions if still no results found
       if (data.results.length === 0 && currentParams) {
         data = await this.queryWithImpl(impl, query);
+        if (data.errorDetail) {
+          lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
+          continue;
+        }
       }
 
       // If this provider returned results, use them
@@ -234,8 +248,9 @@ export class SearchService {
       }
     }
 
-    // All providers exhausted, return empty result
-    return { costTime: 0, query, resultNumbers: 0, results: [] };
+    // All providers exhausted. Preserve a real provider error instead of
+    // disguising it as a successful empty search.
+    return lastErrorResponse || { costTime: 0, query, resultNumbers: 0, results: [] };
   }
 }
 

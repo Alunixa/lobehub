@@ -1140,6 +1140,25 @@ When I am ___, I need ___
   'tab.advanced.gatewayMode.desc':
     'Run supported agent tasks through the cloud Gateway by default. Individual agents can override this from the chat menu.',
   'tab.advanced.gatewayMode.title': 'Gateway Mode',
+  'tab.advanced.memoryEmbedding.apiKey.desc':
+    'Stored encrypted with the account key vault and used only for memory embeddings.',
+  'tab.advanced.memoryEmbedding.apiKey.title': 'Key',
+  'tab.advanced.memoryEmbedding.baseURL.desc':
+    'OpenAI-compatible API base URL, usually ending in /v1.',
+  'tab.advanced.memoryEmbedding.baseURL.title': 'BaseURL',
+  'tab.advanced.memoryEmbedding.enabled.desc':
+    'When disabled, memory is stored without vectors and retrieved with BM25 keyword search.',
+  'tab.advanced.memoryEmbedding.enabled.title': 'Use embedding model',
+  'tab.advanced.memoryEmbedding.model.desc':
+    'Embedding model name accepted by the configured API.',
+  'tab.advanced.memoryEmbedding.model.title': 'Embedding model name',
+  'tab.advanced.memoryEmbedding.save': 'Save',
+  'tab.advanced.memoryEmbedding.saveError': 'Failed to save memory embedding settings',
+  'tab.advanced.memoryEmbedding.saveSuccess': 'Memory embedding settings saved',
+  'tab.advanced.memoryEmbedding.title': 'Memory embedding model',
+  'tab.advanced.memoryEmbedding.validation.baseURL': 'Enter a valid HTTP or HTTPS BaseURL',
+  'tab.advanced.memoryEmbedding.validation.required':
+    'BaseURL, Key, and embedding model name are required when enabled',
   'tab.advanced.toolsAndDiagnostics.title': 'Tools and diagnostics',
   'tab.addAgentSkill': 'Add Agent Skill',
   'tab.advanced.updateChannel.canary': 'Canary',

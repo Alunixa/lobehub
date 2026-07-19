@@ -1,5 +1,7 @@
 // Source copied from: https://github.com/moeru-ai/std/blob/72279973ff997b65672a9c85555c3736554bd9b9/packages/std/src/error/index.ts#L41-L46
 
+import { isRecord, pickTrimmedString } from './object';
+
 type Nullable<T> = {
   [P in keyof T]: null | T[P];
 };
@@ -64,4 +66,28 @@ export const errorCauseFrom = <C>(err: null | undefined | unknown): C | undefine
   if (!isErrorLike(err) || err.cause == null) return undefined;
 
   return err.cause as C | undefined;
+};
+
+/**
+ * Extracts a useful message from thrown errors and provider-style error payloads.
+ */
+export const getErrorMessage = (error: unknown, fallback = 'Unknown error'): string => {
+  const directString = pickTrimmedString(error);
+  if (directString) return directString;
+  if (!isRecord(error)) return fallback;
+
+  const directMessage = pickTrimmedString(error.message);
+  if (directMessage) return directMessage;
+
+  if (isRecord(error.error)) {
+    const nestedMessage = pickTrimmedString(error.error.message);
+    if (nestedMessage) return nestedMessage;
+  }
+
+  return (
+    pickTrimmedString(error.errorType) ||
+    pickTrimmedString(error.name) ||
+    pickTrimmedString(error.type) ||
+    fallback
+  );
 };

@@ -71,5 +71,6 @@ export interface SearchEngineKeyVaults {
 }
 
 export interface UserKeyVaults extends SearchEngineKeyVaults {
+  memoryEmbedding?: OpenAICompatibleKeyVault;
   search1api?: OpenAICompatibleKeyVault;
 }

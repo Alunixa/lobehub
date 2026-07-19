@@ -13,7 +13,8 @@
   "scripts": {},
   "dependencies": {
     "@lobechat/memory-user-memory": "workspace:*",
-    "@lobechat/prompts": "workspace:*"
+    "@lobechat/prompts": "workspace:*",
+    "@lobechat/utils": "workspace:*"
   },
   "devDependencies": {
     "@lobechat/types": "workspace:*",
