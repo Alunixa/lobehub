@@ -7,3 +7,9 @@ npm-debug.log
 .github
 *.md
 .env.example
+*.swap
+build-*.log
+build-*.pid
+codex-source-*.tar
+Dockerfile.before-*
+source-*
