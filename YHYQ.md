@@ -144,3 +144,20 @@
 - 已验证搜索提供商错误不会立即重复请求，所有提供商失败时保留最后错误。
 - 已验证账户嵌入关闭时不初始化模型、不请求向量，并以空向量调用数据库 BM25 搜索。
 - 已验证高级设置开启后显示三个配置输入框，并按账户保存嵌入开关、模型名称及加密密钥配置。
+
+## 2026-07-19：部署服务端并构建 Windows EXE
+
+### 用户要求
+
+- 将已完成的搜索与记忆嵌入配置修复部署到 `192.168.100.1` 的 LobeHub 服务端。
+- 编译 Windows EXE。
+- 保持现有 Nginx、PostgreSQL、Redis、RustFS、SearXNG、设备网关和其他服务不受影响。
+- Windows 构建通过 GitHub Actions 完成，并发布到 GitHub Releases。
+
+### 部署方案
+
+- 服务端保留当前 `lobehub/lobehub:latest` 镜像的独立备份标签。
+- 使用提交 `e41a0a9d3a` 的跟踪文件同步更新现有 `/mnt/sda1/lobehub/custom-build` 构建上下文。
+- 构建新的本地 LobeHub 镜像后，仅使用 `--no-deps --force-recreate` 重建 `lobehub` 服务。
+- 不修改 Compose、`.env`、Nginx 或其他容器配置。
+- 在 `ygzzfyh123` 账号的 Fork 上触发 Windows-only GitHub Actions，并将构建产物发布为带完整修复说明的预发布 Release。
