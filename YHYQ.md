@@ -309,3 +309,14 @@
 - 正式容器完成 10 组中英文查询，共返回 961 条结果，不可用引擎列表全部为空；从 LobeHub 主容器调用 SearXNG 返回 HTTP 200、16 条结果且无不可用引擎。
 - 已删除临时测试容器和临时配置文件。
 - 本轮未修改 Nginx、LobeHub、PostgreSQL、Redis、RustFS、设备网关、OpenClash 或其他服务。
+
+## 2026-07-19：移除 360 Search
+
+### 用户要求
+
+- 从 SearXNG 默认聚合搜索中移除 360 Search，因为其搜索结果广告较多。
+
+### 当前行动
+
+- 已创建修改前 Git 回滚提交：`69cc4d9c29`。
+- 将只调整 SearXNG 引擎配置并重启 `lobe-searxng`，不修改其他服务。
