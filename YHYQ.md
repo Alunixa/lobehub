@@ -319,4 +319,9 @@
 ### 当前行动
 
 - 已创建修改前 Git 回滚提交：`69cc4d9c29`。
-- 将只调整 SearXNG 引擎配置并重启 `lobe-searxng`，不修改其他服务。
+- 已将 360 Search 设置为禁用并部署到正式 SearXNG 配置。
+- 部署前配置备份：`/root/codex-backups/searxng-engines-20260719-185700/settings-before-remove-360.yml`。
+- 新配置 SHA-256：`773081e80e780a483114930715def330835b257c299329e71d214fea5215f360`。
+- 只重启了原有 `lobe-searxng` 容器，容器 ID 保持为 `76165d49617f`，其他服务容器未修改或重启。
+- 正式容器完成 5 组查询，共返回 262 条结果，结果引擎中没有 360 Search，所有查询的不可用引擎列表均为空。
+- 从 LobeHub 主容器调用返回 HTTP 200、22 条结果且无不可用引擎。
