@@ -42,6 +42,10 @@ engines:
 
   - name: wikidata
     disabled: true
+    inactive: true
+
+  - name: mojeek
+    disabled: true
 
   # Verified no-key general web engines available in this image.
   - name: duckduckgo web
@@ -67,15 +71,6 @@ engines:
   - name: gmx
     engine: gmx
     shortcut: gmx
-    disabled: false
-    timeout: 12.0
-
-  - name: mojeek
-    engine: mojeek
-    shortcut: mjk
-    categories:
-      - general
-      - web
     disabled: false
     timeout: 12.0
 
