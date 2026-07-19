@@ -50,6 +50,12 @@ engines:
   - name: mojeek
     disabled: true
 
+  - name: gmx
+    disabled: true
+
+  - name: privacywall
+    disabled: true
+
   # Verified no-key general web engines available in this image.
   - name: 360search
     engine: 360search
@@ -65,24 +71,9 @@ engines:
     disabled: false
     timeout: 12.0
 
-  - name: gmx
-    engine: gmx
-    shortcut: gmx
-    disabled: false
-    timeout: 12.0
-
   - name: mwmbl
     engine: mwmbl
     shortcut: mwm
-    disabled: false
-    timeout: 12.0
-
-  - name: privacywall
-    engine: privacywall
-    categories: general
-    privacywall_category: general
-    paging: false
-    shortcut: pw
     disabled: false
     timeout: 12.0
 
