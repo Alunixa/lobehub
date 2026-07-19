@@ -2,6 +2,9 @@ import { type ListItem } from './types';
 
 export const menuKey = (provider: string, model: string) => `${provider}-${model}`;
 
+export const resolveOpenOnHover = (openOnHover: boolean, isMobile: boolean) =>
+  openOnHover && !isMobile;
+
 export const getListItemKey = (item: ListItem): string => {
   switch (item.type) {
     case 'model-item-single':
