@@ -616,7 +616,6 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
   it('notifies with fields mapped from the lifecycle event on a done completion', async () => {
     const lifecycle = buildLifecycle();
     stubSideEffects(lifecycle);
-    mockNotifyAgentRunCompleted.mockResolvedValue(undefined);
 
     const createdAt = new Date(Date.now() - 90_000).toISOString();
     const doneState = {
@@ -643,7 +642,6 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
   it('does not notify for sub-agent completions', async () => {
     const lifecycle = buildLifecycle();
     stubSideEffects(lifecycle);
-    mockNotifyAgentRunCompleted.mockResolvedValue(undefined);
 
     const doneState = {
       metadata: { _hooks: [], agentId: 'agt_1', isSubAgent: true, topicId: 'tpc_1' },
@@ -657,7 +655,6 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
   it('does not notify on non-done terminals', async () => {
     const lifecycle = buildLifecycle();
     stubSideEffects(lifecycle);
-    mockNotifyAgentRunCompleted.mockResolvedValue(undefined);
 
     await lifecycle.dispatchHooks(
       'op-1',
