@@ -298,4 +298,5 @@
 - 已确认 Brave 返回真实 HTTP 429，DuckDuckGo HTML 与 Startpage 返回验证码，Google CSE 连续调用后也会限流；这些属于上游针对当前出口 IP 的限制，不能通过单纯延长超时解决。
 - 已验证 DuckDuckGo Web、360 Search、Dogpile、GMX、Mojeek、Mwmbl、PrivacyWall、Seznam、搜狗、Yandex、Yep 等免 Key 通用网页引擎能够从当前容器出口正常返回结果。
 - 已准备仅针对 `lobe-searxng` 的配置草案，停用被限流或验证码拦截的默认引擎，启用实测可用的免 Key 替代引擎。
+- 已使用独立临时容器加载配置并完成中英文真实查询；首轮一次返回 67–132 条结果，同时筛出 Seznam 偶发超时、搜狗连续请求验证码和 Wikidata 初始化 403，因此将这三个不稳定引擎排除。
 - 本轮不会修改 Nginx、LobeHub、PostgreSQL、Redis、RustFS、设备网关、OpenClash 或其他服务。
