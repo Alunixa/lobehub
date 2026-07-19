@@ -89,3 +89,28 @@
 - HTTPS `3210` 主站和 `/lobe` 附件代理验证正常。
 - 本次回滚仅平滑重新加载 Nginx，未重启任何 Docker 容器。
 - 回滚前 Git 快照提交：`55db70d797`。
+
+## 2026-07-19：联网搜索间歇性空结果与用户记忆工具失败
+
+### 用户要求
+
+- 读取项目根目录的 `问题.txt` 了解并修复新 Bug。
+- 修复 LobeHub 联网搜索有时返回结果、有时直接返回空数组的问题。
+- 修复用户记忆新增和读取工具均失败、工具结果显示 `null` 或 `undefined` 的问题。
+
+### 已读取现象
+
+- 失败搜索使用中文查询并指定 `searchTimeRange: "year"`，结果为 `results: []`、`costTime: 0`。
+- 成功搜索使用英文查询并指定 `searchTimeRange: "anytime"`，返回多个 Brave 搜索结果。
+- `searchUserMemory` 已被模型调用，但工具结果为 `null`。
+- `addContextMemory` 已被模型调用，但显示 `Failed to save memory: undefined`。
+
+### 当前行动
+
+- 使用内置工具架构规范检查 `lobe-web-browsing` 与 `lobe-user-memory` 的运行时、服务端执行和错误返回链路。
+- 从 LobeHub、SearXNG、数据库和相关模型配置中复现并定位真实异常。
+- 修复后分别验证搜索 `year/anytime`、记忆新增和记忆读取。
+
+### 回滚信息
+
+- 修改前 Git 快照提交：`3ccd53fafd`。
