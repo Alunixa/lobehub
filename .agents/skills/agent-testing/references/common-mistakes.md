@@ -233,3 +233,25 @@ default to rendering it and attaching the screenshot to the verify report as a r
 point — open the PNG to confirm, publish. Never offer the screenshot as an opt-in
 ("want me to screenshot?"); just produce it. Env/restart cost is the skill's job to
 absorb, not a reason to shift the checking burden onto the user.
+
+---
+
+## Case 10 — Waiting on a pathological build step after the bottleneck is proven
+
+**Wrong approach**: after confirming that the legacy Docker builder was spending
+many minutes in a recursive `chown -R /app` on OverlayFS, continuing to poll it
+instead of replacing the pathological final-stage operation.
+
+**Why it's wrong**: once the application build layer is safely cached and the
+online service is untouched, waiting on a known metadata-copy bottleneck adds no
+confidence. It only delays the requested result.
+
+**What it breaks**: the user has to wait through repeated status checks after the
+real code build has already succeeded, making an otherwise safe deployment feel
+unresponsive and poorly managed.
+
+**Correct approach**: preserve the successful build cache, stop only the
+not-yet-deployed build process, and replace recursive ownership mutation with
+numeric `COPY --chown` in the final image stage. Verify the resulting runtime
+user and write permissions before deploying, while leaving online containers
+untouched.

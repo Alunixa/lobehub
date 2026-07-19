@@ -185,3 +185,26 @@
 - 构建日志为 `/mnt/sda1/lobehub/custom-build/build-8830ad892a.log`。
 - 构建已完成依赖安装，Docker 正在提交包含依赖的镜像层。
 - 截至本次记录，尚未替换或重启线上 `lobehub` 容器，其他容器也均未重启。
+
+### 服务端最终构建与部署结果
+
+- 用户反馈服务端最终镜像封装等待过慢，要求加快完成。
+- 已确认瓶颈是最终镜像阶段的 `chown -R nextjs:nodejs /app`，该命令在路由器磁盘上逐文件产生 OverlayFS 权限复制。
+- 仅中止了尚未上线的临时 Docker 构建，没有停止或重启任何线上容器。
+- 将最终镜像文件复制改为数字 UID/GID 的 `COPY --chown=1001:1001`，删除慢速递归 `chown`，并完整复用已成功生成的依赖和 Next.js 构建缓存。
+- 原服务器构建 Dockerfile 备份为 `/mnt/sda1/lobehub/custom-build/Dockerfile.before-copy-chown-8830ad892a`。
+- 加速构建日志为 `/mnt/sda1/lobehub/custom-build/build-8830ad892a-fast.log`。
+- 新镜像成功生成，镜像 ID 为 `sha256:444f113c4e7e8c1c92ac8de39d462b4e95bd3a454e2ac11c3a20b2729cc626fb`。
+- 新镜像大小为 `913810537` 字节，架构为 `linux/amd64`。
+- 镜像离线权限自检通过：运行用户为 `nextjs`，`/app` 可写，`/app/startServer.js` 可读，Node.js 版本为 `v24.18.0`。
+- Next.js 主构建成功，38 个静态页面生成成功。
+- 构建内存高峰期间临时启用了 `/mnt/sda1/lobehub/custom-build/codex-build.swap`，构建完成后已执行 `swapoff` 并删除该文件，未写入系统持久配置。
+- 已将新镜像标记为 `lobehub/lobehub:latest`。
+- 仅执行 `docker compose up -d --no-deps --force-recreate lobehub` 重建 `lobehub` 服务。
+- 新 `lobehub` 容器 ID 为 `c7d34430b7e275e4d8d68d30b6cc81df7c0a3f9e4346b1a9b5f422720f213bd9`，镜像为新镜像，状态为 `running`，重启次数为 `0`。
+- PostgreSQL、Redis、RustFS、SearXNG 和设备网关的容器 ID、启动时间与重启次数均保持不变。
+- 后端 `127.0.0.1:13210` 正常响应，根路径返回预期登录跳转 `302`。
+- `/api/version` 返回 `200` 和 `{"version":"2.2.8"}`。
+- HTTPS `3210` 入口正常响应并返回预期登录跳转 `302`。
+- 启动日志确认数据库迁移通过、Next.js Ready、设备网关启动成功。
+- 原镜像回滚标签仍为 `lobehub/lobehub:backup-20260719-8830ad892a`，镜像 ID 为 `sha256:1f223acf95d724db0a67d9e4ab683c20284b9d485fa1c781dbcd9bba87731cce`。
