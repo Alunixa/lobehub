@@ -302,4 +302,5 @@
 - 第二轮连续 8 组查询中，前 7 组无不可用引擎，第 8 组发现 Mojeek 开始返回访问拒绝，因此也将其从默认聚合中排除。
 - 第三轮连续 12 组查询发现 DuckDuckGo Web 在部分请求中出现解析错误，因此将其排除；其余 8 个免 Key 通用引擎仍可持续返回搜索结果。
 - 第四轮连续 15 组压力查询发现 PrivacyWall 很快触发 429，GMX 在中文查询中偶发解析错误，因此将这两个引擎排除。
+- 第五轮连续查询发现 Yep 返回访问拒绝，因此将其排除；当前稳定集合收敛为 360 Search、Dogpile、Mwmbl、Wiby 和 Yandex。
 - 本轮不会修改 Nginx、LobeHub、PostgreSQL、Redis、RustFS、设备网关、OpenClash 或其他服务。

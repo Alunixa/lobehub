@@ -56,6 +56,9 @@ engines:
   - name: privacywall
     disabled: true
 
+  - name: yep
+    disabled: true
+
   # Verified no-key general web engines available in this image.
   - name: 360search
     engine: 360search
@@ -102,13 +105,6 @@ engines:
     categories: general
     search_type: web
     shortcut: yd
-    disabled: false
-    timeout: 12.0
-
-  - name: yep
-    engine: yep
-    shortcut: yep
-    categories: general
     disabled: false
     timeout: 12.0
 
