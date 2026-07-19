@@ -254,3 +254,31 @@
 - 首次构建启动前发现服务器缺少 `fallocate`，改用 BusyBox `dd` 创建临时交换文件。
 - 临时交换文件最初位于构建上下文内，导致旧版 Docker 打包无关的 `2 GiB` 文件；该未完成构建已停止，线上容器未受影响。
 - 已将临时交换文件移到 `/mnt/sda1/codex-mobile-plus.swap`，并补充 `.dockerignore` 排除旧源码包、构建日志、备份目录和交换文件，避免旧版 Docker 重复打包无关产物。
+
+### 服务端构建与部署结果
+
+- 服务器源文件备份目录：`/root/codex-backups/lobehub-mobile-plus-20260719-180500`。
+- 原线上镜像回滚标签：`lobehub/lobehub:backup-20260719-mobile-plus`。
+- 原线上镜像 ID：`sha256:444f113c4e7e8c1c92ac8de39d462b4e95bd3a454e2ac11c3a20b2729cc626fb`。
+- 新增 Docker 构建上下文优化提交：`8ab6032c1e`。
+- 在服务器 root 用户的 Docker CLI 插件目录安装了官方 `docker-buildx v0.35.0`，未修改 Docker 守护进程或 Compose。
+- 最终构建使用已瘦身的 legacy builder 上下文并完整复用依赖缓存。
+- 构建日志：`/mnt/sda1/lobehub/custom-build/build-legacy-8ab6032c1e-mobile-plus.log`。
+- 桌面 SPA、手机 SPA、认证 SPA 和 Next.js 服务端生产构建均成功。
+- Next.js 主编译成功，`38/38` 个静态页面生成成功。
+- 构建高峰期临时启用了 `/mnt/sda1/codex-mobile-plus.swap` 与 `/mnt/sda1/codex-mobile-plus-2.swap`。
+- 构建完成后两份交换文件均已执行 `swapoff` 并删除，系统恢复为零交换空间，未写入持久配置。
+- 新镜像标签：`lobehub/lobehub:codex-8ab6032c1e`。
+- 新镜像 ID：`sha256:4ca79858758ce34bfb196d6472fbf19fd89839eda93dd70db03a9dafad46feb5`。
+- 新镜像大小：`911161343` 字节，架构为 `linux/amd64`。
+- 新镜像离线自检通过：运行用户为 `nextjs`，`/app` 可写，启动文件与手机 SPA 可读，Node.js 版本为 `v24.18.0`。
+- 已将新镜像标记为 `lobehub/lobehub:latest`。
+- 仅执行 `docker compose up -d --no-deps --force-recreate lobehub` 重建 LobeHub 服务。
+- 新容器 ID：`f2cac45a34968c70f716a4d2ffa4eb71f4a1589cb21f7a09d7bdfa294aab03e8`。
+- 新容器状态为 `running`，重启次数为 `0`。
+- PostgreSQL、Redis、RustFS、SearXNG 和设备网关的容器 ID 与启动时间保持不变。
+- 数据库迁移通过，Next.js Ready，设备网关启动成功。
+- 内部 `/api/version` 返回 `200` 和 `{"version":"2.2.8"}`。
+- 内部根路径和公网 HTTPS `3210` 均返回预期 `302` 登录跳转。
+- 从本机验证公网 HTTPS 证书链结果为 `0`，证书校验通过。
+- 本次未修改 Nginx、Compose、数据库、Redis、RustFS、SearXNG、证书或其他服务配置。
