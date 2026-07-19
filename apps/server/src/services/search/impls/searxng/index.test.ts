@@ -22,5 +22,24 @@ describe('SearXNGImpl', () => {
       // Assert
       expect(results.results.length).toEqual(43);
     });
+
+    it('returns engine failures when no engine can produce results', async () => {
+      vi.spyOn(SearXNGClient.prototype, 'search').mockResolvedValueOnce({
+        ...hetongxue,
+        number_of_results: 0,
+        results: [],
+        unresponsive_engines: [
+          ['brave', 'Too many requests'],
+          ['duckduckgo', 'CAPTCHA'],
+        ],
+      });
+
+      const searchImpl = new SearXNGImpl();
+      const results = await searchImpl.query('test');
+
+      expect(results.errorDetail).toContain('brave: Too many requests');
+      expect(results.errorDetail).toContain('duckduckgo: CAPTCHA');
+      expect(results.results).toEqual([]);
+    });
   });
 });

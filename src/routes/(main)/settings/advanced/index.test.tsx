@@ -42,6 +42,7 @@ vi.mock('@lobehub/ui', () => ({
   }: {
     items: {
       children: { children?: ReactNode; desc?: string; label: string }[];
+      extra?: ReactNode;
       title: string;
     }[];
   }) => (
@@ -55,15 +56,27 @@ vi.mock('@lobehub/ui', () => ({
               {item.children}
             </div>
           ))}
+          {group.extra}
         </section>
       ))}
     </div>
   ),
   Icon: () => null,
+  Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
+  InputPassword: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+    <input type="password" {...props} />
+  ),
   Skeleton: () => <div>loading</div>,
 }));
 
 vi.mock('@lobehub/ui/base-ui', () => ({
+  Button: ({
+    children,
+    onClick,
+  }: {
+    children?: ReactNode;
+    onClick?: () => void;
+  }) => <button onClick={onClick}>{children}</button>,
   Select: () => <button />,
   Switch: ({
     checked,
@@ -78,6 +91,7 @@ vi.mock('@lobehub/ui/base-ui', () => ({
   ),
   toast: {
     error: vi.fn(),
+    success: vi.fn(),
   },
 }));
 
@@ -155,6 +169,54 @@ describe('Advanced settings page', () => {
 
     await waitFor(() => {
       expect(autoUpdateService.setAutomaticUpdatesEnabled).toHaveBeenCalledWith(true);
+    });
+  });
+
+  it('reveals and saves account memory embedding settings', async () => {
+    const setSettings = vi.fn().mockResolvedValue(undefined);
+    useUserStore.setState({
+      isUserStateInit: true,
+      setSettings,
+      updateLab: vi.fn(),
+    });
+
+    render(<Page />, { wrapper: createWrapper() });
+
+    const embeddingSwitch = screen
+      .getByText('tab.advanced.memoryEmbedding.enabled.title')
+      .parentElement?.querySelector('button');
+    fireEvent.click(embeddingSwitch!);
+
+    const baseURLInput = screen
+      .getByText('tab.advanced.memoryEmbedding.baseURL.title')
+      .parentElement?.querySelector('input');
+    const apiKeyInput = screen
+      .getByText('tab.advanced.memoryEmbedding.apiKey.title')
+      .parentElement?.querySelector('input');
+    const modelInput = screen
+      .getByText('tab.advanced.memoryEmbedding.model.title')
+      .parentElement?.querySelector('input');
+
+    fireEvent.change(baseURLInput!, { target: { value: 'https://embedding.example.com/v1' } });
+    fireEvent.change(apiKeyInput!, { target: { value: 'secret-key' } });
+    fireEvent.change(modelInput!, { target: { value: 'embedding-model' } });
+    fireEvent.click(screen.getByText('tab.advanced.memoryEmbedding.save'));
+
+    await waitFor(() => {
+      expect(setSettings).toHaveBeenCalledWith({
+        keyVaults: {
+          memoryEmbedding: {
+            apiKey: 'secret-key',
+            baseURL: 'https://embedding.example.com/v1',
+          },
+        },
+        memory: {
+          embedding: {
+            enabled: true,
+            model: 'embedding-model',
+          },
+        },
+      });
     });
   });
 });

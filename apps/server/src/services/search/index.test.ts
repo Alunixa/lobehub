@@ -340,6 +340,26 @@ describe('SearchService', () => {
       expect(result.results).toHaveLength(0);
       expect(result).toEqual({ costTime: 0, query: 'test', resultNumbers: 0, results: [] });
     });
+
+    it('should not retry a provider error and should preserve the error detail', async () => {
+      const errorResponse = {
+        costTime: 20,
+        errorDetail: 'SearXNG search engines unavailable: brave: Too many requests',
+        query: 'test',
+        resultNumbers: 0,
+        results: [],
+      };
+      mockSearchImpl.query.mockResolvedValue(errorResponse);
+
+      const result = await searchService.webSearch({
+        query: 'test',
+        searchEngines: ['brave'],
+        searchTimeRange: 'year',
+      });
+
+      expect(mockSearchImpl.query).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(errorResponse);
+    });
   });
 
   describe('webSearch - provider fallback (turn mode)', () => {
@@ -448,13 +468,6 @@ describe('SearchService', () => {
     });
 
     it('should handle provider errors gracefully and continue to next', async () => {
-      const errorResponse = {
-        costTime: 0,
-        errorDetail: 'Service unavailable',
-        query: 'test',
-        resultNumbers: 0,
-        results: [],
-      };
       const mockImpl1 = { query: vi.fn().mockRejectedValue(new Error('Service unavailable')) };
       const mockImpl2 = { query: vi.fn().mockResolvedValue(successResponse) };
 
@@ -470,6 +483,38 @@ describe('SearchService', () => {
       // First provider error results in empty results -> next provider
       expect(mockImpl2.query).toHaveBeenCalled();
       expect(result).toBe(successResponse);
+    });
+
+    it('should preserve the last provider error when every provider fails', async () => {
+      const firstError = {
+        costTime: 10,
+        errorDetail: 'First provider failed',
+        query: 'test',
+        resultNumbers: 0,
+        results: [],
+      };
+      const lastError = {
+        costTime: 20,
+        errorDetail: 'Last provider failed',
+        query: 'test',
+        resultNumbers: 0,
+        results: [],
+      };
+      const mockImpl1 = { query: vi.fn().mockResolvedValue(firstError) };
+      const mockImpl2 = { query: vi.fn().mockResolvedValue(lastError) };
+
+      vi.mocked(createSearchServiceImpl)
+        .mockReturnValueOnce(mockImpl1 as any)
+        .mockReturnValueOnce(mockImpl2 as any);
+
+      vi.mocked(toolsEnv).SEARCH_PROVIDERS = 'searxng,exa';
+      searchService = new SearchService();
+
+      const result = await searchService.webSearch({ query: 'test' });
+
+      expect(mockImpl1.query).toHaveBeenCalledTimes(1);
+      expect(mockImpl2.query).toHaveBeenCalledTimes(1);
+      expect(result).toEqual(lastError);
     });
   });
 

@@ -1,5 +1,5 @@
 import type { LobeChatDatabase } from '@lobechat/database';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ToolExecutionContext } from '../../types';
 
@@ -63,6 +63,10 @@ const createContext = (): ToolExecutionContext => ({
 });
 
 describe('memoryRuntime', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('uses server-owned embedding runtime for memory search', async () => {
     mocks.embeddings.mockResolvedValueOnce([[0.1, 0.2, 0.3]]);
     mocks.initModelRuntimeWithUserPayload.mockReturnValueOnce({
@@ -99,6 +103,29 @@ describe('memoryRuntime', () => {
     expect(mocks.searchMemory).toHaveBeenCalledWith(
       expect.objectContaining({ queries: ['renewal timeline'] }),
       [[0.1, 0.2, 0.3]],
+    );
+  });
+
+  it('uses BM25-only search when account embeddings are disabled', async () => {
+    const context = createContext();
+    context.memoryEmbeddingRuntime = undefined;
+    mocks.searchMemory.mockResolvedValueOnce({
+      activities: [],
+      contexts: [],
+      experiences: [],
+      identities: [],
+      preferences: [],
+    });
+
+    const runtime = await memoryRuntime.factory(context);
+
+    await runtime.searchUserMemory({ queries: ['renewal timeline'] });
+
+    expect(mocks.initModelRuntimeWithUserPayload).not.toHaveBeenCalled();
+    expect(mocks.embeddings).not.toHaveBeenCalled();
+    expect(mocks.searchMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ queries: ['renewal timeline'] }),
+      [],
     );
   });
 });

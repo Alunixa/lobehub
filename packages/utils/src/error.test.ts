@@ -5,6 +5,7 @@ import {
   errorMessageFrom,
   errorNameFrom,
   errorStackFrom,
+  getErrorMessage,
   isError,
   isErrorLike,
 } from './error';
@@ -216,5 +217,19 @@ describe('errorCauseFrom', () => {
   it('should return undefined for non-error values', () => {
     expect(errorCauseFrom('some string')).toBeUndefined();
     expect(errorCauseFrom(42)).toBeUndefined();
+  });
+});
+
+describe('getErrorMessage', () => {
+  it('extracts nested provider error messages', () => {
+    expect(getErrorMessage({ error: { message: 'Invalid embedding key' } })).toBe(
+      'Invalid embedding key',
+    );
+  });
+
+  it('falls back to provider errorType when message is missing', () => {
+    expect(getErrorMessage({ error: undefined, errorType: 'InvalidProviderAPIKey' })).toBe(
+      'InvalidProviderAPIKey',
+    );
   });
 });
