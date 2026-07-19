@@ -282,3 +282,18 @@
 - 内部根路径和公网 HTTPS `3210` 均返回预期 `302` 登录跳转。
 - 从本机验证公网 HTTPS 证书链结果为 `0`，证书校验通过。
 - 本次未修改 Nginx、Compose、数据库、Redis、RustFS、SearXNG、证书或其他服务配置。
+
+## 2026-07-19：修复 SearXNG 搜索引擎不可用
+
+### 用户要求
+
+- 继续处理 `SearXNG search engines unavailable: brave: too many requests; duckduckgo: timeout; google cse: timeout; startpage: timeout`。
+- 尽量把所有无需 API Key 的搜索引擎都加上。
+- 若可行，也修复 Brave、DuckDuckGo、Google CSE、Startpage 的超时或限流问题。
+
+### 当前行动
+
+- 已创建修改前 Git 回滚提交：`21bad2016f`。
+- 已确认当前 `SEARCH_PROVIDERS=searxng`，且 SearXNG 使用最小 `settings.yml`，只依赖默认引擎。
+- 已在服务器备份原配置到 `/root/codex-backups/searxng-engines-20260719-185700`。
+- 将只修改 SearXNG 配置并重建 `lobe-searxng`，不改动 Nginx、数据库、Redis、RustFS、设备网关和 LobeHub 主服务。
