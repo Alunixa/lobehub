@@ -668,7 +668,10 @@ describe('CompletionLifecycle.dispatchHooks — completion notification', () => 
   it('a notification rejection never breaks the dispatch pipeline', async () => {
     const lifecycle = buildLifecycle();
     stubSideEffects(lifecycle);
-    mockNotifyAgentRunCompleted.mockRejectedValue(new Error('push provider down'));
+    // Once-only: a persistent mockRejectedValue would survive afterEach
+    // (restoreAllMocks skips plain vi.fn, mockClear keeps implementations)
+    // and leak into later dispatchHooks('done') tests in this file.
+    mockNotifyAgentRunCompleted.mockRejectedValueOnce(new Error('push provider down'));
 
     const doneState = { metadata: { _hooks: [], agentId: 'agt_1' }, status: 'done' };
     await expect(lifecycle.dispatchHooks('op-1', doneState, 'done')).resolves.toBeUndefined();
