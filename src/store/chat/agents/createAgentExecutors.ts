@@ -20,6 +20,7 @@ import { UsageCounter } from '@lobechat/agent-runtime';
 import { countContextTokens, type ToolsEngine } from '@lobechat/context-engine';
 import { chainCompressContext } from '@lobechat/prompts';
 import {
+  ChatErrorType,
   type ChatMessageError,
   type ChatToolPayload,
   type CreateMessageParams,
@@ -29,6 +30,7 @@ import {
   TraceNameMap,
 } from '@lobechat/types';
 import { dedupeBy } from '@lobechat/utils';
+import { pickString, toRecord } from '@lobechat/utils/object';
 import debug from 'debug';
 import { t } from 'i18next';
 import pMap from 'p-map';
@@ -44,9 +46,11 @@ import { getFileStoreState } from '@/store/file/store';
 import { sleep } from '@/utils/sleep';
 
 import { StreamingHandler } from './StreamingHandler';
-import { type StreamChunk } from './types/streaming';
+import { type FinishData, type StreamChunk } from './types/streaming';
 
 const log = debug('lobe-store:agent-executors');
+
+export const CHAT_STREAM_IDLE_TIMEOUT_MS = 120_000;
 
 // Tool pricing configuration (USD per call)
 const TOOL_PRICING: Record<string, number> = {
@@ -311,6 +315,11 @@ export const createAgentExecutors = (context: {
 
       let finalUsage: ModelUsage | undefined;
       let finalToolCalls: MessageToolCall[] | undefined;
+      let streamError: ChatMessageError | undefined;
+      let streamErrorUpdatePromise: Promise<void> | undefined;
+      let streamFinished = false;
+      let streamIdleTimer: ReturnType<typeof setTimeout> | undefined;
+      let streamTimedOut = false;
 
       // Expand dynamically activated tools (from lobe-activator activateTools API)
       // and merge them into the agent config for this LLM call.
@@ -459,92 +468,196 @@ export const createAgentExecutors = (context: {
 
       const messages = llmPayload.messages.filter((message) => message.id !== assistantMessageId);
 
-      await chatService.createAssistantMessageStream({
-        abortController,
-        params: {
-          agentId: agentId || undefined,
-          groupId,
-          messages,
-          model: llmPayload.model,
-          provider: llmPayload.provider,
-          resolvedAgentConfig,
-          topicId: topicId ?? undefined,
-          ...agentConfigData.params,
-        },
-        initialContext: runtimeContext?.initialContext,
-        metadata: context.metadata,
-        stepContext: runtimeContext?.stepContext,
-        trace: {
-          traceId,
-          topicId: topicId ?? undefined,
-          traceName: TraceNameMap.Conversation,
-        },
-        onErrorHandle: async (error) => {
-          const enrichedError = {
-            ...error,
-            body: {
-              ...error.body,
-              traceId: traceId ?? error.body?.traceId,
+      const clearStreamIdleTimer = () => {
+        if (!streamIdleTimer) return;
+        clearTimeout(streamIdleTimer);
+        streamIdleTimer = undefined;
+      };
+
+      const resetStreamIdleTimer = () => {
+        clearStreamIdleTimer();
+        streamIdleTimer = setTimeout(() => {
+          streamTimedOut = true;
+          abortController.abort();
+        }, CHAT_STREAM_IDLE_TIMEOUT_MS);
+      };
+
+      const finalizeStream = async (finishData: FinishData) => {
+        const result = await handler.handleFinish(finishData);
+
+        finalUsage = result.usage;
+        finalToolCalls = result.toolCalls;
+
+        await optimisticUpdateMessageContent(
+          assistantMessageId,
+          result.content,
+          {
+            tools: result.tools,
+            reasoning: result.metadata.reasoning,
+            search: result.metadata.search,
+            imageList: result.metadata.imageList,
+            metadata: {
+              ...result.metadata.usage,
+              ...result.metadata.performance,
+              performance: result.metadata.performance,
+              usage: result.metadata.usage,
+              finishType: result.metadata.finishType,
+              ...(result.metadata.isMultimodal && { isMultimodal: true }),
             },
-          };
-          const localizedError = localizeError(enrichedError);
+          },
+          { operationId: context.operationId },
+        );
+      };
 
-          await context.get().optimisticUpdateMessageError(assistantMessageId, localizedError, {
-            operationId: context.operationId,
+      resetStreamIdleTimer();
+      try {
+        await chatService.createAssistantMessageStream({
+          abortController,
+          params: {
+            agentId: agentId || undefined,
+            groupId,
+            messages,
+            model: llmPayload.model,
+            provider: llmPayload.provider,
+            resolvedAgentConfig,
+            topicId: topicId ?? undefined,
+            ...agentConfigData.params,
+          },
+          initialContext: runtimeContext?.initialContext,
+          metadata: context.metadata,
+          stepContext: runtimeContext?.stepContext,
+          trace: {
+            traceId,
+            topicId: topicId ?? undefined,
+            traceName: TraceNameMap.Conversation,
+          },
+          onErrorHandle: (error) => {
+            const enrichedError = {
+              ...error,
+              body: {
+                ...toRecord(error.body),
+                traceId: traceId ?? error.body?.traceId,
+              },
+            };
+            streamError = localizeError(enrichedError);
+            streamErrorUpdatePromise = context
+              .get()
+              .optimisticUpdateMessageError(assistantMessageId, streamError, {
+                operationId: context.operationId,
+              });
+
+            return streamErrorUpdatePromise;
+          },
+          onFinish: async (
+            _content,
+            {
+              traceId: finishTraceId,
+              observationId,
+              toolCalls,
+              reasoning,
+              grounding,
+              usage,
+              speed,
+              type,
+            },
+          ) => {
+            void _content;
+            clearStreamIdleTimer();
+
+            if (finishTraceId) {
+              messageService.updateMessage(
+                assistantMessageId,
+                { traceId: finishTraceId, observationId: observationId ?? undefined },
+                { agentId, groupId, topicId },
+              );
+            }
+
+            await finalizeStream({
+              traceId: finishTraceId,
+              observationId,
+              toolCalls,
+              reasoning,
+              grounding,
+              usage,
+              speed,
+              type,
+            });
+            streamFinished = true;
+          },
+          onMessageHandle: async (chunk) => {
+            resetStreamIdleTimer();
+            handler.handleChunk(chunk as StreamChunk);
+          },
+        });
+      } catch (error) {
+        if (!abortController.signal.aborted || streamTimedOut) {
+          const errorRecord = toRecord(error);
+          streamError = localizeError({
+            body: errorRecord?.body,
+            message:
+              pickString(errorRecord?.message) ??
+              (error instanceof Error ? error.message : 'The model request failed unexpectedly'),
+            type:
+              (errorRecord?.type as ChatMessageError['type'] | undefined) ??
+              ChatErrorType.UnknownChatFetchError,
           });
-        },
-        onFinish: async (
-          _content,
-          { traceId, observationId, toolCalls, reasoning, grounding, usage, speed, type },
-        ) => {
-          void _content;
+        }
+      } finally {
+        clearStreamIdleTimer();
+      }
 
-          if (traceId) {
-            messageService.updateMessage(
-              assistantMessageId,
-              { traceId, observationId: observationId ?? undefined },
-              { agentId, groupId, topicId },
-            );
+      if (!streamFinished) {
+        if (streamTimedOut) {
+          streamError = {
+            body: {
+              message: `No streaming activity was received for ${CHAT_STREAM_IDLE_TIMEOUT_MS / 1000} seconds`,
+              model: llmPayload.model,
+              provider: llmPayload.provider,
+              timeoutMs: CHAT_STREAM_IDLE_TIMEOUT_MS,
+              traceId,
+            },
+            message: 'The upstream model response timed out',
+            type: ChatErrorType.GatewayTimeout,
+          };
+        } else if (!abortController.signal.aborted && !streamError) {
+          streamError = {
+            body: {
+              message: 'The model response stream closed before a completion event was received',
+              model: llmPayload.model,
+              provider: llmPayload.provider,
+              traceId,
+            },
+            message: 'The model response stream ended unexpectedly',
+            type: ChatErrorType.UnknownChatFetchError,
+          };
+        }
+
+        if (streamError) {
+          await finalizeStream({ type: 'error' });
+          if (streamErrorUpdatePromise) {
+            await streamErrorUpdatePromise;
+          } else {
+            await context.get().optimisticUpdateMessageError(assistantMessageId, streamError, {
+              operationId: context.operationId,
+            });
           }
 
-          const result = await handler.handleFinish({
-            traceId,
-            observationId,
-            toolCalls,
-            reasoning,
-            grounding,
-            usage,
-            speed,
-            type,
-          });
+          const latestMessages = context.get().dbMessagesMap[context.messageKey] || [];
+          const errorState = {
+            ...state,
+            error: streamError,
+            messages: latestMessages,
+            status: 'error' as const,
+          };
 
-          finalUsage = result.usage;
-          finalToolCalls = result.toolCalls;
+          return {
+            events: [{ error: streamError, type: 'error' }],
+            newState: errorState,
+          };
+        }
 
-          await optimisticUpdateMessageContent(
-            assistantMessageId,
-            result.content,
-            {
-              tools: result.tools,
-              reasoning: result.metadata.reasoning,
-              search: result.metadata.search,
-              imageList: result.metadata.imageList,
-              metadata: {
-                ...result.metadata.usage,
-                ...result.metadata.performance,
-                performance: result.metadata.performance,
-                usage: result.metadata.usage,
-                finishType: result.metadata.finishType,
-                ...(result.metadata.isMultimodal && { isMultimodal: true }),
-              },
-            },
-            { operationId: context.operationId },
-          );
-        },
-        onMessageHandle: async (chunk) => {
-          handler.handleChunk(chunk as StreamChunk);
-        },
-      });
+        await finalizeStream({ type: 'abort' });
+      }
 
       const isFunctionCall = handler.getIsFunctionCall();
       const content = handler.getOutput();

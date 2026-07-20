@@ -2,10 +2,13 @@ import { type GeneralAgentCallLLMResultPayload } from '@lobechat/agent-runtime';
 import { LOADING_FLAT } from '@lobechat/const';
 import type { MessageToolCall } from '@lobechat/types';
 import { RequestTrigger } from '@lobechat/types';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { chatService } from '@/services/chat';
-import { createAgentExecutors } from '@/store/chat/agents/createAgentExecutors';
+import {
+  CHAT_STREAM_IDLE_TIMEOUT_MS,
+  createAgentExecutors,
+} from '@/store/chat/agents/createAgentExecutors';
 
 import {
   createAssistantMessage,
@@ -54,6 +57,10 @@ vi.mock('@/store/agent/selectors', () => ({
 vi.mock('@/store/agent/store', () => ({
   getAgentStoreState: vi.fn().mockReturnValue({}),
 }));
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /**
  * Helper to mock chatService.createAssistantMessageStream
@@ -1753,6 +1760,92 @@ describe('call_llm executor', () => {
       const finalContent = contentCall?.[1] as string;
 
       expect(finalContent).toBe('Partial output');
+    });
+  });
+
+  describe('stream terminal state convergence', () => {
+    it('returns an error state when the stream closes without a finish event', async () => {
+      const mockStore = createMockStore();
+      const context = createTestContext();
+      const instruction = createCallLLMInstruction();
+      const state = createInitialState();
+
+      mockStore.dbMessagesMap[context.messageKey] = [];
+      vi.mocked(chatService.createAssistantMessageStream).mockImplementation(
+        async (params: any) => {
+          await params.onErrorHandle?.({
+            body: { provider: 'openai' },
+            message: 'Provider connection closed',
+            type: 'ProviderNetworkError',
+          });
+        },
+      );
+
+      const result = await executeWithMockContext({
+        executor: 'call_llm',
+        instruction,
+        state,
+        mockStore,
+        context,
+      });
+
+      expect(result.newState.status).toBe('error');
+      expect(result.events).toEqual([
+        expect.objectContaining({
+          error: expect.objectContaining({ message: 'Provider connection closed' }),
+          type: 'error',
+        }),
+      ]);
+      expect(mockStore.optimisticUpdateMessageContent).toHaveBeenCalledWith(
+        expect.any(String),
+        '',
+        expect.objectContaining({
+          metadata: expect.objectContaining({ finishType: 'error' }),
+        }),
+        { operationId: context.operationId },
+      );
+      expect(mockStore.optimisticUpdateMessageError).toHaveBeenCalled();
+    });
+
+    it('times out an inactive model stream instead of leaving the operation running forever', async () => {
+      vi.useFakeTimers();
+
+      const mockStore = createMockStore();
+      const context = createTestContext();
+      const instruction = createCallLLMInstruction();
+      const state = createInitialState();
+
+      mockStore.dbMessagesMap[context.messageKey] = [];
+      vi.mocked(chatService.createAssistantMessageStream).mockImplementation(
+        ({ abortController }: any) =>
+          new Promise<void>((resolve) => {
+            abortController.signal.addEventListener('abort', () => resolve(), { once: true });
+          }),
+      );
+
+      const pending = executeWithMockContext({
+        executor: 'call_llm',
+        instruction,
+        state,
+        mockStore,
+        context,
+      });
+
+      await vi.advanceTimersByTimeAsync(0);
+      await vi.advanceTimersByTimeAsync(CHAT_STREAM_IDLE_TIMEOUT_MS);
+
+      const result = await pending;
+
+      expect(result.newState.status).toBe('error');
+      expect(mockStore.optimisticUpdateMessageError).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          message: 'The upstream model response timed out',
+          type: 504,
+        }),
+        { operationId: context.operationId },
+      );
+      expect(mockStore.operations[context.operationId].status).toBe('running');
     });
   });
 

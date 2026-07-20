@@ -14,7 +14,7 @@ import { type ActionDropdownProps } from './ActionDropdown';
 import ActionDropdown from './ActionDropdown';
 import { type ActionPopoverProps } from './ActionPopover';
 import ActionPopover from './ActionPopover';
-import { shouldHandleActionIconClick } from './actionUtils';
+import { shouldUseExplicitMobileOverlayClick } from './actionUtils';
 
 interface ActionProps extends Omit<ActionIconProps, 'popover'> {
   dropdown?: Omit<ActionDropdownProps, 'children'>;
@@ -50,6 +50,7 @@ const Action = memo<ActionProps>(
     const { allowed: canUseChatInputAction, reason } = usePermission('create_content');
     const blocked = disabled || !canUseChatInputAction;
     const tooltipTitle = canUseChatInputAction ? title : reason;
+    const hasOverlay = Boolean(dropdown || popover);
     const iconNode = (
       <ActionIcon
         disabled={blocked}
@@ -70,8 +71,10 @@ const Action = memo<ActionProps>(
         onClick={(e) => {
           if (blocked || loading) return;
           if (onClick) return onClick(e);
-          if (shouldHandleActionIconClick(Boolean(dropdown || popover))) {
-            setShow(true);
+          if (shouldUseExplicitMobileOverlayClick(hasOverlay, mobile)) {
+            e.preventDefault();
+            e.stopPropagation();
+            setShow(!show);
           }
         }}
         {...rest}

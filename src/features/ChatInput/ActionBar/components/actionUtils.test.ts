@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import { shouldHandleActionIconClick } from './actionUtils';
+import { shouldUseExplicitMobileOverlayClick } from './actionUtils';
 
-describe('shouldHandleActionIconClick', () => {
-  it('lets the overlay trigger own clicks when an overlay is present', () => {
-    expect(shouldHandleActionIconClick(true)).toBe(false);
+describe('shouldUseExplicitMobileOverlayClick', () => {
+  it('handles overlay clicks explicitly on mobile', () => {
+    expect(shouldUseExplicitMobileOverlayClick(true, true)).toBe(true);
   });
 
-  it('keeps direct actions clickable without an overlay', () => {
-    expect(shouldHandleActionIconClick(false)).toBe(true);
+  it('lets the overlay trigger own clicks on desktop', () => {
+    expect(shouldUseExplicitMobileOverlayClick(true, false)).toBe(false);
+  });
+
+  it('does not intercept actions without an overlay', () => {
+    expect(shouldUseExplicitMobileOverlayClick(false, true)).toBe(false);
   });
 });

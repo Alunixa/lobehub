@@ -3,6 +3,7 @@
 import { Tabs } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo, useState } from 'react';
+import { useParams } from 'react-router';
 
 import MobileContentLayout from '@/components/server/MobileNavLayout';
 import { useCategory } from '@/features/AgentSetting/AgentCategory/useCategory';
@@ -11,24 +12,29 @@ import Footer from '@/features/Setting/Footer';
 import { usePermission } from '@/hooks/usePermission';
 import MobileHeader from '@/routes/(mobile)/chat/settings/_layout/Header';
 import { useAgentStore } from '@/store/agent';
-import { agentSelectors } from '@/store/agent/selectors';
+import { agentByIdSelectors, agentSelectors } from '@/store/agent/selectors';
 import { ChatSettingsTabs } from '@/store/global/initialState';
-import { useSessionStore } from '@/store/session';
 
 export default memo(() => {
   const [tab, setTab] = useState(ChatSettingsTabs.Prompt);
   const cateItems = useCategory();
-  const id = useSessionStore((s) => s.activeId);
+  const { aid = '' } = useParams<{ aid: string }>();
   const { allowed: canEdit } = usePermission('edit_own_content');
 
-  const [updateAgentConfig, updateAgentMeta, config, meta] = useAgentStore((s) => [
-    s.updateAgentConfig,
-    s.updateAgentMeta,
-    agentSelectors.currentAgentConfig(s),
-    agentSelectors.currentAgentMeta(s),
-  ]);
+  const [updateAgentConfigById, optimisticUpdateAgentMeta, config, meta, isLoading] = useAgentStore(
+    (s) => [
+      s.updateAgentConfigById,
+      s.optimisticUpdateAgentMeta,
+      agentByIdSelectors.getAgentConfigById(aid)(s),
+      agentSelectors.getAgentMetaById(aid)(s),
+      agentByIdSelectors.isAgentConfigLoadingById(aid)(s),
+    ],
+  );
 
-  const isLoading = false;
+  const handleConfigChange = (nextConfig: Parameters<typeof updateAgentConfigById>[1]) =>
+    updateAgentConfigById(aid, nextConfig);
+  const handleMetaChange = (nextMeta: Parameters<typeof optimisticUpdateAgentMeta>[1]) =>
+    optimisticUpdateAgentMeta(aid, nextMeta);
 
   return (
     <MobileContentLayout header={<MobileHeader />}>
@@ -43,12 +49,12 @@ export default memo(() => {
       <AgentSettings
         config={config}
         disabled={!canEdit}
-        id={id}
+        id={aid}
         loading={isLoading}
         meta={meta}
         tab={tab}
-        onConfigChange={updateAgentConfig}
-        onMetaChange={updateAgentMeta}
+        onConfigChange={handleConfigChange}
+        onMetaChange={handleMetaChange}
       />
       <Footer />
     </MobileContentLayout>

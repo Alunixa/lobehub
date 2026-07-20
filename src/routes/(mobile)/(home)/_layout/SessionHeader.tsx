@@ -1,22 +1,31 @@
 'use client';
 
+import { AGENT_CHAT_URL } from '@lobechat/const';
 import { ActionIcon, Flexbox } from '@lobehub/ui';
 import { ChatHeader } from '@lobehub/ui/mobile';
 import { MessageSquarePlus } from 'lucide-react';
-import { memo } from 'react';
-import { useNavigate } from 'react-router';
+import { memo, useCallback } from 'react';
 
 import { ProductLogo } from '@/components/Branding';
 import { MOBILE_HEADER_ICON_SIZE } from '@/const/layoutTokens';
 import UserAvatar from '@/features/User/UserAvatar';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
+import { useHomeStore } from '@/store/home';
 import { useSessionStore } from '@/store/session';
 import { mobileHeaderSticky } from '@/styles/mobileHeader';
 
 import { styles } from './SessionHeader/style';
 
 const Header = memo(() => {
-  const [createSession] = useSessionStore((s) => [s.createSession]);
-  const navigate = useNavigate();
+  const createSession = useSessionStore((s) => s.createSession);
+  const refreshAgentList = useHomeStore((s) => s.refreshAgentList);
+  const navigate = useWorkspaceAwareNavigate();
+
+  const handleCreateAgent = useCallback(async () => {
+    const id = await createSession(undefined, false);
+    await refreshAgentList();
+    navigate(AGENT_CHAT_URL(id, false));
+  }, [createSession, navigate, refreshAgentList]);
 
   return (
     <ChatHeader
@@ -31,7 +40,7 @@ const Header = memo(() => {
         <ActionIcon
           icon={MessageSquarePlus}
           size={MOBILE_HEADER_ICON_SIZE}
-          onClick={() => createSession()}
+          onClick={handleCreateAgent}
         />
       }
     />
