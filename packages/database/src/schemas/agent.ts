@@ -61,6 +61,11 @@ export const agents = pgTable(
     model: text('model'),
     params: jsonb('params').default({}),
     provider: text('provider'),
+    /**
+     * High-priority model instructions sent through the provider's native
+     * instructions field when available, otherwise through its system layer.
+     */
+    instructions: text('instructions'),
     systemRole: text('system_role'),
     tts: jsonb('tts').$type<LobeAgentTTSConfig>(),
 

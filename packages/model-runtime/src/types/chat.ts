@@ -94,6 +94,10 @@ export interface ChatStreamPayload {
    * @title Image resolution for image generation (e.g., '512', '1K', '2K', '4K')
    */
   imageResolution?: '512' | '1K' | '2K' | '4K';
+  /**
+   * High-priority model instructions for providers with a native instructions field.
+   */
+  instructions?: string;
   logprobs?: boolean;
   /**
    * @title Maximum length of generated text
@@ -261,10 +265,7 @@ export interface UsageMissingDiagnostics {
   provider?: string;
   responseId?: string;
   source:
-    | 'anthropic_messages'
-    | 'google_generative_ai'
-    | 'openai_chat_completions'
-    | 'openai_responses';
+    'anthropic_messages' | 'google_generative_ai' | 'openai_chat_completions' | 'openai_responses';
   terminalEventType: string;
   terminalStatus?: string;
 }

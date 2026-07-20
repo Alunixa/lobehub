@@ -79,10 +79,8 @@ const DeviceGateway = memo(() => {
   });
 
   const isConnected = gatewayStatus === 'connected';
-  const isConnecting =
-    gatewayStatus === 'connecting' ||
-    gatewayStatus === 'reconnecting' ||
-    gatewayStatus === 'authenticating';
+  const isConnecting = gatewayStatus === 'connecting' || gatewayStatus === 'authenticating';
+  const isReconnecting = gatewayStatus === 'reconnecting';
 
   const [localName, setLocalName] = useState<string | undefined>();
   const [localDescription, setLocalDescription] = useState<string | undefined>();
@@ -117,7 +115,7 @@ const DeviceGateway = memo(() => {
       <Flexbox horizontal align="center" justify="space-between">
         <span className={styles.statusTitle}>{t('gateway.enableConnection')}</span>
         <Switch
-          checked={isConnected || isConnecting}
+          checked={isConnected || isConnecting || isReconnecting}
           loading={isConnecting}
           size="small"
           onChange={handleSwitchChange}

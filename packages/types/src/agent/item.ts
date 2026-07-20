@@ -39,6 +39,11 @@ export interface LobeAgentConfig {
   fewShots?: FewShots;
   files?: FileItem[];
   id?: string;
+  /**
+   * High-priority model instructions. Providers use their native instructions
+   * field when available and otherwise fall back to the system layer.
+   */
+  instructions?: string;
 
   /**
    * knowledge bases
@@ -111,6 +116,7 @@ export const CreateAgentSchema = z.object({
   fewShots: z.unknown().optional(),
   marketIdentifier: z.string().nullish(),
   model: z.string().nullish(),
+  instructions: z.string().nullish(),
   openingMessage: z.string().nullish(),
   openingQuestions: z.array(z.string()).optional(),
   params: z.record(z.unknown()).optional(),
@@ -144,6 +150,7 @@ export interface AgentItem {
   editorData?: any | null;
   fewShots?: any | null;
   id: string;
+  instructions?: string | null;
   /** Market agent identifier for published agents */
   marketIdentifier?: string | null;
   model?: string | null;

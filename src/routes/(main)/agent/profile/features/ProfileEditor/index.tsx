@@ -9,6 +9,7 @@ import isEqual from 'fast-deep-equal';
 import React, { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AgentInstructionsEditor } from '@/features/AgentSetting/AgentInstructions';
 import ModelSelect from '@/features/ModelSelect';
 import { usePermission } from '@/hooks/usePermission';
 import { useAgentStore } from '@/store/agent';
@@ -163,7 +164,16 @@ const ProfileEditor = memo(() => {
           system prompt, so the agent's systemRole never reaches them. Hide the
           editor here to avoid a control that looks effective but isn't (mirrors the
           ModelSelect hiding above). */}
-      {!isHeterogeneous && <EditorCanvas />}
+      {!isHeterogeneous && (
+        <>
+          <EditorCanvas />
+          <AgentInstructionsEditor
+            disabled={!canEdit}
+            value={config.instructions}
+            onChange={(instructions) => updateConfig({ instructions })}
+          />
+        </>
+      )}
     </>
   );
 });

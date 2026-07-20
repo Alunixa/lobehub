@@ -25,6 +25,7 @@ import type {
 
 const DEFAULT_GATEWAY_URL = 'https://device-gateway.lobehub.com';
 const HEARTBEAT_INTERVAL = 30_000; // 30s
+const CONNECTION_TIMEOUT = 15_000; // 15s
 const INITIAL_RECONNECT_DELAY = 1000; // 1s
 const MAX_RECONNECT_DELAY = 30_000; // 30s
 const MAX_MISSED_HEARTBEATS = 3; // Force reconnect after 3 missed acks
@@ -99,6 +100,7 @@ export class GatewayClient extends EventEmitter {
   private serverUrl?: string;
   private logger: GatewayClientLogger;
   private autoReconnect: boolean;
+  private connectTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: GatewayClientOptions) {
     super();
@@ -232,6 +234,20 @@ export class GatewayClient extends EventEmitter {
       ws.on('error', this.handleError);
 
       this.ws = ws;
+      this.connectTimeoutTimer = setTimeout(() => {
+        if (this.ws !== ws || ws.readyState !== WebSocket.CONNECTING) return;
+
+        this.logger.warn(`WebSocket connection timed out after ${CONNECTION_TIMEOUT}ms`);
+        this.clearConnectTimeout();
+        this.closeWebSocket();
+        this.setStatus('disconnected');
+        if (this.autoReconnect && !this.intentionalDisconnect) {
+          this.setStatus('reconnecting');
+          this.scheduleReconnect();
+        } else {
+          this.emit('disconnected');
+        }
+      }, CONNECTION_TIMEOUT);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.logger.error('Failed to create WebSocket:', msg);
@@ -274,6 +290,7 @@ export class GatewayClient extends EventEmitter {
 
   private handleOpen = () => {
     this.logger.info('WebSocket connected, sending auth...');
+    this.clearConnectTimeout();
     this.reconnectDelay = INITIAL_RECONNECT_DELAY;
     this.setStatus('authenticating');
 
@@ -355,6 +372,7 @@ export class GatewayClient extends EventEmitter {
 
   private handleClose = (code: number, reason: Buffer) => {
     this.logger.info(`WebSocket closed: code=${code} reason=${reason.toString()}`);
+    this.clearConnectTimeout();
     this.stopHeartbeat();
     this.ws = null;
 
@@ -430,6 +448,12 @@ export class GatewayClient extends EventEmitter {
     }
   }
 
+  private clearConnectTimeout() {
+    if (!this.connectTimeoutTimer) return;
+    clearTimeout(this.connectTimeoutTimer);
+    this.connectTimeoutTimer = null;
+  }
+
   // ─── Status ───
 
   private setStatus(status: ConnectionStatus) {
@@ -484,6 +508,7 @@ export class GatewayClient extends EventEmitter {
 
   private cleanup() {
     this.stopHeartbeat();
+    this.clearConnectTimeout();
     this.clearReconnectTimer();
     this.closeWebSocket();
   }

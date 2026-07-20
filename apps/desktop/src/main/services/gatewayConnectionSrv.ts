@@ -693,13 +693,34 @@ export default class GatewayConnectionService extends ServiceModule {
     // self-issued OIDC tokens and bounce the titlebar switch closed.
     const derivedSelfHostGateway = this.deriveSelfHostGatewayUrl(serverUrl);
     if (derivedSelfHostGateway) {
-      if (!stored || stored === DEFAULT_GATEWAY_URL) {
+      if (
+        !stored ||
+        stored === DEFAULT_GATEWAY_URL ||
+        this.isLegacySelfHostGatewayUrl(stored, derivedSelfHostGateway)
+      ) {
         return derivedSelfHostGateway;
       }
       return stored;
     }
 
     return stored || DEFAULT_GATEWAY_URL;
+  }
+
+  private isLegacySelfHostGatewayUrl(stored: string, derived: string): boolean {
+    try {
+      const storedUrl = new URL(stored);
+      const derivedUrl = new URL(derived);
+
+      return (
+        storedUrl.protocol === derivedUrl.protocol &&
+        storedUrl.hostname === derivedUrl.hostname &&
+        storedUrl.pathname === derivedUrl.pathname &&
+        !storedUrl.port &&
+        Boolean(derivedUrl.port)
+      );
+    } catch {
+      return false;
+    }
   }
 
   private deriveSelfHostGatewayUrl(serverUrl?: string): string | undefined {

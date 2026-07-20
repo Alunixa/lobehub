@@ -614,6 +614,11 @@ export default {
   'settingAgent.export.untitledFileName': 'agent-profile',
   'settingAgent.name.placeholder': 'Enter agent name',
   'settingAgent.name.title': 'Name',
+  'settingAgent.instructions.desc':
+    "Sent with every conversation for this agent. Models use their native high-priority instructions field when available and otherwise fall back to the provider's system instruction layer.",
+  'settingAgent.instructions.placeholder':
+    'Enter high-priority instructions for this agent, such as strict behavioral rules and response constraints',
+  'settingAgent.instructions.title': 'Advanced Instructions',
   'settingAgent.prompt.desc':
     'Defines who this agent is, what it is responsible for, and how it works and responds. It serves as a core instruction in every conversation.',
   'settingAgent.prompt.editorPlaceholder':
@@ -1149,8 +1154,7 @@ When I am ___, I need ___
   'tab.advanced.memoryEmbedding.enabled.desc':
     'When disabled, memory is stored without vectors and retrieved with BM25 keyword search.',
   'tab.advanced.memoryEmbedding.enabled.title': 'Use embedding model',
-  'tab.advanced.memoryEmbedding.model.desc':
-    'Embedding model name accepted by the configured API.',
+  'tab.advanced.memoryEmbedding.model.desc': 'Embedding model name accepted by the configured API.',
   'tab.advanced.memoryEmbedding.model.title': 'Embedding model name',
   'tab.advanced.memoryEmbedding.save': 'Save',
   'tab.advanced.memoryEmbedding.saveError': 'Failed to save memory embedding settings',

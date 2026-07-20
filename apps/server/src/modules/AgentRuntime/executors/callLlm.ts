@@ -101,6 +101,7 @@ import { formatErrorEventData } from '../formatErrorEventData';
 import { classifyLLMError } from '../llmErrorClassification';
 import { createConversationParentMissingError } from '../messagePersistErrors';
 import { VISIBLE_OUTPUT_END_PUBLISHED_STEP_INDEX_METADATA_KEY } from '../visibleOutputEnd';
+import { mergeInstructionsIntoSystemMessage, supportsNativeInstructions } from './instructions';
 
 export const callLlm =
   (ctx: RuntimeExecutorContext): InstructionExecutor =>
@@ -928,11 +929,25 @@ export const callLlm =
 
       // Construct ChatStreamPayload
       const stream = ctx.stream ?? true;
+      const instructions = agentConfig.instructions?.trim();
+      const enabledSearch = (resolvedExtendParams as Partial<ChatStreamPayload>).enabledSearch;
+      const useNativeInstructions = Boolean(
+        instructions &&
+        supportsNativeInstructions({
+          enabledSearch,
+          model,
+          provider,
+        }),
+      );
       const chatPayload = {
-        messages: processedMessages,
+        messages:
+          instructions && !useNativeInstructions
+            ? mergeInstructionsIntoSystemMessage(processedMessages, instructions)
+            : processedMessages,
         model,
         stream,
         tools,
+        ...(useNativeInstructions && { instructions }),
         // ModelExtendParams keeps provider-specific effort/thinking values as loose
         // strings (e.g. hy3's 'no_think'); the runtime payload narrows them, so cast.
         ...(resolvedExtendParams as Partial<ChatStreamPayload>),

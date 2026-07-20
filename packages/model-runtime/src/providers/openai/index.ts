@@ -24,19 +24,32 @@ export const params = {
   baseURL: 'https://api.openai.com/v1',
   chatCompletion: {
     handlePayload: (payload) => {
-      const { enabledSearch, model, ...rest } = payload;
+      const { enabledSearch, instructions, model, ...rest } = payload;
 
       if (isResponsesAPIModel(model) || enabledSearch) {
-        return { ...rest, apiMode: 'responses', enabledSearch, model } as ChatStreamPayload;
+        return {
+          ...rest,
+          apiMode: 'responses',
+          enabledSearch,
+          instructions,
+          model,
+        } as ChatStreamPayload;
       }
 
+      const chatPayload = {
+        ...rest,
+        messages: instructions
+          ? [{ content: instructions, role: 'system' as const }, ...rest.messages]
+          : rest.messages,
+      };
+
       if (isOpenAIReasoningPayloadModel(model)) {
-        return pruneReasoningPayload(payload) as any;
+        return pruneReasoningPayload({ ...chatPayload, model }) as any;
       }
 
       if (model.includes('-search-')) {
         return {
-          ...rest,
+          ...chatPayload,
           frequency_penalty: undefined,
           model,
           presence_penalty: undefined,
@@ -54,7 +67,7 @@ export const params = {
       }
 
       return {
-        ...rest,
+        ...chatPayload,
         model,
         ...(enableServiceTierFlex &&
           supportsOpenAIServiceTierFlex(model) && { service_tier: 'flex' }),

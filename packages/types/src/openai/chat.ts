@@ -92,6 +92,10 @@ export interface ChatStreamPayload {
    */
   frequency_penalty?: number;
   /**
+   * High-priority model instructions for providers with a native instructions field.
+   */
+  instructions?: string;
+  /**
    * @title Maximum length of generated text
    */
   max_tokens?: number;

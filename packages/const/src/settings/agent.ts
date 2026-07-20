@@ -41,6 +41,7 @@ export const DEFAULT_AGENT_CHAT_CONFIG: LobeAgentChatConfig = {
 
 export const DEFAULT_AGENT_CONFIG: LobeAgentConfig = {
   chatConfig: DEFAULT_AGENT_CHAT_CONFIG,
+  instructions: '',
   model: DEFAULT_MODEL,
   openingQuestions: [],
   params: {

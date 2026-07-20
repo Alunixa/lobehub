@@ -14,6 +14,7 @@ import { type ActionDropdownProps } from './ActionDropdown';
 import ActionDropdown from './ActionDropdown';
 import { type ActionPopoverProps } from './ActionPopover';
 import ActionPopover from './ActionPopover';
+import { shouldHandleActionIconClick } from './actionUtils';
 
 interface ActionProps extends Omit<ActionIconProps, 'popover'> {
   dropdown?: Omit<ActionDropdownProps, 'children'>;
@@ -69,7 +70,9 @@ const Action = memo<ActionProps>(
         onClick={(e) => {
           if (blocked || loading) return;
           if (onClick) return onClick(e);
-          setShow(true);
+          if (shouldHandleActionIconClick(Boolean(dropdown || popover))) {
+            setShow(true);
+          }
         }}
         {...rest}
         size={

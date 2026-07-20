@@ -376,6 +376,26 @@ describe('GatewayConnectionCtr', () => {
       );
     });
 
+    it('should add the self-host server port to a stale gateway URL', async () => {
+      vi.mocked(mockRemoteServerConfigCtr.getRemoteServerUrl).mockResolvedValueOnce(
+        'https://server.example.com:3210',
+      );
+      mockStoreGet.mockImplementation((key: string) => {
+        if (key === 'gatewayEnabled') return true;
+        if (key === 'gatewayUrl') return 'https://server.example.com/device-gateway';
+        return undefined;
+      });
+
+      ctr = new GatewayConnectionCtr(mockApp);
+      ctr.afterAppReady();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(MockGatewayClient.lastOptions.gatewayUrl).toBe(
+        'https://server.example.com:3210/device-gateway',
+      );
+      expect(MockGatewayClient.lastOptions.serverUrl).toBe('https://server.example.com:3210');
+    });
+
     it('should keep the official cloud gateway when remote server is official cloud', async () => {
       vi.mocked(mockRemoteServerConfigCtr.getRemoteServerUrl).mockResolvedValue(
         'https://app.lobehub.com',

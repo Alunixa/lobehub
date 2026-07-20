@@ -18,6 +18,7 @@ table agents {
   model text
   params jsonb [default: `{}`]
   provider text
+  instructions text
   system_role text
   tts jsonb
   virtual boolean [default: false]

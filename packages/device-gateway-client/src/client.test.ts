@@ -4,6 +4,7 @@ import { GatewayClient } from './client';
 
 // Flag to control mock WS behavior
 let mockWsShouldThrow = false;
+let mockWsAutoOpen = true;
 
 // Mock ws module — must use dynamic import for EventEmitter to avoid hoisting issues
 vi.mock('ws', async () => {
@@ -13,7 +14,7 @@ vi.mock('ws', async () => {
     static CONNECTING = 0;
     static CLOSING = 2;
     static CLOSED = 3;
-    readyState = 1; // OPEN
+    readyState = 0; // CONNECTING
 
     constructor(
       public url: string,
@@ -24,8 +25,13 @@ vi.mock('ws', async () => {
         mockWsShouldThrow = false;
         throw new Error('connection refused');
       }
-      // Simulate async open
-      setTimeout(() => this.emit('open'), 0);
+      // Simulate async open unless a test is exercising the handshake timeout.
+      if (mockWsAutoOpen) {
+        setTimeout(() => {
+          this.readyState = MockWebSocket.OPEN;
+          this.emit('open');
+        }, 0);
+      }
     }
 
     send = vi.fn();
@@ -49,6 +55,7 @@ describe('GatewayClient', () => {
 
   beforeEach(() => {
     vi.useFakeTimers();
+    mockWsAutoOpen = true;
     client = new GatewayClient({
       autoReconnect: false,
       deviceId: 'test-device-id',
@@ -187,6 +194,19 @@ describe('GatewayClient', () => {
         headers: { 'User-Agent': 'LobeHub Desktop/1.2.3' },
       });
       c.disconnect();
+    });
+
+    it('should leave connecting when the WebSocket handshake times out', async () => {
+      mockWsAutoOpen = false;
+      const statusChanges: string[] = [];
+      client.on('status_changed', (status) => statusChanges.push(status));
+
+      client.connect();
+      await vi.advanceTimersByTimeAsync(15_000);
+
+      expect(client.connectionStatus).toBe('disconnected');
+      expect(statusChanges).toEqual(['connecting', 'disconnected']);
+      expect((client as any).ws).toBeNull();
     });
   });
 

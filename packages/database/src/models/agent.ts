@@ -923,6 +923,7 @@ export class AgentModel {
 
             // Session group
             sessionGroupId: sourceAgent.sessionGroupId,
+            instructions: sourceAgent.instructions,
             systemRole: sourceAgent.systemRole,
 
             tags: sourceAgent.tags,
