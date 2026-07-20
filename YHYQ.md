@@ -424,3 +424,10 @@
 - 使用 GitHub Actions Ubuntu runner 构建 `linux/amd64` 镜像并导出 OCI 包。
 - 下载 OCI 包到本机后，通过 SSH 上传到服务器并执行 `docker load`。
 - 仅替换 `lobehub` 容器，保留线上镜像回滚标签和 `linuxytd`。
+
+### 外部构建结果
+
+- GitHub Actions 运行：`29733209272`，Ubuntu `linux/amd64` 构建成功。
+- OCI artifact：`lobehub-server-image-d4cbc9478ed83c6cbef66b376bd236ad1cee1c0f`。
+- 已下载到本机 `server-image-29733209272/lobehub-server-image.tar`，大小约 `267377152` 字节。
+- 下一步仅上传该镜像并替换 `lobehub`，不在服务器执行编译。
