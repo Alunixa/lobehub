@@ -404,3 +404,9 @@
 - 本机 Windows EXE 已完成：`apps/desktop/release/lobehub-desktop-dev-0.0.0-setup.exe`。
 - EXE 大小 `436700` 字节，SHA-256 `E07097E11ADDB1269A4BE4A1FCCE6555C5C3BB2AD1BA1899F0D48835469CD607`，未签名。
 - 本机 Docker Desktop 未运行，且遵守禁止 WSL 约束；Linux 服务镜像暂未在本机生成。
+
+### 2026-07-20：撤销服务器半成品源码
+
+- 未发现 Docker 构建遗留的额外容器，因此没有执行全局容器清理。
+- 按备份恢复了服务器 `custom-build` 中本次同步的原有文件，并删除本次新增的 Instructions 文件。
+- `lobehub` 保持停止状态且不会自动重启；`linuxytd` 保持原容器、原运行状态和原重启策略。
