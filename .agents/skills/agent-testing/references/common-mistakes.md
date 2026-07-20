@@ -255,3 +255,26 @@ not-yet-deployed build process, and replace recursive ownership mutation with
 numeric `COPY --chown` in the final image stage. Verify the resulting runtime
 user and write permissions before deploying, while leaving online containers
 untouched.
+
+---
+
+## Case 11 — Replacing a stalled-stream root-cause fix with an idle timeout
+
+**Wrong approach**: when some model calls remain on “preparing response,” add a
+120-second stream-idle timeout and report the bug as fixed without first proving
+which event, parser branch, promise, or operation state failed to converge.
+
+**Why it's wrong**: a timeout only changes an infinite wait into a delayed
+failure. It does not explain or correct why a valid upstream response, an SSE
+error event, an abnormal close, or a completed request was not converted into a
+terminal client state.
+
+**What it breaks**: slow but valid responses can be aborted, the original defect
+remains reproducible, and the user receives a generic timeout instead of the
+provider's real result or error.
+
+**Correct approach**: reproduce a real affected request and inspect the complete
+request chain—provider response, SSE frames, parser callbacks, stream promise,
+message placeholder, and operation status. Fix the first non-converging
+transition, remove the compensating timeout, and add a regression test that
+fails on the actual malformed/error/close sequence.
