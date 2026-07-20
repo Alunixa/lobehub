@@ -551,3 +551,37 @@
 - 修正后的手机版条目通过 ESLint、`git diff --check` 和助手列表 2/2 定向测试。
 - 以单工作线程串行重跑全部相关回归：`fetchEventSource` 1/1、`fetchSSE` 22/22、OpenAI Responses 25/25、`call_llm` 48/48、手机加号 3/3、手机助手列表 2/2，合计 101/101 通过。
 - 核心回归仍验证终止帧到达后主动取消永不关闭的响应体并正常收敛，没有增加、恢复或依赖任何聊天流空闲超时。
+
+### GitHub Actions 构建与 Release
+
+- 最终构建提交：`53945182aee4a1e8dd050dde259b29e7d6a77ae3`。
+- Windows GitHub Actions 运行：`29743360574`，结论为 success，仅构建 Windows，macOS 和 Linux 均跳过。
+- Windows 安装包：`release-20260720-stream-convergence/LobeHub-2.2.8-codex.20260720.1-setup.exe`。
+- Windows 安装包大小：`137611975` 字节，SHA-256：`FB75AB79B969110E927858739FA16CB8109EB5E6D94EB606D78696CA87C4D6B9`。
+- 安装包内部 FileVersion 和 ProductVersion 均为 `2.2.8-codex.20260720.1`；未配置商业代码签名证书，Authenticode 状态为 `NotSigned`。
+- 服务器 GitHub Actions 运行：`29743402506`，结论为 success，构建平台为 `linux/amd64`。
+- Docker archive SHA-256：`E34EFA374580DE23A11CBD445EF0B4FF47C7E41A6A8DBA0C2482E3275015CDC7`。
+- Docker archive 内镜像标签：`lobehub/lobehub:codex-53945182aee4a1e8dd050dde259b29e7d6a77ae3`，运行用户为 `nextjs`。
+- GitHub 预发布版本：`v2.2.8-codex.20260720.1`。
+- Release 地址：`https://github.com/ygzzfyh123/lobehub/releases/tag/v2.2.8-codex.20260720.1`。
+- Release 已包含 EXE、blockmap、`latest.yml` 和传统 Docker archive，GitHub 资产摘要与本机 SHA-256 全部一致。
+
+### 服务端最终部署
+
+- 部署前线上容器：`bfc86466a82fd6f6efeeb9e9183e432aacfd036180765c8c521fdc25a72c2aaa`。
+- 部署前镜像：`sha256:78b510adb5916b55a7b26d3450b1dc0163c87effd8ab6a798d383cc954270837`。
+- 已创建回滚标签：`lobehub/lobehub:backup-20260720-pre-stream-convergence`。
+- 新镜像 ID：`sha256:7f8cc2bd6c27344a3d3884117c6950c6780a469d5ce570d11e9dcbf3e96e5636`，镜像大小 `914961426` 字节。
+- 首次切换时使用了错误的宿主机探针 `127.0.0.1:3210`；实际 Compose 映射为宿主机 `127.0.0.1:13210` 到容器 `3210`，因此自动回滚逻辑在新容器已经完成迁移并 Ready 后仍触发了回滚。
+- 首次回滚成功恢复旧镜像，旧版容器内 `/api/version` 返回 200，公网 HTTPS 3210 返回预期登录跳转；其他核心容器未受影响。
+- 修正为容器内部 `127.0.0.1:3210/api/version` 探针后再次切换成功。
+- 最终线上容器：`38c4ce4f32206b95d90fcf237ac661de17ce176f686f126a09746923c9e39efb`。
+- 最终线上镜像：`sha256:7f8cc2bd6c27344a3d3884117c6950c6780a469d5ce570d11e9dcbf3e96e5636`。
+- 容器状态为 running，重启次数为 0，重启策略为 always，数据库迁移通过，Next.js Ready，设备网关启动成功。
+- 容器内 `/api/version` 和公网 `https://immortalwrt.xn----bt2bv5e0jh7zcxq9ry.xn--fiqs8s:3210/api/version` 均返回 HTTP 200 与 `{"version":"2.2.8"}`。
+- PostgreSQL、Redis、RustFS、SearXNG、设备网关和 `linuxytd` 的容器 ID 与部署前保持不变，没有重建或重启。
+- 稳定性复查时 LobeHub 内存约 `465.9 MiB`，路由器可用内存约 `6.3 GiB`，没有 OOM 或异常重启。
+- 日志中出现一条与本次无关的 `llmGenerationTracing.recordFeedback` 旧 tracing 行不存在错误；该调用属于反馈记录，不在聊天生成或流终止路径上。
+- 未修改 Nginx、HTTPS 证书、Compose 文件、数据库数据、Redis、RustFS、SearXNG、设备网关或 `linuxytd` 配置。
+- 路由器和本机的临时 Docker archive 已删除；保留 GitHub Release、新镜像、旧镜像回滚标签和用户需要的 Windows 交付文件。
+- 应用内测试浏览器没有自部署登录态，Chrome 控制接口也不可用；未读取 Cookie、会话令牌、数据库凭据或要求用户提供密码。账号层面的真实发送由 101 个流式协议回归测试、线上新镜像和公开端点验证替代。
