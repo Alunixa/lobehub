@@ -355,3 +355,14 @@
 - 用户同时要求修复手机版网页聊天输入框中模型右侧 “加号” 菜单无法打开的问题。
 - 用户同时要求修复 Windows 电脑版右上角 “连接到网关” 持续转圈、无法打开的问题。
 - 本轮继续基于现有未提交工作完成实现，不修改服务器、Docker、Nginx 或其他线上服务。
+
+### 2026-07-20 继续处理与验证
+
+- 在修改前已创建本地检查点提交 `46a1d7ade3`，未纳入用户原有的构建日志目录和 `问题.txt`。
+- 将 Instructions 路由抽到共享 `packages/model-runtime/src/utils/instructions.ts`，客户端直连和服务端 Agent Runtime 共用同一套原生字段 / 系统层降级规则。
+- `ChatService` 现在会把当前助手的 `instructions` 送入最终聊天请求；支持原生字段的模型保留顶层 `instructions`，其他供应商改写为 system 消息并避免把未知字段发给上游。
+- 增加服务端 Instructions 路由测试和客户端聊天请求体测试；聊天服务整文件测试因当前环境依赖初始化超时，未能完成该文件的完整回归。
+- 定向测试通过：Instructions 路由 5/5、手机加号触发工具函数 2/2、设备网关客户端 48/48、桌面网关控制器 68/68。
+- 使用 esbuild 对服务端、共享路由和客户端聊天服务入口做语法打包检查通过。
+- 根目录完整 `bun run check` 因缺少本地 `node_modules/.bin/vitest` 未启动；改用 `bunx vitest` 完成上述定向测试。
+- 未部署服务器、未重启 Docker/Nginx、未构建 EXE/APK，当前仍在本地代码验证阶段。

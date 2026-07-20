@@ -10,7 +10,7 @@ import { type OfficialToolItem } from '@lobechat/context-engine';
 import { type FetchSSEOptions } from '@lobechat/fetch-sse';
 import { fetchSSE, standardizeAnimationStyle } from '@lobechat/fetch-sse';
 import type { ChatCompletionErrorPayload } from '@lobechat/model-runtime';
-import { AgentRuntimeError, isResponsesAPIModel } from '@lobechat/model-runtime';
+import { AgentRuntimeError, isResponsesAPIModel, routeInstructions } from '@lobechat/model-runtime';
 import type {
   RuntimeInitialContext,
   RuntimeStepContext,
@@ -323,6 +323,7 @@ class ChatService {
         ...params,
         ...extendParams,
         enabledSearch: searchConfig.enabledSearch && searchConfig.useModelSearch ? true : undefined,
+        instructions: agentConfig.instructions,
         messages: modelMessages,
         // Use the chatConfig from the target agent for streaming preference
         stream: chatConfig.enableStreaming !== false,
@@ -480,8 +481,22 @@ class ChatService {
       responseAnimation,
     ].reduce((acc, cur) => merge(acc, standardizeAnimationStyle(cur)), {});
 
+    const routedPayload = payload.instructions
+      ? {
+          ...payload,
+          ...routeInstructions({
+            apiMode,
+            enabledSearch: payload.enabledSearch,
+            instructions: payload.instructions,
+            messages: payload.messages ?? [],
+            model,
+            provider,
+          }),
+        }
+      : payload;
+
     return fetchSSE(API_ENDPOINTS.chat(provider), {
-      body: JSON.stringify(payload),
+      body: JSON.stringify(routedPayload),
       fetcher,
       headers,
       method: 'POST',

@@ -1731,6 +1731,47 @@ describe('ChatService', () => {
       );
     });
 
+    it('should send native instructions through the Responses API payload', async () => {
+      await chatService.getChatCompletion(
+        {
+          instructions: 'Advanced rule',
+          messages: [{ content: 'Hello', role: 'user' }],
+          model: 'gpt-5',
+          provider: ModelProvider.OpenAI,
+        },
+        {},
+      );
+
+      const payload = JSON.parse(mockFetchSSE.mock.calls[0][1].body);
+
+      expect(payload).toEqual(
+        expect.objectContaining({
+          instructions: 'Advanced rule',
+          messages: [{ content: 'Hello', role: 'user' }],
+        }),
+      );
+    });
+
+    it('should send instructions through the system layer for providers without a native field', async () => {
+      await chatService.getChatCompletion(
+        {
+          instructions: 'Advanced rule',
+          messages: [{ content: 'Hello', role: 'user' }],
+          model: 'claude-sonnet-4-6',
+          provider: ModelProvider.Anthropic,
+        },
+        {},
+      );
+
+      const payload = JSON.parse(mockFetchSSE.mock.calls[0][1].body);
+
+      expect(payload.instructions).toBeUndefined();
+      expect(payload.messages).toEqual([
+        { content: 'Advanced rule', role: 'system' },
+        { content: 'Hello', role: 'user' },
+      ]);
+    });
+
     it('should send request trigger as a header without adding it to the model payload', async () => {
       const params: Partial<ChatStreamPayload> = {
         messages: [],

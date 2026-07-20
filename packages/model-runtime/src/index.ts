@@ -83,6 +83,10 @@ export { consumeStreamUntilDone } from './utils/consumeStream';
 export { AgentRuntimeError } from './utils/createError';
 export { getModelPropertyWithFallback } from './utils/getFallbackModelProperty';
 export { getModelPricing } from './utils/getModelPricing';
+export type { RoutedInstructions } from './utils/instructions';
+export { mergeInstructionsIntoSystemMessage } from './utils/instructions';
+export { routeInstructions } from './utils/instructions';
+export { supportsNativeInstructions } from './utils/instructions';
 export {
   applyModelExtendParams,
   type ApplyModelExtendParamsContext,
