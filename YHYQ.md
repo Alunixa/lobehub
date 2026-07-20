@@ -431,3 +431,20 @@
 - OCI artifact：`lobehub-server-image-d4cbc9478ed83c6cbef66b376bd236ad1cee1c0f`。
 - 已下载到本机 `server-image-29733209272/lobehub-server-image.tar`，大小约 `267377152` 字节。
 - 下一步仅上传该镜像并替换 `lobehub`，不在服务器执行编译。
+
+### 服务端最终部署结果
+
+- 首次 OCI archive 无法被路由器旧版 Docker 直接加载，未产生镜像或容器改动，失败文件已删除。
+- GitHub Actions 运行 `29734094482` 重新生成传统 Docker archive，构建成功。
+- 新镜像标签：`lobehub/lobehub:codex-e9e17f2dc73b8e66b3f069a076d025c5cb04f98e`。
+- 新镜像 ID：`sha256:78b510adb5916b55a7b26d3450b1dc0163c87effd8ab6a798d383cc954270837`，大小 `915245924` 字节。
+- 原线上镜像回滚标签：`lobehub/lobehub:backup-20260720-pre-instructions`，镜像 ID `sha256:4ca79858758ce34bfb196d6472fbf19fd89839eda93dd70db03a9dafad46feb5`。
+- 依赖容器启动并确认 PostgreSQL 健康后，仅执行 `docker compose up -d --no-deps --force-recreate lobehub`。
+- 新 LobeHub 容器 ID：`bfc86466a82fd6f6efeeb9e9183e432aacfd036180765c8c521fdc25a72c2aaa`，状态 `running`，重启次数 `0`，重启策略恢复为 `always`。
+- 数据库迁移通过，Next.js Ready，设备网关启动成功。
+- 内部 `/api/version` 返回 `{"version":"2.2.8"}`。
+- 内部根路径和公网 HTTPS `3210` 均返回预期 `302` 登录跳转，TLS 校验通过。
+- PostgreSQL、Redis、RustFS、SearXNG、设备网关均未重建；`linuxytd` 容器 ID、启动时间和重启次数保持不变。
+- 未修改 Nginx、Compose、数据库、证书、RustFS、SearXNG 或 `linuxytd` 配置。
+- 服务器上传的 Docker archive 已删除。
+- Fork `canary` 上的临时构建工作流已通过 revert 删除，临时 PR `#1` 已关闭。
