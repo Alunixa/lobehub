@@ -395,3 +395,12 @@
 - 必须保留 LobeHub 核心服务及其 PostgreSQL、Redis、RustFS、SearXNG、设备网关依赖。
 - 明确保留用户已有的 `linuxytd`，不得删除、重建或修改其配置和数据。
 - 后续服务器部署改为本地完成构建后上传镜像，禁止在路由器上执行源码编译。
+
+### 2026-07-20：停止误启动并完成本机 EXE
+
+- 发现 LobeHub 首次恢复时因 PostgreSQL 尚未完成启动而出现一次迁移失败，随后容器自动重试成功；按用户要求已停止 `lobehub`。
+- 已将 `lobehub` 容器运行时重启策略临时设为 `no`，当前状态为 `Exited (137)`，防止再次自动拉起。
+- 未删除任何核心容器；未删除、重建或修改 `linuxytd`。
+- 本机 Windows EXE 已完成：`apps/desktop/release/lobehub-desktop-dev-0.0.0-setup.exe`。
+- EXE 大小 `436700` 字节，SHA-256 `E07097E11ADDB1269A4BE4A1FCCE6555C5C3BB2AD1BA1899F0D48835469CD607`，未签名。
+- 本机 Docker Desktop 未运行，且遵守禁止 WSL 约束；Linux 服务镜像暂未在本机生成。
