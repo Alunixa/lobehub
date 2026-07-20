@@ -5,10 +5,7 @@ import { RequestTrigger } from '@lobechat/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { chatService } from '@/services/chat';
-import {
-  CHAT_STREAM_IDLE_TIMEOUT_MS,
-  createAgentExecutors,
-} from '@/store/chat/agents/createAgentExecutors';
+import { createAgentExecutors } from '@/store/chat/agents/createAgentExecutors';
 
 import {
   createAssistantMessage,
@@ -117,7 +114,7 @@ describe('call_llm executor', () => {
       mockStore.dbMessagesMap[context.messageKey] = [];
 
       // When
-      await executeWithMockContext({
+      const result = await executeWithMockContext({
         executor: 'call_llm',
         instruction,
         state,
@@ -158,7 +155,7 @@ describe('call_llm executor', () => {
       mockStore.dbMessagesMap[context.messageKey] = [];
 
       // When
-      await executeWithMockContext({
+      const result = await executeWithMockContext({
         executor: 'call_llm',
         instruction,
         state,
@@ -1760,6 +1757,16 @@ describe('call_llm executor', () => {
       const finalContent = contentCall?.[1] as string;
 
       expect(finalContent).toBe('Partial output');
+      expect(result.newState.status).toBe('error');
+      expect(result.events).toEqual([
+        expect.objectContaining({
+          error: expect.objectContaining({
+            message:
+              'Your request may contain prohibited content. Please adjust your request to comply with the usage guidelines.',
+          }),
+          type: 'error',
+        }),
+      ]);
     });
   });
 
@@ -1807,9 +1814,7 @@ describe('call_llm executor', () => {
       expect(mockStore.optimisticUpdateMessageError).toHaveBeenCalled();
     });
 
-    it('times out an inactive model stream instead of leaving the operation running forever', async () => {
-      vi.useFakeTimers();
-
+    it('returns an error state when the finish event reports an error without details', async () => {
       const mockStore = createMockStore();
       const context = createTestContext();
       const instruction = createCallLLMInstruction();
@@ -1817,13 +1822,12 @@ describe('call_llm executor', () => {
 
       mockStore.dbMessagesMap[context.messageKey] = [];
       vi.mocked(chatService.createAssistantMessageStream).mockImplementation(
-        ({ abortController }: any) =>
-          new Promise<void>((resolve) => {
-            abortController.signal.addEventListener('abort', () => resolve(), { once: true });
-          }),
+        async (params: any) => {
+          await params.onFinish?.('', { type: 'error' });
+        },
       );
 
-      const pending = executeWithMockContext({
+      const result = await executeWithMockContext({
         executor: 'call_llm',
         instruction,
         state,
@@ -1831,21 +1835,15 @@ describe('call_llm executor', () => {
         context,
       });
 
-      await vi.advanceTimersByTimeAsync(0);
-      await vi.advanceTimersByTimeAsync(CHAT_STREAM_IDLE_TIMEOUT_MS);
-
-      const result = await pending;
-
       expect(result.newState.status).toBe('error');
       expect(mockStore.optimisticUpdateMessageError).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          message: 'The upstream model response timed out',
-          type: 504,
+          message: 'The model response stream ended with an error',
+          type: 'UnknownChatFetchError',
         }),
         { operationId: context.operationId },
       );
-      expect(mockStore.operations[context.operationId].status).toBe('running');
     });
   });
 

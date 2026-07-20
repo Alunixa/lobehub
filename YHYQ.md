@@ -521,3 +521,11 @@
 - 将 Responses API 的 completed、failed、incomplete 和 error 事件转换为明确的 stop /error 协议终态，并保留 usage 与 usage 缺失诊断。
 - 允许 SSE 消息处理器在收到协议终止事件时主动取消读取并正常完成，不再等待服务端关闭长连接。
 - 确保 `fetchSSE` 的正常完成、协议错误、传输错误与用户取消只收敛一次，并让 `call_llm` 将真实错误写入消息及 Agent Runtime error 状态。
+
+### 首轮实现与回归测试
+
+- 已提交源码修复 `7ca25ee6db`，删除 120 秒流空闲超时，新增 Responses API 的 stop /usage/done 终止序列和 failed /error 映射，并让 `call_llm` 的协议错误进入 Agent Runtime `error` 状态。
+- `fetchSSE` 定向测试 22/22 通过，确认 `done`、协议 `error` 和 JSON 解析错误都会返回主动关闭信号。
+- OpenAI Responses 定向测试的新 incomplete、failed 和原生 error 用例均已通过；现有三个快照因合法新增 stop /done 事件需要更新。
+- 真实不关闭 ReadableStream 的回归测试成功复现最后一个断点：消息回调返回关闭信号后，`getMessages` 没有把返回值传播给读取循环，因此旧实现仍会等待到测试超时。
+- 下一步将关闭信号从消息解析器抛回 `getBytes`，由 reader.cancel 主动取消 body，再重跑全部定向测试。

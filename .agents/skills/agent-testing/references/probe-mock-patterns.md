@@ -455,3 +455,15 @@
   - Byte-size is a reliable auto-flag for near-uniform frames (blank/loading), but two
     different near-uniform states (dark loading-screen vs blank) can both be small — always
     Read the frame to tell them apart (Case 1 rule).
+
+### E4. Package Vitest files are excluded by the root Vitest project
+
+- **Situation**: running a focused regression test under `packages/utils`,
+  `packages/fetch-sse`, or `packages/model-runtime` from the repository root.
+- **Doesn't work**: `bunx vitest run packages/<package>/src/foo.test.ts` from the
+  repository root. The root Vitest config explicitly excludes `packages/**`, so
+  it reports `No test files found` even though the file exists.
+- **Works**: run Vitest from the owning package directory and pass the
+  package-relative path, for example
+  `cd packages/fetch-sse && bunx vitest run src/__tests__/fetchSSE.test.ts`.
+  Limit `--maxWorkers` when several package tests run concurrently.

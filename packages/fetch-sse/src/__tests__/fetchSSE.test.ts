@@ -1,7 +1,10 @@
 import { MESSAGE_CANCEL_FLAT } from '@lobechat/const';
 import type { ChatMessageError } from '@lobechat/types';
 import type { FetchEventSourceInit } from '@lobechat/utils/client/fetchEventSource/index';
-import { fetchEventSource } from '@lobechat/utils/client/fetchEventSource/index';
+import {
+  CLOSE_EVENT_SOURCE,
+  fetchEventSource,
+} from '@lobechat/utils/client/fetchEventSource/index';
 import { sleep } from '@lobechat/utils/sleep';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -13,6 +16,7 @@ vi.mock('i18next', () => ({
 }));
 
 vi.mock('@lobechat/utils/client/fetchEventSource/index', () => ({
+  CLOSE_EVENT_SOURCE: Symbol('CLOSE_EVENT_SOURCE'),
   fetchEventSource: vi.fn(),
 }));
 
@@ -22,6 +26,31 @@ afterEach(() => {
 });
 
 describe('fetchSSE', () => {
+  it('should finish immediately when a protocol done event arrives', async () => {
+    const mockOnFinish = vi.fn();
+    let messageResult: unknown;
+
+    (fetchEventSource as any).mockImplementationOnce(
+      (url: string, options: FetchEventSourceInit) => {
+        options.onopen!({ clone: () => ({ ok: true, headers: new Headers() }) } as any);
+        messageResult = options.onmessage!({
+          event: 'done',
+          data: JSON.stringify('response.completed'),
+        } as any);
+      },
+    );
+
+    await fetchSSE('/', { onFinish: mockOnFinish });
+
+    expect(messageResult).toBe(CLOSE_EVENT_SOURCE);
+    expect(mockOnFinish).toHaveBeenCalledWith('', {
+      observationId: null,
+      toolCalls: undefined,
+      traceId: null,
+      type: 'done',
+    });
+  });
+
   it('should handle text event correctly', async () => {
     const mockOnMessageHandle = vi.fn();
     const mockOnFinish = vi.fn();
@@ -671,9 +700,10 @@ describe('fetchSSE', () => {
         body: { message: 'abc', context: {} },
       };
 
+      let messageResult: unknown;
       (fetchEventSource as any).mockImplementationOnce(
         (url: string, options: FetchEventSourceInit) => {
-          options.onmessage!({
+          messageResult = options.onmessage!({
             event: 'error',
             data: JSON.stringify(mockError),
           } as any);
@@ -685,15 +715,17 @@ describe('fetchSSE', () => {
       } catch {}
 
       expect(mockOnErrorHandle).toHaveBeenCalledWith(mockError);
+      expect(messageResult).toBe(CLOSE_EVENT_SOURCE);
     });
 
     it('should call onErrorHandle when stream chunk is not valid json', async () => {
       const mockOnErrorHandle = vi.fn();
       const mockError = 'abc';
 
+      let messageResult: unknown;
       (fetchEventSource as any).mockImplementationOnce(
         (url: string, options: FetchEventSourceInit) => {
-          options.onmessage!({ event: 'text', data: mockError } as any);
+          messageResult = options.onmessage!({ event: 'text', data: mockError } as any);
         },
       );
 
@@ -716,6 +748,7 @@ describe('fetchSSE', () => {
         message: 'parse error',
         type: 'StreamChunkError',
       });
+      expect(messageResult).toBe(CLOSE_EVENT_SOURCE);
     });
   });
 });

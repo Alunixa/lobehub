@@ -738,7 +738,9 @@ describe('OpenAIResponsesStream', () => {
     const chunks = await readStreamChunk(protocolStream);
 
     expect(chunks).toMatchSnapshot();
+    expect(chunks.some((c) => c.includes('event: stop'))).toBe(true);
     expect(chunks.some((c) => c.includes('event: usage'))).toBe(true);
+    expect(chunks.some((c) => c.includes('event: done'))).toBe(true);
   });
 
   it('should handle response.completed without usage', async () => {
@@ -767,6 +769,9 @@ describe('OpenAIResponsesStream', () => {
     const chunks = await readStreamChunk(protocolStream);
 
     expect(chunks).toMatchSnapshot();
+    expect(chunks.some((c) => c.includes('event: stop'))).toBe(true);
+    expect(chunks.some((c) => c.includes('event: usage'))).toBe(false);
+    expect(chunks.some((c) => c.includes('event: done'))).toBe(true);
     expect(onFinal).toHaveBeenCalledWith(
       expect.objectContaining({
         usageMissingDiagnostics: {
@@ -782,6 +787,94 @@ describe('OpenAIResponsesStream', () => {
         },
       }),
     );
+  });
+
+  it('should convert response.incomplete into stop, optional usage, and done events', async () => {
+    const mockOpenAIStream = createReadableStream([
+      {
+        type: 'response.created',
+        response: {
+          id: 'resp_incomplete',
+          status: 'in_progress',
+        },
+      },
+      {
+        type: 'response.incomplete',
+        response: {
+          id: 'resp_incomplete',
+          incomplete_details: { reason: 'max_output_tokens' },
+          status: 'incomplete',
+          usage: {
+            input_tokens: 100,
+            output_tokens: 50,
+            total_tokens: 150,
+          },
+        },
+      },
+    ]);
+
+    const chunks = await readStreamChunk(
+      OpenAIResponsesStream(mockOpenAIStream, {
+        payload: { model: 'grok-4.5', provider: 'grok' },
+      }),
+    );
+
+    expect(chunks.some((c) => c.includes('event: stop'))).toBe(true);
+    expect(chunks.some((c) => c.includes('max_output_tokens'))).toBe(true);
+    expect(chunks.some((c) => c.includes('event: usage'))).toBe(true);
+    expect(chunks.some((c) => c.includes('event: done'))).toBe(true);
+  });
+
+  it('should convert response.failed into a terminal protocol error', async () => {
+    const mockOpenAIStream = createReadableStream([
+      {
+        type: 'response.created',
+        response: {
+          id: 'resp_failed',
+          status: 'in_progress',
+        },
+      },
+      {
+        type: 'response.failed',
+        response: {
+          error: {
+            code: 'server_error',
+            message: 'Provider failed after reasoning',
+          },
+          id: 'resp_failed',
+          status: 'failed',
+        },
+      },
+    ]);
+
+    const chunks = await readStreamChunk(
+      OpenAIResponsesStream(mockOpenAIStream, {
+        payload: { model: 'grok-4.5', provider: 'grok' },
+      }),
+    );
+
+    expect(chunks.some((c) => c.includes('event: error'))).toBe(true);
+    expect(chunks.some((c) => c.includes('Provider failed after reasoning'))).toBe(true);
+  });
+
+  it('should convert a Responses API error event into a terminal protocol error', async () => {
+    const mockOpenAIStream = createReadableStream([
+      {
+        code: 'invalid_request',
+        message: 'Invalid Responses request',
+        param: 'input',
+        type: 'error',
+      },
+    ]);
+
+    const chunks = await readStreamChunk(
+      OpenAIResponsesStream(mockOpenAIStream, {
+        payload: { model: 'grok-4.5', provider: 'grok' },
+      }),
+    );
+
+    expect(chunks.some((c) => c.includes('event: error'))).toBe(true);
+    expect(chunks.some((c) => c.includes('Invalid Responses request'))).toBe(true);
   });
 
   it('should handle unknown chunk type as data', async () => {
