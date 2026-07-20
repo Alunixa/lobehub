@@ -1,6 +1,6 @@
 //@ts-nocheck
 
-/* eslint-disable */
+/* eslint-disable no-fallthrough, perfectionist/sort-interfaces, unicorn/switch-case-braces */
 /**
  * Represents a message sent in an event stream
  * https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format
@@ -27,9 +27,16 @@ export async function getBytes(
   onChunk: (arr: Uint8Array) => void,
 ) {
   const reader = stream.getReader();
-  let result: ReadableStreamDefaultReadResult<Uint8Array>;
-  while (!(result = await reader.read()).done) {
-    onChunk(result.value);
+  try {
+    let result: ReadableStreamDefaultReadResult<Uint8Array>;
+    while (!(result = await reader.read()).done) {
+      onChunk(result.value);
+    }
+  } catch (error) {
+    await reader.cancel(error).catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
   }
 }
 

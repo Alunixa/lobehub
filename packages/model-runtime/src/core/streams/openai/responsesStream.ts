@@ -38,6 +38,82 @@ const transformOpenAIStream = (
   streamContext: StreamContext,
   payload?: ChatPayloadForTransformStream,
 ): StreamProtocolChunk | StreamProtocolChunk[] => {
+  const createTerminalError = ({
+    error,
+    eventType,
+    responseId,
+  }: {
+    error: unknown;
+    eventType: string;
+    responseId?: string;
+  }): StreamProtocolChunk => {
+    const errorRecord =
+      typeof error === 'object' && error !== null
+        ? (error as { code?: unknown; message?: unknown; param?: unknown })
+        : undefined;
+    const message =
+      typeof errorRecord?.message === 'string'
+        ? errorRecord.message
+        : `Responses API stream ended with ${eventType}`;
+
+    return {
+      data: {
+        body: {
+          error,
+          eventType,
+          provider: payload?.provider,
+          responseId,
+        },
+        message,
+        type: AgentRuntimeErrorType.ProviderBizError,
+      } satisfies ChatMessageError,
+      id: responseId || streamContext.id || 'responses_error',
+      type: 'error',
+    };
+  };
+
+  const createTerminalChunks = ({
+    eventType,
+    finishReason,
+    response,
+  }: {
+    eventType: string;
+    finishReason: string;
+    response: {
+      id: string;
+      status?: string;
+      usage?: OpenAI.Responses.ResponseUsage | null;
+    };
+  }): StreamProtocolChunk[] => {
+    const chunks: StreamProtocolChunk[] = [{ data: finishReason, id: response.id, type: 'stop' }];
+
+    if (response.usage) {
+      delete streamContext.usageMissingDiagnostics;
+      chunks.push({
+        data: convertOpenAIResponseUsage(response.usage, payload),
+        id: response.id,
+        type: 'usage',
+      });
+    } else {
+      streamContext.usageMissingDiagnostics = {
+        apiMode: 'responses',
+        finishReason,
+        hasUsageMetadata: false,
+        includeUsageRequested: payload?.includeUsageRequested,
+        model: payload?.model,
+        provider: payload?.provider,
+        responseId: response.id,
+        source: 'openai_responses',
+        terminalEventType: eventType,
+        terminalStatus: response.status,
+      };
+    }
+
+    chunks.push({ data: response.status || finishReason, id: response.id, type: 'done' });
+
+    return chunks;
+  };
+
   // handle the first chunk error
   if (FIRST_CHUNK_ERROR_KEY in chunk) {
     delete chunk[FIRST_CHUNK_ERROR_KEY];
@@ -158,28 +234,35 @@ const transformOpenAIStream = (
       }
 
       case 'response.completed': {
-        if (chunk.response.usage) {
-          delete streamContext.usageMissingDiagnostics;
-          return {
-            data: convertOpenAIResponseUsage(chunk.response.usage, payload),
-            id: chunk.response.id,
-            type: 'usage',
-          };
-        }
+        return createTerminalChunks({
+          eventType: chunk.type,
+          finishReason: chunk.type,
+          response: chunk.response,
+        });
+      }
 
-        streamContext.usageMissingDiagnostics = {
-          apiMode: 'responses',
-          hasUsageMetadata: false,
-          includeUsageRequested: payload?.includeUsageRequested,
-          model: payload?.model,
-          provider: payload?.provider,
+      case 'response.incomplete': {
+        return createTerminalChunks({
+          eventType: chunk.type,
+          finishReason: chunk.response.incomplete_details?.reason || chunk.type,
+          response: chunk.response,
+        });
+      }
+
+      case 'response.failed': {
+        return createTerminalError({
+          error: chunk.response.error,
+          eventType: chunk.type,
           responseId: chunk.response.id,
-          source: 'openai_responses',
-          terminalEventType: chunk.type,
-          terminalStatus: chunk.response.status,
-        };
+        });
+      }
 
-        return { data: chunk, id: streamContext.id, type: 'data' };
+      case 'error': {
+        return createTerminalError({
+          error: chunk,
+          eventType: chunk.type,
+          responseId: streamContext.id,
+        });
       }
 
       default: {

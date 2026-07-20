@@ -99,7 +99,8 @@ export const setOpenAIChatCompletionUsageMissingDiagnostics = (
 export interface StreamProtocolChunk {
   data: any;
   id?: string;
-  type: // pure text
+  type:
+    // pure text
     | 'text'
     // base64 format image
     | 'base64_image'
@@ -121,6 +122,8 @@ export interface StreamProtocolChunk {
     | 'stop'
     // Error
     | 'error'
+    // definitive end of the protocol stream
+    | 'done'
     // token usage
     | 'usage'
     // performance monitor
@@ -423,7 +426,9 @@ export const createSSEProtocolTransformer = (
         controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
 
         // mark terminal when receiving any of these events
-        if (type === 'stop' || type === 'usage' || type === 'error') hasTerminalEvent = true;
+        if (type === 'stop' || type === 'usage' || type === 'error' || type === 'done') {
+          hasTerminalEvent = true;
+        }
       });
     },
   });

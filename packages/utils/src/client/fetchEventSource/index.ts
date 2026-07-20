@@ -6,6 +6,7 @@ import type { EventSourceMessage } from './parse';
 import { getBytes, getLines, getMessages } from './parse';
 
 export const EventStreamContentType = 'text/event-stream';
+export const CLOSE_EVENT_SOURCE = Symbol('CLOSE_EVENT_SOURCE');
 
 const LastEventId = 'last-event-id';
 
@@ -40,7 +41,7 @@ export interface FetchEventSourceInit extends RequestInit {
    * EventSource.onmessage, this callback is called for _all_ events,
    * even ones with a custom `event` field.
    */
-  onmessage?: (ev: EventSourceMessage) => void;
+  onmessage?: (ev: EventSourceMessage) => typeof CLOSE_EVENT_SOURCE | void;
 
   /**
    * Called when a response is received. Use this to validate that the response
@@ -50,7 +51,7 @@ export interface FetchEventSourceInit extends RequestInit {
   onopen: (response: Response) => Promise<void>;
 }
 
-export function fetchEventSource(
+export async function fetchEventSource(
   input: RequestInfo,
   {
     signal: inputSignal,
@@ -63,47 +64,45 @@ export function fetchEventSource(
     ...rest
   }: FetchEventSourceInit,
 ) {
-  return new Promise<void>((resolve) => {
-    // make a copy of the input headers since we may modify it below:
-    const headers = { ...inputHeaders };
-    if (!headers.accept) {
-      headers.accept = EventStreamContentType;
+  // make a copy of the input headers since we may modify it below:
+  const headers = { ...inputHeaders };
+  if (!headers.accept) {
+    headers.accept = EventStreamContentType;
+  }
+
+  const fetch = inputFetch ?? window.fetch;
+
+  try {
+    const response = await fetch(input, {
+      ...rest,
+      headers,
+      signal: inputSignal,
+    });
+
+    await inputOnOpen(response);
+
+    await getBytes(
+      response.body!,
+      getLines(
+        getMessages((id) => {
+          if (id) {
+            // store the id and send it back on the next retry:
+            headers[LastEventId] = id;
+          } else {
+            // don't send the last-event-id header anymore:
+            delete headers[LastEventId];
+          }
+        }, onmessage),
+      ),
+    );
+
+    onclose?.();
+  } catch (error) {
+    if (error === CLOSE_EVENT_SOURCE) {
+      onclose?.();
+      return;
     }
 
-    const fetch = inputFetch ?? window.fetch;
-    async function create() {
-      try {
-        const response = await fetch(input, {
-          ...rest,
-          headers,
-          signal: inputSignal,
-        });
-
-        await inputOnOpen(response);
-
-        await getBytes(
-          response.body!,
-          getLines(
-            getMessages((id) => {
-              if (id) {
-                // store the id and send it back on the next retry:
-                headers[LastEventId] = id;
-              } else {
-                // don't send the last-event-id header anymore:
-                delete headers[LastEventId];
-              }
-            }, onmessage),
-          ),
-        );
-
-        onclose?.();
-        resolve();
-      } catch (err) {
-        onerror?.(err);
-        resolve();
-      }
-    }
-
-    create();
-  });
+    onerror?.(error);
+  }
 }

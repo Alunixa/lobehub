@@ -12,7 +12,10 @@ import type {
   ResponseAnimationStyle,
 } from '@lobechat/types';
 import { ChatErrorType } from '@lobechat/types';
-import { fetchEventSource } from '@lobechat/utils/client/fetchEventSource/index';
+import {
+  CLOSE_EVENT_SOURCE,
+  fetchEventSource,
+} from '@lobechat/utils/client/fetchEventSource/index';
 import { nanoid } from '@lobechat/utils/uuid';
 
 import { getMessageError } from './parseError';
@@ -351,6 +354,7 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
       try {
         data = JSON.parse(ev.data);
       } catch (e) {
+        finishedType = 'error';
         console.warn('parse error:', e);
         options.onErrorHandle?.({
           body: {
@@ -365,14 +369,18 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
           type: 'StreamChunkError',
         });
 
-        return;
+        return CLOSE_EVENT_SOURCE;
       }
 
       switch (ev.event) {
         case 'error': {
           finishedType = 'error';
           options.onErrorHandle?.(data);
-          break;
+          return CLOSE_EVENT_SOURCE;
+        }
+
+        case 'done': {
+          return CLOSE_EVENT_SOURCE;
         }
 
         case 'base64_image': {

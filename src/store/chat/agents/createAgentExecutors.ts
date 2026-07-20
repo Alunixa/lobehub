@@ -50,8 +50,6 @@ import { type FinishData, type StreamChunk } from './types/streaming';
 
 const log = debug('lobe-store:agent-executors');
 
-export const CHAT_STREAM_IDLE_TIMEOUT_MS = 120_000;
-
 // Tool pricing configuration (USD per call)
 const TOOL_PRICING: Record<string, number> = {
   'lobe-web-browsing/craw': 0.002,
@@ -318,8 +316,7 @@ export const createAgentExecutors = (context: {
       let streamError: ChatMessageError | undefined;
       let streamErrorUpdatePromise: Promise<void> | undefined;
       let streamFinished = false;
-      let streamIdleTimer: ReturnType<typeof setTimeout> | undefined;
-      let streamTimedOut = false;
+      let streamFinishType: string | undefined;
 
       // Expand dynamically activated tools (from lobe-activator activateTools API)
       // and merge them into the agent config for this LLM call.
@@ -468,20 +465,6 @@ export const createAgentExecutors = (context: {
 
       const messages = llmPayload.messages.filter((message) => message.id !== assistantMessageId);
 
-      const clearStreamIdleTimer = () => {
-        if (!streamIdleTimer) return;
-        clearTimeout(streamIdleTimer);
-        streamIdleTimer = undefined;
-      };
-
-      const resetStreamIdleTimer = () => {
-        clearStreamIdleTimer();
-        streamIdleTimer = setTimeout(() => {
-          streamTimedOut = true;
-          abortController.abort();
-        }, CHAT_STREAM_IDLE_TIMEOUT_MS);
-      };
-
       const finalizeStream = async (finishData: FinishData) => {
         const result = await handler.handleFinish(finishData);
 
@@ -509,7 +492,6 @@ export const createAgentExecutors = (context: {
         );
       };
 
-      resetStreamIdleTimer();
       try {
         await chatService.createAssistantMessageStream({
           abortController,
@@ -562,7 +544,7 @@ export const createAgentExecutors = (context: {
             },
           ) => {
             void _content;
-            clearStreamIdleTimer();
+            streamFinishType = type;
 
             if (finishTraceId) {
               messageService.updateMessage(
@@ -585,12 +567,11 @@ export const createAgentExecutors = (context: {
             streamFinished = true;
           },
           onMessageHandle: async (chunk) => {
-            resetStreamIdleTimer();
             handler.handleChunk(chunk as StreamChunk);
           },
         });
       } catch (error) {
-        if (!abortController.signal.aborted || streamTimedOut) {
+        if (!abortController.signal.aborted) {
           const errorRecord = toRecord(error);
           streamError = localizeError({
             body: errorRecord?.body,
@@ -602,60 +583,61 @@ export const createAgentExecutors = (context: {
               ChatErrorType.UnknownChatFetchError,
           });
         }
-      } finally {
-        clearStreamIdleTimer();
+      }
+
+      if (streamFinishType === 'error' && !streamError) {
+        streamError = {
+          body: {
+            message: 'The model response stream reported an error without error details',
+            model: llmPayload.model,
+            provider: llmPayload.provider,
+            traceId,
+          },
+          message: 'The model response stream ended with an error',
+          type: ChatErrorType.UnknownChatFetchError,
+        };
+      }
+
+      if (!streamFinished && !abortController.signal.aborted && !streamError) {
+        streamError = {
+          body: {
+            message: 'The model response stream closed before a completion event was received',
+            model: llmPayload.model,
+            provider: llmPayload.provider,
+            traceId,
+          },
+          message: 'The model response stream ended unexpectedly',
+          type: ChatErrorType.UnknownChatFetchError,
+        };
+      }
+
+      if (streamError) {
+        if (!streamFinished) {
+          await finalizeStream({ type: 'error' });
+        }
+        if (streamErrorUpdatePromise) {
+          await streamErrorUpdatePromise;
+        } else {
+          await context.get().optimisticUpdateMessageError(assistantMessageId, streamError, {
+            operationId: context.operationId,
+          });
+        }
+
+        const latestMessages = context.get().dbMessagesMap[context.messageKey] || [];
+        const errorState = {
+          ...state,
+          error: streamError,
+          messages: latestMessages,
+          status: 'error' as const,
+        };
+
+        return {
+          events: [{ error: streamError, type: 'error' }],
+          newState: errorState,
+        };
       }
 
       if (!streamFinished) {
-        if (streamTimedOut) {
-          streamError = {
-            body: {
-              message: `No streaming activity was received for ${CHAT_STREAM_IDLE_TIMEOUT_MS / 1000} seconds`,
-              model: llmPayload.model,
-              provider: llmPayload.provider,
-              timeoutMs: CHAT_STREAM_IDLE_TIMEOUT_MS,
-              traceId,
-            },
-            message: 'The upstream model response timed out',
-            type: ChatErrorType.GatewayTimeout,
-          };
-        } else if (!abortController.signal.aborted && !streamError) {
-          streamError = {
-            body: {
-              message: 'The model response stream closed before a completion event was received',
-              model: llmPayload.model,
-              provider: llmPayload.provider,
-              traceId,
-            },
-            message: 'The model response stream ended unexpectedly',
-            type: ChatErrorType.UnknownChatFetchError,
-          };
-        }
-
-        if (streamError) {
-          await finalizeStream({ type: 'error' });
-          if (streamErrorUpdatePromise) {
-            await streamErrorUpdatePromise;
-          } else {
-            await context.get().optimisticUpdateMessageError(assistantMessageId, streamError, {
-              operationId: context.operationId,
-            });
-          }
-
-          const latestMessages = context.get().dbMessagesMap[context.messageKey] || [];
-          const errorState = {
-            ...state,
-            error: streamError,
-            messages: latestMessages,
-            status: 'error' as const,
-          };
-
-          return {
-            events: [{ error: streamError, type: 'error' }],
-            newState: errorState,
-          };
-        }
-
         await finalizeStream({ type: 'abort' });
       }
 
