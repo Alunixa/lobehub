@@ -504,3 +504,20 @@
 - 使用 Agent Trace、真实服务端日志、数据库运行中操作和定向故障复现检查未收敛路径。
 - 不修改 Nginx、数据库结构、证书、SearXNG、RustFS、设备网关或 `linuxytd`。
 - 构建继续使用外部 GitHub Actions，禁止在路由器上编译。
+
+### 线上只读证据与根因定位
+
+- 线上受影响样本 `msg_59FDDm6XavQWysOwaq` 使用自定义 `grok` 供应商的 `grok-4.5`，数据库中始终只有 `...` 占位，`usage`、`error`、`reasoning`、`metadata`、`traceId` 均为空，创建后没有任何更新时间变化。
+- 同一父消息下另一条 Grok 响应最终只有 reasoning、没有正文和 usage；随后切换到 `gpt-5.6-sol` 的响应正常完成。
+- Nginx 对对应模型流记录为 HTTP 200 且返回了大量响应字节，说明问题不是请求完全未到达或简单的网络超时，而是流的终止事件没有可靠转换为客户端终态。
+- 当前自定义 Grok 启用了 OpenAI Responses API；`OpenAIResponsesStream` 对带 usage 的 `response.completed` 输出 `usage` 终止事件，但对不带 usage 的 `response.completed` 错误地输出普通 `data` 事件。
+- OpenAI Responses 的 `response.failed`、`response.incomplete` 和原生 `error` 事件当前同样会落入普通 `data` 分支，无法让客户端明确结束或显示真实错误。
+- 浏览器侧 `fetchSSE` 即便收到 `stop`、`usage` 或 `error` 事件，也仍等待 HTTP body 物理关闭；自定义兼容服务若已发送终止帧但保持连接，Promise 会永久悬挂。
+- `fetchEventSource` 目前没有让消息处理器主动结束读取的协议，并且读取异常后依赖回调结束，终止帧与传输连接的生命周期被错误绑定。
+
+### 修复方向
+
+- 移除 `CHAT_STREAM_IDLE_TIMEOUT_MS` 及全部 120 秒定时器和超时错误逻辑。
+- 将 Responses API 的 completed、failed、incomplete 和 error 事件转换为明确的 stop /error 协议终态，并保留 usage 与 usage 缺失诊断。
+- 允许 SSE 消息处理器在收到协议终止事件时主动取消读取并正常完成，不再等待服务端关闭长连接。
+- 确保 `fetchSSE` 的正常完成、协议错误、传输错误与用户取消只收敛一次，并让 `call_llm` 将真实错误写入消息及 Agent Runtime error 状态。
