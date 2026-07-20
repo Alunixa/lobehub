@@ -548,3 +548,6 @@
 - 完整检查的大部分错误来自本机根目录 Bun 依赖与 `apps/desktop` 独立 pnpm 依赖中的 React /antd 类型版本混用；这些重复依赖不属于源码修改，干净的 GitHub Actions 环境不会携带本机独立依赖目录。
 - 检查同时发现手机版完整助手列表新增条目的相对导入路径多退了一层，已将 `../../ListItem` 修正为实际同级目录的 `../ListItem`，避免 CI 打包时报模块不存在。
 - `src/store/aiInfra/slices/aiProvider/action.ts` 的 `prompt` 重复展开来自既有上游提交，并已存在于上一版成功构建和部署的源码中；本轮不扩大范围修改该无关代码。
+- 修正后的手机版条目通过 ESLint、`git diff --check` 和助手列表 2/2 定向测试。
+- 以单工作线程串行重跑全部相关回归：`fetchEventSource` 1/1、`fetchSSE` 22/22、OpenAI Responses 25/25、`call_llm` 48/48、手机加号 3/3、手机助手列表 2/2，合计 101/101 通过。
+- 核心回归仍验证终止帧到达后主动取消永不关闭的响应体并正常收敛，没有增加、恢复或依赖任何聊天流空闲超时。
