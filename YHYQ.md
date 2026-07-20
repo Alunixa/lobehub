@@ -529,3 +529,14 @@
 - OpenAI Responses 定向测试的新 incomplete、failed 和原生 error 用例均已通过；现有三个快照因合法新增 stop /done 事件需要更新。
 - 真实不关闭 ReadableStream 的回归测试成功复现最后一个断点：消息回调返回关闭信号后，`getMessages` 没有把返回值传播给读取循环，因此旧实现仍会等待到测试超时。
 - 下一步将关闭信号从消息解析器抛回 `getBytes`，由 reader.cancel 主动取消 body，再重跑全部定向测试。
+
+### 根因修复完成与定向验证
+
+- 已提交关闭信号传播修复 `59003d6ccc`；`getMessages` 收到 `CLOSE_EVENT_SOURCE` 后会中止解析，`getBytes` 使用 `reader.cancel` 取消仍保持打开的响应 body，并将该终止视为正常完成而不是用户中止或网络错误。
+- “终止帧已经到达但 ReadableStream 永不关闭” 的真实回归测试从原来的 5 秒测试超时变为 16–23 毫秒内正常完成，证明修复不依赖任何空闲时间阈值。
+- OpenAI Responses 现在对 `response.completed` 输出 stop、可选 usage 和 done；无 usage 时仍保留 usage 缺失诊断并输出 done。
+- `response.incomplete` 会保留部分内容、finish reason 和可用 usage 后明确 done；`response.failed` 与原生 `error` 会转为协议 error 并立即结束。
+- `call_llm` 收到协议 error 后会同时保留部分内容、写入消息错误，并将 Agent Runtime 状态返回为 `error`，不再误判为成功完成。
+- 四组核心定向测试全部通过：`fetchEventSource` 1/1、`fetchSSE` 22/22、OpenAI Responses 25/25、`call_llm` 48/48。
+- 已保留的手机加号与完整助手列表回归测试 5/5 通过。
+- 本轮合计 101 个定向测试通过，相关 ESLint 检查无错误。

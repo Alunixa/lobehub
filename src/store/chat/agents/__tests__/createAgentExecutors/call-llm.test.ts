@@ -114,7 +114,7 @@ describe('call_llm executor', () => {
       mockStore.dbMessagesMap[context.messageKey] = [];
 
       // When
-      const result = await executeWithMockContext({
+      await executeWithMockContext({
         executor: 'call_llm',
         instruction,
         state,
@@ -155,7 +155,7 @@ describe('call_llm executor', () => {
       mockStore.dbMessagesMap[context.messageKey] = [];
 
       // When
-      const result = await executeWithMockContext({
+      await executeWithMockContext({
         executor: 'call_llm',
         instruction,
         state,
@@ -1742,7 +1742,7 @@ describe('call_llm executor', () => {
       );
 
       // When
-      await executeWithMockContext({
+      const result = await executeWithMockContext({
         executor: 'call_llm',
         instruction,
         state,

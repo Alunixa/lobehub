@@ -776,6 +776,7 @@ describe('OpenAIResponsesStream', () => {
       expect.objectContaining({
         usageMissingDiagnostics: {
           apiMode: 'responses',
+          finishReason: 'response.completed',
           hasUsageMetadata: false,
           includeUsageRequested: undefined,
           model: 'gpt-5.4-mini',

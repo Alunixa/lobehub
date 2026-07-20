@@ -467,3 +467,12 @@
   package-relative path, for example
   `cd packages/fetch-sse && bunx vitest run src/__tests__/fetchSSE.test.ts`.
   Limit `--maxWorkers` when several package tests run concurrently.
+
+### E5. PowerShell treats unquoted route parentheses as expressions
+
+- **Situation**: running a focused test whose path contains route groups such as
+  `src/routes/(mobile)/(home)/...`.
+- **Doesn't work**: passing the path unquoted in a PowerShell command. PowerShell
+  parses `(mobile)` as an expression and tries to execute `mobile`.
+- **Works**: wrap every path containing parentheses in single quotes, for example
+  `bunx vitest run 'src/routes/(mobile)/(home)/features/foo.test.ts'`.
