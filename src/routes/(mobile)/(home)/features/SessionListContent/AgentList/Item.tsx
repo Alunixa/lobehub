@@ -9,7 +9,7 @@ import { useAgentStore } from '@/store/agent';
 import { useChatStore } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/selectors';
 
-import ListItem from '../../ListItem';
+import ListItem from '../ListItem';
 
 interface AgentItemProps {
   item: SidebarAgentItem;

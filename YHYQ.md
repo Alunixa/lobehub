@@ -540,3 +540,11 @@
 - 四组核心定向测试全部通过：`fetchEventSource` 1/1、`fetchSSE` 22/22、OpenAI Responses 25/25、`call_llm` 48/48。
 - 已保留的手机加号与完整助手列表回归测试 5/5 通过。
 - 本轮合计 101 个定向测试通过，相关 ESLint 检查无错误。
+
+### 部署前低负载类型检查
+
+- 按用户要求继续部署真实根因修复，不增加或恢复任何聊天流超时逻辑。
+- 使用 Windows 原生环境、4GB Node 内存上限和低优先级进程运行完整 `bun run type-check`，约 150 秒结束，未进行本机 Docker 或高负载应用构建。
+- 完整检查的大部分错误来自本机根目录 Bun 依赖与 `apps/desktop` 独立 pnpm 依赖中的 React /antd 类型版本混用；这些重复依赖不属于源码修改，干净的 GitHub Actions 环境不会携带本机独立依赖目录。
+- 检查同时发现手机版完整助手列表新增条目的相对导入路径多退了一层，已将 `../../ListItem` 修正为实际同级目录的 `../ListItem`，避免 CI 打包时报模块不存在。
+- `src/store/aiInfra/slices/aiProvider/action.ts` 的 `prompt` 重复展开来自既有上游提交，并已存在于上一版成功构建和部署的源码中；本轮不扩大范围修改该无关代码。
