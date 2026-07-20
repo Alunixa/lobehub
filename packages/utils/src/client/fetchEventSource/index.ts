@@ -84,15 +84,22 @@ export async function fetchEventSource(
     await getBytes(
       response.body!,
       getLines(
-        getMessages((id) => {
-          if (id) {
-            // store the id and send it back on the next retry:
-            headers[LastEventId] = id;
-          } else {
-            // don't send the last-event-id header anymore:
-            delete headers[LastEventId];
-          }
-        }, onmessage),
+        getMessages(
+          (id) => {
+            if (id) {
+              // store the id and send it back on the next retry:
+              headers[LastEventId] = id;
+            } else {
+              // don't send the last-event-id header anymore:
+              delete headers[LastEventId];
+            }
+          },
+          (message) => {
+            if (onmessage?.(message) === CLOSE_EVENT_SOURCE) {
+              throw CLOSE_EVENT_SOURCE;
+            }
+          },
+        ),
       ),
     );
 
