@@ -31,7 +31,7 @@ jobs:
           platforms: linux/amd64
           load: false
           push: false
-          outputs: type=docker,dest=/tmp/lobehub-server-image.tar
+          outputs: type=oci,dest=/tmp/lobehub-server-image.tar
           provenance: false
           sbom: false
           tags: lobehub/lobehub:codex-${{ github.sha }}
