@@ -366,3 +366,18 @@
 - 使用 esbuild 对服务端、共享路由和客户端聊天服务入口做语法打包检查通过。
 - 根目录完整 `bun run check` 因缺少本地 `node_modules/.bin/vitest` 未启动；改用 `bunx vitest` 完成上述定向测试。
 - 未部署服务器、未重启 Docker/Nginx、未构建 EXE/APK，当前仍在本地代码验证阶段。
+
+## 2026-07-20：部署当前修复并编译 Windows EXE
+
+### 用户要求
+
+- 将当前已完成的 Instructions、手机版聊天加号和 Windows 网关修复部署到 `192.168.100.1` 的 LobeHub 服务端。
+- 编译 Windows EXE；本轮不编译手机版 APK。
+- 不影响 Nginx、PostgreSQL、Redis、RustFS、SearXNG、设备网关及其他现有服务。
+
+### 当前行动
+
+- 读取部署前 Git 状态、线上 Compose / 容器 / 镜像和桌面构建环境。
+- 保留线上 LobeHub 镜像及配置回滚点。
+- 仅更新并重建 `lobehub` 服务，完成端点、日志和依赖容器不变性验证。
+- 使用 Windows 原生 PowerShell 编译并核验 EXE。
