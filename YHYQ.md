@@ -410,3 +410,17 @@
 - 未发现 Docker 构建遗留的额外容器，因此没有执行全局容器清理。
 - 按备份恢复了服务器 `custom-build` 中本次同步的原有文件，并删除本次新增的 Instructions 文件。
 - `lobehub` 保持停止状态且不会自动重启；`linuxytd` 保持原容器、原运行状态和原重启策略。
+
+## 2026-07-20：改用本地 / CI 构建镜像后部署
+
+### 用户要求
+
+- 立即部署当前服务端修复。
+- 路由器不得再执行源码编译，必须在外部构建完成后上传镜像。
+
+### 当前方案
+
+- 本机 Docker Desktop 当前不可用，且不启动 WSL。
+- 使用 GitHub Actions Ubuntu runner 构建 `linux/amd64` 镜像并导出 OCI 包。
+- 下载 OCI 包到本机后，通过 SSH 上传到服务器并执行 `docker load`。
+- 仅替换 `lobehub` 容器，保留线上镜像回滚标签和 `linuxytd`。
