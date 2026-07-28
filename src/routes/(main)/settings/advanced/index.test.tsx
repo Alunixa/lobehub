@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { type ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { autoUpdateService } from '@/services/electron/autoUpdate';
+import { userMemoryService } from '@/services/userMemory';
 import { initServerConfigStore, Provider } from '@/store/serverConfig/store';
 import { useUserStore } from '@/store/user';
 
@@ -70,21 +71,11 @@ vi.mock('@lobehub/ui', () => ({
 }));
 
 vi.mock('@lobehub/ui/base-ui', () => ({
-  Button: ({
-    children,
-    onClick,
-  }: {
-    children?: ReactNode;
-    onClick?: () => void;
-  }) => <button onClick={onClick}>{children}</button>,
+  Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
+    <button onClick={onClick}>{children}</button>
+  ),
   Select: () => <button />,
-  Switch: ({
-    checked,
-    onChange,
-  }: {
-    checked?: boolean;
-    onChange?: (checked: boolean) => void;
-  }) => (
+  Switch: ({ checked, onChange }: { checked?: boolean; onChange?: (checked: boolean) => void }) => (
     <button aria-pressed={checked} onClick={() => onChange?.(!checked)}>
       switch
     </button>
@@ -108,6 +99,12 @@ vi.mock('@/services/electron/autoUpdate', () => ({
   },
 }));
 
+vi.mock('@/services/userMemory', () => ({
+  userMemoryService: {
+    testMemoryModelConnection: vi.fn().mockResolvedValue({ success: true }),
+  },
+}));
+
 const createWrapper = () => {
   const Wrapper = ({ children }: { children: ReactNode }) => (
     <Provider createStore={() => initServerConfigStore({})}>{children}</Provider>
@@ -117,6 +114,10 @@ const createWrapper = () => {
 };
 
 const initialUserStoreState = useUserStore.getState();
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 afterEach(() => {
   useUserStore.setState(initialUserStoreState, true);
@@ -203,6 +204,12 @@ describe('Advanced settings page', () => {
     fireEvent.click(screen.getByText('tab.advanced.memoryEmbedding.save'));
 
     await waitFor(() => {
+      expect(userMemoryService.testMemoryModelConnection).toHaveBeenCalledWith({
+        apiKey: 'secret-key',
+        baseURL: 'https://embedding.example.com/v1',
+        model: 'embedding-model',
+        type: 'embedding',
+      });
       expect(setSettings).toHaveBeenCalledWith({
         keyVaults: {
           memoryEmbedding: {
@@ -218,5 +225,104 @@ describe('Advanced settings page', () => {
         },
       });
     });
+  });
+
+  it('tests and saves text memory model credentials only through KeyVault', async () => {
+    const setSettings = vi.fn().mockResolvedValue(undefined);
+    useUserStore.setState({
+      isUserStateInit: true,
+      setSettings,
+      updateLab: vi.fn(),
+    });
+
+    render(<Page />, { wrapper: createWrapper() });
+
+    const textModelSwitch = screen
+      .getByText('tab.advanced.memoryTextModel.enabled.title')
+      .parentElement?.querySelector('button');
+    fireEvent.click(textModelSwitch!);
+
+    const baseURLInput = screen
+      .getByText('tab.advanced.memoryTextModel.baseURL.title')
+      .parentElement?.querySelector('input');
+    const apiKeyInput = screen
+      .getByText('tab.advanced.memoryTextModel.apiKey.title')
+      .parentElement?.querySelector('input');
+    const modelInput = screen
+      .getByText('tab.advanced.memoryTextModel.model.title')
+      .parentElement?.querySelector('input');
+
+    fireEvent.change(baseURLInput!, {
+      target: { value: 'https://memory.example.com/v1/chat/completions' },
+    });
+    fireEvent.change(apiKeyInput!, { target: { value: 'text-secret-key' } });
+    fireEvent.change(modelInput!, { target: { value: 'memory-text-model' } });
+    fireEvent.click(screen.getByText('tab.advanced.memoryTextModel.save'));
+
+    await waitFor(() => {
+      expect(userMemoryService.testMemoryModelConnection).toHaveBeenCalledWith({
+        apiKey: 'text-secret-key',
+        baseURL: 'https://memory.example.com/v1',
+        model: 'memory-text-model',
+        type: 'text',
+      });
+      expect(setSettings).toHaveBeenCalledWith({
+        keyVaults: {
+          memoryTextModel: {
+            apiKey: 'text-secret-key',
+            baseURL: 'https://memory.example.com/v1',
+          },
+        },
+        memory: {
+          textModel: {
+            enabled: true,
+            model: 'memory-text-model',
+          },
+        },
+      });
+    });
+  });
+
+  it('does not persist memory model settings when the connection test fails', async () => {
+    const setSettings = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(userMemoryService.testMemoryModelConnection).mockRejectedValueOnce(
+      new Error('model unavailable'),
+    );
+    useUserStore.setState({
+      isUserStateInit: true,
+      setSettings,
+      updateLab: vi.fn(),
+    });
+
+    render(<Page />, { wrapper: createWrapper() });
+
+    const embeddingSwitch = screen
+      .getByText('tab.advanced.memoryEmbedding.enabled.title')
+      .parentElement?.querySelector('button');
+    fireEvent.click(embeddingSwitch!);
+
+    const baseURLInput = screen
+      .getByText('tab.advanced.memoryEmbedding.baseURL.title')
+      .parentElement?.querySelector('input');
+    const apiKeyInput = screen
+      .getByText('tab.advanced.memoryEmbedding.apiKey.title')
+      .parentElement?.querySelector('input');
+    const modelInput = screen
+      .getByText('tab.advanced.memoryEmbedding.model.title')
+      .parentElement?.querySelector('input');
+    expect(baseURLInput).not.toBeNull();
+    expect(apiKeyInput).not.toBeNull();
+    expect(modelInput).not.toBeNull();
+    fireEvent.change(baseURLInput!, {
+      target: { value: 'https://embedding.example.com/v1' },
+    });
+    fireEvent.change(apiKeyInput!, { target: { value: 'secret-key' } });
+    fireEvent.change(modelInput!, { target: { value: 'embedding-model' } });
+    fireEvent.click(screen.getByText('tab.advanced.memoryEmbedding.save'));
+
+    await waitFor(() => {
+      expect(userMemoryService.testMemoryModelConnection).toHaveBeenCalledOnce();
+    });
+    expect(setSettings).not.toHaveBeenCalled();
   });
 });

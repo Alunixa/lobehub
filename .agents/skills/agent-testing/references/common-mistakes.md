@@ -278,3 +278,25 @@ request chain—provider response, SSE frames, parser callbacks, stream promise,
 message placeholder, and operation status. Fix the first non-converging
 transition, remove the compensating timeout, and add a regression test that
 fails on the actual malformed/error/close sequence.
+
+---
+
+## Case 12 — Testing a mobile overlay helper without exercising the real event chain
+
+**Wrong approach**: after changing a helper that says mobile overlays should use an
+explicit click path, treat the helper's boolean unit test as proof that the attachment
+menu opens on a phone.
+
+**Why it's wrong**: the failure lives in the interaction between the child action and
+the Base UI parent trigger. A real tap emits `pointerdown`, compatibility `mousedown`,
+and `click`; the parent can open on the first event and the controlled child can close
+again on the last event even though every isolated helper assertion passes.
+
+**What it breaks**: the regression remains visible on the mobile web surface while the
+test suite reports green, forcing the user to use the expand/collapse workaround just
+to attach a file.
+
+**Correct approach**: cover the rendered trigger with the actual mobile event order,
+assert the portal menu remains open after the complete tap, and verify the same flow in
+a real mobile viewport while the editor remains writable. A helper test may support
+that evidence, but it can never replace it.

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getServerDB } from '@/database/core/db-adaptor';
 import type * as UserMemoryModule from '@/database/models/userMemory';
 import { UserMemoryModel } from '@/database/models/userMemory';
-import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
 
 import { userMemoriesRouter } from './userMemories';
 
@@ -13,14 +13,19 @@ vi.mock('@/database/core/db-adaptor', () => ({
   getServerDB: vi.fn(),
 }));
 
-vi.mock('@/server/globalConfig', () => ({
-  getServerDefaultFilesConfig: vi.fn().mockReturnValue({
-    embeddingModel: { model: 'text-embedding-3-small' },
-  }),
+vi.mock('@/server/modules/ModelRuntime', () => ({
+  initModelRuntimeWithUserPayload: vi.fn(),
 }));
 
-vi.mock('@/server/modules/ModelRuntime', () => ({
-  initModelRuntimeFromDB: vi.fn(),
+vi.mock('@/server/modules/KeyVaultsEncrypt', () => ({
+  KeyVaultsGateKeeper: {
+    getUserKeyVaults: vi.fn().mockResolvedValue({
+      memoryEmbedding: {
+        apiKey: 'embedding-api-key',
+        baseURL: 'https://embedding.example.com/v1',
+      },
+    }),
+  },
 }));
 
 vi.mock('@/database/models/userMemory', async (importOriginal) => {
@@ -41,7 +46,12 @@ const mockCtx = { userId: 'test-user' };
 const makeServerDBMock = (query: Record<string, any> = {}) => ({
   query: {
     userSettings: {
-      findFirst: vi.fn().mockResolvedValue({ memory: null }),
+      findFirst: vi.fn().mockResolvedValue({
+        keyVaults: {},
+        memory: {
+          embedding: { enabled: true, model: 'text-embedding-3-small' },
+        },
+      }),
     },
     ...query,
   },
@@ -55,7 +65,7 @@ beforeEach(() => {
     return items.map((_, index) => [index + 1]);
   });
 
-  vi.mocked(initModelRuntimeFromDB).mockResolvedValue({
+  vi.mocked(initModelRuntimeWithUserPayload).mockReturnValue({
     embeddings: embeddingsMock,
   } as any);
 });
@@ -384,6 +394,7 @@ describe('userMemories.retrieveMemory', () => {
       expect.objectContaining({ user: 'test-user' }),
     );
     expect(searchMemory.mock.calls[0][0]).toStrictEqual({
+      effort: 'medium',
       queries: ['Project Atlas'],
       topK: { activities: 1, contexts: 0, experiences: 0, identities: 1, preferences: 1 },
     });
@@ -443,6 +454,7 @@ describe('userMemories.retrieveMemory', () => {
 
     expect(searchMemory).toHaveBeenCalledWith(
       {
+        effort: 'medium',
         layers: ['preference'],
         queries: ['meal preference tomato eggs tofu'],
         topK: {
@@ -506,6 +518,7 @@ describe('userMemories.retrieveMemory', () => {
 
     expect(searchMemory).toHaveBeenCalledWith(
       {
+        effort: 'medium',
         queries: ['Electron ONNX Runtime debugging'],
         timeIntent: undefined,
         timeRange: {
@@ -574,6 +587,7 @@ describe('userMemories.retrieveMemory', () => {
 
     expect(searchMemory).toHaveBeenCalledWith(
       {
+        effort: 'medium',
         queries: ['activities'],
         timeIntent: undefined,
         timeRange: {
@@ -642,7 +656,7 @@ describe('userMemories.toolAddActivityMemory', () => {
     expect(createActivityMemory).toHaveBeenCalledWith(
       expect.objectContaining({
         activity: expect.objectContaining({
-          associatedLocations: [{ name: 'HQ', type: 'place' }],
+          associatedLocations: [expect.objectContaining({ name: 'HQ', type: 'place' })],
           associatedObjects: [{ name: 'Slides' }],
           associatedSubjects: [{ name: 'Alice' }],
           endsAt: new Date('2024-05-01T11:00:00Z'),

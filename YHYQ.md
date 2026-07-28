@@ -617,3 +617,29 @@
 - 手机附件菜单此前由 Base UI 在 `mousedown` 打开、旧补丁又在 `click` 关闭；现在移动端拦截父级 `pointerdown/mousedown`，只保留受控 click 切换，并把真实 mobile 状态传入输入框 Provider。
 - 手机端临时隐藏无有效 Portal 宿主的放大按钮，避免 “放大后覆盖输入区域且无法输入” 的损坏路径；桌面放大行为保持不变。
 - 所有修改先通过相关 ESLint 自动修复、Locale JSON 解析和 `git diff --check`；完整低优先级类型检查在四分钟上限前没有输出错误，但超时后留下的本轮孤立进程已单独清理，后续改用定向测试与模块检查。
+
+### 最终回归与事件根因修正
+
+- 根应用 6 个测试文件共 31/31 通过，覆盖记忆设置保存与连接测试、嵌入失败降级、文本模型候选筛选、工具记忆写入和真实 Base UI 移动事件链。
+- 模型运行时 3 个完整测试文件共 151/151 通过，覆盖图片生成、图片编辑和聊天图片模式的单次请求、AbortSignal 传递及 usage 缺字段容错。
+- 数据库 PGlite 集成测试 43/43 通过，覆盖无关键词候选池、原过滤条件和用户隔离；三组定向回归合计 225/225 通过。
+- 手机附件菜单的精确根因是 Base UI `Menu.Trigger` 默认在 `mousedown` 切换状态，而旧补丁在子节点事件阶段无法阻止同次交互的父级内部处理；最终在 `dropdown.triggerProps.onMouseDown` 中调用 Base UI 提供的 `preventBaseUIHandler()`，只保留受控 `click` 作为唯一状态切换。
+- 移除了父级 Trigger 对外部 `onMouseDown` 的重复调用，避免一次触摸让业务回调执行两次；最终手机事件链测试 4/4、相关 ESLint 和 `git diff --check` 通过。
+- 文本模型若返回候选池外 ID，不再静默过滤后接受其余结果，而是整批拒绝并回退原生混合检索，避免模型伪造 ID 或不完整选择导致错误空结果。
+- 完整 `tsgo --noEmit` 在 Windows 原生、低优先级和 4GB 堆上限下运行五分钟，无错误输出但未在限制内结束；已精确清理本轮残留进程，没有进行本机应用或 Docker 构建。
+
+### 部署前只读基线
+
+- 2026-07-29 通过原生 Windows SSH 别名 `l` 只读盘点，未使用 WSL，未启动、停止、重建或修改任何服务器服务。
+- 当前 `lobehub` 容器为 `38c4ce4f32206b95d90fcf237ac661de17ce176f686f126a09746923c9e39efb`，镜像为 `sha256:7f8cc2bd6c27344a3d3884117c6950c6780a469d5ce570d11e9dcbf3e96e5636`，策略为 `always`，映射为宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 其他容器基线：设备网关 `3d1a74a1a5c0`、SearXNG `76165d49617f`、RustFS `e5396e9ce69e`、RustFS 初始化容器 `eed1bbe27cf4`、PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、`linuxytd` `40221e97adeb`。
+- Compose 文件 SHA-256 为 `fdaca5c7444241ec100768ae61e34ee265f16113bcb9395954b43aa0fcc0378e`；`nginx -t` 成功，证书文件哈希已记录用于部署后比对。
+- 路由器可用内存约 6.39 GB，当前 LobeHub 内存约 574 MiB；容器内映射端点和公网 HTTPS `/api/version` 均返回 HTTP 200 与 `{"version":"2.2.8"}`。
+- 本轮构建继续只使用 GitHub Actions：Windows 仅启用 Windows Runner，服务端仅构建 `linux/amd64` Docker archive；路由器只接收构建产物并只允许窄替换 `lobehub`。
+
+### 真实手机触摸验证
+
+- 使用真实 `Action`、`ActionDropdown` 和 Base UI Trigger 创建隔离 Chromium 夹具，固定 390×844、DPR 2、`isMobile: true` 和 `hasTouch: true`，菜单触发与菜单项选择均使用真实 `tap()` 事件链。
+- 4/4 场景通过：一次触摸直接打开附件菜单、打开时保留原有草稿、选择附件后无需放大即可继续逐字输入、完成附件操作后仍可再次触摸打开菜单。
+- Playwright 记录的 console、HTTP 4xx/5xx 和页面运行时错误均为零；两张成功截图已人工检查，页面非空白且菜单、草稿、附件选择状态和附件后新增输入均清晰可见。
+- 验证夹具完成后已停止本轮 Vite 服务并释放端口；另精确终止上一轮遗留且已确认无父进程的 Vite PID `23240`，未影响当前测试或用户进程。

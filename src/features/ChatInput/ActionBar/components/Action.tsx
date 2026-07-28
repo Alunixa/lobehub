@@ -14,7 +14,7 @@ import { type ActionDropdownProps } from './ActionDropdown';
 import ActionDropdown from './ActionDropdown';
 import { type ActionPopoverProps } from './ActionPopover';
 import ActionPopover from './ActionPopover';
-import { shouldUseExplicitMobileOverlayClick } from './actionUtils';
+import { preventMobileDropdownMouseDown, shouldUseExplicitMobileOverlayClick } from './actionUtils';
 
 interface ActionProps extends Omit<ActionIconProps, 'popover'> {
   dropdown?: Omit<ActionDropdownProps, 'children'>;
@@ -53,6 +53,19 @@ const Action = memo<ActionProps>(
     const blocked = disabled || !canUseChatInputAction;
     const tooltipTitle = canUseChatInputAction ? title : reason;
     const hasOverlay = Boolean(dropdown || popover);
+    const useExplicitMobileOverlayClick = shouldUseExplicitMobileOverlayClick(hasOverlay, mobile);
+    const dropdownTriggerProps: ActionDropdownProps['triggerProps'] =
+      dropdown && useExplicitMobileOverlayClick
+        ? {
+            ...dropdown.triggerProps,
+            onMouseDown: (event) => {
+              // Trigger props run before Base UI's own mousedown handler. Blocking it here
+              // leaves the later controlled click as the only state transition.
+              preventMobileDropdownMouseDown(event, mobile);
+              dropdown.triggerProps?.onMouseDown?.(event);
+            },
+          }
+        : dropdown?.triggerProps;
     const iconNode = (
       <ActionIcon
         disabled={blocked}
@@ -73,7 +86,7 @@ const Action = memo<ActionProps>(
         onClick={(e) => {
           if (blocked || loading) return;
           if (onClick) return onClick(e);
-          if (shouldUseExplicitMobileOverlayClick(hasOverlay, mobile)) {
+          if (useExplicitMobileOverlayClick) {
             e.preventDefault();
             e.stopPropagation();
             setShow(!show);
@@ -81,23 +94,9 @@ const Action = memo<ActionProps>(
         }}
         onMouseDown={(event) => {
           onMouseDown?.(event);
-          if (event.defaultPrevented || blocked || loading) return;
-
-          if (shouldUseExplicitMobileOverlayClick(hasOverlay, mobile)) {
-            event.preventDefault();
-            event.stopPropagation();
-          }
         }}
         onPointerDown={(event) => {
           onPointerDown?.(event);
-          if (event.defaultPrevented || blocked || loading) return;
-
-          if (shouldUseExplicitMobileOverlayClick(hasOverlay, mobile)) {
-            // Base UI opens the parent trigger on pointerdown. Stop that first
-            // toggle so the following controlled click cannot immediately close it.
-            event.preventDefault();
-            event.stopPropagation();
-          }
         }}
         {...rest}
         size={
@@ -121,6 +120,7 @@ const Action = memo<ActionProps>(
           {...dropdown}
           minWidth={mobile ? '100%' : dropdown.minWidth}
           placement={mobile ? 'top' : (dropdownPlacement ?? dropdown.placement)}
+          triggerProps={dropdownTriggerProps}
         >
           {iconNode}
         </ActionDropdown>

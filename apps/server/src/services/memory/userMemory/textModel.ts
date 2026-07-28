@@ -273,7 +273,11 @@ const selectCandidateMatches = async ({
   const parsed = memorySelectionResponseSchema.safeParse(result);
   if (!parsed.success) throw new Error('Memory text model returned an invalid selection');
 
-  return parsed.data.matches.filter((match) => allowedKeys.has(match.key));
+  if (parsed.data.matches.some((match) => !allowedKeys.has(match.key))) {
+    throw new Error('Memory text model returned a selection outside the candidate set');
+  }
+
+  return parsed.data.matches;
 };
 
 const getCollectionLimit = (collection: MemoryCollectionKey, topK: SearchMemoryParams['topK']) =>

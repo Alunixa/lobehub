@@ -1,6 +1,6 @@
 // @vitest-environment node
 import * as imageToBase64Module from '@lobechat/utils';
-import type OpenAI from 'openai';
+import OpenAI from 'openai';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CreateImagePayload } from '../../types/image';
@@ -255,21 +255,24 @@ describe('createOpenAICompatibleImage', () => {
         const result = await createOpenAICompatibleImage(mockClient, payload, 'openrouter');
 
         expect(result.imageUrl).toBe('data:image/png;base64,generatedWithoutInputImage');
-        expect(mockClient.chat.completions.create).toHaveBeenCalledWith({
-          messages: [
-            {
-              content: [
-                {
-                  text: 'Generate a cat image',
-                  type: 'text',
-                },
-              ],
-              role: 'user',
-            },
-          ],
-          model: 'gemini-2.0-flash',
-          stream: false,
-        });
+        expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
+          {
+            messages: [
+              {
+                content: [
+                  {
+                    text: 'Generate a cat image',
+                    type: 'text',
+                  },
+                ],
+                role: 'user',
+              },
+            ],
+            model: 'gemini-2.0-flash',
+            stream: false,
+          },
+          { maxRetries: 0, signal: undefined },
+        );
       });
 
       it('should handle null imageUrl parameter', async () => {
@@ -567,6 +570,7 @@ describe('createOpenAICompatibleImage', () => {
       expect(result.imageUrl).toBe('data:image/png;base64,mappedChatModelResult');
       expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
         expect.objectContaining({ model: 'upstream-model' }),
+        { maxRetries: 0, signal: undefined },
       );
       expect(mockClient.images.generate).not.toHaveBeenCalled();
       expect(mockClient.images.edit).not.toHaveBeenCalled();
@@ -595,6 +599,110 @@ describe('createOpenAICompatibleImage', () => {
       expect(result.imageUrl).toBe('data:image/png;base64,imageModelBase64Result');
       expect(mockClient.images.generate).toHaveBeenCalled();
       expect(mockClient.chat.completions.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('request controls', () => {
+    it('should disable SDK retries, forward the abort signal, and call image generation once', async () => {
+      const abortController = new AbortController();
+      vi.mocked(mockClient.images.generate).mockRejectedValue(new Error('upstream 500'));
+
+      const payload: CreateImagePayload = {
+        model: 'dall-e-3',
+        params: { prompt: 'Generate once' },
+      };
+
+      await expect(
+        createOpenAICompatibleImage(mockClient, payload, 'openai', {
+          signal: abortController.signal,
+        }),
+      ).rejects.toThrow('upstream 500');
+
+      expect(mockClient.images.generate).toHaveBeenCalledTimes(1);
+      expect(mockClient.images.generate).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'dall-e-3', prompt: 'Generate once' }),
+        { maxRetries: 0, signal: abortController.signal },
+      );
+    });
+
+    it('should make only one HTTP request when the OpenAI SDK receives an upstream 500', async () => {
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { message: 'upstream 500' } }), {
+          headers: { 'content-type': 'application/json' },
+          status: 500,
+        }),
+      );
+      const client = new OpenAI({
+        apiKey: 'test-key',
+        baseURL: 'https://example.com/v1',
+        fetch: fetchMock as typeof fetch,
+        maxRetries: 2,
+      });
+
+      await expect(
+        createOpenAICompatibleImage(
+          client,
+          { model: 'dall-e-3', params: { prompt: 'Generate once over HTTP' } },
+          'openai',
+        ),
+      ).rejects.toThrow('upstream 500');
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('should disable SDK retries and forward the abort signal for image editing', async () => {
+      const abortController = new AbortController();
+      vi.mocked(mockClient.images.edit).mockResolvedValue({
+        data: [{ b64_json: 'editedImage' }],
+      } as any);
+
+      const payload: CreateImagePayload = {
+        model: 'gpt-image-1',
+        params: {
+          imageUrl: 'data:image/png;base64,aGVsbG8=',
+          prompt: 'Edit once',
+        },
+      };
+
+      const result = await createOpenAICompatibleImage(mockClient, payload, 'openai', {
+        signal: abortController.signal,
+      });
+
+      expect(result.imageUrl).toBe('data:image/png;base64,editedImage');
+      expect(mockClient.images.edit).toHaveBeenCalledTimes(1);
+      expect(mockClient.images.edit).toHaveBeenCalledWith(
+        expect.objectContaining({ image: expect.any(File), model: 'gpt-image-1' }),
+        { maxRetries: 0, signal: abortController.signal },
+      );
+    });
+
+    it('should disable SDK retries and forward the abort signal for chat image generation', async () => {
+      const abortController = new AbortController();
+      vi.mocked(mockClient.chat.completions.create).mockResolvedValue({
+        choices: [
+          {
+            message: {
+              images: [{ image_url: { url: 'data:image/png;base64,chatImage' } }],
+            },
+          },
+        ],
+      } as any);
+
+      const payload: CreateImagePayload = {
+        model: 'image-chat-model:image',
+        params: { prompt: 'Generate once through chat' },
+      };
+
+      const result = await createOpenAICompatibleImage(mockClient, payload, 'openrouter', {
+        signal: abortController.signal,
+      });
+
+      expect(result.imageUrl).toBe('data:image/png;base64,chatImage');
+      expect(mockClient.chat.completions.create).toHaveBeenCalledTimes(1);
+      expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'image-chat-model' }),
+        { maxRetries: 0, signal: abortController.signal },
+      );
     });
   });
 
@@ -837,5 +945,49 @@ describe('createOpenAICompatibleImage', () => {
       expect(result.imageUrl).toBe('data:image/png;base64,imageWithoutUsage');
       expect(result.modelUsage).toBeUndefined();
     });
+
+    it.each([
+      {
+        expectedInputTextTokens: 0,
+        label: 'input_tokens_details',
+        usage: {
+          input_tokens: 14,
+          output_tokens: 4160,
+          total_tokens: 4174,
+        },
+      },
+      {
+        expectedInputTextTokens: 14,
+        label: 'input_tokens_details.image_tokens',
+        usage: {
+          input_tokens: 14,
+          input_tokens_details: { text_tokens: 14 },
+          output_tokens: 4160,
+          total_tokens: 4174,
+        },
+      },
+    ])(
+      'should preserve the generated image when $label is missing',
+      async ({ expectedInputTextTokens, usage }) => {
+        vi.mocked(mockClient.images.generate).mockResolvedValue({
+          data: [{ b64_json: 'imageWithPartialUsage' }],
+          usage,
+        } as any);
+
+        const result = await createOpenAICompatibleImage(
+          mockClient,
+          { model: 'gpt-image-1', params: { prompt: 'Keep the image result' } },
+          'openai',
+        );
+
+        expect(result.imageUrl).toBe('data:image/png;base64,imageWithPartialUsage');
+        expect(result.modelUsage).toMatchObject({
+          inputImageTokens: 0,
+          inputTextTokens: expectedInputTextTokens,
+          outputImageTokens: 4160,
+        });
+        expect(mockClient.images.generate).toHaveBeenCalledTimes(1);
+      },
+    );
   });
 });

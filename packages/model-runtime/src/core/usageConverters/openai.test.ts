@@ -507,4 +507,39 @@ describe('convertOpenAIImageUsage', () => {
       cost: 0.16647, // Based on pricing: 14 * 5/1M + 0 * 10/1M + 4160 * 40/1M = 0.00007 + 0 + 0.1664 = 0.16647
     });
   });
+
+  it('should tolerate responses without input token details', () => {
+    const partialUsage = {
+      input_tokens: 14,
+      output_tokens: 4160,
+      total_tokens: 4174,
+    } as OpenAI.Images.ImagesResponse.Usage;
+
+    expect(convertOpenAIImageUsage(partialUsage)).toEqual({
+      inputImageTokens: 0,
+      inputTextTokens: 0,
+      outputImageTokens: 4160,
+      totalInputTokens: 14,
+      totalOutputTokens: 4160,
+      totalTokens: 4174,
+    });
+  });
+
+  it('should tolerate responses without an image token count', () => {
+    const partialUsage = {
+      input_tokens: 14,
+      input_tokens_details: { text_tokens: 14 },
+      output_tokens: 4160,
+      total_tokens: 4174,
+    } as OpenAI.Images.ImagesResponse.Usage;
+
+    expect(convertOpenAIImageUsage(partialUsage)).toEqual({
+      inputImageTokens: 0,
+      inputTextTokens: 14,
+      outputImageTokens: 4160,
+      totalInputTokens: 14,
+      totalOutputTokens: 4160,
+      totalTokens: 4174,
+    });
+  });
 });

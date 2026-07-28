@@ -899,6 +899,48 @@ describe('lexical filter-only search (no BM25 query)', () => {
     expect(result.preferences).toEqual([]);
   });
 
+  it('returns unfiltered candidates only when requested and preserves filters and user isolation', async () => {
+    const { activity: projectActivity } = await createActivityPair({
+      capturedAt: new Date('2026-03-20T10:00:00.000Z'),
+      memoryCategory: 'project',
+      ownerId: userId,
+      title: 'My project memory',
+    });
+    const { activity: personalActivity } = await createActivityPair({
+      capturedAt: new Date('2026-03-19T10:00:00.000Z'),
+      memoryCategory: 'personal',
+      ownerId: userId,
+      title: 'My personal memory',
+    });
+    const { activity: otherUserActivity } = await createActivityPair({
+      capturedAt: new Date('2026-03-21T10:00:00.000Z'),
+      memoryCategory: 'project',
+      ownerId: otherUserId,
+      title: 'Other user project memory',
+    });
+    const params = {
+      layers: [LayersEnum.Activity],
+      topK: { activities: 5, contexts: 0, experiences: 0, identities: 0, preferences: 0 },
+    };
+
+    const defaultResult = await memoryModel.searchMemory(params);
+    const candidateResult = await memoryModel.searchMemory(params, [], {
+      includeUnfilteredCandidates: true,
+    });
+    const filteredResult = await memoryModel.searchMemory(
+      { ...params, categories: ['project'] },
+      [],
+      { includeUnfilteredCandidates: true },
+    );
+
+    expect(defaultResult.activities).toEqual([]);
+    expect(new Set(candidateResult.activities.map((item) => item.id))).toEqual(
+      new Set([projectActivity.id, personalActivity.id]),
+    );
+    expect(candidateResult.activities.map((item) => item.id)).not.toContain(otherUserActivity.id);
+    expect(filteredResult.activities.map((item) => item.id)).toEqual([projectActivity.id]);
+  });
+
   it('treats a timeRange with neither start nor end as no filter', async () => {
     await createActivityPair({ tags: ['atlas'], title: 'a' });
 

@@ -1717,19 +1717,43 @@ describe('LobeOpenAICompatibleFactory', () => {
 
         const result = await (instance as any).createImage(payload);
 
-        expect(instance['client'].images.generate).toHaveBeenCalledWith({
-          model: 'dall-e-3',
-          n: 1,
-          prompt: 'A beautiful sunset',
-          quality: 'standard',
-          response_format: 'b64_json',
-          size: '1024x1024',
-        });
+        expect(instance['client'].images.generate).toHaveBeenCalledWith(
+          {
+            model: 'dall-e-3',
+            n: 1,
+            prompt: 'A beautiful sunset',
+            quality: 'standard',
+            response_format: 'b64_json',
+            size: '1024x1024',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
 
         expect(result).toEqual({
           imageUrl:
             'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
         });
+      });
+
+      it('should forward the request abort signal to the image SDK call', async () => {
+        const abortController = new AbortController();
+        vi.spyOn(instance['client'].images, 'generate').mockResolvedValue({
+          data: [{ b64_json: 'signal-image' }],
+        } as any);
+
+        await (instance as any).createImage(
+          {
+            model: 'dall-e-3',
+            params: { prompt: 'Forward the signal' },
+          },
+          { signal: abortController.signal },
+        );
+
+        expect(instance['client'].images.generate).toHaveBeenCalledTimes(1);
+        expect(instance['client'].images.generate).toHaveBeenCalledWith(
+          expect.objectContaining({ model: 'dall-e-3', prompt: 'Forward the signal' }),
+          { maxRetries: 0, signal: abortController.signal },
+        );
       });
 
       it('should route mapped logical image-chat models through chat completions', async () => {
@@ -1763,6 +1787,7 @@ describe('LobeOpenAICompatibleFactory', () => {
 
         expect(mappedInstance['client'].chat.completions.create).toHaveBeenCalledWith(
           expect.objectContaining({ model: 'upstream-image-model' }),
+          { maxRetries: 0, signal: undefined },
         );
         expect(mappedInstance['client'].images.generate).not.toHaveBeenCalled();
         expect(result).toEqual({ imageUrl: 'data:image/png;base64,mapped-chat-image' });
@@ -1786,12 +1811,15 @@ describe('LobeOpenAICompatibleFactory', () => {
         await (instance as any).createImage(payload);
 
         // size: 'auto' should be removed from the options
-        expect(instance['client'].images.generate).toHaveBeenCalledWith({
-          model: 'dall-e-3',
-          n: 1,
-          prompt: 'A beautiful sunset',
-          response_format: 'b64_json',
-        });
+        expect(instance['client'].images.generate).toHaveBeenCalledWith(
+          {
+            model: 'dall-e-3',
+            n: 1,
+            prompt: 'A beautiful sunset',
+            response_format: 'b64_json',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
       });
 
       it('should not add response_format parameter for gpt-image-1 model', async () => {
@@ -1812,12 +1840,15 @@ describe('LobeOpenAICompatibleFactory', () => {
         const result = await (instance as any).createImage(payload);
 
         // gpt-image-1 model should not include response_format parameter
-        expect(instance['client'].images.generate).toHaveBeenCalledWith({
-          model: 'gpt-image-1',
-          n: 1,
-          prompt: 'A modern digital artwork',
-          size: '1024x1024',
-        });
+        expect(instance['client'].images.generate).toHaveBeenCalledWith(
+          {
+            model: 'gpt-image-1',
+            n: 1,
+            prompt: 'A modern digital artwork',
+            size: '1024x1024',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
 
         expect(result).toEqual({
           imageUrl: 'data:image/png;base64,gpt-image-1-base64-data',
@@ -1847,14 +1878,17 @@ describe('LobeOpenAICompatibleFactory', () => {
         expect(openaiHelpers.convertImageUrlToFile).toHaveBeenCalledWith(
           'https://example.com/image1.jpg',
         );
-        expect(instance['client'].images.edit).toHaveBeenCalledWith({
-          image: expect.any(File),
-          mask: 'https://example.com/mask.jpg',
-          model: 'dall-e-2',
-          n: 1,
-          prompt: 'Add a rainbow to this image',
-          response_format: 'b64_json',
-        });
+        expect(instance['client'].images.edit).toHaveBeenCalledWith(
+          {
+            image: expect.any(File),
+            mask: 'https://example.com/mask.jpg',
+            model: 'dall-e-2',
+            n: 1,
+            prompt: 'Add a rainbow to this image',
+            response_format: 'b64_json',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
 
         expect(result).toEqual({
           imageUrl: 'data:image/png;base64,edited-image-base64',
@@ -1893,13 +1927,16 @@ describe('LobeOpenAICompatibleFactory', () => {
           'https://example.com/image2.jpg',
         );
 
-        expect(instance['client'].images.edit).toHaveBeenCalledWith({
-          image: [mockFile1, mockFile2],
-          model: 'dall-e-2',
-          n: 1,
-          prompt: 'Merge these images',
-          response_format: 'b64_json',
-        });
+        expect(instance['client'].images.edit).toHaveBeenCalledWith(
+          {
+            image: [mockFile1, mockFile2],
+            model: 'dall-e-2',
+            n: 1,
+            prompt: 'Merge these images',
+            response_format: 'b64_json',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
 
         expect(result).toEqual({
           imageUrl: 'data:image/png;base64,edited-multiple-images-base64',
@@ -1944,13 +1981,16 @@ describe('LobeOpenAICompatibleFactory', () => {
 
         const result = await (instance as any).createImage(payload);
 
-        expect(instance['client'].images.edit).toHaveBeenCalledWith({
-          image: expect.any(File),
-          input_fidelity: 'high',
-          model: 'gpt-image-1',
-          n: 1,
-          prompt: 'Edit this image with gpt-image-1',
-        });
+        expect(instance['client'].images.edit).toHaveBeenCalledWith(
+          {
+            image: expect.any(File),
+            input_fidelity: 'high',
+            model: 'gpt-image-1',
+            n: 1,
+            prompt: 'Edit this image with gpt-image-1',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
 
         expect(result).toEqual({
           imageUrl: 'data:image/png;base64,gpt-image-edited-base64',
@@ -2109,14 +2149,17 @@ describe('LobeOpenAICompatibleFactory', () => {
 
         await (instance as any).createImage(payload);
 
-        expect(instance['client'].images.edit).toHaveBeenCalledWith({
-          customParam: 'should remain unchanged',
-          image: expect.any(File),
-          model: 'dall-e-2',
-          n: 1,
-          prompt: 'Test prompt',
-          response_format: 'b64_json',
-        });
+        expect(instance['client'].images.edit).toHaveBeenCalledWith(
+          {
+            customParam: 'should remain unchanged',
+            image: expect.any(File),
+            model: 'dall-e-2',
+            n: 1,
+            prompt: 'Test prompt',
+            response_format: 'b64_json',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
       });
 
       it('should handle parameters without imageUrls', async () => {
@@ -2137,14 +2180,17 @@ describe('LobeOpenAICompatibleFactory', () => {
 
         await (instance as any).createImage(payload);
 
-        expect(instance['client'].images.generate).toHaveBeenCalledWith({
-          model: 'dall-e-3',
-          n: 1,
-          prompt: 'Test prompt',
-          quality: 'hd',
-          response_format: 'b64_json',
-          style: 'vivid',
-        });
+        expect(instance['client'].images.generate).toHaveBeenCalledWith(
+          {
+            model: 'dall-e-3',
+            n: 1,
+            prompt: 'Test prompt',
+            quality: 'hd',
+            response_format: 'b64_json',
+            style: 'vivid',
+          },
+          { maxRetries: 0, signal: undefined },
+        );
       });
     });
   });

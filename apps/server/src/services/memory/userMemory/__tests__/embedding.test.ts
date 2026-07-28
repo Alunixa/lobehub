@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { UserMemoryEmbeddingRuntime } from '../embedding';
-import { embedUserMemoryTexts } from '../embedding';
+import { embedUserMemoryTexts, embedUserMemoryTextsWithFallback } from '../embedding';
 
 const mocks = vi.hoisted(() => ({
   contextLimit: 3 as number | undefined,
@@ -101,5 +101,29 @@ describe('embedUserMemoryTexts', () => {
       { metadata: { trigger: 'memory' }, user: 'user-test' },
     );
     expect(result).toEqual([[1, 2, 3]]);
+  });
+
+  it('returns empty vector slots when the embedding endpoint returns 404', async () => {
+    const runtime = {
+      embeddings: vi.fn().mockRejectedValue(new Error('404 bad response status code 404')),
+    } satisfies UserMemoryEmbeddingRuntime;
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const result = await embedUserMemoryTextsWithFallback({
+      input: ['first memory', 'second memory'],
+      model: 'unsupported-embedding-model',
+      runtime,
+      source: 'test:404-fallback',
+      userId: 'user-test',
+    });
+
+    expect(result).toEqual([undefined, undefined]);
+    expect(consoleError).toHaveBeenCalledWith(
+      '[user-memory] embedding unavailable; continuing without vectors',
+      expect.objectContaining({
+        model: 'unsupported-embedding-model',
+        source: 'test:404-fallback',
+      }),
+    );
   });
 });

@@ -1,9 +1,11 @@
 import type { LobeChatDatabase } from '@lobechat/database';
+import { TypesEnum } from '@lobechat/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ToolExecutionContext } from '../../types';
 
 const mocks = vi.hoisted(() => ({
+  createPreferenceMemory: vi.fn(),
   embeddings: vi.fn(),
   initModelRuntimeFromDB: vi.fn(),
   initModelRuntimeWithUserPayload: vi.fn(),
@@ -12,6 +14,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/database/models/userMemory', () => ({
   UserMemoryModel: vi.fn().mockImplementation(() => ({
+    createPreferenceMemory: mocks.createPreferenceMemory,
     searchMemory: mocks.searchMemory,
   })),
 }));
@@ -127,5 +130,103 @@ describe('memoryRuntime', () => {
       expect.objectContaining({ queries: ['renewal timeline'] }),
       [],
     );
+  });
+
+  it('falls back to BM25 when embedding runtime initialization fails with 404', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.initModelRuntimeWithUserPayload.mockImplementationOnce(() => {
+      throw new Error('404 model endpoint not found');
+    });
+    mocks.searchMemory.mockResolvedValueOnce({
+      activities: [],
+      contexts: [],
+      experiences: [],
+      identities: [],
+      preferences: [],
+    });
+
+    const runtime = await memoryRuntime.factory(createContext());
+    const result = await runtime.searchUserMemory({ queries: ['renewal timeline'] });
+
+    expect(result.success).toBe(true);
+    expect(mocks.searchMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ queries: ['renewal timeline'] }),
+      [],
+    );
+    consoleError.mockRestore();
+  });
+
+  it('falls back to BM25 when the embedding request returns 404', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.embeddings.mockRejectedValueOnce(new Error('404 bad response status code 404'));
+    mocks.initModelRuntimeWithUserPayload.mockReturnValueOnce({
+      embeddings: mocks.embeddings,
+    });
+    mocks.searchMemory.mockResolvedValueOnce({
+      activities: [],
+      contexts: [],
+      experiences: [],
+      identities: [],
+      preferences: [],
+    });
+
+    const runtime = await memoryRuntime.factory(createContext());
+    const result = await runtime.searchUserMemory({ queries: ['renewal timeline'] });
+
+    expect(result.success).toBe(true);
+    expect(mocks.searchMemory).toHaveBeenCalledWith(
+      expect.objectContaining({ queries: ['renewal timeline'] }),
+      [],
+    );
+    consoleError.mockRestore();
+  });
+
+  it('saves the original memory without vectors when the embedding request returns 404', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    mocks.embeddings.mockRejectedValue(new Error('404 bad response status code 404'));
+    mocks.initModelRuntimeWithUserPayload.mockReturnValue({
+      embeddings: mocks.embeddings,
+    });
+    mocks.createPreferenceMemory.mockResolvedValueOnce({
+      memory: { id: 'memory-1' },
+      preference: { id: 'preference-1' },
+    });
+
+    const runtime = await memoryRuntime.factory(createContext());
+    const result = await runtime.addPreferenceMemory({
+      details: 'The user specifically likes jasmine tea after lunch.',
+      memoryCategory: 'personal',
+      memoryType: TypesEnum.Preference,
+      sourceIds: ['message-1'],
+      summary: 'Likes jasmine tea after lunch',
+      tags: ['tea'],
+      title: 'Tea preference',
+      withPreference: {
+        appContext: null,
+        conclusionDirectives: 'Offer jasmine tea after lunch.',
+        extractedLabels: ['tea'],
+        extractedScopes: ['food'],
+        originContext: null,
+        scorePriority: 0.8,
+        suggestions: ['Remember this drink preference'],
+        type: 'food',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    expect(mocks.createPreferenceMemory).toHaveBeenCalledWith(
+      expect.objectContaining({
+        details: 'The user specifically likes jasmine tea after lunch.',
+        detailsEmbedding: undefined,
+        preference: expect.objectContaining({
+          conclusionDirectives: 'Offer jasmine tea after lunch.',
+          conclusionDirectivesVector: null,
+        }),
+        summary: 'Likes jasmine tea after lunch',
+        summaryEmbedding: undefined,
+        title: 'Tea preference',
+      }),
+    );
+    consoleError.mockRestore();
   });
 });

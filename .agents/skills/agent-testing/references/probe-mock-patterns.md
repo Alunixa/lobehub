@@ -476,3 +476,15 @@
   parses `(mobile)` as an expression and tries to execute `mobile`.
 - **Works**: wrap every path containing parentheses in single quotes, for example
   `bunx vitest run 'src/routes/(mobile)/(home)/features/foo.test.ts'`.
+
+### E6. Vite HMR prevents Playwright `networkidle` in an isolated interaction harness
+
+- **Situation**: a Playwright mobile-viewport regression harness is served by a Vite
+  development server so it imports the working-tree React component and Base UI code.
+- **Doesn't work**: `page.goto(url, wait_until="networkidle")`. Vite keeps its HMR
+  transport alive, so navigation can hit Playwright's 30-second timeout even though the
+  page and test server are already ready.
+- **Works**: navigate with `wait_until="domcontentloaded"`, then wait for the harness's
+  decisive interactive element (for example the labeled chat textbox) to be visible.
+  This gates on the application state needed by the test instead of an impossible idle
+  network state.
