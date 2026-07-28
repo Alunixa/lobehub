@@ -120,3 +120,18 @@ export const embedUserMemoryTexts = async (
 
   return outputs;
 };
+
+export const embedUserMemoryTextsWithFallback = async (
+  params: EmbedUserMemoryTextsParams,
+): Promise<Array<number[] | undefined>> => {
+  try {
+    return await embedUserMemoryTexts(params);
+  } catch (error) {
+    console.error('[user-memory] embedding unavailable; continuing without vectors', {
+      error,
+      model: params.model,
+      source: params.source,
+    });
+    return params.input.map(() => undefined);
+  }
+};

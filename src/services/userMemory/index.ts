@@ -33,6 +33,15 @@ import { type z } from 'zod';
 import { lambdaClient } from '@/libs/trpc/client';
 
 class UserMemoryService {
+  testMemoryModelConnection = async (params: {
+    apiKey: string;
+    baseURL: string;
+    model: string;
+    type: 'embedding' | 'text';
+  }) => {
+    return lambdaClient.userMemories.testMemoryModelConnection.mutate(params);
+  };
+
   addActivityMemory = async (
     params: z.infer<typeof ActivityMemoryItemSchema>,
   ): Promise<AddActivityMemoryResult> => {

@@ -49,7 +49,7 @@ import type { LobeChatDatabase } from '../../type';
 import { normalizeBm25MatchQuery, SAFE_BM25_QUERY_OPTIONS } from '../../utils/bm25';
 import { selectNonVectorColumns } from '../../utils/columns';
 import { TopicModel } from '../topic';
-import type { UserMemoryHybridSearchAggregatedResult } from './query';
+import type { UserMemoryHybridSearchAggregatedResult, UserMemorySearchOptions } from './query';
 import { UserMemoryQueryModel } from './query';
 
 const normalizeRelationshipValue = (input: unknown): RelationshipEnum | null => {
@@ -319,8 +319,7 @@ export interface UpdateIdentityEntryParams {
 
 export interface ContextEntryPayload {
   associatedObjects?:
-    | { extra?: Record<string, unknown>; name?: string; type?: UserMemoryContextObjectType }[]
-    | null;
+    { extra?: Record<string, unknown>; name?: string; type?: UserMemoryContextObjectType }[] | null;
   associatedSubjects?:
     | { extra?: Record<string, unknown>; name?: string; type?: UserMemoryContextSubjectType }[]
     | null;
@@ -925,8 +924,9 @@ export class UserMemoryModel {
   searchMemory = async (
     params: SearchMemoryParams,
     queryEmbeddings: number[][] = [],
+    options?: UserMemorySearchOptions,
   ): Promise<UserMemoryHybridSearchAggregatedResult> => {
-    return this.queryModel.searchMemory(params, queryEmbeddings);
+    return this.queryModel.searchMemory(params, queryEmbeddings, options);
   };
 
   queryTaxonomyOptions = async (

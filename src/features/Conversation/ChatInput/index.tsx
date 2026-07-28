@@ -28,6 +28,7 @@ import { operationSelectors } from '@/store/chat/selectors';
 import { selectCurrentTurnTodosFromMessages } from '@/store/chat/slices/message/selectors/dbMessage';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 import { fileChatSelectors, useFileStore } from '@/store/file';
+import { useServerConfigStore } from '@/store/serverConfig';
 
 import WideScreenContainer from '../../WideScreenContainer';
 import InterventionBar from '../InterventionBar';
@@ -380,6 +381,7 @@ const ChatInput = memo<ChatInputProps>(
         ? { shape: customSendButtonProps?.shape ?? 'round' }
         : undefined),
     };
+    const isMobile = useServerConfigStore((state) => state.isMobile);
 
     const defaultContent = (
       <WideScreenContainer
@@ -436,13 +438,14 @@ const ChatInput = memo<ChatInputProps>(
     return (
       <ChatInputProvider
         agentId={agentId}
-        allowExpand={allowExpand}
+        allowExpand={isMobile ? false : allowExpand}
         contextWindowMessages={contextWindowMessages}
         draftKey={draftKey}
         feature={feature}
         getMessages={getMessages}
         leftActions={leftActions}
         mentionItems={mentionItems}
+        mobile={isMobile}
         rightActions={rightActions}
         sendButtonProps={sendButtonProps}
         sendMenu={showSendMenu ? sendMenu : undefined}

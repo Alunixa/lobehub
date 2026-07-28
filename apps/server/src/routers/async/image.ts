@@ -152,6 +152,7 @@ export const imageRouter = router({
               taskId,
               trigger: RequestTrigger.Image,
             },
+            signal,
           };
           const response = await modelRuntime.createImage!(
             {

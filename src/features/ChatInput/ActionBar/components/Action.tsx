@@ -38,6 +38,8 @@ const Action = memo<ActionProps>(
     trigger,
     disabled,
     onClick,
+    onMouseDown,
+    onPointerDown,
     size,
     ...rest
   }) => {
@@ -75,6 +77,26 @@ const Action = memo<ActionProps>(
             e.preventDefault();
             e.stopPropagation();
             setShow(!show);
+          }
+        }}
+        onMouseDown={(event) => {
+          onMouseDown?.(event);
+          if (event.defaultPrevented || blocked || loading) return;
+
+          if (shouldUseExplicitMobileOverlayClick(hasOverlay, mobile)) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
+        onPointerDown={(event) => {
+          onPointerDown?.(event);
+          if (event.defaultPrevented || blocked || loading) return;
+
+          if (shouldUseExplicitMobileOverlayClick(hasOverlay, mobile)) {
+            // Base UI opens the parent trigger on pointerdown. Stop that first
+            // toggle so the following controlled click cannot immediately close it.
+            event.preventDefault();
+            event.stopPropagation();
           }
         }}
         {...rest}

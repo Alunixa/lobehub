@@ -9,7 +9,7 @@ import { userMemoryService } from '@/services/userMemory';
 import { useUserStore } from '@/store/user';
 import { settingsSelectors } from '@/store/user/selectors';
 
-interface MemoryEmbeddingDraft {
+interface MemoryTextModelDraft {
   apiKey: string;
   baseURL: string;
   enabled: boolean;
@@ -18,22 +18,22 @@ interface MemoryEmbeddingDraft {
 
 const INPUT_STYLE = { width: 360 };
 
-export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
+export const useMemoryTextModelSettingsGroup = (): FormGroupItemType => {
   const { t } = useTranslation('setting');
-  const embedding = useUserStore(
-    (state) => settingsSelectors.currentMemorySettings(state).embedding,
+  const textModel = useUserStore(
+    (state) => settingsSelectors.currentMemorySettings(state).textModel,
     isEqual,
   );
   const keyVault = useUserStore(
-    (state) => settingsSelectors.currentSettings(state).keyVaults.memoryEmbedding,
+    (state) => settingsSelectors.currentSettings(state).keyVaults.memoryTextModel,
     isEqual,
   );
   const setSettings = useUserStore((state) => state.setSettings);
-  const [draft, setDraft] = useState<MemoryEmbeddingDraft>({
+  const [draft, setDraft] = useState<MemoryTextModelDraft>({
     apiKey: keyVault?.apiKey || '',
     baseURL: keyVault?.baseURL || '',
-    enabled: embedding?.enabled === true,
-    model: embedding?.model || '',
+    enabled: textModel?.enabled === true,
+    model: textModel?.model || '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -41,13 +41,13 @@ export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
     setDraft({
       apiKey: keyVault?.apiKey || '',
       baseURL: keyVault?.baseURL || '',
-      enabled: embedding?.enabled === true,
-      model: embedding?.model || '',
+      enabled: textModel?.enabled === true,
+      model: textModel?.model || '',
     });
-  }, [embedding, keyVault]);
+  }, [keyVault, textModel]);
 
   const updateDraft = useCallback(
-    (value: Partial<MemoryEmbeddingDraft>) =>
+    (value: Partial<MemoryTextModelDraft>) =>
       setDraft((current) => ({
         ...current,
         ...value,
@@ -60,22 +60,22 @@ export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
     const baseURL = draft.baseURL
       .trim()
       .replace(/\/+$/, '')
-      .replace(/\/embeddings$/i, '');
+      .replace(/\/(?:chat\/completions|responses)$/i, '');
     const model = draft.model.trim();
 
     if (draft.enabled) {
       if (!baseURL || !apiKey || !model) {
-        toast.error(t('tab.advanced.memoryEmbedding.validation.required'));
+        toast.error(t('tab.advanced.memoryTextModel.validation.required'));
         return;
       }
 
       try {
         const url = new URL(baseURL);
         if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-          throw new Error('Unsupported memory embedding URL protocol');
+          throw new Error('Unsupported memory text model URL protocol');
         }
       } catch {
-        toast.error(t('tab.advanced.memoryEmbedding.validation.baseURL'));
+        toast.error(t('tab.advanced.memoryTextModel.validation.baseURL'));
         return;
       }
     }
@@ -87,21 +87,21 @@ export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
           apiKey,
           baseURL,
           model,
-          type: 'embedding',
+          type: 'text',
         });
       }
       await setSettings({
         keyVaults: {
-          memoryEmbedding: { apiKey, baseURL },
+          memoryTextModel: { apiKey, baseURL },
         },
         memory: {
-          embedding: { enabled: draft.enabled, model },
+          textModel: { enabled: draft.enabled, model },
         },
       });
-      toast.success(t('tab.advanced.memoryEmbedding.saveSuccess'));
+      toast.success(t('tab.advanced.memoryTextModel.saveSuccess'));
     } catch (error) {
-      console.error('Failed to save memory embedding settings:', error);
-      toast.error(t('tab.advanced.memoryEmbedding.saveError'));
+      console.error('Failed to verify or save memory text model settings:', error);
+      toast.error(t('tab.advanced.memoryTextModel.saveError'));
     } finally {
       setSaving(false);
     }
@@ -113,8 +113,8 @@ export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
         children: (
           <Switch checked={draft.enabled} onChange={(enabled) => updateDraft({ enabled })} />
         ),
-        desc: t('tab.advanced.memoryEmbedding.enabled.desc'),
-        label: t('tab.advanced.memoryEmbedding.enabled.title'),
+        desc: t('tab.advanced.memoryTextModel.enabled.desc'),
+        label: t('tab.advanced.memoryTextModel.enabled.title'),
         minWidth: undefined,
       },
       ...(draft.enabled
@@ -128,8 +128,8 @@ export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
                   onChange={(event) => updateDraft({ baseURL: event.target.value })}
                 />
               ),
-              desc: t('tab.advanced.memoryEmbedding.baseURL.desc'),
-              label: t('tab.advanced.memoryEmbedding.baseURL.title'),
+              desc: t('tab.advanced.memoryTextModel.baseURL.desc'),
+              label: t('tab.advanced.memoryTextModel.baseURL.title'),
             },
             {
               children: (
@@ -140,29 +140,29 @@ export const useMemoryEmbeddingSettingsGroup = (): FormGroupItemType => {
                   onChange={(event) => updateDraft({ apiKey: event.target.value })}
                 />
               ),
-              desc: t('tab.advanced.memoryEmbedding.apiKey.desc'),
-              label: t('tab.advanced.memoryEmbedding.apiKey.title'),
+              desc: t('tab.advanced.memoryTextModel.apiKey.desc'),
+              label: t('tab.advanced.memoryTextModel.apiKey.title'),
             },
             {
               children: (
                 <Input
-                  placeholder={'text-embedding-3-small'}
+                  placeholder={'gpt-4.1-mini'}
                   style={INPUT_STYLE}
                   value={draft.model}
                   onChange={(event) => updateDraft({ model: event.target.value })}
                 />
               ),
-              desc: t('tab.advanced.memoryEmbedding.model.desc'),
-              label: t('tab.advanced.memoryEmbedding.model.title'),
+              desc: t('tab.advanced.memoryTextModel.model.desc'),
+              label: t('tab.advanced.memoryTextModel.model.title'),
             },
           ]
         : []),
     ],
     extra: (
       <Button loading={saving} type={'primary'} onClick={handleSave}>
-        {t('tab.advanced.memoryEmbedding.save')}
+        {t('tab.advanced.memoryTextModel.save')}
       </Button>
     ),
-    title: t('tab.advanced.memoryEmbedding.title'),
+    title: t('tab.advanced.memoryTextModel.title'),
   };
 };

@@ -70,11 +70,7 @@ export const buildBm25MatchCondition = (
 };
 
 export type SearchLayerKey =
-  | 'activities'
-  | 'contexts'
-  | 'experiences'
-  | 'identities'
-  | 'preferences';
+  'activities' | 'contexts' | 'experiences' | 'identities' | 'preferences';
 
 interface HybridLayerLimitRecord {
   activities?: number;
@@ -125,6 +121,10 @@ export interface UserMemoryHybridSearchAggregatedResult {
     ranking: Partial<Record<SearchLayerKey, Record<string, RecommendationScoreBreakdown>>>;
   };
   preferences: UserMemoryPreferencesWithoutVectors[];
+}
+
+export interface UserMemorySearchOptions {
+  includeUnfilteredCandidates?: boolean;
 }
 
 interface TaxonomyOptionAccumulator {
@@ -767,6 +767,7 @@ export class UserMemoryQueryModel {
   searchMemory = async (
     params: SearchMemoryParams,
     queryEmbeddings: number[][] = [],
+    options?: UserMemorySearchOptions,
   ): Promise<UserMemoryHybridSearchAggregatedResult> => {
     const appliedQueries = normalizeSearchQueries(params.queries);
     const limits: HybridLayerLimitRecord = {
@@ -804,6 +805,7 @@ export class UserMemoryQueryModel {
       requestedLayers.has(LayersEnum.Activity)
         ? this.searchHybridActivities({
             embeddings: queryEmbeddings,
+            includeUnfilteredCandidates: options?.includeUnfilteredCandidates,
             params,
             queries: appliedQueries,
           })
@@ -811,6 +813,7 @@ export class UserMemoryQueryModel {
       requestedLayers.has(LayersEnum.Context)
         ? this.searchHybridContexts({
             embeddings: queryEmbeddings,
+            includeUnfilteredCandidates: options?.includeUnfilteredCandidates,
             params,
             queries: appliedQueries,
           })
@@ -818,6 +821,7 @@ export class UserMemoryQueryModel {
       requestedLayers.has(LayersEnum.Experience)
         ? this.searchHybridExperiences({
             embeddings: queryEmbeddings,
+            includeUnfilteredCandidates: options?.includeUnfilteredCandidates,
             params,
             queries: appliedQueries,
           })
@@ -825,6 +829,7 @@ export class UserMemoryQueryModel {
       requestedLayers.has(LayersEnum.Identity)
         ? this.searchHybridIdentities({
             embeddings: queryEmbeddings,
+            includeUnfilteredCandidates: options?.includeUnfilteredCandidates,
             params,
             queries: appliedQueries,
           })
@@ -832,6 +837,7 @@ export class UserMemoryQueryModel {
       requestedLayers.has(LayersEnum.Preference)
         ? this.searchHybridPreferences({
             embeddings: queryEmbeddings,
+            includeUnfilteredCandidates: options?.includeUnfilteredCandidates,
             params,
             queries: appliedQueries,
           })
@@ -1585,6 +1591,7 @@ export class UserMemoryQueryModel {
 
   private async searchHybridActivities(params: {
     embeddings: number[][];
+    includeUnfilteredCandidates?: boolean;
     params: SearchMemoryParams;
     queries: string[];
   }) {
@@ -1599,7 +1606,7 @@ export class UserMemoryQueryModel {
         : [];
     const retrievalQuery = buildRetrievalQuery(params.queries);
     const lexicalLists =
-      retrievalQuery || this.hasSearchFilters(params.params)
+      retrievalQuery || this.hasSearchFilters(params.params) || params.includeUnfilteredCandidates
         ? [await this.searchActivitiesLexical(retrievalQuery, limit, params.params)]
         : [];
 
@@ -1621,6 +1628,7 @@ export class UserMemoryQueryModel {
 
   private async searchHybridContexts(params: {
     embeddings: number[][];
+    includeUnfilteredCandidates?: boolean;
     params: SearchMemoryParams;
     queries: string[];
   }) {
@@ -1635,7 +1643,7 @@ export class UserMemoryQueryModel {
         : [];
     const retrievalQuery = buildRetrievalQuery(params.queries);
     const lexicalLists =
-      retrievalQuery || this.hasSearchFilters(params.params)
+      retrievalQuery || this.hasSearchFilters(params.params) || params.includeUnfilteredCandidates
         ? [await this.searchContextsLexical(retrievalQuery, limit, params.params)]
         : [];
 
@@ -1657,6 +1665,7 @@ export class UserMemoryQueryModel {
 
   private async searchHybridExperiences(params: {
     embeddings: number[][];
+    includeUnfilteredCandidates?: boolean;
     params: SearchMemoryParams;
     queries: string[];
   }) {
@@ -1671,7 +1680,7 @@ export class UserMemoryQueryModel {
         : [];
     const retrievalQuery = buildRetrievalQuery(params.queries);
     const lexicalLists =
-      retrievalQuery || this.hasSearchFilters(params.params)
+      retrievalQuery || this.hasSearchFilters(params.params) || params.includeUnfilteredCandidates
         ? [await this.searchExperiencesLexical(retrievalQuery, limit, params.params)]
         : [];
 
@@ -1693,6 +1702,7 @@ export class UserMemoryQueryModel {
 
   private async searchHybridIdentities(params: {
     embeddings: number[][];
+    includeUnfilteredCandidates?: boolean;
     params: SearchMemoryParams;
     queries: string[];
   }) {
@@ -1707,7 +1717,7 @@ export class UserMemoryQueryModel {
         : [];
     const retrievalQuery = buildRetrievalQuery(params.queries);
     const lexicalLists =
-      retrievalQuery || this.hasSearchFilters(params.params)
+      retrievalQuery || this.hasSearchFilters(params.params) || params.includeUnfilteredCandidates
         ? [await this.searchIdentitiesLexical(retrievalQuery, limit, params.params)]
         : [];
 
@@ -1729,6 +1739,7 @@ export class UserMemoryQueryModel {
 
   private async searchHybridPreferences(params: {
     embeddings: number[][];
+    includeUnfilteredCandidates?: boolean;
     params: SearchMemoryParams;
     queries: string[];
   }) {
@@ -1743,7 +1754,7 @@ export class UserMemoryQueryModel {
         : [];
     const retrievalQuery = buildRetrievalQuery(params.queries);
     const lexicalLists =
-      retrievalQuery || this.hasSearchFilters(params.params)
+      retrievalQuery || this.hasSearchFilters(params.params) || params.includeUnfilteredCandidates
         ? [await this.searchPreferencesLexical(retrievalQuery, limit, params.params)]
         : [];
 

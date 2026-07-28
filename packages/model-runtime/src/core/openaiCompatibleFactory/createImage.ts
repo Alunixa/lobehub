@@ -21,7 +21,30 @@ interface CreateOpenAICompatibleImageOptions {
   pricingModel?: string;
   requestModel?: string;
   routingModel?: string;
+  signal?: AbortSignal;
 }
+
+const resolveImageModelUsage = async (
+  usage: OpenAI.Images.ImagesResponse.Usage | undefined,
+  provider: string,
+  options?: CreateOpenAICompatibleImageOptions,
+) => {
+  if (!usage) return undefined;
+
+  try {
+    return convertOpenAIImageUsage(
+      usage,
+      await getModelPricing(
+        options?.pricingModel ?? options?.routingModel ?? '',
+        provider,
+        options?.pricingContext,
+      ),
+    );
+  } catch (error) {
+    console.error('[image-generation] failed to convert optional usage metadata:', error);
+    return undefined;
+  }
+};
 
 /**
  * Generate images using traditional OpenAI images API (DALL-E, etc.)
@@ -101,9 +124,10 @@ async function generateByImageMode(
   log('options: %O', options);
 
   // Determine if it's an image editing operation
+  const requestOptions = { maxRetries: 0, signal: imageOptions?.signal };
   const img = isImageEdit
-    ? await client.images.edit(options as any)
-    : await client.images.generate(options as any);
+    ? await client.images.edit(options as any, requestOptions)
+    : await client.images.generate(options as any, requestOptions);
 
   // Check the integrity of response data
   if (!img || !img.data || !Array.isArray(img.data) || img.data.length === 0) {
@@ -136,21 +160,12 @@ async function generateByImageMode(
     throw new Error('Invalid image response: missing both b64_json and url fields');
   }
 
-  return {
-    imageUrl,
-    ...(img.usage
-      ? {
-          modelUsage: convertOpenAIImageUsage(
-            img.usage,
-            await getModelPricing(
-              imageOptions?.pricingModel ?? routingModel,
-              provider,
-              imageOptions?.pricingContext,
-            ),
-          ),
-        }
-      : {}),
-  };
+  const modelUsage = await resolveImageModelUsage(img.usage, provider, {
+    ...imageOptions,
+    routingModel,
+  });
+
+  return { imageUrl, ...(modelUsage ? { modelUsage } : {}) };
 }
 
 /**
@@ -179,10 +194,10 @@ async function processImageUrlForChat(imageUrl: string): Promise<string> {
 async function generateByChatModel(
   client: OpenAI,
   payload: CreateImagePayload,
-  requestModel?: string,
+  options?: Pick<CreateOpenAICompatibleImageOptions, 'requestModel' | 'signal'>,
 ): Promise<CreateImageResponse> {
   const { model, params } = payload;
-  const actualModel = (requestModel ?? model).replace(':image', ''); // Remove :image suffix
+  const actualModel = (options?.requestModel ?? model).replace(':image', ''); // Remove :image suffix
 
   log('Creating image via chat API with model: %s and params: %O', actualModel, params);
 
@@ -212,16 +227,19 @@ async function generateByChatModel(
   }
 
   // Call chat completion API
-  const response = await client.chat.completions.create({
-    messages: [
-      {
-        content,
-        role: 'user',
-      },
-    ],
-    model: actualModel,
-    stream: false,
-  });
+  const response = await client.chat.completions.create(
+    {
+      messages: [
+        {
+          content,
+          role: 'user',
+        },
+      ],
+      model: actualModel,
+      stream: false,
+    },
+    { maxRetries: 0, signal: options?.signal },
+  );
 
   log('Chat API response: %O', response);
 
@@ -261,7 +279,7 @@ export async function createOpenAICompatibleImage(
 
   // Check if it's a chat model for image generation (via :image suffix)
   if (routingModel.endsWith(':image')) {
-    return await generateByChatModel(client, payload, options?.requestModel);
+    return await generateByChatModel(client, payload, options);
   }
 
   // Default to traditional images API

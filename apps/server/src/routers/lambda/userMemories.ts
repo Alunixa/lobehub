@@ -1,7 +1,4 @@
-import {
-  DEFAULT_SEARCH_USER_MEMORY_TOP_K,
-  MEMORY_SEARCH_TOP_K_LIMITS,
-} from '@lobechat/const';
+import { DEFAULT_SEARCH_USER_MEMORY_TOP_K, MEMORY_SEARCH_TOP_K_LIMITS } from '@lobechat/const';
 import { type LobeChatDatabase } from '@lobechat/database';
 import {
   ActivityMemoryItemSchema,
@@ -13,10 +10,16 @@ import {
   UpdateIdentityActionSchema,
 } from '@lobechat/memory-user-memory';
 import type { QueryTaxonomyOptionsResult, SearchMemoryResult } from '@lobechat/types';
-import { LayersEnum, queryTaxonomyOptionsSchema, searchMemorySchema } from '@lobechat/types';
+import {
+  LayersEnum,
+  queryTaxonomyOptionsSchema,
+  RequestTrigger,
+  searchMemorySchema,
+} from '@lobechat/types';
 import { getErrorMessage } from '@lobechat/utils/error';
 import { type SQL } from 'drizzle-orm';
 import { and, asc, eq, gte, lte } from 'drizzle-orm';
+import { ModelProvider } from 'model-bank';
 import pMap from 'p-map';
 import { z } from 'zod';
 
@@ -43,10 +46,26 @@ import {
 } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
-import { embedUserMemoryTexts } from '@/server/services/memory/userMemory/embedding';
+import { initModelRuntimeWithUserPayload } from '@/server/modules/ModelRuntime';
+import {
+  embedUserMemoryTexts,
+  embedUserMemoryTextsWithFallback,
+} from '@/server/services/memory/userMemory/embedding';
 import type { ResolvedUserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/runtime';
-import { resolveUserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/runtime';
+import {
+  normalizeOpenAICompatibleBaseURL,
+  resolveUserMemoryEmbeddingRuntime,
+  resolveUserMemoryEmbeddingRuntimeWithFallback,
+  resolveUserMemoryTextModelRuntimeWithFallback,
+} from '@/server/services/memory/userMemory/runtime';
 import { normalizeSearchMemoryParams } from '@/server/services/memory/userMemory/searchParams';
+import {
+  buildUserMemoryTextModelCandidateParams,
+  mergeUserMemorySearchResults,
+  mergeUserMemoryTextMetadata,
+  prepareUserMemoryTextMetadata,
+  selectRelevantUserMemories,
+} from '@/server/services/memory/userMemory/textModel';
 
 const EMPTY_SEARCH_RESULT: SearchMemoryResult = {
   activities: [],
@@ -76,6 +95,24 @@ const EMPTY_TAXONOMY_RESULT: QueryTaxonomyOptionsResult = {
   statuses: [],
   tags: [],
   types: [],
+};
+
+const testMemoryModelConnectionSchema = z.object({
+  apiKey: z.string().trim().min(1),
+  baseURL: z.string().trim().min(1),
+  model: z.string().trim().min(1),
+  type: z.enum(['embedding', 'text']),
+});
+
+const MEMORY_CONNECTION_TEST_SCHEMA = {
+  name: 'memory_connection_test',
+  schema: {
+    additionalProperties: false,
+    properties: { ok: { type: 'boolean' } },
+    required: ['ok'],
+    type: 'object' as const,
+  },
+  strict: true,
 };
 
 type MemorySearchContext = {
@@ -119,10 +156,16 @@ const searchUserMemories = async (
   input: z.infer<typeof searchMemorySchema>,
 ): Promise<SearchMemoryResult> => {
   const normalizedInput = normalizeSearchMemoryParams(input);
-  const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
-    serverDB: ctx.serverDB,
-    userId: ctx.userId,
-  });
+  const [embeddingRuntime, textModelRuntime] = await Promise.all([
+    resolveUserMemoryEmbeddingRuntimeWithFallback({
+      serverDB: ctx.serverDB,
+      userId: ctx.userId,
+    }),
+    resolveUserMemoryTextModelRuntimeWithFallback({
+      serverDB: ctx.serverDB,
+      userId: ctx.userId,
+    }),
+  ]);
   const normalizedQueries = [
     ...new Set((normalizedInput.queries ?? []).map((query) => query.trim()).filter(Boolean)),
   ];
@@ -130,7 +173,7 @@ const searchUserMemories = async (
   const queryEmbeddings =
     embeddingRuntime && normalizedQueries.length > 0
       ? (
-          await embedUserMemoryTexts({
+          await embedUserMemoryTextsWithFallback({
             input: normalizedQueries,
             model: embeddingRuntime.model,
             runtime: embeddingRuntime.runtime,
@@ -154,10 +197,33 @@ const searchUserMemories = async (
   };
 
   const effortConstrainedLimits = applySearchLimitsByEffort(effectiveEffort, requestedLimits);
-  return ctx.memoryModel.searchMemory(
-    { ...normalizedInput, queries: normalizedQueries, topK: effortConstrainedLimits },
+  const searchParams = {
+    ...normalizedInput,
+    effort: effectiveEffort,
+    queries: normalizedQueries,
+    topK: effortConstrainedLimits,
+  };
+  const hybridResult = (await ctx.memoryModel.searchMemory(
+    searchParams,
     queryEmbeddings,
-  ) as Promise<SearchMemoryResult>;
+  )) as SearchMemoryResult;
+
+  if (!textModelRuntime || normalizedQueries.length === 0) return hybridResult;
+
+  const recentCandidates = (await ctx.memoryModel.searchMemory(
+    buildUserMemoryTextModelCandidateParams(searchParams),
+    [],
+    { includeUnfilteredCandidates: true },
+  )) as SearchMemoryResult;
+  const candidates = mergeUserMemorySearchResults(hybridResult, recentCandidates);
+  return (
+    (await selectRelevantUserMemories({
+      candidates,
+      params: searchParams,
+      resolvedRuntime: textModelRuntime,
+      userId: ctx.userId,
+    })) ?? hybridResult
+  );
 };
 
 const createEmbedder = (
@@ -167,7 +233,7 @@ const createEmbedder = (
   return async (value?: string | null): Promise<number[] | undefined> => {
     if (!embeddingRuntime || !value || value.trim().length === 0) return undefined;
 
-    const [embedding] = await embedUserMemoryTexts({
+    const [embedding] = await embedUserMemoryTextsWithFallback({
       input: [value],
       model: embeddingRuntime.model,
       runtime: embeddingRuntime.runtime,
@@ -178,6 +244,21 @@ const createEmbedder = (
     return embedding;
   };
 };
+
+const prepareTextMetadata = async (
+  ctx: Pick<MemorySearchContext, 'serverDB' | 'userId'>,
+  layer: LayersEnum,
+  input: unknown,
+) =>
+  prepareUserMemoryTextMetadata({
+    input,
+    layer,
+    resolvedRuntime: await resolveUserMemoryTextModelRuntimeWithFallback({
+      serverDB: ctx.serverDB,
+      userId: ctx.userId,
+    }),
+    userId: ctx.userId,
+  });
 
 const REEMBED_TABLE_KEYS = [
   'userMemories',
@@ -244,6 +325,51 @@ const memoryProcedure = authedProcedure.use(serverDatabase).use(async (opts) => 
 const memoryWriteProcedure = memoryProcedure.use(withScopedPermission('message:create'));
 
 export const userMemoriesRouter = router({
+  testMemoryModelConnection: memoryProcedure
+    .input(testMemoryModelConnectionSchema)
+    .mutation(async ({ ctx, input }) => {
+      const baseURL = normalizeOpenAICompatibleBaseURL(input.baseURL);
+      const url = new URL(baseURL);
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+        throw new Error('Memory model BaseURL must use HTTP or HTTPS');
+      }
+
+      const runtime = initModelRuntimeWithUserPayload(
+        ModelProvider.OpenAI,
+        { apiKey: input.apiKey, baseURL },
+        { userId: ctx.userId },
+      );
+
+      if (input.type === 'embedding') {
+        await embedUserMemoryTexts({
+          input: ['memory connection test'],
+          model: input.model,
+          runtime,
+          source: 'lambda:userMemories.connectionTest',
+          userId: ctx.userId,
+        });
+      } else {
+        const result = await runtime.generateObject(
+          {
+            messages: [
+              {
+                content: 'Return JSON with ok set to true.',
+                role: 'user',
+              },
+            ],
+            model: input.model,
+            schema: MEMORY_CONNECTION_TEST_SCHEMA,
+          },
+          { metadata: { trigger: RequestTrigger.Memory }, user: ctx.userId },
+        );
+        if ((result as { ok?: boolean } | undefined)?.ok !== true) {
+          throw new Error('Memory text model returned an invalid response');
+        }
+      }
+
+      return { success: true };
+    }),
+
   getMemoryDetail: memoryProcedure
     .input(z.object({ id: z.string(), layer: z.nativeEnum(LayersEnum) }))
     .query(async ({ ctx, input }) => {
@@ -961,7 +1087,8 @@ export const userMemoriesRouter = router({
     .input(ActivityMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+        const textMetadata = await prepareTextMetadata(ctx, LayersEnum.Activity, input);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntimeWithFallback({
           serverDB: ctx.serverDB,
           userId: ctx.userId,
         });
@@ -984,7 +1111,7 @@ export const userMemoriesRouter = router({
             endsAt: UserMemoryModel.parseDateFromString(input.withActivity.endsAt ?? undefined),
             feedback: input.withActivity.feedback ?? null,
             feedbackVector: feedbackVector ?? null,
-            metadata: input.withActivity.metadata ?? null,
+            metadata: mergeUserMemoryTextMetadata(input.withActivity.metadata, textMetadata),
             narrative: input.withActivity.narrative ?? null,
             narrativeVector: narrativeVector ?? null,
             notes: input.withActivity.notes ?? null,
@@ -1023,7 +1150,8 @@ export const userMemoriesRouter = router({
     .input(ContextMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+        const textMetadata = await prepareTextMetadata(ctx, LayersEnum.Context, input);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntimeWithFallback({
           serverDB: ctx.serverDB,
           userId: ctx.userId,
         });
@@ -1042,7 +1170,7 @@ export const userMemoriesRouter = router({
             currentStatus: input.withContext.currentStatus ?? null,
             description: input.withContext.description ?? null,
             descriptionVector: contextDescriptionEmbedding ?? null,
-            metadata: {},
+            metadata: mergeUserMemoryTextMetadata(undefined, textMetadata),
             scoreImpact: input.withContext.scoreImpact ?? null,
             scoreUrgency: input.withContext.scoreUrgency ?? null,
             tags: input.tags ?? [],
@@ -1078,7 +1206,8 @@ export const userMemoriesRouter = router({
     .input(ExperienceMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+        const textMetadata = await prepareTextMetadata(ctx, LayersEnum.Experience, input);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntimeWithFallback({
           serverDB: ctx.serverDB,
           userId: ctx.userId,
         });
@@ -1098,7 +1227,7 @@ export const userMemoriesRouter = router({
             actionVector: actionVector ?? null,
             keyLearning: input.withExperience.keyLearning ?? null,
             keyLearningVector: keyLearningVector ?? null,
-            metadata: {},
+            metadata: mergeUserMemoryTextMetadata(undefined, textMetadata),
             possibleOutcome: input.withExperience.possibleOutcome ?? null,
             reasoning: input.withExperience.reasoning ?? null,
             scoreConfidence: input.withExperience.scoreConfidence ?? null,
@@ -1134,7 +1263,8 @@ export const userMemoriesRouter = router({
     .input(AddIdentityActionSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+        const textMetadata = await prepareTextMetadata(ctx, LayersEnum.Identity, input);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntimeWithFallback({
           serverDB: ctx.serverDB,
           userId: ctx.userId,
         });
@@ -1157,6 +1287,7 @@ export const userMemoriesRouter = router({
         ) {
           identityMetadata.sourceEvidence = input.withIdentity.sourceEvidence;
         }
+        const mergedIdentityMetadata = mergeUserMemoryTextMetadata(identityMetadata, textMetadata);
 
         const { identityId, userMemoryId } = await ctx.memoryModel.addIdentityEntry({
           base: {
@@ -1165,7 +1296,7 @@ export const userMemoriesRouter = router({
             memoryCategory: input.memoryCategory,
             memoryLayer: LayersEnum.Identity,
             memoryType: input.memoryType,
-            metadata: Object.keys(identityMetadata).length > 0 ? identityMetadata : undefined,
+            metadata: mergedIdentityMetadata,
             summary: input.summary,
             summaryVector1024: summaryEmbedding ?? null,
             tags: input.tags,
@@ -1175,7 +1306,7 @@ export const userMemoriesRouter = router({
             description: input.withIdentity.description,
             descriptionVector: descriptionEmbedding ?? null,
             episodicDate: input.withIdentity.episodicDate,
-            metadata: Object.keys(identityMetadata).length > 0 ? identityMetadata : undefined,
+            metadata: mergedIdentityMetadata,
             relationship: input.withIdentity.relationship,
             role: input.withIdentity.role,
             tags: input.tags,
@@ -1202,7 +1333,8 @@ export const userMemoriesRouter = router({
     .input(PreferenceMemoryItemSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+        const textMetadata = await prepareTextMetadata(ctx, LayersEnum.Preference, input);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntimeWithFallback({
           serverDB: ctx.serverDB,
           userId: ctx.userId,
         });
@@ -1217,11 +1349,14 @@ export const userMemoriesRouter = router({
             ? input.withPreference?.suggestions?.join('\n')
             : null;
 
-        const metadata = {
-          appContext: input.withPreference.appContext,
-          extractedScopes: input.withPreference.extractedScopes,
-          originContext: input.withPreference.originContext,
-        } satisfies Record<string, unknown>;
+        const metadata = mergeUserMemoryTextMetadata(
+          {
+            appContext: input.withPreference.appContext,
+            extractedScopes: input.withPreference.extractedScopes,
+            originContext: input.withPreference.originContext,
+          },
+          textMetadata,
+        );
 
         const { memory, preference } = await ctx.memoryModel.createPreferenceMemory({
           details: input.details || '',
@@ -1295,7 +1430,8 @@ export const userMemoriesRouter = router({
     .input(UpdateIdentityActionSchema)
     .mutation(async ({ input, ctx }) => {
       try {
-        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntime({
+        const textMetadata = await prepareTextMetadata(ctx, LayersEnum.Identity, input);
+        const embeddingRuntime = await resolveUserMemoryEmbeddingRuntimeWithFallback({
           serverDB: ctx.serverDB,
           userId: ctx.userId,
         });
@@ -1326,6 +1462,7 @@ export const userMemoriesRouter = router({
         if (Object.hasOwn(input.set.withIdentity, 'sourceEvidence')) {
           metadataUpdates.sourceEvidence = input.set.withIdentity.sourceEvidence ?? null;
         }
+        if (textMetadata) metadataUpdates.memoryTextModel = textMetadata;
 
         const identityPayload: Partial<IdentityEntryPayload> = {};
         if (input.set.withIdentity.description !== undefined) {

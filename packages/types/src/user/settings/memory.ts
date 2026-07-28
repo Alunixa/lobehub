@@ -5,8 +5,14 @@ export interface UserMemoryEmbeddingSettings {
   model?: string;
 }
 
+export interface UserMemoryTextModelSettings {
+  enabled?: boolean;
+  model?: string;
+}
+
 export interface UserMemorySettings {
   effort?: UserMemoryEffort;
   embedding?: UserMemoryEmbeddingSettings;
   enabled?: boolean;
+  textModel?: UserMemoryTextModelSettings;
 }

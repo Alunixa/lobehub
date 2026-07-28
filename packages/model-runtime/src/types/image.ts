@@ -13,6 +13,8 @@ export interface CreateImageMethodOptions {
   metadata?: Record<string, unknown>;
   /** Request-scoped pricing context for model-bank pricing lookups. */
   pricingContext?: ModelPricingContext;
+  /** Abort signal forwarded to the provider request. */
+  signal?: AbortSignal;
 }
 
 /**

@@ -1163,6 +1163,26 @@ When I am ___, I need ___
   'tab.advanced.memoryEmbedding.validation.baseURL': 'Enter a valid HTTP or HTTPS BaseURL',
   'tab.advanced.memoryEmbedding.validation.required':
     'BaseURL, Key, and embedding model name are required when enabled',
+  'tab.advanced.memoryTextModel.apiKey.desc':
+    'Stored encrypted with the account key vault and used only for memory processing.',
+  'tab.advanced.memoryTextModel.apiKey.title': 'Key',
+  'tab.advanced.memoryTextModel.baseURL.desc':
+    'OpenAI-compatible text model API base URL, usually ending in /v1.',
+  'tab.advanced.memoryTextModel.baseURL.title': 'BaseURL',
+  'tab.advanced.memoryTextModel.enabled.desc':
+    'Use a text model to prepare faithful retrieval metadata and semantically select memories. Falls back to native search if the model is unavailable.',
+  'tab.advanced.memoryTextModel.enabled.title': 'Use regular model for memory',
+  'tab.advanced.memoryTextModel.model.desc':
+    'Text model name used for memory preparation and semantic retrieval.',
+  'tab.advanced.memoryTextModel.model.title': 'Text model name',
+  'tab.advanced.memoryTextModel.save': 'Save',
+  'tab.advanced.memoryTextModel.saveError':
+    'Connection test or save failed for the memory text model',
+  'tab.advanced.memoryTextModel.saveSuccess': 'Memory text model settings saved',
+  'tab.advanced.memoryTextModel.title': 'Memory text model',
+  'tab.advanced.memoryTextModel.validation.baseURL': 'Enter a valid HTTP or HTTPS BaseURL',
+  'tab.advanced.memoryTextModel.validation.required':
+    'BaseURL, Key, and text model name are required when enabled',
   'tab.advanced.toolsAndDiagnostics.title': 'Tools and diagnostics',
   'tab.addAgentSkill': 'Add Agent Skill',
   'tab.advanced.updateChannel.canary': 'Canary',

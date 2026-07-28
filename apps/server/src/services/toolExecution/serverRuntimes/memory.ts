@@ -43,10 +43,20 @@ import {
   resolveToolOutcomeScope,
 } from '@/server/services/agentSignal/procedure';
 import { redisPolicyStateStore } from '@/server/services/agentSignal/store/adapters/redis/policyStateStore';
-import { embedUserMemoryTexts } from '@/server/services/memory/userMemory/embedding';
+import { embedUserMemoryTextsWithFallback } from '@/server/services/memory/userMemory/embedding';
 import type { ResolvedUserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/runtime';
-import { resolveUserMemoryEmbeddingRuntime } from '@/server/services/memory/userMemory/runtime';
+import {
+  resolveUserMemoryEmbeddingRuntimeWithFallback,
+  resolveUserMemoryTextModelRuntimeWithFallback,
+} from '@/server/services/memory/userMemory/runtime';
 import { normalizeSearchMemoryParams } from '@/server/services/memory/userMemory/searchParams';
+import {
+  buildUserMemoryTextModelCandidateParams,
+  mergeUserMemorySearchResults,
+  mergeUserMemoryTextMetadata,
+  prepareUserMemoryTextMetadata,
+  selectRelevantUserMemories,
+} from '@/server/services/memory/userMemory/textModel';
 
 import type { ToolExecutionMemoryEmbeddingRuntime } from '../types';
 import type { ServerRuntimeRegistration } from './types';
@@ -87,7 +97,7 @@ const createEmbedder = (
   return async (value?: string | null): Promise<number[] | undefined> => {
     if (!embeddingRuntime || !value || value.trim().length === 0) return undefined;
 
-    const [embedding] = await embedUserMemoryTexts({
+    const [embedding] = await embedUserMemoryTextsWithFallback({
       input: [value],
       model: embeddingRuntime.model,
       runtime: embeddingRuntime.runtime,
@@ -142,9 +152,23 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
   }
 
   private getEmbeddingRuntime = async () =>
-    resolveUserMemoryEmbeddingRuntime({
+    resolveUserMemoryEmbeddingRuntimeWithFallback({
       override: this.memoryEmbeddingRuntime,
       serverDB: this.serverDB,
+      userId: this.userId,
+    });
+
+  private getTextModelRuntime = async () =>
+    resolveUserMemoryTextModelRuntimeWithFallback({
+      serverDB: this.serverDB,
+      userId: this.userId,
+    });
+
+  private prepareTextMetadata = async (layer: LayersEnum, input: unknown) =>
+    prepareUserMemoryTextMetadata({
+      input,
+      layer,
+      resolvedRuntime: await this.getTextModelRuntime(),
       userId: this.userId,
     });
 
@@ -189,7 +213,10 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
 
   searchMemory = async (params: SearchMemoryParams): Promise<SearchMemoryResult> => {
     const normalizedParams = normalizeSearchMemoryParams(params);
-    const embeddingRuntime = await this.getEmbeddingRuntime();
+    const [embeddingRuntime, textModelRuntime] = await Promise.all([
+      this.getEmbeddingRuntime(),
+      this.getTextModelRuntime(),
+    ]);
     const normalizedQueries = [
       ...new Set((normalizedParams.queries ?? []).map((query) => query.trim()).filter(Boolean)),
     ];
@@ -197,7 +224,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     const queryEmbeddings =
       embeddingRuntime && normalizedQueries.length > 0
         ? (
-            await embedUserMemoryTexts({
+            await embedUserMemoryTextsWithFallback({
               input: normalizedQueries,
               model: embeddingRuntime.model,
               runtime: embeddingRuntime.runtime,
@@ -221,10 +248,33 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     };
 
     const effortConstrainedLimits = applySearchLimitsByEffort(effectiveEffort, requestedLimits);
-    return this.memoryModel.searchMemory(
-      { ...normalizedParams, queries: normalizedQueries, topK: effortConstrainedLimits },
+    const searchParams = {
+      ...normalizedParams,
+      effort: effectiveEffort,
+      queries: normalizedQueries,
+      topK: effortConstrainedLimits,
+    };
+    const hybridResult = (await this.memoryModel.searchMemory(
+      searchParams,
       queryEmbeddings,
-    ) as Promise<SearchMemoryResult>;
+    )) as SearchMemoryResult;
+
+    if (!textModelRuntime || normalizedQueries.length === 0) return hybridResult;
+
+    const recentCandidates = (await this.memoryModel.searchMemory(
+      buildUserMemoryTextModelCandidateParams(searchParams),
+      [],
+      { includeUnfilteredCandidates: true },
+    )) as SearchMemoryResult;
+    const candidates = mergeUserMemorySearchResults(hybridResult, recentCandidates);
+    return (
+      (await selectRelevantUserMemories({
+        candidates,
+        params: searchParams,
+        resolvedRuntime: textModelRuntime,
+        userId: this.userId,
+      })) ?? hybridResult
+    );
   };
 
   queryTaxonomyOptions = async (
@@ -237,6 +287,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     input: z.infer<typeof ContextMemoryItemSchema>,
   ): Promise<AddContextMemoryResult> => {
     try {
+      const textMetadata = await this.prepareTextMetadata(LayersEnum.Context, input);
       const embed = createEmbedder(await this.getEmbeddingRuntime(), this.userId);
 
       const summaryEmbedding = await embed(input.summary);
@@ -252,7 +303,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
           currentStatus: input.withContext.currentStatus ?? null,
           description: input.withContext.description ?? null,
           descriptionVector: contextDescriptionEmbedding ?? null,
-          metadata: {},
+          metadata: mergeUserMemoryTextMetadata(undefined, textMetadata),
           scoreImpact: input.withContext.scoreImpact ?? null,
           scoreUrgency: input.withContext.scoreUrgency ?? null,
           tags: input.tags ?? [],
@@ -305,6 +356,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     input: z.infer<typeof ActivityMemoryItemSchema>,
   ): Promise<AddActivityMemoryResult> => {
     try {
+      const textMetadata = await this.prepareTextMetadata(LayersEnum.Activity, input);
       const embed = createEmbedder(await this.getEmbeddingRuntime(), this.userId);
 
       const summaryEmbedding = await embed(input.summary);
@@ -324,7 +376,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
           endsAt: UserMemoryModel.parseDateFromString(input.withActivity.endsAt ?? undefined),
           feedback: input.withActivity.feedback ?? null,
           feedbackVector: feedbackVector ?? null,
-          metadata: input.withActivity.metadata ?? null,
+          metadata: mergeUserMemoryTextMetadata(input.withActivity.metadata, textMetadata),
           narrative: input.withActivity.narrative ?? null,
           narrativeVector: narrativeVector ?? null,
           notes: input.withActivity.notes ?? null,
@@ -380,6 +432,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     input: z.infer<typeof ExperienceMemoryItemSchema>,
   ): Promise<AddExperienceMemoryResult> => {
     try {
+      const textMetadata = await this.prepareTextMetadata(LayersEnum.Experience, input);
       const embed = createEmbedder(await this.getEmbeddingRuntime(), this.userId);
 
       const summaryEmbedding = await embed(input.summary);
@@ -396,7 +449,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
           actionVector: actionVector ?? null,
           keyLearning: input.withExperience.keyLearning ?? null,
           keyLearningVector: keyLearningVector ?? null,
-          metadata: {},
+          metadata: mergeUserMemoryTextMetadata(undefined, textMetadata),
           possibleOutcome: input.withExperience.possibleOutcome ?? null,
           reasoning: input.withExperience.reasoning ?? null,
           scoreConfidence: input.withExperience.scoreConfidence ?? null,
@@ -449,6 +502,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     input: z.infer<typeof AddIdentityActionSchema>,
   ): Promise<AddIdentityMemoryResult> => {
     try {
+      const textMetadata = await this.prepareTextMetadata(LayersEnum.Identity, input);
       const embed = createEmbedder(await this.getEmbeddingRuntime(), this.userId);
 
       const summaryEmbedding = await embed(input.summary);
@@ -468,6 +522,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
       ) {
         identityMetadata.sourceEvidence = input.withIdentity.sourceEvidence;
       }
+      const mergedIdentityMetadata = mergeUserMemoryTextMetadata(identityMetadata, textMetadata);
 
       const { identityId, userMemoryId } = await this.memoryModel.addIdentityEntry({
         base: {
@@ -476,7 +531,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
           memoryCategory: input.memoryCategory,
           memoryLayer: LayersEnum.Identity,
           memoryType: input.memoryType,
-          metadata: Object.keys(identityMetadata).length > 0 ? identityMetadata : undefined,
+          metadata: mergedIdentityMetadata,
           summary: input.summary,
           summaryVector1024: summaryEmbedding ?? null,
           tags: input.tags,
@@ -486,7 +541,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
           description: input.withIdentity.description,
           descriptionVector: descriptionEmbedding ?? null,
           episodicDate: input.withIdentity.episodicDate,
-          metadata: Object.keys(identityMetadata).length > 0 ? identityMetadata : undefined,
+          metadata: mergedIdentityMetadata,
           relationship: input.withIdentity.relationship,
           role: input.withIdentity.role,
           tags: input.tags,
@@ -530,6 +585,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     input: z.infer<typeof PreferenceMemoryItemSchema>,
   ): Promise<AddPreferenceMemoryResult> => {
     try {
+      const textMetadata = await this.prepareTextMetadata(LayersEnum.Preference, input);
       const embed = createEmbedder(await this.getEmbeddingRuntime(), this.userId);
 
       const summaryEmbedding = await embed(input.summary);
@@ -541,11 +597,14 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
           ? input.withPreference?.suggestions?.join('\n')
           : null;
 
-      const metadata = {
-        appContext: input.withPreference.appContext,
-        extractedScopes: input.withPreference.extractedScopes,
-        originContext: input.withPreference.originContext,
-      } satisfies Record<string, unknown>;
+      const metadata = mergeUserMemoryTextMetadata(
+        {
+          appContext: input.withPreference.appContext,
+          extractedScopes: input.withPreference.extractedScopes,
+          originContext: input.withPreference.originContext,
+        },
+        textMetadata,
+      );
 
       const { memory, preference } = await this.memoryModel.createPreferenceMemory({
         details: input.details || '',
@@ -603,6 +662,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
     input: z.infer<typeof UpdateIdentityActionSchema>,
   ): Promise<UpdateIdentityMemoryResult> => {
     try {
+      const textMetadata = await this.prepareTextMetadata(LayersEnum.Identity, input);
       const embed = createEmbedder(await this.getEmbeddingRuntime(), this.userId);
 
       let summaryVector1024: number[] | null | undefined;
@@ -630,6 +690,7 @@ class MemoryServerRuntimeService implements MemoryRuntimeService {
       if (Object.hasOwn(input.set.withIdentity, 'sourceEvidence')) {
         metadataUpdates.sourceEvidence = input.set.withIdentity.sourceEvidence ?? null;
       }
+      if (textMetadata) metadataUpdates.memoryTextModel = textMetadata;
 
       const identityPayload: Partial<IdentityEntryPayload> = {};
       if (input.set.withIdentity.description !== undefined) {

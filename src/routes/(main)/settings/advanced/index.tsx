@@ -19,6 +19,7 @@ import { useUserStore } from '@/store/user';
 import { labPreferSelectors, preferenceSelectors, settingsSelectors } from '@/store/user/selectors';
 
 import { useMemoryEmbeddingSettingsGroup } from './useMemoryEmbeddingSettingsGroup';
+import { useMemoryTextModelSettingsGroup } from './useMemoryTextModelSettingsGroup';
 
 type UpdateChannelValue = 'canary' | 'stable';
 
@@ -77,6 +78,7 @@ const Page = memo(() => {
   const [automaticUpdatesEnabled, setAutomaticUpdatesEnabled] = useState(false);
   const [automaticUpdatesLoading, setAutomaticUpdatesLoading] = useState(true);
   const memoryEmbeddingGroup = useMemoryEmbeddingSettingsGroup();
+  const memoryTextModelGroup = useMemoryTextModelSettingsGroup();
 
   useEffect(() => {
     if (!isDesktop) return;
@@ -308,8 +310,8 @@ const Page = memo(() => {
   };
 
   const items = isDesktop
-    ? [advancedGroup, updateChannelGroup, memoryEmbeddingGroup, labsGroup]
-    : [advancedGroup, memoryEmbeddingGroup, labsGroup];
+    ? [advancedGroup, updateChannelGroup, memoryEmbeddingGroup, memoryTextModelGroup, labsGroup]
+    : [advancedGroup, memoryEmbeddingGroup, memoryTextModelGroup, labsGroup];
 
   return (
     <>
