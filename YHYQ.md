@@ -643,3 +643,26 @@
 - 4/4 场景通过：一次触摸直接打开附件菜单、打开时保留原有草稿、选择附件后无需放大即可继续逐字输入、完成附件操作后仍可再次触摸打开菜单。
 - Playwright 记录的 console、HTTP 4xx/5xx 和页面运行时错误均为零；两张成功截图已人工检查，页面非空白且菜单、草稿、附件选择状态和附件后新增输入均清晰可见。
 - 验证夹具完成后已停止本轮 Vite 服务并释放端口；另精确终止上一轮遗留且已确认无父进程的 Vite PID `23240`，未影响当前测试或用户进程。
+
+### GitHub Actions 构建与 Release
+
+- 最终源码提交为 `603e147b7631b08848c0d5365015113268cccec0`，已推送到 `codex/deploy-server-image-20260720`。
+- Windows GitHub Actions 运行 `30382143601` 成功，只执行 Windows Runner；macOS 和 Linux 桌面作业均为 skipped。
+- Windows 安装包为 `LobeHub-2.2.8-codex.20260729.1-setup.exe`，大小 `138190150` 字节，FileVersion 和 ProductVersion 均为 `2.2.8-codex.20260729.1`，SHA-256 为 `1D3D46BBF11A5DB88367A996F1C92591AE2EE0B06AA21812B9DFC7AC5DC007BE`。
+- Windows 安装包未配置商业代码签名证书，Authenticode 状态为 `NotSigned`；同时保留 `latest.yml` 和 blockmap 用于更新元数据。
+- 服务端 GitHub Actions 运行 `30382143745` 成功，只构建 `linux/amd64` Docker archive；archive SHA-256 为 `4401BC45FFC1ADE6C68FFEC80D1FCAD7F9106497BD017695732F160248372654`。
+- Docker archive 内镜像标签为 `lobehub/lobehub:codex-603e147b7631b08848c0d5365015113268cccec0`，架构为 `amd64`，运行用户为 `nextjs`，入口为 `/bin/node /app/startServer.js`。
+- GitHub 预发布版本为 `v2.2.8-codex.20260729.1`，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260729.1`；四项资产的 GitHub digest、大小与本机全部一致。
+- Release Notes 已逐项写明记忆嵌入降级、普通文本记忆模型、图片成功误判与重复请求、手机附件菜单修复，以及测试、构建 SHA 和资产哈希。
+
+### 服务端最终部署
+
+- Docker archive 在本机完成构建和核验后上传路由器，远端 SHA-256 与本机一致；路由器没有执行任何源码或镜像构建。
+- 旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260729-pre-memory-image-mobile`，指向 `sha256:7f8cc2bd6c27344a3d3884117c6950c6780a469d5ce570d11e9dcbf3e96e5636`。
+- 新镜像 ID 为 `sha256:4dd11793a0a149986315d2e6a79f63147165b4c284a2ec86b0eda5fb189dc911`；只执行 `docker compose up -d --no-deps --force-recreate lobehub`，没有重建依赖或其他服务。
+- 最终 LobeHub 容器为 `c69376f92ae76345f9446100d6b64d4bf3e0f45dd6d2133f4e30377065de1370`，状态为 running，重启次数为 0，策略为 always，端口仍为宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 数据库迁移通过，Next.js Ready，设备网关启动成功；宿主 `127.0.0.1:13210/api/version` 和公网 HTTPS `/api/version` 均返回 HTTP 200 与 `{"version":"2.2.8"}`。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、RustFS 初始化容器 `eed1bbe27cf4`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0` 和 `linuxytd` `40221e97adeb` 的容器 ID 全部保持不变。
+- Compose、Nginx 和 `/root/zhengshu/` 四个证书文件的 SHA-256 与部署前全部一致，`nginx -t` 仍成功；没有修改数据库数据、Redis、RustFS、SearXNG、设备网关、证书或 `linuxytd` 配置。
+- 稳定性复查时 LobeHub 内存约 377 MiB，路由器可用内存约 6.34 GB，新容器重启次数仍为 0；日志只有既有的 QStash 未配置和 S3 变量弃用提示，没有迁移、启动或网关错误。
+- 本轮上传到服务器和保存在本机的临时 Docker archive 均已删除；保留 GitHub Release、Windows EXE、更新元数据、新镜像和旧镜像回滚标签。
