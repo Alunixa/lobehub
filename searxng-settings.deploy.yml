@@ -62,26 +62,28 @@ engines:
   - name: 360search
     disabled: true
 
-  # Verified no-key general web engines available in this image.
+  # These engines are currently blocked or unstable on this WAN exit.
   - name: dogpile
-    engine: dogpile
-    shortcut: dog
-    dogpile_categ: search
-    categories: general
-    disabled: false
-    timeout: 12.0
+    disabled: true
 
   - name: mwmbl
-    engine: mwmbl
-    shortcut: mwm
-    disabled: false
-    timeout: 12.0
+    disabled: true
 
   - name: seznam
     disabled: true
 
   - name: sogou
     disabled: true
+
+  # Verified no-key general web engines available from this WAN exit.
+  - name: bing
+    disabled: false
+
+  - name: naver
+    disabled: false
+
+  - name: resulthunter
+    disabled: false
 
   - name: wiby
     engine: json_engine

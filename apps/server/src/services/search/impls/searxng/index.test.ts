@@ -23,7 +23,7 @@ describe('SearXNGImpl', () => {
       expect(results.results.length).toEqual(43);
     });
 
-    it('returns engine failures when no engine can produce results', async () => {
+    it('returns an empty response when individual upstream engines are unavailable', async () => {
       vi.spyOn(SearXNGClient.prototype, 'search').mockResolvedValueOnce({
         ...hetongxue,
         number_of_results: 0,
@@ -37,8 +37,7 @@ describe('SearXNGImpl', () => {
       const searchImpl = new SearXNGImpl();
       const results = await searchImpl.query('test');
 
-      expect(results.errorDetail).toContain('brave: Too many requests');
-      expect(results.errorDetail).toContain('duckduckgo: CAPTCHA');
+      expect(results.errorDetail).toBeUndefined();
       expect(results.results).toEqual([]);
     });
   });

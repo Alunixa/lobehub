@@ -7,23 +7,6 @@ import { SearXNGClient } from '@/server/services/search/impls/searxng/client';
 
 import { type SearchServiceImpl } from '../type';
 
-const formatUnresponsiveEngine = (engine: unknown): string => {
-  if (Array.isArray(engine)) {
-    return engine
-      .map((item) => (typeof item === 'string' ? item : JSON.stringify(item)))
-      .filter(Boolean)
-      .join(': ');
-  }
-
-  if (typeof engine === 'string') return engine;
-
-  try {
-    return JSON.stringify(engine);
-  } catch {
-    return String(engine);
-  }
-};
-
 /**
  * SearXNG implementation of the search service
  */
@@ -51,16 +34,9 @@ export class SearXNGImpl implements SearchServiceImpl {
         time_range: params?.searchTimeRange,
       });
       costTime = Date.now() - startAt;
-      const unresponsiveEngines = data.unresponsive_engines
-        .map(formatUnresponsiveEngine)
-        .filter(Boolean);
 
       return {
         costTime,
-        errorDetail:
-          data.results.length === 0 && unresponsiveEngines.length > 0
-            ? `SearXNG search engines unavailable: ${unresponsiveEngines.join('; ')}`
-            : undefined,
         query,
         resultNumbers: data.number_of_results,
         results: data.results.map((item) => ({

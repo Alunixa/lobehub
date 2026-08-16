@@ -10,6 +10,7 @@ import { createSearchServiceImpl } from './impls';
 
 const DEFAULT_CRAWL_CONCURRENCY = 3;
 const DEFAULT_CRAWLER_RETRY = 1;
+const DEFAULT_SEARCH_CONCURRENCY = 2;
 const log = debug('lobe-oom:web-browsing:search-service');
 
 const parseImplEnv = (envString: string = '') => {
@@ -55,6 +56,8 @@ const getMemorySnapshot = () => {
  * Uses different implementations for different search operations
  */
 export class SearchService {
+  private activeSearches = 0;
+  private searchQueue: Array<() => void> = [];
   private searchImpList: SearchServiceImpl[];
 
   private get crawlerImpls() {
@@ -161,6 +164,12 @@ export class SearchService {
    * Query for search results using the specified impl
    */
   private async queryWithImpl(impl: SearchServiceImpl, query: string, params?: SearchParams) {
+    if (this.activeSearches >= DEFAULT_SEARCH_CONCURRENCY) {
+      await new Promise<void>((resolve) => this.searchQueue.push(resolve));
+    }
+
+    this.activeSearches += 1;
+
     try {
       return await impl.query(query, params);
     } catch (e) {
@@ -172,6 +181,9 @@ export class SearchService {
         resultNumbers: 0,
         results: [],
       };
+    } finally {
+      this.activeSearches -= 1;
+      this.searchQueue.shift()?.();
     }
   }
 
@@ -217,7 +229,6 @@ export class SearchService {
       let data = await this.queryWithImpl(impl, query, currentParams);
       if (data.errorDetail) {
         lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
-        continue;
       }
 
       // First retry: remove search engine restrictions if no results found
@@ -229,7 +240,6 @@ export class SearchService {
         data = await this.queryWithImpl(impl, query, currentParams);
         if (data.errorDetail) {
           lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
-          continue;
         }
       }
 
@@ -238,7 +248,6 @@ export class SearchService {
         data = await this.queryWithImpl(impl, query);
         if (data.errorDetail) {
           lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
-          continue;
         }
       }
 

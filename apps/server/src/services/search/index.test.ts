@@ -112,6 +112,33 @@ describe('SearchService', () => {
         results: [],
       });
     });
+
+    it('should limit concurrent upstream search requests to two', async () => {
+      let activeSearches = 0;
+      let maxActiveSearches = 0;
+      const resolvers: Array<() => void> = [];
+
+      mockSearchImpl.query.mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            activeSearches += 1;
+            maxActiveSearches = Math.max(maxActiveSearches, activeSearches);
+            resolvers.push(() => {
+              activeSearches -= 1;
+              resolve({ costTime: 1, query: 'test', resultNumbers: 0, results: [] });
+            });
+          }),
+      );
+
+      const searches = Array.from({ length: 4 }, (_, index) => searchService.query(`test-${index}`));
+      await vi.waitFor(() => expect(resolvers).toHaveLength(2));
+      resolvers.splice(0, 2).forEach((resolve) => resolve());
+      await vi.waitFor(() => expect(resolvers).toHaveLength(2));
+      resolvers.splice(0, 2).forEach((resolve) => resolve());
+      await Promise.all(searches);
+
+      expect(maxActiveSearches).toBe(2);
+    });
   });
 
   describe('webSearch', () => {
@@ -341,7 +368,7 @@ describe('SearchService', () => {
       expect(result).toEqual({ costTime: 0, query: 'test', resultNumbers: 0, results: [] });
     });
 
-    it('should not retry a provider error and should preserve the error detail', async () => {
+    it('should relax restrictions after a provider error and preserve the error detail', async () => {
       const errorResponse = {
         costTime: 20,
         errorDetail: 'SearXNG search engines unavailable: brave: Too many requests',
@@ -357,7 +384,15 @@ describe('SearchService', () => {
         searchTimeRange: 'year',
       });
 
-      expect(mockSearchImpl.query).toHaveBeenCalledTimes(1);
+      expect(mockSearchImpl.query).toHaveBeenCalledTimes(3);
+      expect(mockSearchImpl.query).toHaveBeenNthCalledWith(1, 'test', {
+        searchEngines: ['brave'],
+        searchTimeRange: 'year',
+      });
+      expect(mockSearchImpl.query).toHaveBeenNthCalledWith(2, 'test', {
+        searchTimeRange: 'year',
+      });
+      expect(mockSearchImpl.query).toHaveBeenNthCalledWith(3, 'test', undefined);
       expect(result).toEqual(errorResponse);
     });
   });

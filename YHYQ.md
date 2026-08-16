@@ -666,3 +666,28 @@
 - Compose、Nginx 和 `/root/zhengshu/` 四个证书文件的 SHA-256 与部署前全部一致，`nginx -t` 仍成功；没有修改数据库数据、Redis、RustFS、SearXNG、设备网关、证书或 `linuxytd` 配置。
 - 稳定性复查时 LobeHub 内存约 377 MiB，路由器可用内存约 6.34 GB，新容器重启次数仍为 0；日志只有既有的 QStash 未配置和 S3 变量弃用提示，没有迁移、启动或网关错误。
 - 本轮上传到服务器和保存在本机的临时 Docker archive 均已删除；保留 GitHub Release、Windows EXE、更新元数据、新镜像和旧镜像回滚标签。
+## 2026-08-16：修复 SearXNG 搜索可靠性
+
+### 用户要求
+
+- 用户确认继续修复持续出现的 `SearXNG search engines unavailable` 问题。
+- 停用稳定返回 403 的 Dogpile，将频繁超时的 Mwmbl 移出默认聚合，实测并补充无需 Key 的稳定搜索引擎。
+- 修复 LobeHub 在部分引擎异常且零结果时直接终止、不使用健康引擎降级重试的问题。
+- 不影响现有 Nginx、HTTPS 证书、PostgreSQL、Redis、RustFS、设备网关、`linuxytd` 或其他服务；禁止使用 WSL。
+
+### 当前行动
+
+- 已确认主工作区已跟踪文件干净，历史构建目录等未跟踪文件保持原样且不纳入本轮提交。
+- 已创建修改前 Git 回滚锚点 `d1d92f3710`，并创建隔离分支 `codex/search-reliability-20260816`。
+- 下一步使用隔离测试实测候选免 Key 引擎，再修改 SearXNG 默认引擎与 LobeHub 搜索降级逻辑并补充定向测试。
+
+### 引擎实测与源码修复
+
+- 在不修改线上配置、不重启容器的前提下，通过现有 SearXNG JSON API 对 13 个候选免 Key 引擎执行中英文、站点限定查询筛选。
+- Bing、Naver、ResultHunter 在三轮、每轮五类查询、并发 2 的稳定性复测中共 45/45 次成功，无超时、403、CAPTCHA 或暂停；Bing 通常约 0.3 秒，Naver 约 0.6 秒，ResultHunter 约 1.2 秒。
+- Baidu 对站点限定查询触发 CAPTCHA，Sogou 与 Startpage 直接触发 CAPTCHA，Vuhuv 出现 HTTP 连接错误，Seznam 超时，Mojeek 对站点查询拒绝访问，因此没有纳入默认聚合。
+- 部署配置现已停用稳定 403 的 Dogpile 与频繁超时的 Mwmbl，启用 Bing、Naver、ResultHunter，并保留既有 Wiby、Yandex、Wikipedia。
+- SearXNG 单个上游引擎不可用时不再将整次零结果标记成工具失败；LobeHub 收到提供商错误时仍会依次移除引擎限制和全部限制重试，再切换后续提供商。
+- 服务端搜索入口新增进程内并发 2 的轻量队列，不丢弃请求，避免模型同秒发出 3 至 4 个搜索请求再次触发免费引擎限流。
+- 已补充 SearXNG 部分引擎失败降级、提供商错误放宽限制重试和并发上限回归测试。
+- 隔离工作树中的 Vitest 运行器异常表现为退出码 0 但零测试收集且不生成 JSON 报告，因此没有将这些空跑计为测试通过；后续将提交同步到原工作区，使用原依赖布局运行真实专项测试。
