@@ -720,3 +720,15 @@
 - 第五轮构建 `31942583653` 的工作目录修正后冒烟成功，但路由器启动仍暴露更深层的版本不匹配：Next 16.3.1 的 package.json 精确依赖 `@swc/helpers@0.5.23`，standalone 中该版本仅追踪到部分 CJS 文件，缺少启动所需的 ESM 文件；此前补入的 0.5.15 顶层包不能修复 Next 内部指向 0.5.23 的链接。
 - 第二次部署已自动回滚到旧镜像，恢复后的 LobeHub 容器 `680df583c187` 内部 `/api/version` 返回 HTTP 200，重启计数为 0；其他核心容器未重建。
 - Docker 依赖现改为 Next 实际要求的 `@swc/helpers@0.5.23`，使 `/deps/.pnpm` 覆盖 standalone 的不完整同版本目录；冒烟检查由仅解析 Next 入口升级为真正执行 `require('next/dist/server/next-server.js')`，从而加载并验证 Next 的完整启动依赖链。
+
+### 最终构建与部署
+
+- 第六轮服务器镜像构建 `31943319712` 成功，`Verify runtime dependencies` 通过，真实执行了 `require('next/dist/server/next-server.js')` 并覆盖此前线上缺包路径。
+- 最终提交为 `565506ea0adeb64a8f693d8be4535c61ad6ae515`；Docker archive 大小为 `278624256` 字节，SHA-256 为 `5A92734F71BF9D48EAAD553E40C597F042A165EC2E10E09FF7689AA7AF886D89`。
+- 最终镜像在路由器加载后又以 `--network none` 临时容器真实加载 Next server，明确输出 `next-runtime-ok`；镜像 ID 为 `sha256:ab168224d8de75d12fad82206cc4dfbab1f6c1aa348ebb28826b605ee43e2c0a`。
+- 仅执行 `docker compose up -d --no-deps --force-recreate lobehub` 切换 LobeHub；最终容器为 `faa5811b02ad77ac836c80c7ed6cdb6ceaac81be0e830f943ac144539e418be7`，状态 running、重启次数 0、策略 always，端口仍为宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 容器内与公网 HTTPS `/api/version` 均返回 HTTP 200 和 `{"version":"2.2.8"}`；日志显示数据库迁移通过、Next.js 16.3.1 Ready、设备网关启动成功。
+- 实时搜索 `LobeHub attachment upload` 返回 54 条结果，`unresponsive_engines=[]`，实际健康来源为 Bing、Naver、ResultHunter、Yandex；不再出现 Dogpile access denied 或 Mwmbl timeout。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、RustFS 初始化容器 `eed1bbe27cf4`、设备网关 `3d1a74a1a5c0`、SearXNG `76165d49617f` 和 `linuxytd` `40221e97adeb` 的容器 ID 均保持不变。
+- 稳定性复查时 LobeHub 约 369.7 MiB、SearXNG 约 123.4 MiB，宿主可用内存约 5.52 GiB；没有 OOM 或异常重启。
+- 远端临时 archive、临时配置和两版失败镜像已删除；保留最终镜像、当前 `latest` 与 `backup-20260816-pre-search-reliability` 回滚标签。未修改 Nginx、HTTPS 证书、数据库数据、Redis、RustFS、设备网关或 `linuxytd`。
