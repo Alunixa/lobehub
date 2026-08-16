@@ -90,7 +90,7 @@ RUN set -e && \
     mkdir -p /deps && \
     cd /deps && \
     echo '{"name":"deps","private":true}' > package.json && \
-    pnpm add pg drizzle-orm
+    pnpm add @swc/helpers@0.5.15 pg drizzle-orm
 
 COPY . .
 
@@ -119,6 +119,7 @@ COPY --from=builder /app/scripts/migrateServerDB/errorHint.js /app/errorHint.js
 
 # copy dependencies
 COPY --from=builder /deps/node_modules/.pnpm /app/node_modules/.pnpm
+COPY --from=builder /deps/node_modules/@swc/helpers /app/node_modules/@swc/helpers
 COPY --from=builder /deps/node_modules/pg /app/node_modules/pg
 COPY --from=builder /deps/node_modules/drizzle-orm /app/node_modules/drizzle-orm
 

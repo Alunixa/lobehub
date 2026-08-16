@@ -707,3 +707,11 @@
 - 已创建附带修复前回滚点 `d7c72c9f7d`，并将读取改为 `agentConfig?.instructions?.trim()`；有助手配置时行为不变，缺省时保持无 instructions 的既有行为。
 - 第二轮 Test CI `31940761862` 证明第一层空值问题已消失，随后暴露 `resolvedExtendParams.enabledSearch` 同样未兼容缺省值，以及该测试文件对 `@lobechat/model-runtime` 的集中部分 mock 未保留新增的 `routeInstructions` 导出。
 - 产品代码现对 `resolvedExtendParams` 使用可选访问；测试集中 mock 从模型运行时纯源码导入真实 `routeInstructions`，不使用伪造 stub，确保既有 57 个用例验证真实 instructions 路由逻辑。
+
+### 第三轮 CI 与首次部署回滚
+
+- 第三轮 Test CI `31941274427` 的 Test Server 两个分片均成功，最终服务器镜像构建 `31941317150` 成功；镜像 archive SHA-256 为 `26A2405C877251CF88229E1C2B1D2CED337B865C77C073D068DE5299053287E1`。
+- SearXNG 新配置已部署成功：配置 SHA-256 为 `a06c6d2825f9b961fd7997fa9e6609487de3c522baf79663ba89e168c3018e42`，原配置备份 SHA-256 为 `773081e80e780a483114930715def330835b257c299329e71d214fea5215f360`；仅重启原有 `lobe-searxng`，容器 ID 保持 `76165d49617f`，实时 OpenAI 查询返回有效 JSON。
+- 首次切换 LobeHub 时，新镜像完成数据库迁移后因缺少 `@swc/helpers/esm/_interop_require_default.js` 立即退出；自动回滚已恢复旧镜像 `sha256:4dd11793a0a149986315d2e6a79f63147165b4c284a2ec86b0eda5fb189dc911`，恢复后的容器为 `20f3e3c7028d`，内部 `/api/version` 返回 HTTP 200，其他服务容器未重建。
+- 根因是 Dockerfile 运行镜像复制 `/deps/node_modules/.pnpm`，但 `/deps` 只安装 `pg` 与 `drizzle-orm`，没有安装 Next 16 运行时实际需要的 `@swc/helpers`。
+- 已创建 Docker 修复前回滚点 `e087801122`；`/deps` 现显式安装锁文件对应的 `@swc/helpers@0.5.15` 并复制顶层模块，服务器镜像工作流新增容器内 `require.resolve` 冒烟检查，缺包时构建不会再被判定成功。
