@@ -691,3 +691,10 @@
 - 服务端搜索入口新增进程内并发 2 的轻量队列，不丢弃请求，避免模型同秒发出 3 至 4 个搜索请求再次触发免费引擎限流。
 - 已补充 SearXNG 部分引擎失败降级、提供商错误放宽限制重试和并发上限回归测试。
 - 隔离工作树中的 Vitest 运行器异常表现为退出码 0 但零测试收集且不生成 JSON 报告，因此没有将这些空跑计为测试通过；后续将提交同步到原工作区，使用原依赖布局运行真实专项测试。
+
+### 本地验证
+
+- `searxng-settings.deploy.yml` 已由仓库现有 `yaml` 包成功解析，目标状态为 Dogpile/Mwmbl 禁用，Bing/Naver/ResultHunter 启用。
+- 四个修改的 TypeScript 源码与测试文件已通过现有 ESLint 包入口检查，`git diff --check` 通过。
+- SearXNG 实现的两个用例由 Bun 真实收集并 2/2 通过；SearchService 测试依赖 Vitest 的无工厂 `vi.mock`，Bun 原生运行器不兼容该语法，因此未将其运行器错误当成业务失败。
+- 本机 Vitest 当前存在自定义配置下静默零收集的问题；完整 SearchService 回归改由 GitHub Actions 干净依赖环境验证，未把零收集退出码计作测试通过。
