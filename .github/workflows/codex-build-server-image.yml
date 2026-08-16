@@ -39,7 +39,7 @@ jobs:
       - name: Verify runtime dependencies
         run: |
           docker load --input /tmp/lobehub-server-image.tar
-          docker run --rm --entrypoint /bin/node \
+          docker run --rm --entrypoint /bin/node --workdir /app \
             lobehub/lobehub:codex-${{ github.sha }} \
             -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require.resolve('next/dist/server/next-server.js')"
 

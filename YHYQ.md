@@ -715,3 +715,5 @@
 - 首次切换 LobeHub 时，新镜像完成数据库迁移后因缺少 `@swc/helpers/esm/_interop_require_default.js` 立即退出；自动回滚已恢复旧镜像 `sha256:4dd11793a0a149986315d2e6a79f63147165b4c284a2ec86b0eda5fb189dc911`，恢复后的容器为 `20f3e3c7028d`，内部 `/api/version` 返回 HTTP 200，其他服务容器未重建。
 - 根因是 Dockerfile 运行镜像复制 `/deps/node_modules/.pnpm`，但 `/deps` 只安装 `pg` 与 `drizzle-orm`，没有安装 Next 16 运行时实际需要的 `@swc/helpers`。
 - 已创建 Docker 修复前回滚点 `e087801122`；`/deps` 现显式安装锁文件对应的 `@swc/helpers@0.5.15` 并复制顶层模块，服务器镜像工作流新增容器内 `require.resolve` 冒烟检查，缺包时构建不会再被判定成功。
+- 第四轮构建 `31942116108` 被新增冒烟检查拦截；日志证明 Docker 构建本身完成，但 scratch 最终阶段未设置 `WORKDIR`，冒烟命令从 `/` 执行，Node 不会搜索 `/app/node_modules`，属于验证路径假阴性。
+- 最终镜像现显式设置 `WORKDIR /app`，冒烟命令也固定 `--workdir /app`，使运行时模块解析与验证环境一致；仍保留对 `@swc/helpers` 和 Next server 入口的双重真实解析检查。

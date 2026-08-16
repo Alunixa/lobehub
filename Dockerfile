@@ -345,6 +345,8 @@ ENV \
 
 USER nextjs
 
+WORKDIR /app
+
 EXPOSE 3210/tcp
 
 ENTRYPOINT ["/bin/node"]
