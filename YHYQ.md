@@ -705,3 +705,5 @@
 - Test Server 分片 1 中除一个既有 `RuntimeExecutors.test.ts` 文件外，231 个服务器测试文件全部通过；失败的 57 个用例均在进入各自断言前抛出同一 `TypeError: Cannot read properties of undefined (reading 'instructions')`。
 - 根因是此前 instructions 功能在 `ctx.agentConfig` 可缺省的合法运行/测试路径中直接访问 `agentConfig.instructions`，与本轮搜索改动无关，但会阻断全部服务器 CI。
 - 已创建附带修复前回滚点 `d7c72c9f7d`，并将读取改为 `agentConfig?.instructions?.trim()`；有助手配置时行为不变，缺省时保持无 instructions 的既有行为。
+- 第二轮 Test CI `31940761862` 证明第一层空值问题已消失，随后暴露 `resolvedExtendParams.enabledSearch` 同样未兼容缺省值，以及该测试文件对 `@lobechat/model-runtime` 的集中部分 mock 未保留新增的 `routeInstructions` 导出。
+- 产品代码现对 `resolvedExtendParams` 使用可选访问；测试集中 mock 从模型运行时纯源码导入真实 `routeInstructions`，不使用伪造 stub，确保既有 57 个用例验证真实 instructions 路由逻辑。

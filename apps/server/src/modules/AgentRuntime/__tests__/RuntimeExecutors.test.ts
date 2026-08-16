@@ -75,6 +75,8 @@ vi.mock('@lobechat/model-runtime', async () => {
   // retry path and these tests share a single class identity for instanceof.
   const { isEmptyModelCompletion, ModelEmptyError } =
     await import('../../../../../../packages/model-runtime/src/errors/modelEmptyCompletion');
+  const { routeInstructions } =
+    await import('../../../../../../packages/model-runtime/src/utils/instructions');
   return {
     // The executor resolves extend params via this helper; an empty result keeps
     // the runtime payload unchanged, matching this suite's pre-existing behavior.
@@ -96,6 +98,7 @@ vi.mock('@lobechat/model-runtime', async () => {
       /^kimi-k2\.(?:[7-9]|\d{2,})-code(?:$|-)/.test(model),
     ModelEmptyError,
     refineErrorCode: () => undefined,
+    routeInstructions,
   };
 });
 
