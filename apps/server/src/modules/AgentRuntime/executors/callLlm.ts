@@ -929,7 +929,7 @@ export const callLlm =
 
       // Construct ChatStreamPayload
       const stream = ctx.stream ?? true;
-      const instructions = agentConfig.instructions?.trim();
+      const instructions = agentConfig?.instructions?.trim();
       const enabledSearch = (resolvedExtendParams as Partial<ChatStreamPayload>).enabledSearch;
       const routedInstructions = routeInstructions({
         enabledSearch,

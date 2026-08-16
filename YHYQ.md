@@ -698,3 +698,10 @@
 - 四个修改的 TypeScript 源码与测试文件已通过现有 ESLint 包入口检查，`git diff --check` 通过。
 - SearXNG 实现的两个用例由 Bun 真实收集并 2/2 通过；SearchService 测试依赖 Vitest 的无工厂 `vi.mock`，Bun 原生运行器不兼容该语法，因此未将其运行器错误当成业务失败。
 - 本机 Vitest 当前存在自定义配置下静默零收集的问题；完整 SearchService 回归改由 GitHub Actions 干净依赖环境验证，未把零收集退出码计作测试通过。
+
+### GitHub Actions 首轮结果与附带兼容修复
+
+- 提交 `e52b41e7bb94d550abdc0cac857ab03cb3617ca1` 已触发 Test CI `31940179353` 和服务器镜像构建 `31940193197`；服务器镜像构建成功。
+- Test Server 分片 1 中除一个既有 `RuntimeExecutors.test.ts` 文件外，231 个服务器测试文件全部通过；失败的 57 个用例均在进入各自断言前抛出同一 `TypeError: Cannot read properties of undefined (reading 'instructions')`。
+- 根因是此前 instructions 功能在 `ctx.agentConfig` 可缺省的合法运行/测试路径中直接访问 `agentConfig.instructions`，与本轮搜索改动无关，但会阻断全部服务器 CI。
+- 已创建附带修复前回滚点 `d7c72c9f7d`，并将读取改为 `agentConfig?.instructions?.trim()`；有助手配置时行为不变，缺省时保持无 instructions 的既有行为。
