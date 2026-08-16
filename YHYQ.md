@@ -732,3 +732,6 @@
 - PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、RustFS 初始化容器 `eed1bbe27cf4`、设备网关 `3d1a74a1a5c0`、SearXNG `76165d49617f` 和 `linuxytd` `40221e97adeb` 的容器 ID 均保持不变。
 - 稳定性复查时 LobeHub 约 369.7 MiB、SearXNG 约 123.4 MiB，宿主可用内存约 5.52 GiB；没有 OOM 或异常重启。
 - 远端临时 archive、临时配置和两版失败镜像已删除；保留最终镜像、当前 `latest` 与 `backup-20260816-pre-search-reliability` 回滚标签。未修改 Nginx、HTTPS 证书、数据库数据、Redis、RustFS、设备网关或 `linuxytd`。
+- GitHub 预发布版本为 `v2.2.8-codex.20260816.1`，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260816.1`；Release Notes 已逐项记录搜索引擎、降级、并发、instructions 兼容、Docker 缺包修复、CI 与部署验证。
+- Release 中完整 `lobehub-server-image.tar` 为 `278624256` 字节，GitHub digest 为 `sha256:5a92734f71bf9d48eaad553e40c597f042a165ec2e10e09ff7689aa7af886d89`，与本机完全一致；同时上传 `RELEASE-MANIFEST.txt`，SHA-256 为 `F07F7601DEDAB80C01E5DF6649CE1AD5FA31801FC856804C48B49B2E2AC54E97`。
+- 上传排障过程中产生的冗余分卷已从 Release 与本机删除，最终只保留完整 Docker archive 和校验清单。
