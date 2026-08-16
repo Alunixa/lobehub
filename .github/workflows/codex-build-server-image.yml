@@ -41,7 +41,7 @@ jobs:
           docker load --input /tmp/lobehub-server-image.tar
           docker run --rm --entrypoint /bin/node --workdir /app \
             lobehub/lobehub:codex-${{ github.sha }} \
-            -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require.resolve('next/dist/server/next-server.js')"
+            -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require('next/dist/server/next-server.js')"
 
       - name: Upload OCI image
         uses: actions/upload-artifact@v4

@@ -90,7 +90,7 @@ RUN set -e && \
     mkdir -p /deps && \
     cd /deps && \
     echo '{"name":"deps","private":true}' > package.json && \
-    pnpm add @swc/helpers@0.5.15 pg drizzle-orm
+    pnpm add @swc/helpers@0.5.23 pg drizzle-orm
 
 COPY . .
 

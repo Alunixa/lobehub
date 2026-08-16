@@ -717,3 +717,6 @@
 - 已创建 Docker 修复前回滚点 `e087801122`；`/deps` 现显式安装锁文件对应的 `@swc/helpers@0.5.15` 并复制顶层模块，服务器镜像工作流新增容器内 `require.resolve` 冒烟检查，缺包时构建不会再被判定成功。
 - 第四轮构建 `31942116108` 被新增冒烟检查拦截；日志证明 Docker 构建本身完成，但 scratch 最终阶段未设置 `WORKDIR`，冒烟命令从 `/` 执行，Node 不会搜索 `/app/node_modules`，属于验证路径假阴性。
 - 最终镜像现显式设置 `WORKDIR /app`，冒烟命令也固定 `--workdir /app`，使运行时模块解析与验证环境一致；仍保留对 `@swc/helpers` 和 Next server 入口的双重真实解析检查。
+- 第五轮构建 `31942583653` 的工作目录修正后冒烟成功，但路由器启动仍暴露更深层的版本不匹配：Next 16.3.1 的 package.json 精确依赖 `@swc/helpers@0.5.23`，standalone 中该版本仅追踪到部分 CJS 文件，缺少启动所需的 ESM 文件；此前补入的 0.5.15 顶层包不能修复 Next 内部指向 0.5.23 的链接。
+- 第二次部署已自动回滚到旧镜像，恢复后的 LobeHub 容器 `680df583c187` 内部 `/api/version` 返回 HTTP 200，重启计数为 0；其他核心容器未重建。
+- Docker 依赖现改为 Next 实际要求的 `@swc/helpers@0.5.23`，使 `/deps/.pnpm` 覆盖 standalone 的不完整同版本目录；冒烟检查由仅解析 Next 入口升级为真正执行 `require('next/dist/server/next-server.js')`，从而加载并验证 Next 的完整启动依赖链。
