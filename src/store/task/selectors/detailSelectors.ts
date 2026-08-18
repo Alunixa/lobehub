@@ -40,6 +40,10 @@ const activeTaskModel = (s: TaskStoreState) =>
 const activeTaskProvider = (s: TaskStoreState) =>
   activeTaskDetail(s)?.config?.provider as string | undefined;
 
+const activeTaskSandboxMode = (s: TaskStoreState) =>
+  (activeTaskDetail(s)?.config?.execution as { sandboxMode?: 'host' | 'onlyboxes' } | undefined)
+    ?.sandboxMode;
+
 const activeTaskSubtasks = (s: TaskStoreState) => activeTaskDetail(s)?.subtasks ?? [];
 
 const activeTaskDependencies = (s: TaskStoreState) => activeTaskDetail(s)?.dependencies ?? [];
@@ -123,6 +127,7 @@ export const taskDetailSelectors = {
   activeTaskPeriodicInterval,
   activeTaskPriority,
   activeTaskProvider,
+  activeTaskSandboxMode,
   activeTaskScheduleMaxExecutions,
   activeTaskSchedulePattern,
   activeTaskScheduleTimezone,

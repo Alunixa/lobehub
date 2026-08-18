@@ -9,6 +9,7 @@ import { fileEnv } from '@/envs/file';
 import { imageEnv } from '@/envs/image';
 import { knowledgeEnv } from '@/envs/knowledge';
 import { langfuseEnv } from '@/envs/langfuse';
+import { sandboxEnv } from '@/envs/sandbox';
 import { toolsEnv } from '@/envs/tools';
 import { parseSSOProviders } from '@/libs/better-auth/utils/server';
 import { parseSystemAgent } from '@/server/globalConfig/parseSystemAgent';
@@ -135,6 +136,7 @@ export const getServerGlobalConfig = async () => {
       userMemory: cleanObject(getPublicMemoryExtractionConfig()),
     },
     oAuthSSOProviders: getBetterAuthSSOProviders(),
+    sandboxProvider: sandboxEnv.SANDBOX_PROVIDER || 'market',
     systemAgent: parseSystemAgent(appEnv.SYSTEM_AGENT),
     telemetry: {
       langfuse: langfuseEnv.ENABLE_LANGFUSE,

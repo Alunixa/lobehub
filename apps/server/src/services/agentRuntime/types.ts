@@ -343,6 +343,8 @@ export interface OperationCreationParams {
      * callSubAgent child (which shares `isSubAgent: true`).
      */
     orchestrationRole?: 'supervisor' | 'member';
+    /** Task-selected self-hosted sandbox backend, persisted into runtime metadata. */
+    sandboxProvider?: 'host' | 'onlyboxes';
     scope?: string | null;
     /** Source user message ID used for same-turn Agent Signal procedure suppression. */
     sourceMessageId?: string;

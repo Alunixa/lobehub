@@ -1,6 +1,6 @@
 ---
 title: 配置云端沙箱
-description: 配置内置云端沙箱能力，包括 Market 和自托管 Onlyboxes。
+description: 配置 Market、自托管 Onlyboxes 和宿主机无沙箱执行环境。
 tags:
   - 云端沙箱
   - Onlyboxes
@@ -9,7 +9,7 @@ tags:
 
 # 配置云端沙箱
 
-云端沙箱用于内置的代码执行、Shell 命令、文件操作和文件导出工具。默认情况下，LobeHub 使用 Market 沙箱；自托管部署可以把同一套工具能力切换到兼容 Onlyboxes 的沙箱提供方。
+执行环境用于内置的代码执行、Shell 命令、文件操作和文件导出工具。默认情况下，LobeHub 使用 Market 沙箱；自托管部署可以切换到兼容 Onlyboxes 的隔离沙箱，或显式选择宿主机无沙箱执行器。
 
 ## 核心环境变量
 
@@ -24,6 +24,19 @@ tags:
 
 - `market`：使用现有 Market 沙箱。
 - `onlyboxes`：使用兼容 Onlyboxes 的自托管沙箱 Console。
+- `host`：通过独立的 `lobe-host-executor` 守护进程直接在自部署宿主机执行，不在 LobeHub 容器内执行，也不提供沙箱隔离。
+
+### `HOST_EXECUTOR_BASE_URL`
+
+- 类型：当 `SANDBOX_PROVIDER=host` 时必填
+- 描述：LobeHub 容器访问宿主执行器的内网 URL。
+- 示例：`http://172.17.0.1:3211`
+
+### `HOST_EXECUTOR_TOKEN`
+
+- 类型：当 `SANDBOX_PROVIDER=host` 时必填，至少 32 个字符
+- 描述：LobeHub 与宿主执行器共享的 Bearer Token。
+- 示例：`replace-with-a-long-random-token`
 
 ### `MARKET_BASE_URL`
 
@@ -134,3 +147,15 @@ CONSOLE_JIT_SIGNING_KEY=onlyboxes-jit-signing-secret
   文件导出仍会把沙箱内产物写入 LobeHub 配置的 S3 存储。如果用户需要下载沙箱生成的文件，请同时配置 S3
   相关环境变量。
 </Callout>
+
+## 宿主机无沙箱模式
+
+`host` 模式不会在 LobeHub 容器内执行命令。需要把 Release 中的 `lobe-host-executor-openwrt-x64.tar.gz` 安装到宿主机，并使用原生服务管理器启动。OpenWrt/ImmortalWrt 包含 `procd` 服务模板，默认监听 Docker 网桥 `172.17.0.1:3211`，不会监听公网接口。
+
+```bash
+SANDBOX_PROVIDER=host
+HOST_EXECUTOR_BASE_URL=http://172.17.0.1:3211
+HOST_EXECUTOR_TOKEN=replace-with-the-same-long-random-token
+```
+
+宿主执行器按用户与 Topic 把相对路径和虚拟 `/mnt/data` 映射到 `HOST_EXECUTOR_ROOT` 下的独立工作目录，但绝对路径和 Shell 命令仍可访问整个宿主机。这是无沙箱模式的预期行为，只应在你完全信任任务和模型时启用。

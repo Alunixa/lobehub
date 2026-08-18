@@ -767,3 +767,23 @@
 - 本地调度器启动时会从数据库恢复所有可运行 heartbeat 任务，按持久化 `dueAt` 只等待剩余延迟；任务生命周期现持久化下次触发时间，进程重启不再丢失 heartbeat。
 - 可用 `DISABLE_LOCAL_TASK_DISPATCHER=1` 显式禁用本地循环，开发环境默认不启动，需 `ENABLE_TASKS_IN_DEV=1` 才启用。
 - 已补本地调度器单元测试，覆盖剩余延迟恢复、计划扫描与 watchdog 同步执行、慢扫描防重入。
+
+### 自部署沙箱与宿主机无沙箱模式
+
+- 已确认 `SANDBOX_PROVIDER` 原本仅支持 `market|onlyboxes` 且默认 `market`，因此自部署任务安装云沙箱工具后仍会进入官方 Market 登录和官方运行时。
+- 新增 `host` provider，并将实际 provider 公开到客户端 Server Config；只有 `market` 模式才显示官方 Market 登录提示，`onlyboxes` 与 `host` 均不再要求官方账号。
+- 用户明确补充：无沙箱模式必须在 `192.168.100.1` 宿主机执行，不能在 LobeHub 容器内执行。已据此放弃容器内 local-file-shell 方案，改为 LobeHub 通过私网调用宿主机原生守护进程。
+- 只读确认宿主机为 x86\_64 ImmortalWrt 25.12，已有 Node.js 22.21.1、Python 3.13.9、curl、unzip、procd 和 Docker；docker0 为 `172.17.0.1/16`，无需安装新运行时。
+- 新增零第三方依赖的 `lobe-host-executor` Node 守护进程，支持 Bearer Token、前后台命令、代码执行、文件读写 / 编辑 / 搜索 / 移动、grep/glob、技能脚本和预签名文件导出；相对路径与 `/mnt/data` 按用户和 Topic 映射到宿主持久目录，绝对路径保持宿主机语义。
+- 宿主执行器本机 `node:test` 真实收集并 4/4 通过，覆盖未授权拒绝、原生命令工作目录、`/mnt/data` 映射和后台命令轮询。
+- 新增 ImmortalWrt/OpenWrt procd 服务与 UCI 配置模板，以及 GitHub Actions 测试、打包、SHA-256 产物流程。
+- 任务详情新增 “隔离沙箱 / 宿主机（无沙箱）” 选择，保存到 `tasks.config.execution.sandboxMode`，无需数据库迁移；任务运行时把选择固化到 operation metadata 并在每次云沙箱工具调用时覆盖服务器默认 provider。
+- 未显式选择的旧任务继续使用服务器默认 provider；自部署服务器默认配置为 `onlyboxes`，因此升级后不会回退到官方 Market。
+- 已确认自部署隔离沙箱可使用 `Coooolfan/onlyboxes`，当前最新 Release 为 `0.10.3`；它提供 console 镜像、Docker worker 与 `onlyboxes-runtime:lobehub` 运行镜像，将以独立 sidecar / 宿主 worker 部署，不向 LobeHub 主容器暴露 Docker Socket。
+- 首次提交沙箱阶段时，`lint-staged` 因工作流顶层 `on:` 触发 `yml/no-empty-mapping-value` 而中止并完整回滚暂存修改；同时并发任务在回滚窗口内出现一次 `server.mjs` 读取竞态，文件本身未丢失。
+- 已将工作流触发键改为语义等价的 `'on':`；二次检查进一步定位空值 `workflow_dispatch:` 不符合仓库 YAML 规则，已改为显式空映射 `workflow_dispatch: {}`。
+- 宿主执行器 `node:test` 已真实收集并再次 4/4 通过；JSON 解析和 `git diff --check` 通过，两个 JSON 文件待按仓库 Prettier 规则机械格式化。
+- 工作流 YAML ESLint、目标文件 Prettier 和 `git diff --check` 在修正后均通过；任务配置 Vitest 真实收集并 23/23 通过，覆盖新增宿主机模式持久化。
+- 沙箱工厂与续聊路由的本机 Vitest 合并运行中，沙箱用例在慢模块加载下超过默认 5 秒，随后收集阶段长时间无新增输出；提高单测超时后仍停在收集阶段，已终止残留进程且未将其计为通过，权威服务端回归交由 GitHub Actions 干净环境验证。
+- 第二次提交钩子已通过 YAML 与 JSON 阶段，仅定位到宿主执行器启动日志的 `console.log` 不符合仓库 `no-console` 白名单；已语义等价改为允许的 `console.info`，错误后的 Stylelint/Remark `SIGKILL` 属于 lint-staged 主任务失败时的并发终止。
+- 宿主执行器已通过独立 ESLint 自动修复 import 顺序与 `replaceAll` 规则，随后 ESLint、工作流 YAML 检查和 `git diff --check` 全部通过；功能测试仍为 4/4 通过。

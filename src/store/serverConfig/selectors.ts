@@ -19,5 +19,6 @@ export const serverConfigSelectors = {
   enabledTelemetryChat: (s: ServerConfigStore) => s.serverConfig.telemetry.langfuse || false,
   isMobile: (s: ServerConfigStore) => s.isMobile || false,
   oAuthSSOProviders: (s: ServerConfigStore) => s.serverConfig.oAuthSSOProviders,
+  sandboxProvider: (s: ServerConfigStore) => s.serverConfig.sandboxProvider || 'market',
   visualUnderstanding: (s: ServerConfigStore) => s.serverConfig.visualUnderstanding,
 };

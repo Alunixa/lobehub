@@ -908,6 +908,8 @@ export default {
   'taskSchedule.weekdays.thu': 'Thu',
   'taskSchedule.weekdays.tue': 'Tue',
   'taskSchedule.weekdays.wed': 'Wed',
+  'taskExecution.host': 'Host (unsandboxed)',
+  'taskExecution.onlyboxes': 'Isolated sandbox',
   'taskDetail.activities': 'Activities',
   'taskDetail.activitiesEmpty': 'No activity yet',
   'taskDetail.artifacts': 'Artifacts',

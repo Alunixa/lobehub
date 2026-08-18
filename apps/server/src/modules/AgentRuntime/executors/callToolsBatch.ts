@@ -281,6 +281,7 @@ export const callToolsBatch =
                     messageId: state.metadata?.sourceMessageId,
                     operationId,
                     scope: state.metadata?.scope,
+                    sandboxProvider: state.metadata?.sandboxProvider,
                     serverDB: ctx.serverDB,
                     skipResultTruncation: true,
                     subAgent: buildServerVirtualSubAgentRunner(

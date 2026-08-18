@@ -191,6 +191,8 @@ export interface ToolExecutionContext {
    * device gateway. Derived from the operation's skill set.
    */
   projectSkills?: { location: string; name: string; source?: 'device' | 'project' }[];
+  /** Task-selected self-hosted sandbox backend for this operation. */
+  sandboxProvider?: 'host' | 'onlyboxes';
   /** Conversation scope captured when the operation was created */
   scope?: string | null;
   /** Server database for LobeHub Skills execution */

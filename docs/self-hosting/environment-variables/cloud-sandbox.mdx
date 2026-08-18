@@ -1,6 +1,6 @@
 ---
 title: Configuring Cloud Sandbox
-description: Configure the built-in Cloud Sandbox provider, including Market and self-hosted Onlyboxes.
+description: Configure Market, self-hosted Onlyboxes, or native unsandboxed host execution.
 tags:
   - Cloud Sandbox
   - Onlyboxes
@@ -9,7 +9,7 @@ tags:
 
 # Configuring Cloud Sandbox
 
-Cloud Sandbox powers the built-in code execution, shell command, file operation, and file export tools. By default, LobeHub uses the Market sandbox. Self-hosted deployments can switch the same tool surface to an Onlyboxes-compatible sandbox provider.
+The execution environment powers built-in code execution, shell commands, file operations, and file export. LobeHub uses Market by default. Self-hosted deployments can select an Onlyboxes-compatible isolated sandbox or an explicitly unsandboxed native host executor.
 
 ## Core Environment Variables
 
@@ -24,6 +24,19 @@ Supported values:
 
 - `market`: Use the existing Market sandbox.
 - `onlyboxes`: Use an Onlyboxes-compatible self-hosted sandbox console.
+- `host`: Delegate execution to the native `lobe-host-executor` daemon on the Docker host. Commands do not run inside the LobeHub container and have no sandbox isolation.
+
+### `HOST_EXECUTOR_BASE_URL`
+
+- Type: Required when `SANDBOX_PROVIDER=host`
+- Description: Private URL through which the LobeHub container reaches the native host executor.
+- Example: `http://172.17.0.1:3211`
+
+### `HOST_EXECUTOR_TOKEN`
+
+- Type: Required when `SANDBOX_PROVIDER=host`, at least 32 characters
+- Description: Bearer token shared by LobeHub and the native host executor.
+- Example: `replace-with-a-long-random-token`
 
 ### `MARKET_BASE_URL`
 
@@ -134,3 +147,15 @@ CONSOLE_JIT_SIGNING_KEY=onlyboxes-jit-signing-secret
   File export still writes the exported artifact to the configured LobeHub S3 storage. Configure the
   S3 environment variables when users need to download files generated inside the sandbox.
 </Callout>
+
+## Native Unsandboxed Host Mode
+
+`host` mode never runs commands inside the LobeHub container. Install `lobe-host-executor-openwrt-x64.tar.gz` from the Release on the Docker host and run it under the native service manager. The included OpenWrt/ImmortalWrt procd template listens on the Docker bridge (`172.17.0.1:3211`) by default rather than a public interface.
+
+```bash
+SANDBOX_PROVIDER=host
+HOST_EXECUTOR_BASE_URL=http://172.17.0.1:3211
+HOST_EXECUTOR_TOKEN=replace-with-the-same-long-random-token
+```
+
+Relative paths and virtual `/mnt/data` paths are separated by user and topic under `HOST_EXECUTOR_ROOT`. Absolute paths and shell commands can still access the entire host by design, so enable this mode only for trusted tasks and models.

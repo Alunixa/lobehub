@@ -7,7 +7,7 @@ import type { LobeChatDatabase } from '@lobechat/database';
 import type { FileService } from '@/server/services/file';
 import type { MarketService } from '@/server/services/market';
 
-export type SandboxProviderKind = 'market' | 'onlyboxes';
+export type SandboxProviderKind = 'host' | 'market' | 'onlyboxes';
 
 export interface SandboxSessionContext {
   topicId: string;
@@ -17,6 +17,8 @@ export interface SandboxSessionContext {
 export interface SandboxServiceOptions extends SandboxSessionContext {
   fileService?: FileService;
   marketService: MarketService;
+  /** Per-task override. When absent, the server-wide SANDBOX_PROVIDER is used. */
+  providerKind?: SandboxProviderKind;
   /** Used to look up topic/session files when bootstrapping the sandbox. */
   serverDB?: LobeChatDatabase;
 }

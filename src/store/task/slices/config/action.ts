@@ -1,4 +1,9 @@
-import type { CheckpointConfig, TaskAutomationMode, TaskDetailData } from '@lobechat/types';
+import type {
+  CheckpointConfig,
+  TaskAutomationMode,
+  TaskDetailData,
+  TaskSandboxMode,
+} from '@lobechat/types';
 
 import { taskService } from '@/services/task';
 import type { StoreSetter } from '@/store/types';
@@ -156,6 +161,38 @@ export class TaskConfigSliceActionImpl {
         saveToast(error, { retry: () => void this.#get().updateTaskModelConfig(id, modelConfig) });
       },
       // Best-effort toggle — the toast + refetch surface the failure, callers don't rethrow.
+      rethrow: false,
+      setStatus: (status) => this.#get().internal_setTaskSaveStatus(id, status),
+    });
+  };
+
+  updateTaskSandboxMode = async (id: string, sandboxMode: TaskSandboxMode): Promise<void> => {
+    const existingConfig = this.#get().taskDetailMap[id]?.config ?? {};
+    const existingExecution =
+      (existingConfig.execution as Record<string, unknown> | undefined) ?? {};
+    const nextConfig = {
+      ...existingConfig,
+      execution: { ...existingExecution, sandboxMode },
+    };
+
+    this.#get().internal_dispatchTaskDetail({
+      id,
+      type: 'updateTaskDetail',
+      value: { config: nextConfig },
+    });
+    await runMutation(this.#set, this.#get, {
+      mutate: async () => {
+        await taskService.updateConfig(id, { execution: { sandboxMode } });
+        await this.#get().internal_refreshTaskDetail(id);
+      },
+      name: 'updateTaskSandboxMode',
+      onError: async (error) => {
+        console.error('[TaskStore] Failed to update task sandbox mode:', error);
+        await this.#get().internal_refreshTaskDetail(id);
+        saveToast(error, {
+          retry: () => void this.#get().updateTaskSandboxMode(id, sandboxMode),
+        });
+      },
       rethrow: false,
       setStatus: (status) => this.#get().internal_setTaskSaveStatus(id, status),
     });

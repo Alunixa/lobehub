@@ -113,6 +113,28 @@ describe('TaskConfigSliceAction', () => {
     });
   });
 
+  describe('updateTaskSandboxMode', () => {
+    it('persists the selected provider without replacing sibling config', async () => {
+      vi.mocked(taskService.updateConfig).mockResolvedValue({ success: true } as any);
+      useTaskStore.setState({
+        taskDetailMap: {
+          'T-1': { ...mockDetail, config: { model: 'gpt-4o', provider: 'openai' } },
+        },
+      });
+
+      await useTaskStore.getState().updateTaskSandboxMode('T-1', 'host');
+
+      expect(taskService.updateConfig).toHaveBeenCalledWith('T-1', {
+        execution: { sandboxMode: 'host' },
+      });
+      expect(useTaskStore.getState().taskDetailMap['T-1'].config).toMatchObject({
+        execution: { sandboxMode: 'host' },
+        model: 'gpt-4o',
+        provider: 'openai',
+      });
+    });
+  });
+
   describe('updatePeriodicInterval', () => {
     it('should call update with heartbeatInterval and refresh detail', async () => {
       const { mutate } = await import('@/libs/swr');

@@ -294,6 +294,7 @@ export const callTool =
                     source: skill.source === 'device' ? 'device' : 'project',
                   })),
                 scope: state.metadata?.scope,
+                sandboxProvider: state.metadata?.sandboxProvider,
                 serverDB: ctx.serverDB,
                 skipResultTruncation: true,
                 subAgent: buildServerVirtualSubAgentRunner(

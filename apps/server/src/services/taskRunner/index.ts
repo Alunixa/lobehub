@@ -166,6 +166,9 @@ export class TaskRunnerService {
       }
 
       const taskConfig = (task.config ?? {}) as Record<string, unknown>;
+      const sandboxMode = (
+        taskConfig.execution as { sandboxMode?: 'host' | 'onlyboxes' } | undefined
+      )?.sandboxMode;
 
       // Backfill model snapshot for tasks created before the snapshot logic
       // landed, or whose assignee was set after creation. Once written, the
@@ -186,6 +189,7 @@ export class TaskRunnerService {
         additionalPluginIds: pluginIds,
         ...(typeof taskConfig.model === 'string' && { model: taskConfig.model }),
         ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
+        ...(sandboxMode && { sandboxProvider: sandboxMode }),
         hooks: [
           {
             handler: async (event) => {

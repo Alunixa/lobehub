@@ -80,6 +80,8 @@ export interface GlobalServerConfig {
   image?: PartialDeep<UserImageConfig>;
   memory?: GlobalMemoryConfig;
   oAuthSSOProviders?: string[];
+  /** Active server-side sandbox backend. `host` executes without isolation. */
+  sandboxProvider?: 'host' | 'market' | 'onlyboxes';
   systemAgent?: PartialDeep<UserServiceModelConfig>;
   telemetry: {
     langfuse?: boolean;

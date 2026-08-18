@@ -352,6 +352,8 @@ interface InternalExecAgentParams extends ExecAgentParams {
     pluginState?: Record<string, unknown>;
     toolCallId: string;
   };
+  /** Self-hosted sandbox selected by the task that owns this run. */
+  sandboxProvider?: 'host' | 'onlyboxes';
   /**
    * Tool identifiers the user @-mentioned in this message. Merged into the
    * agent's plugin set for this run (alongside `additionalPluginIds`) so a
@@ -963,6 +965,7 @@ export class AiAgentService {
       userInterventionConfig = { approvalMode: 'headless' },
       queueRetries,
       queueRetryDelay,
+      sandboxProvider,
       parentMessageId,
       parentOperationId,
       resume,
@@ -3416,6 +3419,7 @@ export class AiAgentService {
           // member ('member') from a genuine callSubAgent child.
           orchestrationRole: appContext?.orchestrationRole,
           scope: appContext?.scope,
+          sandboxProvider,
           sourceMessageId: userMessageRecord?.id ?? parentMessageId ?? undefined,
           taskId: operationTaskId,
           threadId: appContext?.threadId,

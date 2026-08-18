@@ -12,6 +12,7 @@ export type TaskActivityType = 'brief' | 'comment' | 'created' | 'topic';
 
 // null = no automation
 export type TaskAutomationMode = 'heartbeat' | 'schedule';
+export type TaskSandboxMode = 'host' | 'onlyboxes';
 
 // ── Config types ──
 

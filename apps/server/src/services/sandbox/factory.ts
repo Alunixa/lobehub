@@ -1,5 +1,6 @@
 import { sandboxEnv } from '@/envs/sandbox';
 
+import { HostSandboxProvider } from './providers/host';
 import { MarketSandboxProvider } from './providers/market';
 import { OnlyboxesSandboxProvider } from './providers/onlyboxes';
 import { SandboxMiddlewareService } from './service';
@@ -15,7 +16,11 @@ export const getSandboxProviderKind = (): SandboxProviderKind => {
 };
 
 const createSandboxProvider = (options: SandboxServiceOptions): SandboxProvider => {
-  switch (getSandboxProviderKind()) {
+  switch (options.providerKind ?? getSandboxProviderKind()) {
+    case 'host': {
+      return new HostSandboxProvider(options);
+    }
+
     case 'onlyboxes': {
       return new OnlyboxesSandboxProvider(options);
     }

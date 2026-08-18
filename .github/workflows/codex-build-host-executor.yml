@@ -1,0 +1,46 @@
+name: Build Host Executor
+
+'on':
+  workflow_dispatch: {}
+  push:
+    branches:
+      - codex/**
+    paths:
+      - apps/host-executor/**
+      - .github/workflows/codex-build-host-executor.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Test native host executor
+        run: node --test apps/host-executor/server.test.mjs
+
+      - name: Package OpenWrt host executor
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist/lobe-host-executor/openwrt
+          cp apps/host-executor/server.mjs dist/lobe-host-executor/server.mjs
+          cp apps/host-executor/package.json dist/lobe-host-executor/package.json
+          cp apps/host-executor/openwrt/lobe-host-executor.init dist/lobe-host-executor/openwrt/
+          cp apps/host-executor/openwrt/lobe-host-executor.config.example dist/lobe-host-executor/openwrt/
+          tar -C dist -czf dist/lobe-host-executor-openwrt-x64.tar.gz lobe-host-executor
+          sha256sum dist/lobe-host-executor-openwrt-x64.tar.gz > dist/lobe-host-executor-openwrt-x64.tar.gz.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lobe-host-executor-openwrt-x64
+          path: |
+            dist/lobe-host-executor-openwrt-x64.tar.gz
+            dist/lobe-host-executor-openwrt-x64.tar.gz.sha256
+          retention-days: 14
