@@ -152,8 +152,10 @@ describe('aiChatRouter', () => {
       .mockResolvedValueOnce({ id: 'm-user' })
       .mockResolvedValueOnce({ id: 'm-assistant' });
     const mockGet = vi.fn().mockResolvedValue({ messages: [], topics: undefined });
+    const mockUpdateTopic = vi.fn().mockResolvedValue([{ id: 't-exist' }]);
 
     const mockCreateUserAndAssistantMessages = mockMessageModel(mockCreateMessage);
+    vi.mocked(TopicModel).mockImplementation(() => ({ update: mockUpdateTopic }) as any);
     vi.mocked(AiChatService).mockImplementation(() => ({ getMessagesAndTopics: mockGet }) as any);
 
     const caller = aiChatRouter.createCaller(mockCtx as any);
@@ -177,6 +179,7 @@ describe('aiChatRouter', () => {
         topicId: 't-exist',
       }),
     );
+    expect(mockUpdateTopic).toHaveBeenCalledWith('t-exist', {});
     expect(res.isCreateNewTopic).toBe(false);
     expect(res.topicId).toBe('t-exist');
   });

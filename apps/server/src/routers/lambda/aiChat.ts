@@ -414,6 +414,18 @@ export const aiChatRouter = router({
           ? (await Promise.all([createMessagePairPromise, agentTouchUpdatedAtTask]))[0]
           : await createMessagePairPromise;
 
+      // Existing topics need an explicit activity timestamp. The sidebar updates
+      // optimistically on this client, but persisting the timestamp keeps the
+      // ordering stable after refresh and across other clients and list views.
+      if (topicId && !isCreateNewTopic) {
+        await runTimedStage(
+          timingContext,
+          'lambda.aiChat.topic.touchUpdatedAt',
+          () => ctx.topicModel.update(topicId, {}),
+          { hasThreadId: !!threadId },
+        );
+      }
+
       const messageId = userMessageItem.id;
       log('user message created with id: %s', messageId);
 
