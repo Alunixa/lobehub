@@ -1,5 +1,6 @@
 import { TaskIdentifier as TaskSkillIdentifier } from '@lobechat/builtin-skills';
 import { BriefIdentifier } from '@lobechat/builtin-tool-brief';
+import { CloudSandboxIdentifier } from '@lobechat/builtin-tool-cloud-sandbox';
 import { INBOX_SESSION_ID } from '@lobechat/const';
 import type { ExecAgentResult, TaskItem } from '@lobechat/types';
 import { TRPCError } from '@trpc/server';
@@ -157,7 +158,7 @@ export class TaskRunnerService {
           ? 'agent'
           : 'auto'
       ) as 'agent' | 'auto';
-      const pluginIds = [TaskSkillIdentifier];
+      const pluginIds = [TaskSkillIdentifier, CloudSandboxIdentifier];
       // Mount BriefIdentifier (createBrief + requestCheckpoint) only in the
       // legacy 'agent' path; in 'auto' the agent must not also call
       // createBrief or we'd double up.
@@ -187,6 +188,7 @@ export class TaskRunnerService {
       const result = await aiAgentService.execAgent({
         ...(isSlug ? { slug: agentRef } : { agentId: agentRef }),
         additionalPluginIds: pluginIds,
+        forceTaskExecutionRuntime: true,
         ...(typeof taskConfig.model === 'string' && { model: taskConfig.model }),
         ...(typeof taskConfig.provider === 'string' && { provider: taskConfig.provider }),
         ...(sandboxMode && { sandboxProvider: sandboxMode }),

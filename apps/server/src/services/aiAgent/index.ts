@@ -279,6 +279,8 @@ interface InternalExecAgentParams extends ExecAgentParams {
   disableSelfFeedbackIntentTool?: boolean;
   /** Disable all tools (no plugins, no system manifests). Useful for eval/benchmark scenarios. */
   disableTools?: boolean;
+  /** Force background tasks into agent mode with the server-side sandbox tool runtime. */
+  forceTaskExecutionRuntime?: boolean;
   /** Discord context for injecting channel/guild info into agent system message */
   discordContext?: any;
   /**
@@ -958,6 +960,7 @@ export class AiAgentService {
       cronJobId,
       taskId,
       evalContext,
+      forceTaskExecutionRuntime,
       maxSteps,
       disableLocalSystem,
       initialStepCount,
@@ -1153,6 +1156,18 @@ export class AiAgentService {
 
     if (appContext?.isSubAgent) {
       agentConfig.plugins = agentConfig.plugins?.filter((id) => id !== LobeAgentIdentifier);
+    }
+
+    if (forceTaskExecutionRuntime) {
+      agentConfig.chatConfig = {
+        ...agentConfig.chatConfig,
+        enableAgentMode: true,
+        toolMode: 'agent',
+      };
+      agentConfig.agencyConfig = {
+        ...agentConfig.agencyConfig,
+        executionTarget: 'sandbox',
+      };
     }
 
     await throwIfExecutionAborted('agent configuration');

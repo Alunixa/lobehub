@@ -1,4 +1,8 @@
 // @vitest-environment node
+import {
+  CloudSandboxApiName,
+  CloudSandboxManifest,
+} from '@lobechat/builtin-tool-cloud-sandbox';
 import { GroupAgentBuilderManifest } from '@lobechat/builtin-tool-group-agent-builder';
 import { GroupManagementManifest } from '@lobechat/builtin-tool-group-management';
 import { KnowledgeBaseManifest } from '@lobechat/builtin-tool-knowledge-base';
@@ -374,6 +378,33 @@ describe('createServerAgentToolsEngine', () => {
     });
 
     expect(result.enabledToolIds).not.toContain(KnowledgeBaseManifest.identifier);
+  });
+
+  it('should generate command tools for a server sandbox execution plan', () => {
+    const context = createMockContext();
+    const engine = createServerAgentToolsEngine(context, {
+      agentConfig: {
+        chatConfig: { enableAgentMode: true, toolMode: 'agent' },
+        plugins: [CloudSandboxManifest.identifier],
+      },
+      executionPlan: { kind: 'sandbox', target: 'sandbox' },
+      model: 'gpt-4',
+      provider: 'openai',
+    });
+
+    const result = engine.generateToolsDetailed({
+      model: 'gpt-4',
+      provider: 'openai',
+      toolIds: [CloudSandboxManifest.identifier],
+    });
+
+    expect(result.enabledToolIds).toContain(CloudSandboxManifest.identifier);
+    expect(result.tools?.map((tool) => tool.function.name)).toEqual(
+      expect.arrayContaining([
+        `${CloudSandboxManifest.identifier}____${CloudSandboxApiName.executeCode}`,
+        `${CloudSandboxManifest.identifier}____${CloudSandboxApiName.runCommand}`,
+      ]),
+    );
   });
 
   it('should auto-enable group orchestration tools when isGroupSupervisor is true', () => {

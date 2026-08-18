@@ -833,3 +833,20 @@
 - 已建立修改前空提交回滚点 `c2ea436a16`。
 - 截图证明执行环境选择已显示为宿主机模式，但任务 Agent 的实际工具集合没有命令工具；当前只读根因指向 TaskRunner 未自动装配 `lobe-cloud-sandbox`，尚未修改源码、数据库或线上服务。
 - 下一步核对线上 T-3 的持久化 `sandboxMode` 与 operation metadata，完整检查 TaskRunner 和 AiAgent 的插件合并、Manifest 解析及运行时过滤逻辑，再实施最小修复和真实任务回归。
+
+### 线上根因与源码修复
+
+- 只读查询线上 PostgreSQL 确认 T-3 为 `task_Uhiu9vGqQjqA`，已持久化 `config.execution.sandboxMode=host`，关联 operation 为 `op_1787070147615_agt_ZLVtD4LPZaH5_tpc_6rO0lHmvvqUB_MloQ6eKE`，最终只有 2 次工具调用。
+- T-3 的受理 Agent `agt_ZLVtD4LPZaH5` 持久配置为 `chatConfig.enableAgentMode=false`，没有插件和 `agencyConfig`；截图中的 Web 搜索、网页抓取与记忆正是聊天模式严格白名单，命令工具不在其中。
+- TaskRunner 原本只追加任务技能与可选 Brief 工具，没有追加 `lobe-cloud-sandbox`；`sandboxMode` 只作为 provider 传给执行器，既不能把 Agent 从聊天模式切到 agent 模式，也不能让 execution plan 解析成 server sandbox，随后 AiAgent 会从 Manifest 集合删除云沙箱工具。
+- TaskRunner 现在为所有任务自动追加 `lobe-cloud-sandbox` 并显式标记任务执行运行态；已选择的 `host|onlyboxes` 继续作为 provider 覆盖，旧任务未选择时仍由服务器默认 `SANDBOX_PROVIDER=onlyboxes` 决定后端。
+- AiAgent 只对该显式任务运行态临时设置 `chatConfig.toolMode=agent`、`enableAgentMode=true` 和 `agencyConfig.executionTarget=sandbox`，不写回 Agent 数据库配置；普通聊天、设备和其他 Agent 调用保持原逻辑。
+- 这里的 `sandbox` 是 LobeHub 的服务端工具运行目标；当 operation metadata 的 `sandboxProvider=host` 时，现有 `lobe-cloud-sandbox` 执行器仍会调用宿主机私网 Host Executor，因此无沙箱模式不会落到 LobeHub 容器内。
+
+### 回归覆盖与本地检查
+
+- 新增 TaskRunner 回归，断言宿主模式自动装配任务技能与 `lobe-cloud-sandbox`、启用任务执行运行态并保留 `sandboxProvider=host`；同时覆盖旧任务不指定 provider 时仍装配命令工具。
+- 新增 AiAgent 回归，使用与线上 T-3 一致的 `enableAgentMode=false` 和 `executionTarget=none` 初始配置，断言任务运行态最终变为 agent 模式、sandbox execution plan，并把 `host` 固化到运行时 metadata。
+- 新增真实 Server Agent ToolsEngine 回归，断言 sandbox execution plan 最终启用 `lobe-cloud-sandbox`，并实际生成 `runCommand` 与 `executeCode` 函数定义。
+- 五个改动 TypeScript 文件已逐一通过 TypeScript `transpileModule` 语法解析，`git diff --check` 通过。
+- 本机 Prettier、ESLint、Vitest 和 Bun 均复现既有的模块加载 / 收集无输出挂起；已精确终止本轮进程，没有把空跑计为通过，真实回归交由 GitHub Test Server 的干净依赖环境验证。

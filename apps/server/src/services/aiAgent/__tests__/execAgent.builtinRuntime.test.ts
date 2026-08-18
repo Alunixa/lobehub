@@ -1,3 +1,4 @@
+import { CloudSandboxIdentifier } from '@lobechat/builtin-tool-cloud-sandbox';
 import { PageAgentIdentifier } from '@lobechat/builtin-tool-page-agent';
 import { SELF_FEEDBACK_INTENT_IDENTIFIER } from '@lobechat/builtin-tool-self-iteration';
 import { RequestTrigger } from '@lobechat/types';
@@ -394,6 +395,39 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
         role: 'user',
       }),
     );
+  });
+
+  it('should force task runs into agent mode with a sandbox execution plan', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { executionTarget: 'none' },
+      chatConfig: { enableAgentMode: false },
+      id: 'agent-task-assignee',
+      model: 'gpt-4',
+      plugins: [],
+      provider: 'openai',
+      systemRole: '',
+    });
+
+    await service.execAgent({
+      additionalPluginIds: [CloudSandboxIdentifier],
+      agentId: 'agent-task-assignee',
+      forceTaskExecutionRuntime: true,
+      prompt: 'Run the task',
+      sandboxProvider: 'host',
+      taskId: 'task-1',
+    });
+
+    const toolsEngineParams = vi.mocked(createServerAgentToolsEngine).mock.calls[0][1];
+    expect(toolsEngineParams.agentConfig).toMatchObject({
+      agencyConfig: { executionTarget: 'sandbox' },
+      chatConfig: { enableAgentMode: true, toolMode: 'agent' },
+      plugins: [CloudSandboxIdentifier],
+    });
+    expect(toolsEngineParams.executionPlan).toEqual({ kind: 'sandbox', target: 'sandbox' });
+
+    const operationParams = mockCreateOperation.mock.calls[0][0];
+    expect(operationParams.executionPlan).toEqual({ kind: 'sandbox', target: 'sandbox' });
+    expect(operationParams.appContext.sandboxProvider).toBe('host');
   });
 
   it('should inject self-feedback intent tool for Lobe AI when user gate is enabled', async () => {
