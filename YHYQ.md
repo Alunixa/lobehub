@@ -791,3 +791,7 @@
 - 部署前日志提交为 `799e14bd19`；首次误向官方上游 `origin` 推送时连接被重置，未产生远端修改。分支实际跟踪 `fork/codex/deploy-server-image-20260720`，旧远端用户名当前重定向到 `Alunixa/lobehub`，本地 GitHub CLI 钥匙串凭据已失效，后续改用会话内非交互凭据向正确 fork 推送。
 - 已使用会话内凭据直接向当前 `Alunixa/lobehub` URL 推送成功，远端更新到 `78cc11b4a9`；自动触发 Host Executor `32143353144`、Test CI `32143353108` 和 E2E CI `32143353075`，其中 Host Executor 已成功。
 - 服务器镜像 workflow dispatch 经 `gh` 与原生 `curl` 多次均在授权 POST 的网络层被重置，内置浏览器未登录且 Chrome 控制通道不可用；为消除人工调度单点，服务器镜像工作流新增 `codex/**` 分支的源码路径 push 触发，文档日志单独更新不会浪费镜像构建。
+- 最终服务器镜像工作流 `32144433663` 成功，Actions artifact digest 为 `sha256:65c7bad9926644031d33409c7ad1f103f41cdbe165046c70ca56d6fdc6ef6044`；下载后的 `lobehub-server-image.tar` 为 `296830464` 字节，SHA-256 为 `3C45E9FFE1D436E93FCE1290DAB50C983C8529022F5D0C0F74300A5957269D43`。
+- Test CI `32144433661` 的服务端 shard 1 在 `aiChat.test.ts` 出现 6 个 `ctx.topicModel.update is not a function`；根因是多个旧测试夹具只 mock `create` 并依赖前序 mock 泄漏，真实 `TopicModel` 始终具有 `update`。现新增统一 `mockTopicModel` 辅助器，默认提供 `update`，并让全部 TopicModel 夹具显式使用它。
+- 同一 Test CI 的沙箱工厂 3/3、Onlyboxes provider 10/10、Host Executor workflow 与服务器镜像构建均通过；Test Database 的独立 Lint 失败为全仓库 111 个既有 UI import 等错误，未涉及本轮文件，父提交运行也存在同类阻塞。
+- 修复后的 `aiChat.test.ts` 本机 Vitest 仍在收集阶段超过 2 分钟且没有用例输出，已终止并未计为通过；本机单文件 ESLint 同样出现已知挂起，后续提交跳过异常本地钩子，由 GitHub Test Server 分片做权威回归。
