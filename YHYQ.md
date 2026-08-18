@@ -819,3 +819,17 @@
 - 最终 E2E CI `32146220732` 为 81/82 场景、490/491 步骤通过；唯一失败是既有关闭流式自动滚动视口距离断言，涉及 `e2e/src/steps/agent/scroll.steps.ts`，与本轮文件和行为无关。
 - 收尾已删除本轮本机 Host Executor / 两版服务器 archive / Onlyboxes Worker 下载目录、不完整 Onlyboxes 浅克隆和临时 Release 工作目录；保留既存未跟踪历史构建目录与 `问题.txt`。
 - 路由器 `/mnt/sda1/lobehub-deploy-20260818.1` 上传暂存目录、两个冒烟工作区和两个 marker 已精确删除并验证不存在；保留当前 / 回滚镜像、Release、Onlyboxes 数据、Host 工作根、procd 服务与 LobeHub override。
+
+## 2026-08-19：修复任务未装配命令工具
+
+### 用户反馈
+
+- 用户提供 T-3 截图：任务已选择“宿主机（无沙箱）”，但 Agent 表示当前只有 Web 搜索、网页抓取和记忆工具，无法执行 `uname`、`pwd`、`env`、`ip a` 等系统命令。
+- 用户要求修复实际命令执行能力；无沙箱模式必须继续在 `192.168.100.1` 宿主机执行，而不是 LobeHub 容器内。
+
+### 当前行动
+
+- 已读取 `YHYQ.md`、既有部署记录、截图和当前 Git 状态，确认本轮开始时已跟踪文件干净，既存未跟踪构建目录与 `问题.txt` 保持原样。
+- 已建立修改前空提交回滚点 `c2ea436a16`。
+- 截图证明执行环境选择已显示为宿主机模式，但任务 Agent 的实际工具集合没有命令工具；当前只读根因指向 TaskRunner 未自动装配 `lobe-cloud-sandbox`，尚未修改源码、数据库或线上服务。
+- 下一步核对线上 T-3 的持久化 `sandboxMode` 与 operation metadata，完整检查 TaskRunner 和 AiAgent 的插件合并、Manifest 解析及运行时过滤逻辑，再实施最小修复和真实任务回归。
