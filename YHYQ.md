@@ -817,3 +817,5 @@
 - APP_URL HTTPS 与容器内 `/api/version` 均返回 `{"version":"2.2.8"}`；稳定性复查时 LobeHub 与 Console 重启次数均为 0，Onlyboxes 冒烟会话已按租约清理，LobeHub / Worker / Host Executor 错误日志为空。
 - PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变；`nginx -t` 仍成功，可用内存约 6.10 GiB，`/mnt/sda1` 可用约 95.0 GB。
 - 最终 E2E CI `32146220732` 为 81/82 场景、490/491 步骤通过；唯一失败是既有关闭流式自动滚动视口距离断言，涉及 `e2e/src/steps/agent/scroll.steps.ts`，与本轮文件和行为无关。
+- 收尾已删除本轮本机 Host Executor / 两版服务器 archive / Onlyboxes Worker 下载目录、不完整 Onlyboxes 浅克隆和临时 Release 工作目录；保留既存未跟踪历史构建目录与 `问题.txt`。
+- 路由器 `/mnt/sda1/lobehub-deploy-20260818.1` 上传暂存目录、两个冒烟工作区和两个 marker 已精确删除并验证不存在；保留当前 / 回滚镜像、Release、Onlyboxes 数据、Host 工作根、procd 服务与 LobeHub override。
