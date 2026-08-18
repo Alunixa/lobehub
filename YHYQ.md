@@ -787,3 +787,4 @@
 - 沙箱工厂与续聊路由的本机 Vitest 合并运行中，沙箱用例在慢模块加载下超过默认 5 秒，随后收集阶段长时间无新增输出；提高单测超时后仍停在收集阶段，已终止残留进程且未将其计为通过，权威服务端回归交由 GitHub Actions 干净环境验证。
 - 第二次提交钩子已通过 YAML 与 JSON 阶段，仅定位到宿主执行器启动日志的 `console.log` 不符合仓库 `no-console` 白名单；已语义等价改为允许的 `console.info`，错误后的 Stylelint/Remark `SIGKILL` 属于 lint-staged 主任务失败时的并发终止。
 - 宿主执行器已通过独立 ESLint 自动修复 import 顺序与 `replaceAll` 规则，随后 ESLint、工作流 YAML 检查和 `git diff --check` 全部通过；功能测试仍为 4/4 通过。
+- 沙箱阶段最终提交 `ecb3d61f3f` 成功，36 个目标文件全部通过 lint-staged；工作区仅保留本轮开始前已有的未跟踪构建目录与 `问题.txt`，未纳入提交。
