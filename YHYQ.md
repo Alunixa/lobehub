@@ -666,6 +666,7 @@
 - Compose、Nginx 和 `/root/zhengshu/` 四个证书文件的 SHA-256 与部署前全部一致，`nginx -t` 仍成功；没有修改数据库数据、Redis、RustFS、SearXNG、设备网关、证书或 `linuxytd` 配置。
 - 稳定性复查时 LobeHub 内存约 377 MiB，路由器可用内存约 6.34 GB，新容器重启次数仍为 0；日志只有既有的 QStash 未配置和 S3 变量弃用提示，没有迁移、启动或网关错误。
 - 本轮上传到服务器和保存在本机的临时 Docker archive 均已删除；保留 GitHub Release、Windows EXE、更新元数据、新镜像和旧镜像回滚标签。
+
 ## 2026-08-16：修复 SearXNG 搜索可靠性
 
 ### 用户要求
@@ -703,7 +704,7 @@
 
 - 提交 `e52b41e7bb94d550abdc0cac857ab03cb3617ca1` 已触发 Test CI `31940179353` 和服务器镜像构建 `31940193197`；服务器镜像构建成功。
 - Test Server 分片 1 中除一个既有 `RuntimeExecutors.test.ts` 文件外，231 个服务器测试文件全部通过；失败的 57 个用例均在进入各自断言前抛出同一 `TypeError: Cannot read properties of undefined (reading 'instructions')`。
-- 根因是此前 instructions 功能在 `ctx.agentConfig` 可缺省的合法运行/测试路径中直接访问 `agentConfig.instructions`，与本轮搜索改动无关，但会阻断全部服务器 CI。
+- 根因是此前 instructions 功能在 `ctx.agentConfig` 可缺省的合法运行 / 测试路径中直接访问 `agentConfig.instructions`，与本轮搜索改动无关，但会阻断全部服务器 CI。
 - 已创建附带修复前回滚点 `d7c72c9f7d`，并将读取改为 `agentConfig?.instructions?.trim()`；有助手配置时行为不变，缺省时保持无 instructions 的既有行为。
 - 第二轮 Test CI `31940761862` 证明第一层空值问题已消失，随后暴露 `resolvedExtendParams.enabledSearch` 同样未兼容缺省值，以及该测试文件对 `@lobechat/model-runtime` 的集中部分 mock 未保留新增的 `routeInstructions` 导出。
 - 产品代码现对 `resolvedExtendParams` 使用可选访问；测试集中 mock 从模型运行时纯源码导入真实 `routeInstructions`，不使用伪造 stub，确保既有 57 个用例验证真实 instructions 路由逻辑。
@@ -735,3 +736,19 @@
 - GitHub 预发布版本为 `v2.2.8-codex.20260816.1`，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260816.1`；Release Notes 已逐项记录搜索引擎、降级、并发、instructions 兼容、Docker 缺包修复、CI 与部署验证。
 - Release 中完整 `lobehub-server-image.tar` 为 `278624256` 字节，GitHub digest 为 `sha256:5a92734f71bf9d48eaad553e40c597f042a165ec2e10e09ff7689aa7af886d89`，与本机完全一致；同时上传 `RELEASE-MANIFEST.txt`，SHA-256 为 `F07F7601DEDAB80C01E5DF6649CE1AD5FA31801FC856804C48B49B2E2AC54E97`。
 - 上传排障过程中产生的冗余分卷已从 Release 与本机删除，最终只保留完整 Docker archive 和校验清单。
+
+## 2026-08-18：修复续聊置顶并实现自部署任务运行时
+
+### 用户要求
+
+- 修复历史对话再次发送消息后不能自动移动到列表最上方的问题。
+- 检查当前 LobeHub 任务创建与执行逻辑，使任务能够在 `192.168.100.1` 的自部署 LobeHub 中自动执行。
+- 自部署任务不得强制登录官方账号或使用官方云沙箱，需要提供自部署沙箱运行方式，并增加显式的无沙箱执行选项。
+- 继续遵守禁止 WSL、外部构建、GitHub Actions 构建与 Release 发布、部署时不影响其他现有服务的约束。
+
+### 当前行动
+
+- 已读取 `YHYQ.md`、当前 Git 状态和既有部署记录，确认线上仍采用外部构建镜像并仅替换 `lobehub` 容器的部署方式。
+- 已创建修改前 Git 回滚锚点：`f2d636b309`。
+- 当前仅有既存未跟踪构建日志、发布目录和 `问题.txt`，本轮不清理、不覆盖、不纳入提交。
+- 正在分别追踪历史话题更新时间与排序、任务创建后的官方云路由、执行目标选择、沙箱提供方与自部署运行所需服务边界。
