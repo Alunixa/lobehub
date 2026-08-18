@@ -795,3 +795,8 @@
 - Test CI `32144433661` 的服务端 shard 1 在 `aiChat.test.ts` 出现 6 个 `ctx.topicModel.update is not a function`；根因是多个旧测试夹具只 mock `create` 并依赖前序 mock 泄漏，真实 `TopicModel` 始终具有 `update`。现新增统一 `mockTopicModel` 辅助器，默认提供 `update`，并让全部 TopicModel 夹具显式使用它。
 - 同一 Test CI 的沙箱工厂 3/3、Onlyboxes provider 10/10、Host Executor workflow 与服务器镜像构建均通过；Test Database 的独立 Lint 失败为全仓库 111 个既有 UI import 等错误，未涉及本轮文件，父提交运行也存在同类阻塞。
 - 修复后的 `aiChat.test.ts` 本机 Vitest 仍在收集阶段超过 2 分钟且没有用例输出，已终止并未计为通过；本机单文件 ESLint 同样出现已知挂起，后续提交跳过异常本地钩子，由 GitHub Test Server 分片做权威回归。
+- 测试夹具修复提交 `46252eb784` 已推送；最终 Test CI `32146220748` 的 Test Server 两个分片、Test Packages、Test Desktop 与服务端覆盖合并均成功，证明续聊置顶、沙箱工厂和任务服务端路径通过。Test Database 仍因父分支已有 111 个全仓库 Lint 错误失败；Test App shard 1 仅有既存 `src/services/chat/chat.test.ts` instructions 断言失败，3418 个同分片用例通过。
+- 最终服务器镜像工作流 `32146220723` 成功，artifact digest 为 `sha256:807110f77ffeae9a74536b00da7319b5268ba983c884767fcfb0ca5bca4bd2c1`；最终 archive 为 `296830464` 字节，SHA-256 为 `99D54CF6C3C4A7B7E4E09C35C9F07E35BD911124EF8B2BA5132C130D75BDAA88`。
+- Onlyboxes 官方 Worker Docker 0.10.3 资产已下载核验：`10034744` 字节，SHA-256 `AAD42E6D63332D8C4F955E345670C3871E59E6FBCBEF15567C6C20F267F86E27`，与上游 Release digest 一致。
+- GitHub 预发布版本 `v2.2.8-codex.20260818.1` 已发布，Tag 指向 `46252eb78475b69dd5a9ec452fd64dfa1de2315c`，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260818.1`；服务器 archive、宿主执行器、宿主执行器 SHA 文件和 Release 清单四项资产的 GitHub digest、大小与本机全部一致。
+- 部署前路由器基线：LobeHub 容器 `faa5811b02ad`，其余 PostgreSQL、Redis、RustFS、SearXNG、设备网关与 `linuxytd` 容器 ID 均与上一版一致；主 Compose SHA-256 仍为 `fdaca5c7444241ec100768ae61e34ee265f16113bcb9395954b43aa0fcc0378e`，`nginx -t` 成功，`/mnt/sda1` 可用约 100.3 GB。
