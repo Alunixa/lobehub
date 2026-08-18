@@ -788,3 +788,4 @@
 - 第二次提交钩子已通过 YAML 与 JSON 阶段，仅定位到宿主执行器启动日志的 `console.log` 不符合仓库 `no-console` 白名单；已语义等价改为允许的 `console.info`，错误后的 Stylelint/Remark `SIGKILL` 属于 lint-staged 主任务失败时的并发终止。
 - 宿主执行器已通过独立 ESLint 自动修复 import 顺序与 `replaceAll` 规则，随后 ESLint、工作流 YAML 检查和 `git diff --check` 全部通过；功能测试仍为 4/4 通过。
 - 沙箱阶段最终提交 `ecb3d61f3f` 成功，36 个目标文件全部通过 lint-staged；工作区仅保留本轮开始前已有的未跟踪构建目录与 `问题.txt`，未纳入提交。
+- 部署前日志提交为 `799e14bd19`；首次误向官方上游 `origin` 推送时连接被重置，未产生远端修改。分支实际跟踪 `fork/codex/deploy-server-image-20260720`，旧远端用户名当前重定向到 `Alunixa/lobehub`，本地 GitHub CLI 钥匙串凭据已失效，后续改用会话内非交互凭据向正确 fork 推送。
