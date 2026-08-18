@@ -866,3 +866,18 @@
 - GitHub prerelease `v2.2.8-codex.20260819.1` 已发布，Release ID `372524572`，标签指向最终源码提交；地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260819.1`。
 - Release 资产只有服务器镜像与校验清单：GitHub 返回的大小和 digest 分别为 `296832512 / sha256:5b07f6ff09721fe7e18d5cb338fa0ed897a89a2b28ce01ad5cdbe1c64a57f421`、`580 / sha256:610b7df66749bd095c094de2a5230d34b42c65398e972b87f317d65f890041d9`，均与本机一致。
 - Release Notes 已明确记录任务缺少命令工具的根因与修复、host / onlyboxes 路由语义、旧任务默认 provider 行为、测试结果和既有 CI 阻塞。
+
+### 最终部署与真实任务验证
+
+- 部署前 LobeHub 容器为 `17dae79b82f2cfec13a6f00066617021a3209456f30b0a57335b81b68569be90`，旧镜像为 `sha256:334e2b09b4b14b7b49b382efcc21ca400f4aa64730ba3c1ccc4e422642425e5a`，重启次数 0；其他核心容器 ID 与上一版一致。
+- 部署前 Compose、override、Nginx 和四个证书文件的 SHA-256 与上一版全部一致；Host Executor `/health` 返回 `{"mode":"host","success":true}`，Host Executor 与 Onlyboxes Worker 的 procd 服务均在运行。
+- 旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260819-pre-task-command-tools`；新镜像 ID 为 `sha256:f15da97263b268b8fd85383151bc9cad3f1369dbe92a2367a145f23b6bdfe1db`。
+- 只执行 `docker compose up -d --no-deps --force-recreate lobehub`；最终 LobeHub 容器为 `41883afa06c867784d44bfe13e0f0c578054463add1d7e0c33ff680a08a7e073`，running、重启次数 0、策略 always，端口仍为宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 数据库迁移通过，Next.js 16.3.1 Ready，本地任务调度器与设备网关启动成功；内部和 APP_URL HTTPS `/api/version` 均返回 `{"version":"2.2.8"}`。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 的容器 ID 全部保持不变，Onlyboxes Console 重启次数仍为 0。
+- 部署后 Compose、override 与证书哈希未变，`nginx -t` 成功；稳定性复查时路由器可用内存约 6.10 GiB、`/mnt/sda1` 可用约 94.0 GB，新 LobeHub 运行 10 分钟后重启次数仍为 0。
+- 使用 T-3 所有者的现有有效 Better Auth 会话，通过服务器内部真实 `/trpc/lambda/task.run` 创建 Topic `tpc_fnoD0qq0Wk2X` 和 operation `op_1787074884688_agt_ZLVtD4LPZaH5_tpc_fnoD0qq0Wk2X_GdR7cquO`；会话令牌未写入文件或日志。
+- 该 operation 最终为 `done|done`，Task Topic 为 `completed`，共 1 次工具调用、3 个步骤；`message_plugins` 明确记录 `identifier=lobe-cloud-sandbox`、`api_name=runCommand`、`success=true`、`exitCode=0`。
+- `runCommand` 实际输出包含主机名 `GardeniaWRT`、`DISTRIB_ID='ImmortalWrt'` 和宿主工作目录 `/mnt/sda1/lobehub-host-runtime/workspaces/.../tpc_fnoD0qq0Wk2X`；最终助手回复也完整报告了这些结果。
+- 命令在宿主创建 `/mnt/sda1/lobehub-host-runtime/task-command-tools-20260819.marker`，内容为 `task-command-tools-ok`；同一路径在 LobeHub 容器内不存在，证明宿主机无沙箱模式没有落入容器。
+- 验证 marker、路由器部署暂存目录和本机 Release 临时目录均已删除并确认不存在；保留 GitHub Release、当前镜像和旧镜像回滚标签，既存未跟踪历史目录与 `问题.txt` 未改动。
