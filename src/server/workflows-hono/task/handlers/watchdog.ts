@@ -1,11 +1,6 @@
-import debug from 'debug';
 import type { Context } from 'hono';
 
-import { BriefModel } from '@/database/models/brief';
-import { TaskModel } from '@/database/models/task';
-import { getServerDB } from '@/database/server';
-
-const log = debug('lobe-server:workflows:task:watchdog');
+import { runTaskWatchdog } from '@/server/services/taskRunner/watchdog';
 
 /**
  * Cron-style watchdog. Scans all `running` tasks where
@@ -18,38 +13,7 @@ const log = debug('lobe-server:workflows:task:watchdog');
  */
 export async function watchdog(c: Context) {
   try {
-    const db = await getServerDB();
-    const stuckTasks = await TaskModel.findStuckTasks(db);
-    const failed: string[] = [];
-
-    for (const task of stuckTasks) {
-      const wsId = task.workspaceId ?? undefined;
-      const taskModel = new TaskModel(db, task.createdByUserId, wsId);
-      await taskModel.updateStatus(task.id, 'failed', {
-        completedAt: new Date(),
-        error: 'Heartbeat timeout',
-      });
-
-      const briefModel = new BriefModel(db, task.createdByUserId, wsId);
-      await briefModel.create({
-        agentId: task.assigneeAgentId || undefined,
-        priority: 'urgent',
-        summary: `Task has been running without heartbeat update for more than ${task.heartbeatTimeout} seconds.`,
-        taskId: task.id,
-        title: `${task.identifier} heartbeat timeout`,
-        trigger: 'task',
-        type: 'error',
-      });
-
-      failed.push(task.identifier);
-    }
-
-    log('Watchdog scan: checked=%d failed=%d', stuckTasks.length, failed.length);
-    return c.json({
-      checked: stuckTasks.length,
-      failed,
-      success: true,
-    });
+    return c.json(await runTaskWatchdog());
   } catch (error) {
     console.error('[task/watchdog] Error:', error);
     return c.json({ error: error instanceof Error ? error.message : 'Internal error' }, 500);

@@ -375,10 +375,13 @@ export class TaskLifecycleService {
         userId: this.userId,
       });
 
+      const scheduledAt = new Date();
+
       await this.taskModel.updateContext(task.id, {
         scheduler: {
           consecutiveFailures,
-          scheduledAt: new Date().toISOString(),
+          dueAt: new Date(scheduledAt.getTime() + task.heartbeatInterval * 1000).toISOString(),
+          scheduledAt: scheduledAt.toISOString(),
           tickMessageId,
         },
       });

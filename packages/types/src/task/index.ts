@@ -130,6 +130,9 @@ export interface TaskSchedulerContext {
   // the fuse threshold (currently 3) we stop re-arming until the user resolves
   // the urgent brief.
   consecutiveFailures?: number;
+  // ISO timestamp when the scheduled tick is due. Used by the self-hosted
+  // runtime to restore the remaining delay after a process restart.
+  dueAt?: string;
   // ISO timestamp when the latest tick was scheduled. Informational only.
   scheduledAt?: string;
   // QStash messageId (or LocalScheduler scheduleId) for the next tick. Used to

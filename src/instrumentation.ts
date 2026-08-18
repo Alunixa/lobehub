@@ -22,6 +22,22 @@ export async function register() {
     });
   }
 
+  // Self-hosted Node deployments do not have a QStash/Vercel cron process.
+  // Start the persistent DB-backed task scanner and restore heartbeat timers
+  // lost during the previous process shutdown.
+  if (
+    process.env.NEXT_RUNTIME === 'nodejs' &&
+    process.env.DATABASE_URL &&
+    !process.env.VERCEL_ENV &&
+    (!isDev || process.env.ENABLE_TASKS_IN_DEV === '1')
+  ) {
+    const { startLocalTaskDispatcher } =
+      await import('@/server/services/taskScheduler/localDispatcher');
+    startLocalTaskDispatcher().catch((error) => {
+      console.error('[Instrumentation] Failed to start local task dispatcher:', error);
+    });
+  }
+
   // Note: messenger system bot connections (Discord/Telegram) are managed
   // entirely from dc-center's System Bots admin — save / enable / forceReconnect
   // mutations call MessageGateway directly. The main app's only role here is

@@ -758,3 +758,12 @@
 - 已确认客户端在旧 Topic 发送完成后会乐观更新 `updatedAt`，数据库 Topic 查询也会按活跃时间排序，但旧 Topic 的自身 `updatedAt` 未持久更新，刷新、分页、搜索结果和其他客户端可能继续使用旧时间。
 - 服务端 `sendMessageInServer` 现会在既有 Topic 成功写入用户 / 助手消息后持久触碰 Topic 的 `updatedAt`；新建 Topic 不重复更新。
 - 已为既有 Topic 续聊路径补充路由测试，验证 `TopicModel.update(topicId, {})` 被调用。
+
+### 自部署任务调度器
+
+- 已确认 Queue 模式依赖 QStash，而自部署默认 Local 模式仅在单次任务完成后创建内存 `setTimeout`；服务器启动时没有 cron 扫描、heartbeat 恢复或 watchdog 循环。
+- 已将计划任务扫描和 watchdog 从 Hono 传输层抽成可复用服务，原 QStash HTTP 入口继续调用同一核心逻辑。
+- 非 Vercel、非 Queue 的生产 Node 进程启动时现会启动本地调度单例：立即扫描一次，此后默认每 30 秒扫描计划任务和卡死任务，并防止慢扫描重入。
+- 本地调度器启动时会从数据库恢复所有可运行 heartbeat 任务，按持久化 `dueAt` 只等待剩余延迟；任务生命周期现持久化下次触发时间，进程重启不再丢失 heartbeat。
+- 可用 `DISABLE_LOCAL_TASK_DISPATCHER=1` 显式禁用本地循环，开发环境默认不启动，需 `ENABLE_TASKS_IN_DEV=1` 才启用。
+- 已补本地调度器单元测试，覆盖剩余延迟恢复、计划扫描与 watchdog 同步执行、慢扫描防重入。

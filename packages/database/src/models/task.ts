@@ -766,6 +766,22 @@ export class TaskModel {
       );
   }
 
+  // Heartbeat tasks whose next in-process timer must exist. The local runtime
+  // uses this after a server restart to rebuild timers lost with the old process.
+  static async getHeartbeatTasks(db: LobeChatDatabase): Promise<TaskItem[]> {
+    return db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.automationMode, 'heartbeat'),
+          isNotNull(tasks.heartbeatInterval),
+          sql`${tasks.heartbeatInterval} > 0`,
+          notInArray(tasks.status, ['canceled', 'completed', 'failed', 'paused', 'running']),
+        ),
+      );
+  }
+
   // Find stuck tasks (running but heartbeat timed out)
   // Only checks tasks that have both lastHeartbeatAt and heartbeatTimeout set
   static async findStuckTasks(db: LobeChatDatabase): Promise<TaskItem[]> {
