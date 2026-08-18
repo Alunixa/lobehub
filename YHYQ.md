@@ -850,3 +850,6 @@
 - 新增真实 Server Agent ToolsEngine 回归，断言 sandbox execution plan 最终启用 `lobe-cloud-sandbox`，并实际生成 `runCommand` 与 `executeCode` 函数定义。
 - 五个改动 TypeScript 文件已逐一通过 TypeScript `transpileModule` 语法解析，`git diff --check` 通过。
 - 本机 Prettier、ESLint、Vitest 和 Bun 均复现既有的模块加载 / 收集无输出挂起；已精确终止本轮进程，没有把空跑计为通过，真实回归交由 GitHub Test Server 的干净依赖环境验证。
+- 首轮 Test CI `32162523941` 中 ToolsEngine 新增用例 44/44、TaskRunner 新增用例 2/2 通过，Test Server shard 2 成功；shard 1 共 2759/2760 个用例通过，唯一失败是新增 AiAgent 测试错误地在 ToolsEngine 精简配置上断言完整 `agencyConfig`，产品代码没有失败。
+- ToolsEngine 入参按设计只携带 `chatConfig/plugins` 与独立 `executionPlan`；断言现已移到 `createOperation.agentConfig` 的完整运行快照，同时继续验证 ToolsEngine 与 operation 的 execution plan 都为 sandbox。
+- 首轮服务器镜像工作流 `32162523995` 已成功；该镜像不用于部署，待测试断言修正后的最终提交重新构建并通过后再发布。

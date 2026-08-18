@@ -419,13 +419,16 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
 
     const toolsEngineParams = vi.mocked(createServerAgentToolsEngine).mock.calls[0][1];
     expect(toolsEngineParams.agentConfig).toMatchObject({
-      agencyConfig: { executionTarget: 'sandbox' },
       chatConfig: { enableAgentMode: true, toolMode: 'agent' },
       plugins: [CloudSandboxIdentifier],
     });
     expect(toolsEngineParams.executionPlan).toEqual({ kind: 'sandbox', target: 'sandbox' });
 
     const operationParams = mockCreateOperation.mock.calls[0][0];
+    expect(operationParams.agentConfig).toMatchObject({
+      agencyConfig: { executionTarget: 'sandbox' },
+      chatConfig: { enableAgentMode: true, toolMode: 'agent' },
+    });
     expect(operationParams.executionPlan).toEqual({ kind: 'sandbox', target: 'sandbox' });
     expect(operationParams.appContext.sandboxProvider).toBe('host');
   });
