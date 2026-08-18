@@ -800,3 +800,20 @@
 - Onlyboxes 官方 Worker Docker 0.10.3 资产已下载核验：`10034744` 字节，SHA-256 `AAD42E6D63332D8C4F955E345670C3871E59E6FBCBEF15567C6C20F267F86E27`，与上游 Release digest 一致。
 - GitHub 预发布版本 `v2.2.8-codex.20260818.1` 已发布，Tag 指向 `46252eb78475b69dd5a9ec452fd64dfa1de2315c`，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260818.1`；服务器 archive、宿主执行器、宿主执行器 SHA 文件和 Release 清单四项资产的 GitHub digest、大小与本机全部一致。
 - 部署前路由器基线：LobeHub 容器 `faa5811b02ad`，其余 PostgreSQL、Redis、RustFS、SearXNG、设备网关与 `linuxytd` 容器 ID 均与上一版一致；主 Compose SHA-256 仍为 `fdaca5c7444241ec100768ae61e34ee265f16113bcb9395954b43aa0fcc0378e`，`nginx -t` 成功，`/mnt/sda1` 可用约 100.3 GB。
+
+### 自部署运行时与最终部署
+
+- 所有上传到路由器的资产在安装前重新核验大小和 SHA-256，服务器 archive、宿主执行器、Onlyboxes Worker 与 Release 清单均和本机 / GitHub Release 完全一致。
+- `lobe-host-executor` 已安装到 `/opt/lobe-host-executor`，由 OpenWrt `procd` 托管，Token 在路由器本地生成并以 `0600` 存储；服务只监听现有 LobeHub Docker 网关 `172.20.0.1:3211`，未监听 LAN/WAN，`/health` 返回 `{"mode":"host","success":true}`。
+- Onlyboxes Console 固定为 `coolfan1024/onlyboxes:0.10.3`，容器 `2665b2cbaf85`，数据库持久化到 `/mnt/sda1/onlyboxes/db`；HTTP 与 gRPC 分别只映射宿主回环 `127.0.0.1:18089` 和 `127.0.0.1:15051`，Console 加入现有 `lobehub_lobe-network`，没有挂载 Docker Socket。
+- Onlyboxes Worker 使用已核验的原生 amd64 二进制并由 `procd` 托管，Console API 确认状态 `online`；专用 `coolfan1024/onlyboxes-runtime:lobehub` 镜像 digest 为 `sha256:4fb9e6ac4977e5dd51b85f9a0dea5ef76c58e29231a694cba002a6d253234824`，活动会话上限 4、单会话并发 2、单会话内存 512 MiB。
+- 隔离模式真实执行返回 `onlyboxes-ok`、`x86_64` 和 `/tmp`；从最终 LobeHub 容器再次执行时返回 `isolated-ok`，并确认沙箱看不到宿主 `/etc/openwrt_release`。
+- 无沙箱模式从最终 LobeHub 容器调用宿主执行器，实际返回 `GardeniaWRT`、`DISTRIB_ID='ImmortalWrt'` 和 `/mnt/sda1/lobehub-host-runtime/workspaces/...`，并在宿主创建 marker；同一路径在 LobeHub 容器内不存在，证明命令没有落到容器内执行。
+- 旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260818-pre-selfhost-tasks`；最终 Release 镜像标签为 `lobehub/lobehub:codex-46252eb78475b69dd5a9ec452fd64dfa1de2315c`，镜像 ID 为 `sha256:334e2b09b4b14b7b49b382efcc21ca400f4aa64730ba3c1ccc4e422642425e5a`。
+- 仅执行 `docker compose up -d --no-deps --force-recreate lobehub`；最终 LobeHub 容器为 `17dae79b82f2cfec13a6f00066617021a3209456f30b0a57335b81b68569be90`，running、重启次数 0，端口仍为宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 主 Compose 文件未修改，SHA-256 仍为 `fdaca5c7444241ec100768ae61e34ee265f16113bcb9395954b43aa0fcc0378e`；新增标准 `docker-compose.override.yml` 只引用 `0600` 的自部署运行时环境文件，SHA-256 为 `e6786a2f36860bb726abb147aee246b61167033f14b43c9c80fc9bc365f047f9`。
+- 最终容器环境为默认 `SANDBOX_PROVIDER=onlyboxes`、Console URL `http://onlyboxes-console:8089`、Host URL `http://172.20.0.1:3211`，JIT Key 与 Host Token 长度均为 64；官方 Market 登录提示不再用于默认任务，任务详情可切换宿主机无沙箱模式。
+- LobeHub 启动日志显示数据库迁移通过、Next Ready；本地调度器恢复 0 个 heartbeat 定时器并启动每 30 秒数据库扫描。数据库当前 2 个既有任务分别为 `backlog|none` 与 `completed|none`，均无自动化且使用服务器默认 provider，因此没有擅自修改用户任务来制造触发。
+- APP_URL HTTPS 与容器内 `/api/version` 均返回 `{"version":"2.2.8"}`；稳定性复查时 LobeHub 与 Console 重启次数均为 0，Onlyboxes 冒烟会话已按租约清理，LobeHub / Worker / Host Executor 错误日志为空。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变；`nginx -t` 仍成功，可用内存约 6.10 GiB，`/mnt/sda1` 可用约 95.0 GB。
+- 最终 E2E CI `32146220732` 为 81/82 场景、490/491 步骤通过；唯一失败是既有关闭流式自动滚动视口距离断言，涉及 `e2e/src/steps/agent/scroll.steps.ts`，与本轮文件和行为无关。
