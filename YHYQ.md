@@ -853,3 +853,16 @@
 - 首轮 Test CI `32162523941` 中 ToolsEngine 新增用例 44/44、TaskRunner 新增用例 2/2 通过，Test Server shard 2 成功；shard 1 共 2759/2760 个用例通过，唯一失败是新增 AiAgent 测试错误地在 ToolsEngine 精简配置上断言完整 `agencyConfig`，产品代码没有失败。
 - ToolsEngine 入参按设计只携带 `chatConfig/plugins` 与独立 `executionPlan`；断言现已移到 `createOperation.agentConfig` 的完整运行快照，同时继续验证 ToolsEngine 与 operation 的 execution plan 都为 sandbox。
 - 首轮服务器镜像工作流 `32162523995` 已成功；该镜像不用于部署，待测试断言修正后的最终提交重新构建并通过后再发布。
+
+### 最终 CI 与 Release
+
+- 断言修正提交为 `a8bc68dda7f44246e5e4e38a981edf5173087f82`；最终 Test CI `32163606207` 的 Test Server shard 1、shard 2、Test Packages、Test Desktop 和 Server Coverage Merge 全部成功。
+- 两个 Test Server 分片中，真实 ToolsEngine 用例 44/44、TaskRunner 用例 2/2、AiAgent builtin runtime 用例 16/16 均通过；证明命令 Manifest、TaskRunner 装配和线上 T-3 同类聊天模式覆盖都已生效。
+- Test Database 仍因全仓库 111 个既有 UI import 等 Lint 错误失败；Test App shard 1 仍只有既有 `src/services/chat/chat.test.ts` instructions 断言失败，同分片 3418 个用例通过，均与本轮文件无关。
+- 最终 E2E `32163606083` 仍为 81/82 场景、490/491 步骤通过；唯一失败仍是 `e2e/src/steps/agent/scroll.steps.ts` 的关闭自动滚动视口距离断言，与上一 Release 完全相同。
+- 最终服务器镜像工作流 `32163606062` 成功，Actions artifact `9334762406` 为 `296832674` 字节，digest 为 `sha256:2e115b4b2a9e6c1fb9799c3c132de4d7802dc175b14f4f24d47c2033dea3cc27`。
+- 解包后的 `lobehub-server-image.tar` 为 `296832512` 字节，SHA-256 为 `5B07F6FF09721FE7E18D5CB338FA0ED897A89A2B28CE01AD5CDBE1C64A57F421`；本机与路由器结果一致。
+- 镜像标签为 `lobehub/lobehub:codex-a8bc68dda7f44246e5e4e38a981edf5173087f82`，平台 `linux/amd64`、用户 `nextjs`、工作目录 `/app`、入口 `/bin/node /app/startServer.js`。
+- GitHub prerelease `v2.2.8-codex.20260819.1` 已发布，Release ID `372524572`，标签指向最终源码提交；地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260819.1`。
+- Release 资产只有服务器镜像与校验清单：GitHub 返回的大小和 digest 分别为 `296832512 / sha256:5b07f6ff09721fe7e18d5cb338fa0ed897a89a2b28ce01ad5cdbe1c64a57f421`、`580 / sha256:610b7df66749bd095c094de2a5230d34b42c65398e972b87f317d65f890041d9`，均与本机一致。
+- Release Notes 已明确记录任务缺少命令工具的根因与修复、host / onlyboxes 路由语义、旧任务默认 provider 行为、测试结果和既有 CI 阻塞。
