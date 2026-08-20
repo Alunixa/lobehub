@@ -17,7 +17,14 @@ describe('meta-schema', () => {
         webSearch: { default: true },
         cfg: { default: 7.5, min: 1, max: 20, step: 0.5 },
         aspectRatio: { default: '1:1', enum: ['1:1', '16:9', '4:3'] },
-        size: { default: '1024x1024', enum: ['512x512', '1024x1024', '1536x1536'] },
+        size: {
+          allowCustom: true,
+          default: '1024x1024',
+          enum: ['512x512', '1024x1024', '1536x1536'],
+          max: 4096,
+          min: 256,
+          step: 64,
+        },
         imageUrl: { default: null },
         imageUrls: { default: [] },
       };
@@ -52,6 +59,29 @@ describe('meta-schema', () => {
       expect(result.seed?.default).toBeNull();
       expect(result.seed?.min).toBe(0);
       expect(result.webSearch?.default).toBe(true);
+    });
+
+    it('should preserve custom size constraints', () => {
+      const schema: ModelParamsSchema = {
+        prompt: {},
+        size: {
+          allowCustom: true,
+          default: 'auto',
+          enum: ['auto', '1024x1024'],
+          max: 4096,
+          min: 256,
+          step: 64,
+        },
+      };
+
+      const result = ModelParamsMetaSchema.parse(schema);
+
+      expect(result.size).toMatchObject({
+        allowCustom: true,
+        max: 4096,
+        min: 256,
+        step: 64,
+      });
     });
 
     it('should reject invalid parameter schemas', () => {

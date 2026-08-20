@@ -132,9 +132,13 @@ export const ModelParamsMetaSchema = z.object({
 
   size: z
     .object({
+      allowCustom: z.boolean().optional().default(false),
       default: z.string(),
       description: z.string().optional(),
       enum: z.array(z.string()),
+      max: z.number().optional(),
+      min: z.number().optional(),
+      step: z.number().optional().default(1),
       type: z.literal('string').optional(),
     })
     .optional(),

@@ -24,6 +24,8 @@
   "config.resolution.options.512": "512px",
   "config.seed.label": "Seed",
   "config.seed.random": "Random Seed",
+  "config.size.custom": "Custom",
+  "config.size.customHint": "Enter width and height to create a custom aspect ratio",
   "config.size.label": "Size",
   "config.steps.label": "Steps",
   "config.title": "Configuration",

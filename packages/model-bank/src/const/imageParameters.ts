@@ -17,7 +17,7 @@ const NANO_BANANA_ASPECT_RATIOS = [
 const NANO_BANANA_2_ASPECT_RATIOS = [...NANO_BANANA_ASPECT_RATIOS, '1:4', '4:1', '1:8', '8:1'];
 
 export const gptImage1Schema: ModelParamsSchema = {
-  imageUrls: { default: [], maxCount: 1, maxFileSize: 5 * 1024 * 1024 },
+  imageUrls: { default: [], maxCount: 16, maxFileSize: 50 * 1024 * 1024 },
   prompt: { default: '' },
   size: {
     default: 'auto',
@@ -26,9 +26,10 @@ export const gptImage1Schema: ModelParamsSchema = {
 };
 
 export const gptImage2Schema: ModelParamsSchema = {
-  imageUrls: { default: [], maxCount: 1, maxFileSize: 5 * 1024 * 1024 },
+  imageUrls: { default: [], maxCount: 16, maxFileSize: 50 * 1024 * 1024 },
   prompt: { default: '' },
   size: {
+    allowCustom: true,
     default: 'auto',
     enum: [
       'auto',
@@ -40,6 +41,9 @@ export const gptImage2Schema: ModelParamsSchema = {
       '3840x2160',
       '2160x3840',
     ],
+    max: 4096,
+    min: 256,
+    step: 64,
   },
 };
 

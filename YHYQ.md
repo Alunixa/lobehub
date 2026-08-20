@@ -881,3 +881,33 @@
 - `runCommand` 实际输出包含主机名 `GardeniaWRT`、`DISTRIB_ID='ImmortalWrt'` 和宿主工作目录 `/mnt/sda1/lobehub-host-runtime/workspaces/.../tpc_fnoD0qq0Wk2X`；最终助手回复也完整报告了这些结果。
 - 命令在宿主创建 `/mnt/sda1/lobehub-host-runtime/task-command-tools-20260819.marker`，内容为 `task-command-tools-ok`；同一路径在 LobeHub 容器内不存在，证明宿主机无沙箱模式没有落入容器。
 - 验证 marker、路由器部署暂存目录和本机 Release 临时目录均已删除并确认不存在；保留 GitHub Release、当前镜像和旧镜像回滚标签，既存未跟踪历史目录与 `问题.txt` 未改动。
+
+## 2026-08-20：图片生成自定义比例与多参考图
+
+### 用户反馈
+
+- 用户反馈图片生成无法自定义宽高比例，且参考图只能添加一张，要求修复。
+- 本轮会在保持不同模型真实能力边界的前提下，补齐自定义比例入口、多参考图交互和最终请求链路，并在自部署环境真实验证。
+
+### 当前行动
+
+- 已读取 `YHYQ.md` 和既有部署记录，确认本轮开始时已跟踪文件干净；既存未跟踪构建目录与 `问题.txt` 保持原样。
+- 已建立修改前空提交回滚点 `7a0cfc412315`。
+- 已查看用户先前提供的截图；该截图属于此前任务命令工具问题，不是当前图片生成界面，因此当前修复以源码链路与线上实际模型配置为准。
+- 正在核对图片模型参数 schema、比例控件、参考图上传组件、服务端校验和各 provider 适配器，尚未修改功能源码或线上服务。
+
+### 根因与源码修复
+
+- 线上只读查询确认当前最近使用的图片模型为自定义 OpenAI-compatible provider `image` 下的 `gpt-image-2`；最近一批生成配置只有固定 `size` 与 `imageUrls` 数组。
+- `gptImage2Schema` 原先把 `imageUrls.maxCount` 固定为 1、单文件上限固定为 5 MiB，前端因此主动切换到单图上传组件；运行时和服务端本身已经支持多 URL 数组，并不会只保留第一张。
+- `size` 参数 schema 原先只有固定枚举，尺寸卡片没有自定义入口；即使最终请求链路允许透传任意字符串，用户也无法在界面输入。
+- 图片尺寸 schema 现新增 `allowCustom/min/max/step` 元数据，`gpt-image-2` 开启自定义尺寸，范围为 256–4096、步进 64；配置面板新增“自定义”卡片，可直接输入宽度和高度，例如 `2048x1024`，该值会原样保存为 `size` 并形成自定义宽高比。
+- 自定义尺寸输入包含正整数、上下界、回车确认、取消和再次编辑校验；不支持自定义尺寸的其他模型继续只显示自身固定选项，不会被全局错误放开。
+- `gpt-image-1` 与 `gpt-image-2` 的参考图上限均更新为 16 张，单文件上限更新为 50 MiB；现有 `MultiImagesUpload` 会自动启用多选、追加、删除和管理界面。
+- 新增回归覆盖：尺寸字符串解析与边界、schema 元数据、GPT 图片模型多参考图上限、配置 hook 约束读取，以及创建请求完整保留 `2048x1024` 和两张参考图。
+
+### 本地检查
+
+- 11 个目标 TypeScript/TSX 文件均通过 TypeScript `transpileModule` 语法解析，两个翻译 JSON 解析成功，`git diff --check` 无空白错误。
+- 使用本机 TypeScript 与 Zod 直接执行的 schema 冒烟检查通过，确认 `2048x1024` 解析、256–4096 边界、`allowCustom=true` 与 `maxCount=16` 均生效。
+- 本机 `node_modules` 在此前失败的提交钩子 `npm ci` 后缺失 Vitest 实体；离线冻结安装因仓库既有 overrides/lockfile 不一致被拒绝，非冻结离线恢复速度异常缓慢且未下载任何包，已及时终止，未将 Vitest 或 TSC 空跑计为通过。完整回归交由 GitHub Actions 干净环境验证。

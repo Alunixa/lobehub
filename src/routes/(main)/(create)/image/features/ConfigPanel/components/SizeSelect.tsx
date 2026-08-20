@@ -5,13 +5,24 @@ import { useGenerationConfigParam } from '@/store/image/slices/generationConfig/
 import Select from './Select';
 
 const SizeSelect = memo(() => {
-  const { value, setValue, enumValues } = useGenerationConfigParam('size');
+  const { value, setValue, enumValues, allowCustom, min, max, step } =
+    useGenerationConfigParam('size');
   const options = enumValues!.map((size) => ({
     label: size,
     value: size,
   }));
 
-  return <Select options={options} value={value} onChange={setValue} />;
+  return (
+    <Select
+      allowCustom={allowCustom}
+      max={max}
+      min={min}
+      options={options}
+      step={step}
+      value={value}
+      onChange={setValue}
+    />
+  );
 });
 
 export default SizeSelect;

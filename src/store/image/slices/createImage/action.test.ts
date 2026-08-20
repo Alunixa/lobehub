@@ -111,6 +111,42 @@ describe('CreateImageAction', () => {
       expect(result.current.parameters?.prompt).toBe('');
     });
 
+    it('should forward a custom size and every reference image without truncation', async () => {
+      const { result } = renderHook(() => useImageStore());
+      const mockRefreshGenerationBatches = vi.fn().mockResolvedValue(undefined);
+      const imageUrls = [
+        'https://example.com/reference-1.png',
+        'https://example.com/reference-2.png',
+      ];
+
+      act(() => {
+        useImageStore.setState({
+          parameters: {
+            imageUrls,
+            prompt: 'combine both references',
+            size: '2048x1024',
+          },
+          refreshGenerationBatches: mockRefreshGenerationBatches,
+        });
+      });
+
+      await act(async () => {
+        await result.current.createImage();
+      });
+
+      expect(mockImageService.createImage).toHaveBeenCalledWith({
+        generationTopicId: 'active-topic-id',
+        imageNum: 4,
+        model: 'test-model',
+        params: {
+          imageUrls,
+          prompt: 'combine both references',
+          size: '2048x1024',
+        },
+        provider: 'test-provider',
+      });
+    });
+
     it('should create new topic when no active topic exists', async () => {
       const mockCreateGenerationTopic = vi.fn().mockResolvedValue('new-topic-id');
       const mockSwitchGenerationTopic = vi.fn();

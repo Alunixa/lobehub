@@ -45,6 +45,14 @@ const testModelSchema: ModelParamsSchema = {
     enum: ['1:1', '16:9', '4:3', '9:16'],
     description: 'Aspect ratio',
   },
+  size: {
+    allowCustom: true,
+    default: '1024x1024',
+    enum: ['1024x1024'],
+    max: 4096,
+    min: 256,
+    step: 64,
+  },
 };
 
 const testParameters: RuntimeImageGenParams = {
@@ -150,6 +158,16 @@ describe('useGenerationConfigParam', () => {
       expect(result.current.min).toBeUndefined();
       expect(result.current.max).toBeUndefined();
       expect(result.current.step).toBeUndefined();
+    });
+
+    it('should return custom size constraints', () => {
+      const { result } = renderHook(() => useGenerationConfigParam('size'));
+
+      expect(result.current.allowCustom).toBe(true);
+      expect(result.current.enumValues).toEqual(['1024x1024']);
+      expect(result.current.min).toBe(256);
+      expect(result.current.max).toBe(4096);
+      expect(result.current.step).toBe(64);
     });
 
     it('should return undefined constraints for parameter without constraints', () => {

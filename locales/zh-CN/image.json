@@ -24,6 +24,8 @@
   "config.resolution.options.512": "512px",
   "config.seed.label": "种子",
   "config.seed.random": "随机种子",
+  "config.size.custom": "自定义",
+  "config.size.customHint": "输入宽度和高度即可使用自定义比例",
   "config.size.label": "尺寸",
   "config.steps.label": "步数",
   "config.title": "配置",
