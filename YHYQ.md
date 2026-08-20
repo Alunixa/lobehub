@@ -911,3 +911,22 @@
 - 11 个目标 TypeScript/TSX 文件均通过 TypeScript `transpileModule` 语法解析，两个翻译 JSON 解析成功，`git diff --check` 无空白错误。
 - 使用本机 TypeScript 与 Zod 直接执行的 schema 冒烟检查通过，确认 `2048x1024` 解析、256–4096 边界、`allowCustom=true` 与 `maxCount=16` 均生效。
 - 本机 `node_modules` 在此前失败的提交钩子 `npm ci` 后缺失 Vitest 实体；离线冻结安装因仓库既有 overrides/lockfile 不一致被拒绝，非冻结离线恢复速度异常缓慢且未下载任何包，已及时终止，未将 Vitest 或 TSC 空跑计为通过。完整回归交由 GitHub Actions 干净环境验证。
+
+### GitHub Actions、部署与真实验证
+
+- 功能提交为 `ff9aac5dfc06c1ca8269a7983e7a7a0a040801dd`，已推送到 `Alunixa/lobehub` 的 `codex/deploy-server-image-20260720` 分支。
+- 服务器镜像工作流 `32417296215` 成功；GitHub artifact `9424621754` 为 `296871586` 字节，digest 为 `sha256:43746fa2b63ad406f60eb6fa1f74f1538d1e6be1aae0359b87706002db8d587a`。
+- 解包后的 `lobehub-server-image.tar` 为 `296871424` 字节，SHA-256 为 `A53B7EF2C50A27EA4A17676A6437ABF57F70B7DA90CCC9BA2EF154477BBD7037`；本机、路由器与 GitHub Release digest 完全一致。
+- Test CI `32417296784` 中 Model Bank 包测试、两个 Test Server 分片、Server Coverage Merge 和 Desktop 全部成功；新增 `Select/utils.test.ts` 为 3/3 通过，`createImage/action.test.ts` 为 12/12 通过。
+- Test App shard 1 仍只有既有 `src/services/chat/chat.test.ts` instructions 断言失败，同分片 3413 个用例通过；shard 2 因矩阵 fail-fast 被取消。Test Database 仍被全仓库 170 个既有弃用 UI import 等 Lint 错误阻塞，本轮目标文件没有出现在 Lint 错误列表。
+- E2E `32417296032` 为 81/82 场景、490/491 步骤通过；唯一失败仍是 `e2e/src/steps/agent/scroll.steps.ts` 的关闭流式自动滚动视口距离断言，和前两版发布完全相同。
+- 部署前 LobeHub 容器为 `41883afa06c867784d44bfe13e0f0c578054463add1d7e0c33ff680a08a7e073`，旧镜像 ID 为 `sha256:f15da97263b268b8fd85383151bc9cad3f1369dbe92a2367a145f23b6bdfe1db`，重启次数 0；其他核心容器 ID 与上一版一致。
+- 旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260820-pre-image-controls`；新镜像标签为 `lobehub/lobehub:codex-ff9aac5dfc06c1ca8269a7983e7a7a0a040801dd`，镜像 ID 为 `sha256:215e67b69b2c69c81d3e26cb557f016ff0c2475692002dab6b9cb77342a6dd5a`。
+- 只执行 `docker compose up -d --no-deps --force-recreate lobehub`；最终 LobeHub 容器为 `08e4c22d1c1efdd2b9adb487cfd454f44890541452c4678d8113fa4bb48f507c`，运行 23 分钟后重启次数仍为 0，内部 `/api/version` 返回 `2.2.8`。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 均未重建。
+- Compose、override 与四个证书文件 SHA-256 全部未变，`nginx -t` 成功；Host Executor `/health` 仍返回 `mode=host, success=true`，部署后 LobeHub 错误日志为空。
+- 使用用户现有有效 Better Auth 会话，通过真实 `/trpc/lambda/image.createImage` 提交 `provider=image`、`model=gpt-image-2`、`size=2048x1024` 和两张现有参考图，未输出或持久化会话令牌。
+- 真实批次 `gb_zyG5zXMGRIoS` 的数据库配置保存了自定义尺寸和两个不同参考图 key；异步任务 `8b19c79e-8a20-48f3-b7d0-eceb0cc12398` 成功，耗时约 42.4 秒，最终文件 `file_t0x41jau7psM` 的实际产物尺寸为 `2048×1024`。
+- GitHub prerelease `v2.2.8-codex.20260820.1` 已发布，标签指向功能提交，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260820.1`。
+- Release 资产为服务器镜像与清单：GitHub 返回大小和 digest 分别为 `296871424 / sha256:a53b7ef2c50a27ea4a17676a6437abf57f70b7da90ccc9ba2ef154477bbd7037`、`1398 / sha256:34775aa4492838b1e7cb40d818788cfdf4c84248ab1adb59f3e62915b8deead0`，均与本机一致；Release Notes 已写明功能、测试、已知既有阻塞、资产大小和 SHA-256。
+- 本轮路由器上传暂存目录与本机 Release 临时目录已精确删除并确认不存在；保留当前镜像、回滚镜像标签、GitHub Release、真实验证生成记录，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
