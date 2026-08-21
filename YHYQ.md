@@ -965,3 +965,21 @@
 - E2E 仍为 81/82 场景、490/491 步骤通过；唯一失败仍是 `e2e/src/steps/agent/scroll.steps.ts` 的关闭流式自动滚动视口距离断言，与本轮设置组件无关。
 - 新增 `FormSliderWithInput.test.tsx` 被 Vitest 分到 App shard 2，但仓库原工作流默认 `fail-fast=true`，shard 1 的既有失败会立即取消 shard 2；对取消 job 的两次 GitHub 单 job 重跑也会被矩阵 fail-fast 状态立即取消，不能把该用例误报为已执行。
 - 独立临时 worktree 的在线依赖恢复速度异常缓慢，约 5 分钟只复用 49 个包，已及时终止且未把空跑计为通过；后续把 App 测试矩阵明确改为 `fail-fast: false`，让两个分片即使其中一个失败也必须完整执行。
+
+### 最终 GitHub Actions、Release 与部署
+
+- App 测试矩阵修正提交为 `aadf342eb2658742e6939ccd676a580ae5be0ed1`，已推送到 `Alunixa/lobehub` 的 `codex/deploy-server-image-20260720` 分支；最终 Test CI 为 `32450691909`，E2E 为 `32450691905`，服务器镜像工作流为 `32450708976`。
+- `FormSliderWithInput.test.tsx` 在最终 Test App shard 2 中真实执行并 2/2 通过，耗时 65 ms；该分片其余失败为既有 Host Executor 文件被 Vitest 收集但没有 suite、ComfyUI Form 的 `cx is not a function`，以及两个默认 Agent 设置快照不匹配，共 3473 个同分片用例通过。
+- Test App shard 1 仍只有既有 `src/services/chat/chat.test.ts` instructions 断言失败；Test Server 两个分片、Test Packages、Test Desktop 与 Server Coverage Merge 全部成功；Test Database 仍为全仓库 170 个既有弃用 UI import 等 Lint 错误。
+- 最终 E2E 仍为 81/82 场景、490/491 步骤通过；唯一失败仍是 `e2e/src/steps/agent/scroll.steps.ts` 的关闭流式自动滚动视口距离断言，期望大于 320、实际 82，与本轮设置控件无关。
+- 最终 GitHub Actions artifact `9435724741` 为 `296843938` 字节，digest 为 `sha256:42477c643dc62e0f398860269cae554e22a3026ff89e54382c8822d9cfbbd88b`；解包后的 `lobehub-server-image.tar` 为 `296843776` 字节，SHA-256 为 `CCA133F774C5BD26B2887E67DAFB2E68FC29C3FD52B732152C537A66BE018F7B`。
+- GitHub prerelease `v2.2.8-codex.20260821.1` 已发布，标签指向最终源码提交，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260821.1`；服务器镜像与校验清单的 GitHub digest、大小和本机完全一致，Release Notes 已写明根因、修复、测试结果、既有阻塞和资产信息。
+- 部署前 LobeHub 容器为 `08e4c22d1c1efdd2b9adb487cfd454f44890541452c4678d8113fa4bb48f507c`，旧镜像 ID 为 `sha256:215e67b69b2c69c81d3e26cb557f016ff0c2475692002dab6b9cb77342a6dd5a`，重启次数 0；Compose、override、Nginx、四个证书和宿主执行器均正常。
+- 上传到路由器的服务器镜像和校验清单在安装前重新核验大小与 SHA-256，和本机 / GitHub Release 完全一致；旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260821-pre-default-image-count`。
+- 新镜像标签为 `lobehub/lobehub:codex-aadf342eb2658742e6939ccd676a580ae5be0ed1`，镜像 ID 为 `sha256:52698627a970680e2f4b108cf26370581f38ce9b65b6e35a2ea2e9526d17d65f`，平台 `linux/amd64`。
+- 只执行 `docker compose up -d --no-deps --force-recreate lobehub`；最终 LobeHub 容器为 `30757d97039d9592892f8956f91098d3e1f73da6f401b0746fa8a61cd2c0cf97`，运行 5 分钟后仍为 running、重启次数 0，端口保持宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 内部与 APP_URL HTTPS `/api/version` 均返回 `2.2.8`，启动后十分钟日志范围内没有 error / fatal / panic / migration failed；Host Executor `/health` 仍返回 `mode=host, success=true`。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变。
+- 主 Compose 与 override SHA-256 仍分别为 `fdaca5c7444241ec100768ae61e34ee265f16113bcb9395954b43aa0fcc0378e`、`e6786a2f36860bb726abb147aee246b61167033f14b43c9c80fc9bc365f047f9`；四个证书哈希未变，`nginx -t` 成功，可用内存约 6.30 GB，`/mnt/sda1` 可用约 92.0 GB。
+- 部署后数据库中目标用户的 `user_settings.image.defaultImageNum` 仍为 `1`；未登录的隔离浏览器会进入登录页，使用数据库 session token 直接构造 Better Auth cookie 的只读 API 探测返回 401，因此没有把该探测误报为页面级验证；最终依据真实数据库值、部署镜像和 GitHub Actions 2/2 组件回归确认修复生效。
+- 路由器部署暂存目录、本机两版服务器 archive、测试 blob、Release 临时文件、未完成依赖安装的临时 worktree 与指针文件均已精确删除并验证不存在；保留 GitHub Release、当前镜像、旧镜像回滚标签，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
