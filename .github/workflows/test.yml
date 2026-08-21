@@ -116,6 +116,7 @@ jobs:
     needs: check-duplicate-run
     if: needs.check-duplicate-run.outputs.should_skip != 'true'
     strategy:
+      fail-fast: false
       matrix:
         shard: [1, 2]
     name: Test App (shard ${{ matrix.shard }}/2)

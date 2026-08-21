@@ -957,3 +957,11 @@
 - `FormSliderWithInput.tsx` 与新增回归文件均通过目标 Prettier 格式一致性检查和 TypeScript `transpileModule` 语法解析，`git diff --check` 无空白错误。
 - 新回归将 change 与 blur 放在同一个 React act 批次中，直接复现旧实现会提交上一帧数值的竞态；修复后必须提交最新值 1。
 - 本机依赖目录延续上一轮不完整状态，Vitest 可执行实体缺失，因此没有把本机用例标记为通过；将由 GitHub Actions 干净环境进行权威验证。
+
+### 首轮 GitHub Actions 与测试矩阵修正
+
+- 功能提交 `aa86ddfa7f74f844b3e7fb06a3a5608d356fcc6b` 已推送；服务器镜像工作流 `32448930851` 成功，Test CI `32448930763` 与 E2E `32448930876` 已完成。
+- Test Server 两个分片、Test Packages、Test Desktop 与 Server Coverage Merge 均成功；Test App shard 1 仍只有既有 `src/services/chat/chat.test.ts` instructions 断言失败，3422 个同分片用例通过；Test Database 仍为全仓库 170 个既有弃用 UI import 等错误。
+- E2E 仍为 81/82 场景、490/491 步骤通过；唯一失败仍是 `e2e/src/steps/agent/scroll.steps.ts` 的关闭流式自动滚动视口距离断言，与本轮设置组件无关。
+- 新增 `FormSliderWithInput.test.tsx` 被 Vitest 分到 App shard 2，但仓库原工作流默认 `fail-fast=true`，shard 1 的既有失败会立即取消 shard 2；对取消 job 的两次 GitHub 单 job 重跑也会被矩阵 fail-fast 状态立即取消，不能把该用例误报为已执行。
+- 独立临时 worktree 的在线依赖恢复速度异常缓慢，约 5 分钟只复用 49 个包，已及时终止且未把空跑计为通过；后续把 App 测试矩阵明确改为 `fail-fast: false`，让两个分片即使其中一个失败也必须完整执行。
