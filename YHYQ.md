@@ -930,3 +930,30 @@
 - GitHub prerelease `v2.2.8-codex.20260820.1` 已发布，标签指向功能提交，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260820.1`。
 - Release 资产为服务器镜像与清单：GitHub 返回大小和 digest 分别为 `296871424 / sha256:a53b7ef2c50a27ea4a17676a6437abf57f70b7da90ccc9ba2ef154477bbd7037`、`1398 / sha256:34775aa4492838b1e7cb40d818788cfdf4c84248ab1adb59f3e62915b8deead0`，均与本机一致；Release Notes 已写明功能、测试、已知既有阻塞、资产大小和 SHA-256。
 - 本轮路由器上传暂存目录与本机 Release 临时目录已精确删除并确认不存在；保留当前镜像、回滚镜像标签、GitHub Release、真实验证生成记录，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
+
+## 2026-08-21：默认图片数量设置无法保存为 1
+
+### 用户反馈
+
+- 用户反馈“设置 → 服务模型”底部的默认图片数量只能保持为 2；改成 1 后刷新页面又恢复为 2，要求修复持久化问题。
+
+### 当前行动
+
+- 已读取 `YHYQ.md`、既有图片生成修复与部署记录，确认本轮开始时已跟踪文件干净，既存未跟踪历史构建目录与 `问题.txt` 保持不动。
+- 已建立修改前空提交回滚点。
+- 正在核对默认图片数量控件、用户设置写入、数据库字段与页面初始化回退逻辑，尚未修改功能源码或线上配置。
+
+### 根因与源码修复
+
+- 线上数据库原始 `user_settings.image` 为 `{}`，因此刷新时按默认配置显示 `defaultImageNum=2`。
+- 使用同一用户的真实 `user.updateSettings` 接口直接提交 `defaultImageNum=1` 后，HTTP 200 且数据库正确保存为 `{"defaultImageNum":1}`，证明服务端校验、路由、数据库 JSONB 字段和读取链路均支持数值 1。
+- 根因位于通用 `FormSliderWithInput`：控件只在失焦时向 Form 提交值；当输入 change 与 blur 发生在同一 React 批次时，blur 闭包会读取尚未提交渲染的旧 state，例如把旧值 2 再次提交，覆盖用户刚输入的 1。
+- 组件现用 ref 同步保存每一次最新数值，blur 始终提交 ref 当前值；外部设置刷新时也同时同步 state 与 ref，避免状态分叉。
+- 新增组件回归，覆盖 change 与 blur 同一批次时必须提交 1，以及外部 value 更新后失焦必须提交新值。
+- 真实接口诊断已经把用户当前默认图片数量持久化为 1；功能修复部署后，后续在页面中设置 1 也不会再被旧值覆盖。
+
+### 本地检查
+
+- `FormSliderWithInput.tsx` 与新增回归文件均通过目标 Prettier 格式一致性检查和 TypeScript `transpileModule` 语法解析，`git diff --check` 无空白错误。
+- 新回归将 change 与 blur 放在同一个 React act 批次中，直接复现旧实现会提交上一帧数值的竞态；修复后必须提交最新值 1。
+- 本机依赖目录延续上一轮不完整状态，Vitest 可执行实体缺失，因此没有把本机用例标记为通过；将由 GitHub Actions 干净环境进行权威验证。
