@@ -1019,3 +1019,20 @@
 - 新增 `mobileRouter.test.tsx` 在 App shard 1 中 3/3 通过，扩展的 `CreateGenerationPage.test.tsx` 在 App shard 2 中 5/5 通过，证明移动图片路由、导航入口和移动页面包装均被真实执行。
 - Test App shard 1 仍只有既有 chat instructions 断言失败；shard 2 仍为既有 Host Executor 收集、ComfyUI Form 和两个设置快照问题；E2E 仍为 81/82 场景、490/491 步骤通过，唯一失败仍是既有关闭自动滚动视口距离断言。
 - Test Database 全仓库 Lint 从既有 170 个错误增加到 171 个，其中唯一新增错误是 `CreateGenerationPageProps` 的 `mobile` 字段未按接口字母顺序排列；现已把 `mobile` 移到 `onUploadFiles` 前，并同步修正可见性按钮的 JSX props 排序警告，后续重新推送做最终权威验证。
+
+### 最终 GitHub Actions、Release 与部署
+
+- 最终修正提交为 `e102fca0694a8f7ef800bb144a0c88780c64c789`；最终 Test CI `32620139116` 中移动路由回归 3/3、移动创建页面回归 5/5 均通过，Test Server 两个分片、Test Packages、Test Desktop 与 Server Coverage Merge 全部成功。
+- Test Database 已恢复为全仓库既有 170 个错误和 264 个警告，本轮新增 Lint 错误为 0；Test App shard 1 仍只有既有 chat instructions 断言失败，shard 2 仍为既有 Host Executor 收集、ComfyUI Form 和两个默认 Agent 设置快照问题。
+- 最终 E2E `32620139180` 仍为 81/82 场景、490/491 步骤通过；唯一失败仍是关闭自动滚动后的视口距离断言，期望大于 320、实际 82，与移动图片路由无关。
+- 最终服务器镜像工作流 `32620139176` 成功，Actions artifact `9488214073` 为 `296990882` 字节，digest 为 `sha256:1bc2948dffacd7cb91e49390632f5e2f536e3a0d5d888cb72f2c5a031aca54b6`。
+- 解包后的 `lobehub-server-image.tar` 为 `296990720` 字节，SHA-256 为 `6596BB086071EB66142F5FF2E38EBAB45D6F62D6AC8BD14B9806B996175C835F`；本机、路由器与 GitHub Release 完全一致。
+- GitHub prerelease `v2.2.8-codex.20260823.1` 已发布，标签指向最终源码提交，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260823.1`；Release Notes 已明确记录手机路由、底部入口、移动布局、窄屏工具栏、测试结果和既有阻塞。
+- 部署前 LobeHub 容器为 `30757d97039d9592892f8956f91098d3e1f73da6f401b0746fa8a61cd2c0cf97`，旧镜像为 `sha256:52698627a970680e2f4b108cf26370581f38ce9b65b6e35a2ea2e9526d17d65f`；其重启计数在本轮开始前已为 7，但最近两小时没有 error / fatal / OOM，最后一次退出码为 0，不能把既有重启历史归因于本轮部署。
+- 旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260823-pre-mobile-image`；新镜像标签为 `lobehub/lobehub:codex-e102fca0694a8f7ef800bb144a0c88780c64c789`，镜像 ID 为 `sha256:ab684322a74be1d6099012b6d5600a46650404a97130f02cf122f46cd099a9ec`。
+- 只执行 `docker compose up -d --no-deps --force-recreate lobehub`；最终容器为 `35221899ff9ec6dc2dba1506a70102a740863144056c47c337efe6ddb3c6790f`，运行 5 分钟后仍为 running、重启次数 0，端口保持宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 使用数据库中现有有效 Better Auth 会话，在路由器内存中按当前 `AUTH_SECRET` 生成签名 Cookie，并以 iPhone User-Agent 真实请求 APP_URL `/image`；HTTP 200、最终地址仍为 `/image`、响应体 19514 字节，令牌和签名 Cookie 均未输出或写入文件。
+- 内部与 APP_URL HTTPS `/api/version` 均返回 `2.2.8`，Host Executor `/health` 仍返回 `mode=host, success=true`，部署后 15 分钟日志范围内没有 error / fatal / panic / migration failed。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变。
+- Compose、override 与四个证书 SHA-256 全部未变，`nginx -t` 成功；稳定性复查时可用内存约 6.63 GB，`/mnt/sda1` 可用约 90.8 GB。
+- 路由器部署暂存目录、本机服务器 archive、Release 临时文件和指针文件均已精确删除并验证不存在；保留 GitHub Release、当前镜像、旧镜像回滚标签，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
