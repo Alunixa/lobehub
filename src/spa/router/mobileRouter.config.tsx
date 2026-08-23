@@ -18,6 +18,22 @@ import { dynamicElement, dynamicLayout, ErrorBoundary, redirectElement } from '@
  * home stay personal-only.
  */
 export const sharedMainAreaChildren: RouteObject[] = [
+  // Image generation routes
+  {
+    children: [
+      {
+        element: dynamicElement(() => import('@/routes/(mobile)/image'), 'Mobile > Image'),
+        index: true,
+      },
+    ],
+    element: dynamicLayout(
+      () => import('@/routes/(mobile)/image/_layout'),
+      'Mobile > Image > Layout',
+    ),
+    errorElement: <ErrorBoundary />,
+    path: 'image',
+  },
+
   // Chat routes
   {
     children: [

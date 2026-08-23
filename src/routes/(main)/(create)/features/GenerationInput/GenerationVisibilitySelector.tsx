@@ -1,7 +1,7 @@
 'use client';
 
 import { Block, Icon } from '@lobehub/ui';
-import { createStaticStyles, cssVar } from 'antd-style';
+import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { LockIcon, UsersIcon } from 'lucide-react';
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +13,7 @@ import {
 import TaskVisibilityTag from '@/features/AgentTasks/features/TaskVisibilityTag';
 
 interface GenerationVisibilitySelectorProps {
+  compact?: boolean;
   disabledReason?: string;
   onChange: (visibility: 'private' | 'public') => void;
   visibility: 'private' | 'public';
@@ -28,6 +29,10 @@ const styles = createStaticStyles(({ css }) => ({
 
     white-space: nowrap;
   `,
+  compact: css`
+    min-width: 36px;
+    width: 36px;
+  `,
   label: css`
     overflow: hidden;
 
@@ -42,7 +47,7 @@ const styles = createStaticStyles(({ css }) => ({
 }));
 
 const GenerationVisibilitySelector = memo<GenerationVisibilitySelectorProps>(
-  ({ disabledReason, onChange, visibility }) => {
+  ({ compact = false, disabledReason, onChange, visibility }) => {
     const { t } = useTranslation('chat');
     const IconComp = visibility === 'private' ? LockIcon : UsersIcon;
     const label = t(getTaskVisibilityLabelKey(visibility) as never, {
@@ -54,15 +59,17 @@ const GenerationVisibilitySelector = memo<GenerationVisibilitySelectorProps>(
         <Block
           clickable
           horizontal
+          aria-label={label}
           align="center"
-          className={styles.chip}
+          className={cx(styles.chip, compact && styles.compact)}
           gap={6}
+          justify={compact ? 'center' : undefined}
           paddingBlock={4}
-          paddingInline={10}
+          paddingInline={compact ? 0 : 10}
           variant={'borderless'}
         >
           <Icon color={cssVar.colorTextDescription} icon={IconComp} size={14} />
-          <span className={styles.label}>{label}</span>
+          {!compact && <span className={styles.label}>{label}</span>}
         </Block>
       </TaskVisibilityTag>
     );

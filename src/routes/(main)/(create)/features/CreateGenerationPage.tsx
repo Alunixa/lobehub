@@ -33,13 +33,15 @@ interface CreateGenerationPageProps {
    * Files dropped anywhere below the nav header are routed here.
    */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
+  /** Render inside the mobile chrome without desktop navigation controls. */
+  mobile?: boolean;
   path: string;
   PromptInput: ComponentType<{ disableAnimation?: boolean; showTitle?: boolean }>;
   Workspace: ComponentType<{ embedInput?: boolean }>;
 }
 
 const CreateGenerationPage = memo<CreateGenerationPageProps>(
-  ({ path, Workspace, PromptInput, dragDisabled, onUploadFiles }) => {
+  ({ path, Workspace, PromptInput, dragDisabled, mobile = false, onUploadFiles }) => {
     const isPersonalPath = useMatch({ end: true, path });
     const isWorkspacePath = useMatch({ end: true, path: `/:workspaceSlug${path}` });
     const [topic] = useQueryState('topic');
@@ -70,7 +72,7 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
                     style={{ minHeight: 'calc(100vh - 180px)' }}
                     width={'100%'}
                   >
-                    <PromptInput disableAnimation showTitle />
+                    <PromptInput disableAnimation showTitle={!mobile} />
                   </Flexbox>
                 </motion.div>
               ) : (
@@ -107,19 +109,21 @@ const CreateGenerationPage = memo<CreateGenerationPageProps>(
 
     return (
       <>
-        <NavHeader
-          right={<WideScreenButton />}
-          styles={{
-            center: {
-              alignItems: 'center',
-              display: 'flex',
-              justifyContent: 'center',
-              minWidth: 0,
-            },
-            left: { flex: 1, minWidth: 0 },
-            right: { flex: 1, minWidth: 0 },
-          }}
-        />
+        {!mobile && (
+          <NavHeader
+            right={<WideScreenButton />}
+            styles={{
+              center: {
+                alignItems: 'center',
+                display: 'flex',
+                justifyContent: 'center',
+                minWidth: 0,
+              },
+              left: { flex: 1, minWidth: 0 },
+              right: { flex: 1, minWidth: 0 },
+            }}
+          />
+        )}
         {onUploadFiles ? (
           <DragUploadZone
             disabled={dragDisabled}

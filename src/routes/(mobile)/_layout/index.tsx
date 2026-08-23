@@ -15,6 +15,7 @@ import NavBar from './NavBar';
 const CloudBanner = dynamic(() => import('@/features/AlertBanner/CloudBanner'));
 const MOBILE_NAV_ROUTES = new Set([
   '/',
+  '/image',
   '/community',
   '/community/agent',
   '/community/mcp',
@@ -28,7 +29,7 @@ const MobileMainLayout: FC = () => {
   const { showCloudPromotion } = useServerConfigStore(featureFlagsSelectors);
   const location = useLocation();
   const pathname = location.pathname;
-  const showNav = MOBILE_NAV_ROUTES.has(pathname);
+  const showNav = MOBILE_NAV_ROUTES.has(pathname) || pathname.endsWith('/image');
   return (
     <WorkspaceContextSlot>
       <RouteMetaBridge />

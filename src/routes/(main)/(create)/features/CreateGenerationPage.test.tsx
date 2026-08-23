@@ -42,6 +42,18 @@ const renderPage = (path: string, entry: string) =>
     </MemoryRouter>,
   );
 
+const renderMobilePage = () =>
+  render(
+    <MemoryRouter initialEntries={['/image']}>
+      <CreateGenerationPage
+        mobile
+        PromptInput={PromptInput}
+        Workspace={Workspace}
+        path="/image"
+      />
+    </MemoryRouter>,
+  );
+
 describe('CreateGenerationPage', () => {
   it.each([
     ['/image', '/image'],
@@ -58,6 +70,14 @@ describe('CreateGenerationPage', () => {
   ])('renders %s on the workspace generation path', (path, entry) => {
     renderPage(path, entry);
 
+    expect(screen.getByTestId('prompt-input')).toBeInTheDocument();
+  });
+
+  it('omits desktop navigation controls in the mobile image page', () => {
+    renderMobilePage();
+
+    expect(screen.queryByTestId('nav-header')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'wide' })).not.toBeInTheDocument();
     expect(screen.getByTestId('prompt-input')).toBeInTheDocument();
   });
 });

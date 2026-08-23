@@ -14,6 +14,7 @@ import ModelSwitchPanel from '@/features/ModelSwitchPanel';
 import PromptTransformAction from '@/features/PromptTransform/PromptTransformAction';
 import { useFetchAiImageConfig } from '@/hooks/useFetchAiImageConfig';
 import { useIsDark } from '@/hooks/useIsDark';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryState } from '@/hooks/useQueryParam';
 import {
@@ -134,6 +135,7 @@ const PromptExtendItem = memo(() => {
 
 const PromptInput = ({ showTitle = false }: PromptInputProps) => {
   const isDarkMode = useIsDark();
+  const mobile = useIsMobile();
   const { t } = useTranslation('image');
   const { allowed: canCreate } = usePermission('create_content');
   const { value, setValue } = useGenerationConfigParam('prompt');
@@ -270,8 +272,9 @@ const PromptInput = ({ showTitle = false }: PromptInputProps) => {
             gap={4}
             style={canCreate ? undefined : { opacity: 0.5, pointerEvents: 'none' }}
           >
-            <GenerationMediaModeSegment mode={'image'} />
+            {!mobile && <GenerationMediaModeSegment mode={'image'} />}
             <GenerationVisibilitySelector
+              compact={mobile}
               disabledReason={visibilityLockedReason}
               visibility={displayVisibility}
               onChange={setNewGenerationTopicVisibility}
