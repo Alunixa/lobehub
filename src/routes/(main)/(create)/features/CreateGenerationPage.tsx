@@ -28,13 +28,13 @@ const dropZoneStyle: CSSProperties = {
 interface CreateGenerationPageProps {
   /** Disable the drop zone overlay/handling (e.g. model has no reference support). */
   dragDisabled?: boolean;
+  /** Render inside the mobile chrome without desktop navigation controls. */
+  mobile?: boolean;
   /**
    * When provided, the whole creation area becomes a drag-and-drop upload zone.
    * Files dropped anywhere below the nav header are routed here.
    */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
-  /** Render inside the mobile chrome without desktop navigation controls. */
-  mobile?: boolean;
   path: string;
   PromptInput: ComponentType<{ disableAnimation?: boolean; showTitle?: boolean }>;
   Workspace: ComponentType<{ embedInput?: boolean }>;

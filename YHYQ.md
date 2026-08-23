@@ -1012,3 +1012,10 @@
 - 扩展 `CreateGenerationPage` 回归，断言移动端仍显示 Prompt 输入，但不渲染桌面 NavHeader 与宽屏按钮。
 - 11 个目标 TypeScript/TSX 文件均通过 TypeScript `transpileModule` 语法解析，`git diff --check` 无空白错误。
 - 本机 `node_modules` 仍是不完整依赖状态，Prettier 包启动后无结果挂起，已精确终止该进程且未计为通过；Vitest 可执行入口仍缺失，权威格式与回归验证交由 GitHub Actions 干净环境执行。
+
+### 首轮 GitHub Actions
+
+- 功能提交 `89f890fbbd5a8fa21db51d377170505a33c33e17` 已推送；服务器镜像工作流 `32619431200` 成功，Test CI `32619431209` 与 E2E `32619431198` 已完成。
+- 新增 `mobileRouter.test.tsx` 在 App shard 1 中 3/3 通过，扩展的 `CreateGenerationPage.test.tsx` 在 App shard 2 中 5/5 通过，证明移动图片路由、导航入口和移动页面包装均被真实执行。
+- Test App shard 1 仍只有既有 chat instructions 断言失败；shard 2 仍为既有 Host Executor 收集、ComfyUI Form 和两个设置快照问题；E2E 仍为 81/82 场景、490/491 步骤通过，唯一失败仍是既有关闭自动滚动视口距离断言。
+- Test Database 全仓库 Lint 从既有 170 个错误增加到 171 个，其中唯一新增错误是 `CreateGenerationPageProps` 的 `mobile` 字段未按接口字母顺序排列；现已把 `mobile` 移到 `onUploadFiles` 前，并同步修正可见性按钮的 JSX props 排序警告，后续重新推送做最终权威验证。

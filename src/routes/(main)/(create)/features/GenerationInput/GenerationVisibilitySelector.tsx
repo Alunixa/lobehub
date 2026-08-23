@@ -57,12 +57,12 @@ const GenerationVisibilitySelector = memo<GenerationVisibilitySelectorProps>(
     return (
       <TaskVisibilityTag lockedReason={disabledReason} visibility={visibility} onChange={onChange}>
         <Block
-          clickable
-          horizontal
-          aria-label={label}
           align="center"
+          aria-label={label}
           className={cx(styles.chip, compact && styles.compact)}
+          clickable
           gap={6}
+          horizontal
           justify={compact ? 'center' : undefined}
           paddingBlock={4}
           paddingInline={compact ? 0 : 10}
