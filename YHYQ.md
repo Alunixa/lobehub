@@ -1108,3 +1108,23 @@
 - 部署前 LobeHub 容器为 `35221899ff9ec6dc2dba1506a70102a740863144056c47c337efe6ddb3c6790f`，镜像为 `sha256:ab684322a74be1d6099012b6d5600a46650404a97130f02cf122f46cd099a9ec`，running、重启次数 0。
 - 部署前 SearXNG 容器为 `76165d49617f36bbd9d5df9dfd9e7ca7fc74691e40cda9d9909c593003c3959e`，镜像为 `sha256:09d63c82d75b0b81bf53806000ddb6e298d1f05b5c54d7e065b21160fcfe473b`，running、重启次数 0；现有配置 SHA-256 为 `a06c6d2825f9b961fd7997fa9e6609487de3c522baf79663ba89e168c3018e42`。
 - Compose、override、Nginx 与四个证书哈希均和上一版一致，`nginx -t` 成功；PostgreSQL、Redis、RustFS、设备网关、Onlyboxes 和 linuxytd 均正常，可用内存约 6.28 GB，`/mnt/sda1` 可用约 91.0 GB。
+
+### 最终部署与真实搜索验证
+
+- GitHub prerelease `v2.2.8-codex.20260824.1` 已发布，标签指向 `83496fe9fc39805ef4312c9cd8acf879f126a8e5`，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260824.1`。
+- Release 资产为服务器镜像、SearXNG 配置和校验清单；GitHub 返回的大小与 SHA-256 分别为 `297006592 / 3DA29557F3F58A70CE50F4C818EE35BDCE646AA36B123CD45C029AB4CAF3AB84`、`2435 / B5312295D8BE0A7849B38A4F88A8E2A0103809279191E442210A54E6B193F6A1`、`936 / 60382D17D1155C37AB83E3A8B7F5C5473A27C3B927842623F549E40AF62A9BA8`，均与本机一致。
+- 上传到路由器的三项资产在安装前重新核验大小与 SHA-256，和本机 / GitHub Release 完全一致。
+- 首次 SearXNG 写入在替换配置前被 BusyBox 缺少 `install` 命令拦截，线上配置和容器均未变化；随后改用路由器支持的 `cp + chmod` 完成相同窄更新。
+- SearXNG 原配置已备份到 `/root/codex-backups/searxng-search-failover-20260824/settings-before.yml`，SHA-256 为 `a06c6d2825f9b961fd7997fa9e6609487de3c522baf79663ba89e168c3018e42`；新配置 SHA-256 为 `b5312295d8be0a7849b38a4f88a8e2a0103809279191e442210a54e6b193f6a1`。
+- 只执行 `docker restart lobe-searxng`；SearXNG 容器 ID 仍为 `76165d49617f36bbd9d5df9dfd9e7ca7fc74691e40cda9d9909c593003c3959e`，running、重启次数 0。
+- 配置更新后逐个 Bang 实测：Google CSE 20 条、Bing 10 条、DuckDuckGo Web 10 条、Yahoo 7 条、Naver 15 条，全部 HTTP 200 且 `unresponsive_engines=[]`；默认聚合只包含 Bing 与 Naver，不再出现 Yandex、Wiby 或 ResultHunter。
+- 旧 LobeHub 镜像已保留回滚标签 `lobehub/lobehub:backup-20260824-pre-search-failover`；新镜像标签为 `lobehub/lobehub:codex-83496fe9fc39805ef4312c9cd8acf879f126a8e5`，镜像 ID 为 `sha256:969054fc4a9ec1754b58b4c41c5c4ee1adc2773ad2725404fc762e28a43bb152`。
+- 只执行 `docker compose up -d --no-deps --force-recreate lobehub`；最终 LobeHub 容器为 `d00d55173f0d4cc7522f116e5c20887b29f780b594c69e0ddebfb30a5e815d31`，running、重启次数 0，端口仍为宿主 `127.0.0.1:13210` 到容器 `3210`。
+- 使用数据库中现有有效 Better Auth 会话，通过真实 `/trpc/tools/search.webSearch` 验证：默认搜索返回 20 条且引擎仅为 Google CSE；`resulthunter → bing` 返回 10 条且仅为 Bing；`duckduckgo` 主引擎 CAPTCHA 后返回 10 条且仅为 DuckDuckGo Web，三次均 HTTP 200、无 `errorDetail`、未混入 Yandex。
+- 显式只选 ResultHunter 时，当前 SearXNG 将其表现为正常空结果而非上游错误，因此 LobeHub 返回干净空数组；“所有候选都明确报错时汇总错误”的路径由 GitHub SearXNG Client 11/11 回归覆盖。
+- SearXNG 重启日志中的 Ahmia / Torch 默认模块加载失败、缺少 X-Forwarded-For 提示和本轮触发的 DuckDuckGo CAPTCHA 均为非致命信息；故障转移已真实绕过 CAPTCHA，稳定性复查时 SearXNG fatal/panic 为 0。
+- 稳定性复查时 LobeHub 与 SearXNG 均 running、重启次数 0，LobeHub fatal/panic/unhandled/migration failed 为 0；内部与 HTTPS `/api/version` 均返回 `2.2.8`，Host Executor `/health` 仍返回 `mode=host, success=true`。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变。
+- Compose、override、Nginx 与四个证书 SHA-256 全部未变，`nginx -t` 成功；最终可用内存约 6.52 GB，`/mnt/sda1` 可用约 89.7 GB。
+- 路由器部署暂存目录已精确删除；本机临时目录首次清理因 Windows TEMP 短路径安全前缀检查不一致而主动中止，随后按核验过的完整短路径精确删除目录及指针文件。
+- 保留 GitHub Release、当前镜像、旧镜像回滚标签和 SearXNG 配置备份；本轮开始前既存的未跟踪历史目录与 `问题.txt` 未修改或删除。
