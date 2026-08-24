@@ -1097,3 +1097,14 @@
 - 已把该路由测试的三个旧 mock 统一更新为 `searchWithEngineFallback()`，包括成功、无显式引擎和错误返回路径，随后重新运行目标测试并推送最终提交。
 - Test Database 仍为全仓库既有 170 errors / 264 warnings；Test App 仍为既有 chat instructions、Host Executor 收集、ComfyUI Form 与两个设置快照问题；E2E 仍为既有自动滚动断言 81/82 场景、490/491 步骤通过，均与本轮搜索文件无关。
 - 路由测试夹具修正后，本机重新真实收集 SearXNG Client、SearXNG Impl、SearchService 与 searchRouter 四个目标文件，最终 4 files、53/53 tests 通过；目标 ESLint 与 git diff 检查通过。
+
+### 最终 CI、Release 与部署前基线
+
+- 测试夹具修正提交为 `83496fe9fc39805ef4312c9cd8acf879f126a8e5`；最终 Test CI `32781938126` 的 Test Server 两个分片均成功，分别为 2752 与 3206 个用例通过，搜索相关 Client 11/11、Impl 3/3、SearchService 32/32、路由 7/7 全部通过，Server Coverage Merge 成功。
+- Test Database 仍为全仓库既有 170 errors / 264 warnings；Test App 与 E2E 仍只有此前多版相同的既有阻塞，与本轮搜索文件无关。
+- 最终服务器镜像工作流 `32781938127` 成功，artifact `9540263955` 为 `297006754` 字节，digest 为 `sha256:67368f0c9c8cde21edfa9b15513d4e0ff674c814528f40b59e4576529c634d39`。
+- 解包后的 `lobehub-server-image.tar` 为 `297006592` 字节，SHA-256 为 `3DA29557F3F58A70CE50F4C818EE35BDCE646AA36B123CD45C029AB4CAF3AB84`；首次下载因 GitHub blob 网络连接失败而未产生可用文件，重试后成功并完成校验。
+- GitHub prerelease `v2.2.8-codex.20260824.1` 已发布，标签指向最终源码提交，包含服务器镜像、SearXNG 部署配置和校验清单；三个 Release 资产的 GitHub digest 和大小均与本机一致。
+- 部署前 LobeHub 容器为 `35221899ff9ec6dc2dba1506a70102a740863144056c47c337efe6ddb3c6790f`，镜像为 `sha256:ab684322a74be1d6099012b6d5600a46650404a97130f02cf122f46cd099a9ec`，running、重启次数 0。
+- 部署前 SearXNG 容器为 `76165d49617f36bbd9d5df9dfd9e7ca7fc74691e40cda9d9909c593003c3959e`，镜像为 `sha256:09d63c82d75b0b81bf53806000ddb6e298d1f05b5c54d7e065b21160fcfe473b`，running、重启次数 0；现有配置 SHA-256 为 `a06c6d2825f9b961fd7997fa9e6609487de3c522baf79663ba89e168c3018e42`。
+- Compose、override、Nginx 与四个证书哈希均和上一版一致，`nginx -t` 成功；PostgreSQL、Redis、RustFS、设备网关、Onlyboxes 和 linuxytd 均正常，可用内存约 6.28 GB，`/mnt/sda1` 可用约 91.0 GB。
