@@ -1036,3 +1036,15 @@
 - PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变。
 - Compose、override 与四个证书 SHA-256 全部未变，`nginx -t` 成功；稳定性复查时可用内存约 6.63 GB，`/mnt/sda1` 可用约 90.8 GB。
 - 路由器部署暂存目录、本机服务器 archive、Release 临时文件和指针文件均已精确删除并验证不存在；保留 GitHub Release、当前镜像、旧镜像回滚标签，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
+
+## 2026-08-24：修复 GPT / Claude 视频附件兼容与自部署视频链接
+
+### 用户反馈
+
+- 用户在 GPT 5.6 Sol 对话中上传视频后，OpenAI-compatible Responses 接口返回 `input_video` 非法，明确只接受 `input_text`、`input_image`、`input_audio`、`input_file` 等类型。
+- 同一视频使用 Claude Opus 4.6 时能够开始思考，但卡在读取一个视频上传链接；用户自己访问该链接也持续加载，要求修复视频附件投影与文件访问链路。
+
+### 当前行动
+
+- 已读取 `YHYQ.md`、既有附件模型投影修复、当前 Git 状态与部署拓扑；本轮开始时跟踪文件干净，既存未跟踪构建目录、发布目录与 `问题.txt` 保持不动。
+- 已建立修改前 Git 回滚锚点；正在检查视频文件持久化、模型消息投影、Responses / Anthropic 适配器和自部署文件下载路由，尚未修改功能源码或线上服务。
