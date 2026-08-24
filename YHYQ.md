@@ -1088,3 +1088,12 @@
 - Vitest 真实收集并运行 SearXNG Client、SearXNG Impl 和 SearchService 三个目标文件，最终 3 files、46/46 tests 通过；新增覆盖主引擎故障后切换、别名映射、聚合污染过滤、全部失败错误、部分干净空结果、时间范围能力和禁止二次放宽限制。
 - 通过临时隐藏 SSH 隧道让修改后的本地客户端连接线上 SearXNG：默认搜索只返回 20 条 Google CSE 结果；显式 `resulthunter → bing` 时，ResultHunter 当前限流后自动切到 Bing 并只返回 10 条 Bing 结果。隧道验证后已关闭，没有改变线上服务。
 - 本轮未使用或保存任何 Google / Bing 登录态、账号 Cookie 或个人浏览器数据，也尚未修改线上 SearXNG 配置或重启容器。
+
+### 首轮 GitHub Actions
+
+- 功能提交 `c30f893f4493fc8cd2d4207e9f6b4235bca4b710` 已推送；服务器镜像工作流 `32780466928` 成功，Test CI `32780466936` 与 E2E `32780467044` 已完成。
+- 本轮新增搜索回归在 GitHub Actions 中全部通过：SearXNG Client 11/11、SearXNG Impl 3/3、SearchService 32/32；Test Server shard 2 的 3206 个用例全部成功。
+- Test Server shard 1 的唯一失败文件是既有 `apps/server/src/routers/tools/search.test.ts` 测试夹具仍把 `SearXNGClient` mock 为旧 `search()` 接口，导致 3 个 `searchWithEngineFallback is not a function`，产品实现与新增测试没有失败。
+- 已把该路由测试的三个旧 mock 统一更新为 `searchWithEngineFallback()`，包括成功、无显式引擎和错误返回路径，随后重新运行目标测试并推送最终提交。
+- Test Database 仍为全仓库既有 170 errors / 264 warnings；Test App 仍为既有 chat instructions、Host Executor 收集、ComfyUI Form 与两个设置快照问题；E2E 仍为既有自动滚动断言 81/82 场景、490/491 步骤通过，均与本轮搜索文件无关。
+- 路由测试夹具修正后，本机重新真实收集 SearXNG Client、SearXNG Impl、SearchService 与 searchRouter 四个目标文件，最终 4 files、53/53 tests 通过；目标 ESLint 与 git diff 检查通过。

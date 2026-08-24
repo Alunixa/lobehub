@@ -106,7 +106,7 @@ describe('searchRouter', () => {
       };
 
       (SearXNGClient as any).mockImplementation(() => ({
-        search: vi.fn().mockResolvedValue(mockSearchResult),
+        searchWithEngineFallback: vi.fn().mockResolvedValue(mockSearchResult),
       }));
 
       const caller = searchRouter.createCaller(mockContext as any);
@@ -143,7 +143,7 @@ describe('searchRouter', () => {
       };
 
       (SearXNGClient as any).mockImplementation(() => ({
-        search: vi.fn().mockResolvedValue(mockSearchResult),
+        searchWithEngineFallback: vi.fn().mockResolvedValue(mockSearchResult),
       }));
 
       const caller = searchRouter.createCaller(mockContext as any);
@@ -167,7 +167,7 @@ describe('searchRouter', () => {
 
     it('should return error detail when search fails', async () => {
       (SearXNGClient as any).mockImplementation(() => ({
-        search: vi.fn().mockRejectedValue(new Error('Search failed')),
+        searchWithEngineFallback: vi.fn().mockRejectedValue(new Error('Search failed')),
       }));
 
       const caller = searchRouter.createCaller(mockContext as any);
