@@ -11,6 +11,8 @@ import { type SearchServiceImpl } from '../type';
  * SearXNG implementation of the search service
  */
 export class SearXNGImpl implements SearchServiceImpl {
+  readonly handlesSearchEngineFailover = true;
+
   async query(
     query: string,
     params?: {
@@ -28,9 +30,14 @@ export class SearXNGImpl implements SearchServiceImpl {
     try {
       let costTime = 0;
       const startAt = Date.now();
-      const data = await client.search(query, {
+      const preferredEngines = toolsEnv.SEARXNG_ENGINE_FALLBACKS?.replaceAll('，', ',')
+        .split(',')
+        .map((engine) => engine.trim())
+        .filter(Boolean);
+      const data = await client.searchWithEngineFallback(query, {
         categories: params?.searchCategories,
         engines: params?.searchEngines,
+        preferredEngines,
         time_range: params?.searchTimeRange,
       });
       costTime = Date.now() - startAt;

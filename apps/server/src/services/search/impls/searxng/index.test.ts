@@ -7,6 +7,7 @@ import { SearXNGImpl } from './index';
 
 vi.mock('@/envs/tools', () => ({
   toolsEnv: {
+    SEARXNG_ENGINE_FALLBACKS: undefined,
     SEARXNG_URL: 'https://demo.com',
   },
 }));
@@ -14,7 +15,9 @@ vi.mock('@/envs/tools', () => ({
 describe('SearXNGImpl', () => {
   describe('query', () => {
     it('搜索结果超过10个', async () => {
-      vi.spyOn(SearXNGClient.prototype, 'search').mockResolvedValueOnce(hetongxue);
+      vi.spyOn(SearXNGClient.prototype, 'searchWithEngineFallback').mockResolvedValueOnce(
+        hetongxue,
+      );
 
       const searchImpl = new SearXNGImpl();
       const results = await searchImpl.query('何同学');
@@ -24,7 +27,7 @@ describe('SearXNGImpl', () => {
     });
 
     it('returns an empty response when individual upstream engines are unavailable', async () => {
-      vi.spyOn(SearXNGClient.prototype, 'search').mockResolvedValueOnce({
+      vi.spyOn(SearXNGClient.prototype, 'searchWithEngineFallback').mockResolvedValueOnce({
         ...hetongxue,
         number_of_results: 0,
         results: [],
@@ -39,6 +42,24 @@ describe('SearXNGImpl', () => {
 
       expect(results.errorDetail).toBeUndefined();
       expect(results.results).toEqual([]);
+    });
+
+    it('passes the configured engine priority to the client', async () => {
+      const { toolsEnv } = await import('@/envs/tools');
+      vi.mocked(toolsEnv).SEARXNG_ENGINE_FALLBACKS = 'google cse， bing, duckduckgo web, yahoo';
+      const searchSpy = vi
+        .spyOn(SearXNGClient.prototype, 'searchWithEngineFallback')
+        .mockResolvedValueOnce(hetongxue);
+
+      const searchImpl = new SearXNGImpl();
+      await searchImpl.query('test');
+
+      expect(searchSpy).toHaveBeenCalledWith('test', {
+        categories: undefined,
+        engines: undefined,
+        preferredEngines: ['google cse', 'bing', 'duckduckgo web', 'yahoo'],
+        time_range: undefined,
+      });
     });
   });
 });

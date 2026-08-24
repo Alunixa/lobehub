@@ -24,6 +24,7 @@ describe('SearchService', () => {
 
   function createMockSearchImpl() {
     return {
+      handlesSearchEngineFailover: undefined as boolean | undefined,
       query: vi.fn(),
       useAutoSearchEngineSelection: undefined as boolean | undefined,
     };
@@ -130,7 +131,9 @@ describe('SearchService', () => {
           }),
       );
 
-      const searches = Array.from({ length: 4 }, (_, index) => searchService.query(`test-${index}`));
+      const searches = Array.from({ length: 4 }, (_, index) =>
+        searchService.query(`test-${index}`),
+      );
       await vi.waitFor(() => expect(resolvers).toHaveLength(2));
       resolvers.splice(0, 2).forEach((resolve) => resolve());
       await vi.waitFor(() => expect(resolvers).toHaveLength(2));
@@ -347,6 +350,32 @@ describe('SearchService', () => {
       expect(mockSearchImpl.query).toHaveBeenCalledTimes(1);
       expect(mockSearchImpl.query).toHaveBeenCalledWith('test', undefined);
       expect(result).toBe(successResponse);
+    });
+
+    it('does not relax restrictions after an implementation exhausted engine failover', async () => {
+      const emptyResponse = {
+        costTime: 100,
+        query: 'test',
+        resultNumbers: 0,
+        results: [],
+      };
+      mockSearchImpl.handlesSearchEngineFailover = true;
+      mockSearchImpl.query.mockResolvedValue(emptyResponse);
+
+      const result = await searchService.webSearch({
+        query: 'test',
+        searchCategories: ['general'],
+        searchEngines: ['google', 'bing'],
+        searchTimeRange: 'week',
+      });
+
+      expect(mockSearchImpl.query).toHaveBeenCalledTimes(1);
+      expect(mockSearchImpl.query).toHaveBeenCalledWith('test', {
+        searchCategories: ['general'],
+        searchEngines: ['google', 'bing'],
+        searchTimeRange: 'week',
+      });
+      expect(result.results).toEqual([]);
     });
 
     it('should return empty results after all retries fail', async () => {

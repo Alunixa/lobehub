@@ -231,6 +231,15 @@ export class SearchService {
         lastErrorResponse = { ...data, errorDetail: data.errorDetail, results: [] };
       }
 
+      // Some providers (currently SearXNG) already try their configured
+      // engines one by one. Relaxing restrictions here would issue an
+      // unrestricted aggregate request and could let a stale fallback engine
+      // mask the primary-engine failure.
+      if (impl.handlesSearchEngineFailover) {
+        if (data.results.length > 0) return data;
+        continue;
+      }
+
       // First retry: remove search engine restrictions if no results found
       if (data.results.length === 0 && currentParams?.searchEngines?.length) {
         currentParams = buildSearchParams({

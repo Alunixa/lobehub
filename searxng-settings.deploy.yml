@@ -34,10 +34,15 @@ engines:
   - name: duckduckgo
     disabled: true
 
+  # Fallback-only engines are invoked explicitly via SearXNG bangs by LobeHub.
+  # Keep them out of the default aggregate to avoid extra requests and bans.
   - name: duckduckgo web
     disabled: true
 
   - name: google cse
+    disabled: true
+
+  - name: yahoo
     disabled: true
 
   - name: startpage
@@ -82,8 +87,9 @@ engines:
   - name: naver
     disabled: false
 
+  # Currently rate-limited; no longer use it as an aggregate fallback.
   - name: resulthunter
-    disabled: false
+    disabled: true
 
   - name: wiby
     engine: json_engine
@@ -96,7 +102,7 @@ engines:
       - general
       - blogs
     shortcut: wib
-    disabled: false
+    disabled: true
     timeout: 12.0
 
   - name: yandex
@@ -104,7 +110,7 @@ engines:
     categories: general
     search_type: web
     shortcut: yd
-    disabled: false
+    disabled: true
     timeout: 12.0
 
   # Keep knowledge engines used by the default general category.

@@ -1065,3 +1065,26 @@
 - 已建立本轮修改前 Git 回滚锚点；下一步只读实测 Bing、Google、DuckDuckGo、Yahoo Japan 及当前默认集合，并检查 SearchService 与 SearXNG 实现后再修改。
 - 暂停视频排查后的首次临时克隆清理因 Git pack 文件只读属性被系统拒绝，第二次路径安全检查又因 TEMP 短路径与解析后的长路径不一致而主动中止，两次均未影响项目文件。
 - 已改用核验过的绝对长路径，只解除该临时克隆内只读属性并精确删除目录及指针文件；项目既有未跟踪目录保持不动。
+
+### 根因与源码修复
+
+- 线上只读实测确认当前 SearXNG 配置虽然启用了 Bing，但普通 `engines=bing` / `engines=duckduckgo` 查询并没有精确限制单个引擎，而是会回落到默认聚合；因此 Bing/Google 失败时，Wiby、Yandex 或 Naver 只要返回任意结果，SearchService 就会提前视为成功，不再切换候选。
+- 使用 SearXNG `/config` 返回的真实快捷指令和 Bang 语法能够精确调用引擎：`!goc` Google CSE 返回 20 条、`!bi` Bing 返回 10 条、`!ddgw` DuckDuckGo Web 返回 10 条、`!yh` Yahoo 返回 7 条日文时效结果，均无需 Google/Bing 账号或 Cookie。
+- 同期实测 `duckduckgo` 主引擎仍触发 CAPTCHA，ResultHunter 已被 too many requests 暂停；默认聚合仍混入 Wiby 与 Yandex，验证了不能继续依赖聚合首个非空结果。
+- SearXNG 客户端现从 `/config` 动态读取引擎名称、快捷指令和时间范围能力，并缓存 10 分钟；`/config` 临时不可用时使用稳定的内置快捷指令表。
+- 通用网页搜索默认按 `google cse → bing → duckduckgo web → yahoo → naver` 串行尝试；可用 `SEARXNG_ENGINE_FALLBACKS` 自定义顺序，支持中文全角逗号。
+- 用户或调用方显式指定 `google`、`duckduckgo`、`yahoo japan` 时会映射到当前实例实际存在的 `google cse`、`duckduckgo / duckduckgo web`、`yahoo`，同时保留专用新闻、图片、视频和科学类别的候选列表。
+- 每次 Bang 查询只保留确实来自目标引擎的结果；若被暂停的引擎偷偷回落并夹带 Yandex 等聚合结果，这些结果会被过滤，然后继续下一个引擎。
+- CAPTCHA、429、超时、解析错误、HTTP 错误等都会记录后继续候选；只要至少一个引擎正常响应但确实没有结果，就返回干净空结果；只有全部候选均故障时才汇总错误并交给后续搜索提供商。
+- SearchService 新增“实现已自行完成引擎级故障转移”能力标记，避免 SearXNG 已经失败后又移除限制发起默认聚合请求；提供商级故障转移仍保留，后续配置的 Exa / Brave / Google API 等提供商仍会继续尝试。
+- 部署配置草案已把当前限流的 ResultHunter、低质量旧网页来源 Wiby 和用户明确不希望优先使用的 Yandex 移出默认聚合；Google CSE、DuckDuckGo Web 和 Yahoo 保持 fallback-only，由 LobeHub Bang 精确调用，Bing 与 Naver 继续作为健康基础引擎。
+- 中英文自部署文档新增 `SEARXNG_ENGINE_FALLBACKS`、无账号运行方式和“全部候选失败才报错”的说明。
+
+### 本地与线上只读验证
+
+- 8 个目标 TypeScript 文件通过 `transpileModule` 语法解析，定向 TypeScript Program 类型检查 `TARGET_DIAGNOSTICS=0`，`git diff --check` 和部署 YAML 解析通过。
+- Prettier API 首次因 Windows 绝对路径未转成 `file://` URL 而主动失败且未修改文件；修正为 `pathToFileURL` 后完成全部目标 TS / YAML / MDX 格式化。
+- 目标 ESLint 为 0 errors，仅 `SearchService` 原文件 4 个既有空 catch warning；两份联网搜索 MDX 通过 Remark。
+- Vitest 真实收集并运行 SearXNG Client、SearXNG Impl 和 SearchService 三个目标文件，最终 3 files、46/46 tests 通过；新增覆盖主引擎故障后切换、别名映射、聚合污染过滤、全部失败错误、部分干净空结果、时间范围能力和禁止二次放宽限制。
+- 通过临时隐藏 SSH 隧道让修改后的本地客户端连接线上 SearXNG：默认搜索只返回 20 条 Google CSE 结果；显式 `resulthunter → bing` 时，ResultHunter 当前限流后自动切到 Bing 并只返回 10 条 Bing 结果。隧道验证后已关闭，没有改变线上服务。
+- 本轮未使用或保存任何 Google / Bing 登录态、账号 Cookie 或个人浏览器数据，也尚未修改线上 SearXNG 配置或重启容器。
