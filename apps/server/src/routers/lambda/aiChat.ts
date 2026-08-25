@@ -306,7 +306,26 @@ export const aiChatRouter = router({
           () => ctx.messageModel.getLatestSpineMessageId({ threadId, topicId }),
           { hasThreadId: !!threadId },
         );
-        parentId = resolvedParentId ?? parentId;
+        if (!parentId) {
+          parentId = resolvedParentId;
+        } else if (resolvedParentId && resolvedParentId !== parentId) {
+          // Advance a stale client tail only when the server head is on the
+          // SAME branch. A newer row can belong to a regenerated sibling branch;
+          // blindly taking it attaches the user's next turn to an inactive path,
+          // so branch reconciliation drops the just-sent message from the UI.
+          const advancesClientBranch = await runTimedStage(
+            timingContext,
+            'lambda.aiChat.validateResolvedParentBranch',
+            () =>
+              ctx.messageModel.isMessageDescendantOf({
+                ancestorId: parentId!,
+                descendantId: resolvedParentId,
+                topicId,
+              }),
+            { hasThreadId: !!threadId },
+          );
+          if (advancesClientBranch) parentId = resolvedParentId;
+        }
       }
 
       if (input.preloadMessages?.length) {

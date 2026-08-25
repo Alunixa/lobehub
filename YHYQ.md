@@ -1153,3 +1153,15 @@
 - 首次读取源码片段的 PowerShell 输出标题因 `$p:$a` 变量解析报错，未执行任何写操作；修正格式字符串后读取成功。
 - 下一步将只回移官方提交中与活动分支父链校验直接相关的四处窄改动和回归，不夹带该大型提交中的 task callback、topic serialization 等无关功能。
 - 本次文档提交的 lint-staged / Remark 在目标文件上持续挂起，并开始重排历史内容；已精确终止本轮 hook 进程，只丢弃未暂存的格式化副作用，保留本轮追加内容，随后使用 no-verify 完成文档检查点。
+
+### 源码修复与本地回归
+
+- 已按官方 `51e24a0e9a` 的“preserve active branch on send”逻辑做窄回移，只修改消息父节点解析、数据库祖先关系查询及两组回归，没有夹带 task callback、topic start serialization 等无关改动。
+- `sendMessageInServer` 仍会读取服务端最新 spine 以修复同一分支上的并发追加，但当客户端已有可见父节点时，会先验证服务端 head 是否为该父节点的后代；只有同一父链才前移，兄弟 / 非活动分支则保留客户端父节点。
+- `MessageModel.isMessageDescendantOf` 使用受 Topic 与 ownership 限制的递归 CTE 追溯祖先，`UNION` 可避免异常循环父链无限递归。
+- Router 回归新增“服务端最新 head 属于非活动兄弟分支时保留客户端活动分支”，Database 回归新增“兄弟分支返回 false、真实后代返回 true”。
+- 尝试通过临时 patch 文件自动回移时，执行器策略在创建进程前拒绝该组合命令，未创建临时文件、未修改源码；随后改用精确 `apply_patch` 完成相同窄改动。
+- 4 个目标 TS 文件已通过 Prettier API 格式化；Prettier 对一段既有测试代码产生的无关换行已手工还原，最终 diff 只保留本轮逻辑与回归。
+- Router Vitest 真实执行 1 file、32/32 tests 通过；Database PGlite Vitest 真实执行 1 file、68 passed / 4 skipped，共 72 tests，无失败。
+- 4 个目标文件 ESLint 0 errors / 0 warnings；TypeScript `transpileModule` 4/4 通过，`git diff --check` 通过。
+- 使用线上真实故障父链只读执行同一递归判断：当前可见旧分支尾 `msg_IlJ6kZFZES0aydTceW` 不是最新隐藏消息 `msg_c1rUliNaITWiPOkYxh` 的祖先，返回 false；被错误选中的非活动分支尾与新用户消息均返回 true，证明补丁会在该实际场景保留用户当前可见分支。

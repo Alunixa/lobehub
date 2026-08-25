@@ -3190,6 +3190,61 @@ describe('MessageModel Query Tests', () => {
     });
   });
 
+  describe('isMessageDescendantOf', () => {
+    it('distinguishes a newer inactive sibling from an advancement of the active branch', async () => {
+      await serverDB.insert(sessions).values([{ id: 'session1', userId }]);
+      await serverDB.insert(topics).values([{ id: 'topic1', sessionId: 'session1', userId }]);
+      await serverDB.insert(messages).values([
+        {
+          id: 'branch-point',
+          userId,
+          topicId: 'topic1',
+          role: 'user',
+          content: 'question',
+        },
+        {
+          id: 'active',
+          userId,
+          topicId: 'topic1',
+          role: 'assistant',
+          content: 'selected response',
+          parentId: 'branch-point',
+        },
+        {
+          id: 'inactive',
+          userId,
+          topicId: 'topic1',
+          role: 'assistant',
+          content: 'regenerated response',
+          parentId: 'branch-point',
+        },
+        {
+          id: 'inactive-reply',
+          userId,
+          topicId: 'topic1',
+          role: 'assistant',
+          content: 'newer sibling tail',
+          parentId: 'inactive',
+        },
+      ]);
+
+      expect(
+        await messageModel.isMessageDescendantOf({
+          ancestorId: 'active',
+          descendantId: 'inactive-reply',
+          topicId: 'topic1',
+        }),
+      ).toBe(false);
+      expect(
+        await messageModel.isMessageDescendantOf({
+          ancestorId: 'inactive',
+          descendantId: 'inactive-reply',
+          topicId: 'topic1',
+        }),
+      ).toBe(true);
+    });
+  });
+
   // Regression for the signal-tag exclusion predicate. It used to be
   // `metadata -> 'signal' IS NULL`, which crashes the production serverless
   // Postgres engine when used as a WHERE qual (rt_fetch out-of-bounds, SQLSTATE
