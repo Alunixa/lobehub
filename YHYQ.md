@@ -1165,3 +1165,35 @@
 - Router Vitest 真实执行 1 file、32/32 tests 通过；Database PGlite Vitest 真实执行 1 file、68 passed / 4 skipped，共 72 tests，无失败。
 - 4 个目标文件 ESLint 0 errors / 0 warnings；TypeScript `transpileModule` 4/4 通过，`git diff --check` 通过。
 - 使用线上真实故障父链只读执行同一递归判断：当前可见旧分支尾 `msg_IlJ6kZFZES0aydTceW` 不是最新隐藏消息 `msg_c1rUliNaITWiPOkYxh` 的祖先，返回 false；被错误选中的非活动分支尾与新用户消息均返回 true，证明补丁会在该实际场景保留用户当前可见分支。
+
+### GitHub Actions、Release 与 PostgreSQL 实测
+
+- 功能提交 `f33215f6b1cad4dd073467010523269a017126da` 已推送到 `Alunixa/lobehub` 的 `codex/deploy-server-image-20260720` 分支；同时把历史重定向 remote 从旧用户名规范化为当前 `Alunixa/lobehub`。
+- 服务器镜像工作流 `32821008725` 成功；Actions artifact `9553338897` 为 `297007266` 字节，digest 为 `sha256:e9433038f66765f057e2d33223942b41a59676f589dedda4bbc7502ac5ac5861`。
+- 解包后的 `lobehub-server-image.tar` 为 `297007104` 字节，SHA-256 为 `6EDDFB3B3AE8A8870223C092A16995988D37B314FCE311474FAA147FA1B68B39`；路由器安装前重新核验大小与 SHA-256，和本机 / GitHub Release 完全一致。
+- Test CI `32821008696` 中 Test Server 两个分片、Test Packages、Test Desktop 与 Server Coverage Merge 全部成功；`apps/server/src/routers/lambda/__tests__/aiChat.test.ts` 在 shard 1 中 32/32 通过。
+- Test Database 仍在测试前的全仓库 Lint 阶段被既有 `170 errors / 264 warnings` 阻断；本轮 4 个目标文件定向 ESLint 为 0 errors / 0 warnings，没有新增全仓库 Lint 错误。
+- Test App shard 1 仍只有既有 chat instructions 断言失败，3424 个同分片用例通过；shard 2 仍为既有 Host Executor no-suite、ComfyUI `cx` mock 和两个 settings snapshot 失败，3474 个同分片用例通过。
+- E2E `32821008711` 仍为既有关闭自动滚动后的视口距离断言失败，81/82 场景、490/491 步骤通过，与本轮父链解析无关。
+- 额外在路由器 PostgreSQL 中创建完全独立的临时数据库 `lobehub_active_branch_test_20260825`，通过隐藏 SSH 隧道运行 Server DB 配置的目标回归，72/72 tests 通过；随后关闭隧道、强制删除测试数据库并验证计数为 0，没有写入生产 `lobechat` 测试表。
+- GitHub prerelease `v2.2.8-codex.20260825.1` 已发布，标签指向功能提交，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260825.1`。
+- Release 资产为服务器镜像和 `RELEASE-MANIFEST.txt`：GitHub 返回大小 / digest 分别为 `297007104 / sha256:6eddfb3b3ae8a8870223c092a16995988d37b314fce311474faa147fa1b68b39`、`1606 / sha256:32fb6a47b2a99b8208285f1015a1c75741c46c79d1c4088be6d783c8d26439fb`，与本机完全一致；Release Notes 已写明根因、代码改动、测试结果、既有 CI 阻塞和资产信息。
+- 首次下载工作流资产时误选 GitHub 自动生成的 `.dockerbuild` 记录，GitHub CLI 报 zip 非法且没有产生文件；随后按 `lobehub-server-image-*` 精确选择正确 artifact 并成功下载。
+
+### 最终部署与既有消息恢复
+
+- 部署前 LobeHub 容器为 `d00d55173f0d4cc7522f116e5c20887b29f780b594c69e0ddebfb30a5e815d31`，旧镜像 ID 为 `sha256:969054fc4a9ec1754b58b4c41c5c4ee1adc2773ad2725404fc762e28a43bb152`，running、重启次数 0；Compose、override、Nginx、四个证书、Host Executor 和全部核心容器均正常。
+- 旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260825-pre-active-branch-send`；新镜像标签为 `lobehub/lobehub:codex-f33215f6b1cad4dd073467010523269a017126da`，镜像 ID 为 `sha256:506debebaf6b402c30c0afaf9529b0df5c1ee7a41a0e86502afa5158ea4813e1`，平台 `linux/amd64`。
+- 新镜像在路由器上真实加载 `@swc/helpers` 与 `next/dist/server/next-server.js` 成功；只执行 `docker compose up -d --no-deps --force-recreate lobehub`，没有重建 PostgreSQL、Redis、RustFS、SearXNG、设备网关、Onlyboxes 或 Host Executor。
+- 部署脚本完成健康检查和容器检查后，最后一次 `docker port lobehub` 遇到瞬时 “No such container” 并使脚本退出码为 1；立即独立复查确认新容器实际已正常存在，因此没有回滚或重复部署。
+- 最终 LobeHub 容器为 `ccbee37ab492a010a14812b8ce2aee856112444c5becc26eb88f14ea1a045053`，running、重启次数 0，端口仍为宿主 `127.0.0.1:13210` 到容器 `3210`；内部与 APP_URL HTTPS `/api/version` 均返回 `2.2.8`。
+- 新容器日志显示数据库迁移通过、Next.js `16.3.2` Ready、Gateway 与本地任务调度器启动成功；部署后的 error / fatal / panic / unhandled / migration failed 匹配为 0。QStash 未配置、旧 `NEXT_PUBLIC_S3_DOMAIN` 的提示均为既有非致命警告。
+- Host Executor `/health` 仍返回 `mode=host, success=true`；PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变且重启次数为 0。
+- Compose、override 与四个证书 SHA-256 全部未变，`nginx -t` 成功；稳定性复查时可用内存约 6.22 GB，`/mnt/sda1` 可用约 89.0 GB。
+- 全库只读扫描发现同一故障已影响原 Topic `tpc_tH1Hbk10nNHt` 和用户为规避故障复制的 Topic `tpc_KAqSstnPZGK7`；两者均为 `activeBranchIndex=0`，但最新用户消息实际位于 child index 1 且创建时间晚于最后一次分支选择。
+- 修改前两行分支元数据已备份到 `/root/codex-backups/active-branch-send-20260825/branch-metadata-before.tsv`，权限 `0600`，SHA-256 为 `6c41161a9dc3662b2a19bb2882fa270820d068087a4e34e5150724a6e5f73400`。
+- 通过带旧 `accessed_at` 前置条件的单事务只更新这两个分支点，把 `activeBranchIndex` 从 0 恢复为 1；事务严格断言必须恰好更新 2 行，若用户已重新切换分支会自动失败而不会覆盖。
+- 恢复后两个 Topic 的最新用户消息祖先链均经过 child index 1、均不经过旧 child index 0；使用生产数据库父链数据交给当前 `conversation-flow parse` 验证，两边目标最新用户消息与助手占位均为 `VISIBLE=true`。
+- 尝试通过真实 Better Auth Cookie 调用消息 tRPC 做额外页面级探测时，容器 standalone 镜像不包含 workspace `@lobechat/conversation-flow` 包；本机直接 Node 又先后遇到 TS loader与 top-level await 限制，修正后签名 Cookie 的 get-session 未返回用户且消息接口为 401，因此没有把该探测误报为成功，也没有输出或保存 session token、Cookie 或 `AUTH_SECRET`。
+- 随后尝试用本机完整 `MessageModel.query` 经只读 PostgreSQL 隧道执行全关系投影，超过 30 秒仍未返回，已精确终止该只读探测及子进程；最终以真实数据库祖先链、生产 `conversation-flow` 分支投影、目标回归、GitHub Server 回归和部署镜像共同验证。
+- 路由器部署暂存目录、本机 Release 临时目录、临时测试数据库、两个 SSH 隧道和相关探测进程均已精确清理并验证不存在；保留 GitHub Release、当前镜像、旧镜像回滚标签、分支元数据备份，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
