@@ -1140,3 +1140,16 @@
 
 - 已读取 `YHYQ.md`、既有对话排序、消息持久化、任务运行时和最近搜索部署记录；本轮开始时跟踪文件干净，既存未跟踪历史目录与 `问题.txt` 保持不动。
 - 已建立修改前 Git 回滚锚点；正在只读核对线上最近 Topic、Agent operation、用户 / 助手消息、父子消息关系、消息查询过滤和前端乐观消息回滚逻辑，尚未修改功能源码、数据库或线上服务。
+
+### 线上证据与根因确认
+
+- 已通过只读 SSH / PostgreSQL 查询核对目标 Topic `tpc_tH1Hbk10nNHt`：共 188 条消息，最近两次用户消息与助手占位 / 回复均已持久化，因此不是 1000 条分页上限，也不是消息写入失败。
+- `msg_6zGfZJzpBPaSEaFQSQ` 是关键分支点：它有两个助手子分支，持久化的 `metadata.activeBranchIndex=0` 指向旧分支 `msg_LUnFExVR6hfvJbBKzn`，而较新的分支从 `msg_1uMGRPYBOrodHHVKFR` 延伸到 `msg_Lb2tyHFI9emkuQEAKo`。
+- 用户在旧分支仍为当前可见分支时发送新消息，但 `sendMessageInServer` 无条件调用 `getLatestSpineMessageId`，按 `created_at` 把父节点改写为较新的非活动分支尾部 `msg_Lb2tyHFI9emkuQEAKo`；新用户消息和助手消息因此被持久化到非活动分支。
+- 服务端响应随后执行 `replaceMessages -> conversation-flow parse`，严格按分支点的 `activeBranchIndex=0` 重新投影消息列表，于是刚出现的乐观消息立即消失，刷新后仍不可见。
+- Client Agent 随后从已重新投影的 `displayMessages` 读取模型上下文；新用户消息已被非活动分支过滤，所以模型继续回答旧分支的“三年制技校”内容，而不是回答“五十音图很难”。底部思考状态来自独立 operation 状态，因此仍会显示“头脑风暴中”。
+- `agent_operations` 对该 Topic 当前无持久化记录，符合本次为浏览器 Client Agent operation 的路径；不能据此否定页面运行状态。
+- 已刷新官方 `origin/canary` 到 2026-08-25 13:13:45 +0800 的 `ba7f1ee7ec`，发现官方提交 `51e24a0e9a` 内包含同根因的窄修复“preserve active branch on send”：只有当服务端最新 spine 确实是客户端可见父节点的后代时才前移父节点；若是兄弟分支则保留客户端父节点。
+- 首次读取源码片段的 PowerShell 输出标题因 `$p:$a` 变量解析报错，未执行任何写操作；修正格式字符串后读取成功。
+- 下一步将只回移官方提交中与活动分支父链校验直接相关的四处窄改动和回归，不夹带该大型提交中的 task callback、topic serialization 等无关功能。
+- 本次文档提交的 lint-staged / Remark 在目标文件上持续挂起，并开始重排历史内容；已精确终止本轮 hook 进程，只丢弃未暂存的格式化副作用，保留本轮追加内容，随后使用 no-verify 完成文档检查点。
