@@ -1236,3 +1236,12 @@
 - 系统 Node.js 22.12.0 运行 AiAgent 测试时因该版本没有 `node:zlib.zstdDecompress`，在 agent-tracing 收集阶段失败、没有执行用例；Bun 直接运行 Vitest 又因 Windows file URL 兼容报错，均未计为产品失败。切换仓库可用的 Node 24 后同一用例正常通过。
 - 4 个目标文件 ESLint 为 0 errors / 0 warnings，TypeScript `transpileModule` 4/4 通过，`git diff --check` 通过。
 - Prettier API 首次实际格式化成功；后续逐文件格式一致性复查再次在依赖解析中无输出挂起，已精确终止该复查进程且没有修改文件。最终格式由已成功的首次格式化、ESLint 与 GitHub Actions 干净环境继续验证。
+
+### 首轮 GitHub Actions 发现并修复测试兼容回归
+
+- 功能提交 `f35fd77cb3ba044139d6d86c107c39d7df112cb6` 已推送；服务器镜像工作流 `32919474869` 成功，Test CI `32919474850` 与 E2E `32919474851` 已完成。
+- 首轮 Test Server shard 2 暴露新增兼容问题：部分既有测试夹具把 `generateToolsDetailed()` mock 为只含 `tools`、不含 `enabledToolIds` 的旧形状；新增硬校验在普通非任务运行中也先读取 `.includes`，导致 `apps/server/src/routers/lambda/__tests__/aiAgent.test.ts` 9 个用例失败并触发 shard 1 取消。
+- 产品真实 ToolsEngine 始终返回完整 `ToolsGenerationResult`，但校验应严格限制在 `forceTaskExecutionRuntime=true` 分支；现已把 command-tool 名称计算与 `enabledToolIds` / `tools` 读取整体移入该分支，并对字段使用空数组兼容，普通聊天不会触碰任务专用断言。
+- 修正后使用 Node.js 24 真实执行 Router integration 12/12、TaskRunner 2/2、AiAgent builtin runtime 17/17、Server Agent ToolsEngine 44/44，共 75/75 tests 通过；既有测试日志中的 QStash 未配置和 Market 401 为测试环境预期噪声，不影响通过结论。
+- 首轮 Test App 两分片、Test Database 与 E2E 仍是此前相同既有阻塞：chat instructions、Host Executor no-suite、ComfyUI `cx` mock、两个 settings snapshot、全仓库 170 errors / 264 warnings，以及关闭自动滚动视口距离断言；与本轮服务端任务文件无关。
+- 首轮构建成功的服务器镜像包含修正前测试兼容问题，因此不用于发布或部署；最终源码修正后重新推送并由 GitHub Actions 重新构建。

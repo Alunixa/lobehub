@@ -2614,14 +2614,16 @@ export class AiAgentService {
       // provider, or tool-engine filtering removes the command manifest, surface
       // a real startup failure so the task is paused with an actionable error
       // instead of completing with a promise to execute later.
-      const taskRunCommandToolName = `${CloudSandboxManifest.identifier}____${CloudSandboxApiName.runCommand}`;
-      const hasTaskCommandRuntime =
-        toolsResult.enabledToolIds.includes(CloudSandboxManifest.identifier) &&
-        toolsResult.tools?.some((tool) => tool.function.name === taskRunCommandToolName);
-      if (forceTaskExecutionRuntime && !hasTaskCommandRuntime) {
-        throw new Error(
-          `Task execution runtime did not expose command tools (${taskRunCommandToolName})`,
-        );
+      if (forceTaskExecutionRuntime) {
+        const taskRunCommandToolName = `${CloudSandboxManifest.identifier}____${CloudSandboxApiName.runCommand}`;
+        const hasTaskCommandRuntime =
+          (toolsResult.enabledToolIds ?? []).includes(CloudSandboxManifest.identifier) &&
+          (toolsResult.tools ?? []).some((tool) => tool.function.name === taskRunCommandToolName);
+        if (!hasTaskCommandRuntime) {
+          throw new Error(
+            `Task execution runtime did not expose command tools (${taskRunCommandToolName})`,
+          );
+        }
       }
 
       tools = toolsResult.tools;
