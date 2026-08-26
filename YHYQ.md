@@ -1253,3 +1253,26 @@
 - 第二轮 Test App、Test Database 与 E2E 仍只有既有阻塞：App shard 1 的 chat instructions；App shard 2 的 Host Executor no-suite、ComfyUI `cx` 和两个 settings snapshot；Database 全仓库 170 errors / 264 warnings；E2E 81/82 场景、490/491 步骤。
 - 为兼容仓库旧测试夹具，同时让硬校验保持任务专用，command runtime 校验现仅在 `forceTaskExecutionRuntime=true` 时读取 ToolsGenerationResult，并将缺失的 `enabledToolIds` / `tools` 视为空数组；普通聊天完全不进入该代码路径。
 - 兼容修正已包含在提交 `0d4c099bc2e4ef5745b24ba3bbbb06e63c1ffc40` 中，第二轮构建与测试均针对该最终源码；工作流 `32921040165` 生成的服务器镜像是本轮权威发布 / 部署资产。
+
+### Release、窄部署与 T-1 真实验证
+
+- 功能源码最终提交为 `0d4c099bc2e4ef5745b24ba3bbbb06e63c1ffc40`；文档收尾提交不改变构建源码。最终服务器镜像工作流 `32921040165` 成功。
+- Actions artifact `9589990590` 为 `297195682` 字节，digest 为 `sha256:3c05099b2aa46c1e1b5fdd908364bb13fe5614fed00664071aadf31df66dd977`；解包后的 `lobehub-server-image.tar` 为 `297195520` 字节，SHA-256 为 `22F237867259DB1A2F00C5A9BBB5FB70072874C34B09E314584EF85A0011D1E7`。
+- GitHub prerelease `v2.2.8-codex.20260826.1` 已于 2026-08-26 发布，标签指向功能提交，地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260826.1`。
+- Release 资产为服务器镜像和 `RELEASE-MANIFEST.txt`：GitHub 返回的大小 / digest 分别为 `297195520 / sha256:22f237867259db1a2f00c5a9bbb5fb70072874c34b09e314584ef85a0011d1e7`、`1728 / sha256:4fa19a6d476a9d490c8ecb647f5549dfa6d32891d91bb186494a9fff75c23eec`，与本机完全一致；Release Notes 记录了 0-tool 根因、运行协议、硬校验、测试和既有 CI 阻塞。
+- 部署前 LobeHub 容器为 `ccbee37ab492a010a14812b8ce2aee856112444c5becc26eb88f14ea1a045053`，镜像 ID 为 `sha256:506debebaf6b402c30c0afaf9529b0df5c1ee7a41a0e86502afa5158ea4813e1`，running、重启次数 0；Host Executor、Compose、override、Nginx、四个证书与全部核心容器正常。
+- 上传到路由器的服务器镜像与校验清单在安装前重新核验大小和 SHA-256，与本机 / GitHub Release 完全一致；旧镜像已保留回滚标签 `lobehub/lobehub:backup-20260826-pre-task-execution`。
+- 新镜像标签为 `lobehub/lobehub:codex-0d4c099bc2e4ef5745b24ba3bbbb06e63c1ffc40`，镜像 ID 为 `sha256:e0cebf58fde9d22ca75d3655fff43f9bab3e7f5e33fe0fefac706a831e9c608d`，平台 `linux/amd64`；真实加载 `@swc/helpers` 与 `next/dist/server/next-server.js` 成功。
+- 只执行 `docker compose up -d --no-deps --force-recreate lobehub`，没有重建或重启 PostgreSQL、Redis、RustFS、SearXNG、设备网关、Onlyboxes、Host Executor 或 `linuxytd`。
+- 部署脚本在健康检查成功后，最后一次 `docker inspect lobehub` 遇到 Compose 替换窗口中的瞬时 “No such object”；独立复查确认新容器已正常存在，因此没有重复部署或回滚。
+- 最终 LobeHub 容器为 `7dc6c3ab1ed102073069a3438bd7c261d38fe2a8653e00f08048c6fa24fc8983`，running、重启次数 0，端口保持宿主 `127.0.0.1:13210` 到容器 `3210`；内部与 APP_URL HTTPS `/api/version` 均返回 `2.2.8`，Next.js `16.3.3` Ready，数据库迁移通过。
+- PostgreSQL `0fbc183930b4`、Redis `91676a9b0789`、RustFS `e5396e9ce69e`、SearXNG `76165d49617f`、设备网关 `3d1a74a1a5c0`、Onlyboxes Console `2665b2cbaf85` 和 `linuxytd` `40221e97adeb` 容器 ID 全部未变且重启次数 0；Host Executor `/health` 仍返回 `mode=host, success=true`。
+- Compose、override 与四个证书 SHA-256 全部未变，`nginx -t` 成功；稳定性复查时可用内存约 6.20 GB，`/mnt/sda1` 可用约 88.0 GB。
+- 部署后日志没有 fatal / panic / migration failed / unhandled；4 条 `Missing bearer token` 是每次 Agent 启动时 Market 可选 Manifest 查询的既有非致命 401，真实任务命令工具仍成功生成和执行。QStash 未配置与旧 S3 环境变量提示同样为既有非致命警告。
+- 使用 T-1 所有者当前有效 Better Auth 会话，通过正确的 `__Secure-better-auth.session_token` 签名 Cookie 调用真实 `/trpc/lambda/task.run`；会话 token、签名 Cookie 与 `AUTH_SECRET` 均未输出或写入文件。
+- 为避免实际下载媒体，本次给 T-1 传入高优先级安全验证指令：禁止访问 B 站 / 字幕资源和修改其他任务，只要求立即调用 `runCommand` 检查宿主并写入临时 marker。新 Topic 为 `tpc_v6aC8Fhk9tGB`，operation 为 `op_1787711008523_agt_oLnLX6pCOlP8_tpc_v6aC8Fhk9tGB_b5joCfmA`。
+- 真实 operation 最终为 `done|done`，5 步、3 次 LLM、2 次工具调用；`message_plugins` 两行均明确记录 `identifier=lobe-cloud-sandbox`、`api_name=runCommand`、无错误，总工具执行时间 81 ms。
+- 首个 `runCommand` 真实输出 `task-command-runtime-ok`、主机名 `GardeniaWRT`、发行版 `ImmortalWrt` 和宿主工作目录 `/mnt/sda1/lobehub-host-runtime/workspaces/.../tpc_v6aC8Fhk9tGB`；第二个 `runCommand` 再次读取 marker 确认写入成功。
+- marker 位于宿主 `/mnt/sda1/lobehub-host-runtime/task-command-runtime-20260826.marker`，同一路径在 LobeHub 容器内不存在，证明 `sandboxMode=host` 没有落入容器或官方云沙箱。
+- 真实持久化运行提示现在显示 `Status: ● running`，不再把已触发运行呈现成 `scheduled`；最终助手回复引用了真实工具输出。T-1 运行后仍保持 `scheduled`，Task Topic `tpc_v6aC8Fhk9tGB` 为 `completed`，没有破坏后续每周调度。
+- 验证 marker、路由器上传暂存目录、本机 Release 临时目录均已精确删除并确认不存在；保留 GitHub Release、当前镜像、旧镜像回滚标签、验证 Topic / operation 证据，以及本轮开始前既存未跟踪历史目录与 `问题.txt`。
