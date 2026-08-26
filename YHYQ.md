@@ -1211,3 +1211,16 @@
 - 本轮开始时跟踪文件干净，仅保留既存未跟踪历史构建目录、发布目录与 `问题.txt`，不会纳入提交或删除。
 - 已建立修改前 Git 回滚锚点；下一步将只读核对 T-1 的任务记录、关联 Topic / operation、Agent 工具配置、运行时工具快照、Host Executor 调用和容器日志，尚未修改功能源码、数据库或线上服务。
 - 尝试通过通用网页抓取直接打开用户提供的私有 HTTPS 页面没有得到可用页面内容；后续改用自部署数据库、日志和必要时已登录浏览器状态进行验证。
+
+### 线上复现与根因确认
+
+- 线上 T-1 实际任务 ID 为 `task_FyPFWUIU65jp`，状态 `scheduled`，受理 Agent 为 `agt_oLnLX6pCOlP8`，任务配置已正确保存 `config.execution.sandboxMode=host`，模型为 `cn/deepseek-v4-flash`。
+- Host Executor 当前 `/health` 返回 `mode=host, success=true`，LobeHub 容器 running、重启次数 0，服务器默认 provider 为 `onlyboxes`；因此本次不是宿主执行器宕机或被错误路由到官方云端。
+- 同一 T-1 在 2026-08-25 14:00 UTC 的 operation 共 11 步、9 次工具调用，其中 `lobe-cloud-sandbox/listFiles` 与 `runCommand` 确实在 ImmortalWrt 宿主执行；证明模型、Manifest、Host Executor 和 provider 覆盖此前都能工作。
+- 随后的 2026-08-25 16:00 UTC 与 2026-08-26 00:40 UTC 两次 operation 均只有 1 步、1 次 LLM、0 次工具调用，最终助手只复述计划、声称未来会执行，未产生任何 `message_plugins` 记录。
+- 三次 operation 均使用相同 `cn/deepseek-v4-flash`；数据库中该模型 `abilities.functionCall=true`，没有模型能力开关变化，排除“模型被配置成不支持工具”。
+- 当前源码仍会为所有 TaskRunner 运行追加 `lobe-cloud-sandbox`、设置 `forceTaskExecutionRuntime=true`，并把 `sandboxProvider=host` 传给 AiAgent；因此问题已经从“工具未装配”演变为“模型在拥有工具时仍把触发执行误判成仅查看计划”。
+- 直接证据是失败 Topic 的持久化用户提示仍显示 `Status: ? scheduled`，且没有一句说明“调度器已经触发、现在就是实际执行”；TaskRunner 在把数据库状态改为 `running` 之前就用旧任务对象构建提示，模型据此重新计算下一次日期并选择纯文本回复。
+- `buildTaskRunPrompt` 只有任务详情和可选 extraPrompt，没有后台执行协议；因此是否调用命令工具完全依赖模型自行理解，同一任务出现一次成功、两次静默不执行的非确定行为。
+- 计划采用三层窄修复：构建运行提示时将快照状态固定为 `running`；向 TaskRunner 的 system instructions 注入“已触发、立即执行、外部操作必须先调用工具、不得声称未来执行”的协议；AiAgent 在强制任务执行运行态下校验 `lobe-cloud-sandbox` 最终确实出现在 enabledToolIds，否则明确失败而不是假装完成。
+- 通用网页抓取无法读取私有页面；Codex 内置浏览器直达后进入登录页，Chrome 控制通道当前不可用，因此页面只读验证改用权威任务数据库、operation、messages、message_plugins 和容器健康状态完成。
