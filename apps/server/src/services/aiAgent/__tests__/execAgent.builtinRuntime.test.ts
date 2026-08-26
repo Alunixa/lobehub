@@ -1,4 +1,7 @@
-import { CloudSandboxIdentifier } from '@lobechat/builtin-tool-cloud-sandbox';
+import {
+  CloudSandboxApiName,
+  CloudSandboxIdentifier,
+} from '@lobechat/builtin-tool-cloud-sandbox';
 import { PageAgentIdentifier } from '@lobechat/builtin-tool-page-agent';
 import { SELF_FEEDBACK_INTENT_IDENTIFIER } from '@lobechat/builtin-tool-self-iteration';
 import { RequestTrigger } from '@lobechat/types';
@@ -407,6 +410,20 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
       provider: 'openai',
       systemRole: '',
     });
+    vi.mocked(createServerAgentToolsEngine).mockReturnValueOnce({
+      generateToolsDetailed: vi.fn().mockReturnValue({
+        enabledToolIds: [CloudSandboxIdentifier],
+        tools: [
+          {
+            function: {
+              name: `${CloudSandboxIdentifier}____${CloudSandboxApiName.runCommand}`,
+            },
+            type: 'function',
+          },
+        ],
+      }),
+      getEnabledPluginManifests: vi.fn().mockReturnValue(new Map()),
+    } as any);
 
     await service.execAgent({
       additionalPluginIds: [CloudSandboxIdentifier],
@@ -431,6 +448,38 @@ describe('AiAgentService.execAgent - builtin agent runtime config', () => {
     });
     expect(operationParams.executionPlan).toEqual({ kind: 'sandbox', target: 'sandbox' });
     expect(operationParams.appContext.sandboxProvider).toBe('host');
+    expect(operationParams.toolSet.enabledToolIds).toContain(CloudSandboxIdentifier);
+  });
+
+  it('should fail task startup instead of silently running without command tools', async () => {
+    mockGetAgentConfig.mockResolvedValue({
+      agencyConfig: { executionTarget: 'none' },
+      chatConfig: { enableAgentMode: false },
+      id: 'agent-task-assignee',
+      model: 'gpt-4',
+      plugins: [],
+      provider: 'openai',
+      systemRole: '',
+    });
+    vi.mocked(createServerAgentToolsEngine).mockReturnValueOnce({
+      generateToolsDetailed: vi.fn().mockReturnValue({
+        enabledToolIds: [CloudSandboxIdentifier],
+        tools: [],
+      }),
+      getEnabledPluginManifests: vi.fn().mockReturnValue(new Map()),
+    } as any);
+
+    await expect(
+      service.execAgent({
+        additionalPluginIds: [CloudSandboxIdentifier],
+        agentId: 'agent-task-assignee',
+        forceTaskExecutionRuntime: true,
+        prompt: 'Run the task',
+        sandboxProvider: 'host',
+        taskId: 'task-1',
+      }),
+    ).rejects.toThrow('Task execution runtime did not expose command tools');
+    expect(mockCreateOperation).not.toHaveBeenCalled();
   });
 
   it('should inject self-feedback intent tool for Lobe AI when user gate is enabled', async () => {

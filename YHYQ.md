@@ -1224,3 +1224,15 @@
 - `buildTaskRunPrompt` 只有任务详情和可选 extraPrompt，没有后台执行协议；因此是否调用命令工具完全依赖模型自行理解，同一任务出现一次成功、两次静默不执行的非确定行为。
 - 计划采用三层窄修复：构建运行提示时将快照状态固定为 `running`；向 TaskRunner 的 system instructions 注入“已触发、立即执行、外部操作必须先调用工具、不得声称未来执行”的协议；AiAgent 在强制任务执行运行态下校验 `lobe-cloud-sandbox` 最终确实出现在 enabledToolIds，否则明确失败而不是假装完成。
 - 通用网页抓取无法读取私有页面；Codex 内置浏览器直达后进入登录页，Chrome 控制通道当前不可用，因此页面只读验证改用权威任务数据库、operation、messages、message_plugins 和容器健康状态完成。
+
+### 源码修复与本地回归
+
+- TaskRunner 新增系统级 `<task_execution_protocol>`，明确当前调用就是已触发任务的实际执行：周期 / 日期只作为触发元数据，禁止重新安排到未来或只解释计划；涉及命令、文件、网络和外部状态时必须先调用工具，不能用打印命令代替执行，也不能在没有工具证据时声称成功。
+- 构建任务运行提示时使用 `{ ...task, status: 'running' }` 快照，避免在 `updateStatus` 前读取到的 `scheduled` 状态误导模型；数据库生命周期更新顺序与原逻辑保持不变。
+- 运行协议通过 AiAgent 的 `instructions` 进入 system layer，与用户任务正文、评论和手动 `extraPrompt` 分离，用户内容不能把“是否已经触发”重新解释为可选计划。
+- AiAgent 在 `forceTaskExecutionRuntime=true` 时新增启动硬校验：最终 `enabledToolIds` 必须包含 `lobe-cloud-sandbox`，且函数定义里必须真实存在 `lobe-cloud-sandbox____runCommand`；否则在创建 operation 前抛出明确错误，让 TaskRunner 将任务暂停并显示错误，不能再静默完成一个 0-tool 假执行。
+- TaskRunner 回归改用线上同类 `scheduled` 状态，断言 prompt 快照为 `running`、执行协议已注入、host provider 与命令工具仍装配；AiAgent 回归覆盖 runCommand 真实存在时成功，以及只有 sandbox identifier 但函数数组为空时必须拒绝启动。
+- 最终使用 Codex bundled Node.js 24.19.0 运行三个目标文件，TaskRunner 2/2、AiAgent builtin runtime 17/17、Server Agent ToolsEngine 44/44，共 63/63 tests 通过。
+- 系统 Node.js 22.12.0 运行 AiAgent 测试时因该版本没有 `node:zlib.zstdDecompress`，在 agent-tracing 收集阶段失败、没有执行用例；Bun 直接运行 Vitest 又因 Windows file URL 兼容报错，均未计为产品失败。切换仓库可用的 Node 24 后同一用例正常通过。
+- 4 个目标文件 ESLint 为 0 errors / 0 warnings，TypeScript `transpileModule` 4/4 通过，`git diff --check` 通过。
+- Prettier API 首次实际格式化成功；后续逐文件格式一致性复查再次在依赖解析中无输出挂起，已精确终止该复查进程且没有修改文件。最终格式由已成功的首次格式化、ESLint 与 GitHub Actions 干净环境继续验证。

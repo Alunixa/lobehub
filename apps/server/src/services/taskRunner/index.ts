@@ -19,6 +19,23 @@ import { buildTaskPrompt } from './buildTaskPrompt';
 
 const log = debug('task-runner');
 
+/**
+ * System-level protocol for an actual TaskRunner invocation.
+ *
+ * The task body can contain a schedule ("every Tuesday at 23:00"), while the
+ * persisted task snapshot is still `scheduled` when prompt construction starts.
+ * Without an explicit execution boundary, some models reinterpret the trigger as
+ * a planning request, describe commands they *would* run, and finish with zero
+ * tool calls. Keep this separate from user-authored `extraPrompt`: the scheduler
+ * firing is runtime truth, not optional task content.
+ */
+const TASK_EXECUTION_INSTRUCTIONS = `<task_execution_protocol>
+This invocation is the actual execution of a task whose trigger has already fired. Execute the task now.
+Treat dates, recurrence rules, and schedules in the task as trigger metadata; do not postpone this run, recalculate the next occurrence, or merely explain what you would do later.
+When the task depends on commands, files, the network, or external state, call the available tools before giving a final answer. For command or filesystem work, use the lobe-cloud-sandbox tools provided to this run.
+Never print commands as a substitute for executing them, and never claim an action succeeded without concrete tool output. If the requested result is unavailable, verify that with tools and report the evidence.
+</task_execution_protocol>`;
+
 export interface RunTaskParams {
   continueTopicId?: string;
   extraPrompt?: string;
@@ -115,7 +132,9 @@ export class TaskRunnerService {
       }
 
       const { fileIds: attachmentFileIds, prompt } = await buildTaskPrompt(
-        task,
+        // This prompt represents the run that is starting now, not the stale
+        // persisted lifecycle status captured before updateStatus below.
+        { ...task, status: 'running' },
         {
           briefModel: this.briefModel,
           db: this.db,
@@ -215,6 +234,7 @@ export class TaskRunnerService {
           },
         ],
         ...(attachmentFileIds.length > 0 ? { fileIds: attachmentFileIds } : {}),
+        instructions: TASK_EXECUTION_INSTRUCTIONS,
         prompt,
         taskId: task.id,
         title: extraPrompt ? extraPrompt.slice(0, 100) : task.name || task.identifier,

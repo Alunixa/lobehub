@@ -67,7 +67,7 @@ const createTask = (sandboxMode?: 'host' | 'onlyboxes') => ({
   instruction: 'Inspect the runtime',
   lastHeartbeatAt: null,
   name: 'Runtime inspection',
-  status: 'backlog',
+  status: 'scheduled',
   totalTopics: 0,
 });
 
@@ -98,8 +98,14 @@ describe('TaskRunnerService.runTask', () => {
           CloudSandboxIdentifier,
         ]),
         forceTaskExecutionRuntime: true,
+        instructions: expect.stringContaining('actual execution of a task'),
         sandboxProvider: 'host',
       }),
+    );
+    expect(mocks.buildTaskPrompt).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'running' }),
+      expect.any(Object),
+      undefined,
     );
   });
 

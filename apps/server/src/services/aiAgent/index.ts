@@ -1,7 +1,10 @@
 import type { AgentRuntimeContext, AgentState } from '@lobechat/agent-runtime';
 import { BUILTIN_AGENT_SLUGS, getAgentRuntimeConfig } from '@lobechat/builtin-agents';
 import { builtinSkills } from '@lobechat/builtin-skills';
-import { CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
+import {
+  CloudSandboxApiName,
+  CloudSandboxManifest,
+} from '@lobechat/builtin-tool-cloud-sandbox';
 import { LobeAgentIdentifier, LobeAgentManifest } from '@lobechat/builtin-tool-lobe-agent';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MessageToolIdentifier } from '@lobechat/builtin-tool-message';
@@ -279,8 +282,6 @@ interface InternalExecAgentParams extends ExecAgentParams {
   disableSelfFeedbackIntentTool?: boolean;
   /** Disable all tools (no plugins, no system manifests). Useful for eval/benchmark scenarios. */
   disableTools?: boolean;
-  /** Force background tasks into agent mode with the server-side sandbox tool runtime. */
-  forceTaskExecutionRuntime?: boolean;
   /** Discord context for injecting channel/guild info into agent system message */
   discordContext?: any;
   /**
@@ -303,6 +304,8 @@ interface InternalExecAgentParams extends ExecAgentParams {
     /** External URL — fetched if no buffer provided */
     url?: string;
   }>;
+  /** Force background tasks into agent mode with the server-side sandbox tool runtime. */
+  forceTaskExecutionRuntime?: boolean;
   /** Client-side function tools from Response API — injected into LLM with source='client' */
   functionTools?: Array<{ description?: string; name: string; parameters?: Record<string, any> }>;
   /** External lifecycle hooks (auto-adapt to local/production mode) */
@@ -2605,6 +2608,21 @@ export class AiAgentService {
         provider,
         toolIds: pluginIds,
       });
+
+      // A background task must never silently fall back to a text-only run after
+      // TaskRunner explicitly selected the sandbox execution runtime. If model,
+      // provider, or tool-engine filtering removes the command manifest, surface
+      // a real startup failure so the task is paused with an actionable error
+      // instead of completing with a promise to execute later.
+      const taskRunCommandToolName = `${CloudSandboxManifest.identifier}____${CloudSandboxApiName.runCommand}`;
+      const hasTaskCommandRuntime =
+        toolsResult.enabledToolIds.includes(CloudSandboxManifest.identifier) &&
+        toolsResult.tools?.some((tool) => tool.function.name === taskRunCommandToolName);
+      if (forceTaskExecutionRuntime && !hasTaskCommandRuntime) {
+        throw new Error(
+          `Task execution runtime did not expose command tools (${taskRunCommandToolName})`,
+        );
+      }
 
       tools = toolsResult.tools;
       log('execAgent: enabled tool ids: %O', toolsResult.enabledToolIds);
