@@ -1197,3 +1197,17 @@
 - 尝试通过真实 Better Auth Cookie 调用消息 tRPC 做额外页面级探测时，容器 standalone 镜像不包含 workspace `@lobechat/conversation-flow` 包；本机直接 Node 又先后遇到 TS loader与 top-level await 限制，修正后签名 Cookie 的 get-session 未返回用户且消息接口为 401，因此没有把该探测误报为成功，也没有输出或保存 session token、Cookie 或 `AUTH_SECRET`。
 - 随后尝试用本机完整 `MessageModel.query` 经只读 PostgreSQL 隧道执行全关系投影，超过 30 秒仍未返回，已精确终止该只读探测及子进程；最终以真实数据库祖先链、生产 `conversation-flow` 分支投影、目标回归、GitHub Server 回归和部署镜像共同验证。
 - 路由器部署暂存目录、本机 Release 临时目录、临时测试数据库、两个 SSH 隧道和相关探测进程均已精确清理并验证不存在；保留 GitHub Release、当前镜像、旧镜像回滚标签、分支元数据备份，以及本轮开始前既存的未跟踪历史目录与 `问题.txt`。
+
+## 2026-08-26：T-1 任务不调用工具、无法执行命令
+
+### 用户反馈
+
+- 用户反馈自部署页面 `/agent/agt_oLnLX6pCOlP8/task/T-1` 中的任务不会调用任何工具，因此无法执行命令，要求修复。
+- 目标仍是用户自己的 `192.168.100.1` / ImmortalWrt 自部署 LobeHub；宿主机无沙箱模式必须在宿主机执行命令，不能回退到官方云沙箱或容器内执行。
+
+### 当前行动
+
+- 已读取 `YHYQ.md`、既有任务命令工具、Host Executor、Onlyboxes、自部署部署记录与当前 Git 状态。
+- 本轮开始时跟踪文件干净，仅保留既存未跟踪历史构建目录、发布目录与 `问题.txt`，不会纳入提交或删除。
+- 已建立修改前 Git 回滚锚点；下一步将只读核对 T-1 的任务记录、关联 Topic / operation、Agent 工具配置、运行时工具快照、Host Executor 调用和容器日志，尚未修改功能源码、数据库或线上服务。
+- 尝试通过通用网页抓取直接打开用户提供的私有 HTTPS 页面没有得到可用页面内容；后续改用自部署数据库、日志和必要时已登录浏览器状态进行验证。
