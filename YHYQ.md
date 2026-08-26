@@ -1245,3 +1245,11 @@
 - 修正后使用 Node.js 24 真实执行 Router integration 12/12、TaskRunner 2/2、AiAgent builtin runtime 17/17、Server Agent ToolsEngine 44/44，共 75/75 tests 通过；既有测试日志中的 QStash 未配置和 Market 401 为测试环境预期噪声，不影响通过结论。
 - 首轮 Test App 两分片、Test Database 与 E2E 仍是此前相同既有阻塞：chat instructions、Host Executor no-suite、ComfyUI `cx` mock、两个 settings snapshot、全仓库 170 errors / 264 warnings，以及关闭自动滚动视口距离断言；与本轮服务端任务文件无关。
 - 首轮构建成功的服务器镜像包含修正前测试兼容问题，因此不用于发布或部署；最终源码修正后重新推送并由 GitHub Actions 重新构建。
+
+### 最终测试兼容修正与权威 CI
+
+- 第二轮最终源码构建工作流 `32921040165` 成功；Test CI `32921040196` 中两个 Test Server 分片、Test Packages、Test Desktop 与 Server Coverage Merge 全部成功。
+- GitHub 权威回归中 `taskRunner/index.test.ts` 2/2、`execAgent.builtinRuntime.test.ts` 17/17、`AgentToolsEngine/index.test.ts` 44/44、Router integration `aiAgent.test.ts` 12/12 全部通过；两个 Server 分片分别 233 files 全通过，以及 233 passed / 1 skipped。
+- 第二轮 Test App、Test Database 与 E2E 仍只有既有阻塞：App shard 1 的 chat instructions；App shard 2 的 Host Executor no-suite、ComfyUI `cx` 和两个 settings snapshot；Database 全仓库 170 errors / 264 warnings；E2E 81/82 场景、490/491 步骤。
+- 为兼容仓库旧测试夹具，同时让硬校验保持任务专用，command runtime 校验现仅在 `forceTaskExecutionRuntime=true` 时读取 ToolsGenerationResult，并将缺失的 `enabledToolIds` / `tools` 视为空数组；普通聊天完全不进入该代码路径。
+- 兼容修正已包含在提交 `0d4c099bc2e4ef5745b24ba3bbbb06e63c1ffc40` 中，第二轮构建与测试均针对该最终源码；工作流 `32921040165` 生成的服务器镜像是本轮权威发布 / 部署资产。
