@@ -32,7 +32,7 @@ jobs:
           node node_modules/eslint/bin/eslint.js --pass-on-unpruned-suppressions \
             src/features/MobileApp src/features/ImageStudio \
             src/hooks/useIsMobile.ts src/hooks/useEnterToSend.ts \
-            src/features/ChatInput/Mobile src/features/ChatInput/ControlBar/index.tsx \
+            src/features/ChatInput/Mobile/index.tsx src/features/ChatInput/ControlBar/index.tsx \
             src/features/ChatInput/Desktop/index.tsx \
             src/features/Conversation/ChatInput/index.tsx \
             src/store/image/slices/createImage/action.ts \

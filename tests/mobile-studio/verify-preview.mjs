@@ -110,7 +110,7 @@ function rpc(method, input) {
       hasConversation: true,
       isOnboard: true,
       onboarding: { finishedAt: now.toISOString() },
-      preference: {},
+      preference: { useCmdEnterToSend: false },
       settings: {
         general: { language: 'zh-CN', responseLanguage: 'zh-CN', timezone: 'Asia/Singapore' },
       },
@@ -260,7 +260,14 @@ const server = createServer(async (req, res) => {
       });
       return json(batch ? results : results[0]);
     }
-    if (url.pathname.startsWith('/webapi') || url.pathname.startsWith('/api')) return json({});
+    if (url.pathname.startsWith('/webapi') || url.pathname.startsWith('/api')) {
+      requests.push({ method: `${req.method} ${url.pathname}` });
+      if (url.pathname.includes('/chat/')) {
+        res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8' });
+        return res.end('海边创作练习');
+      }
+      return json({});
+    }
     let file = path.resolve(preview, '.' + decodeURIComponent(url.pathname));
     if (file !== preview && !file.startsWith(preview + path.sep))
       throw new Error('Invalid static path');
@@ -390,18 +397,17 @@ try {
     await page.setViewportSize({ height: 844, width: 390 });
     await open('/agent/agt_preview');
     const editor = page.locator('[contenteditable="true"]').first();
-    const before = requests.filter(({ method }) =>
-      /send|createMessage|execAgent/.test(method),
-    ).length;
+    const chatRequests = () =>
+      requests.filter(({ method }) =>
+        /send|createMessage|execAgent|aiAgent|POST .*\/chat\//.test(method),
+      ).length;
+    const before = chatRequests();
     await editor.fill('第一行');
     await editor.press('Enter');
     await editor.pressSequentially('第二行');
     await expect(editor).toContainText('第一行');
     await expect(editor).toContainText('第二行');
-    assert.equal(
-      requests.filter(({ method }) => /send|createMessage|execAgent/.test(method)).length,
-      before,
-    );
+    assert.equal(chatRequests(), before);
     assertions.push('Mobile Enter inserts a newline without sending');
     await capture('mobile-chat-keyboard');
     await editor.fill('');
@@ -437,7 +443,7 @@ try {
     assertions.push('Two file references and custom dimensions reach the request unchanged');
     await capture('mobile-image-pending');
     generationPhase = 'success';
-    await expect(page.getByTestId('studio-results').locator('img').first()).toBeVisible({
+    await expect(page.getByTestId('studio-results')).toContainText('2 张完成 · 0 张生成中', {
       timeout: 15000,
     });
     await capture('mobile-image-success');
@@ -445,7 +451,7 @@ try {
     await page.getByRole('tab', { name: '历史', exact: true }).click();
     await capture('mobile-image-history');
     await open(new URL(completedUrl).pathname + new URL(completedUrl).search);
-    await expect(page.getByTestId('studio-results').locator('img').first()).toBeVisible();
+    await expect(page.getByTestId('studio-results')).toContainText('2 张完成 · 0 张生成中');
     assert.equal(createCount, 1);
     assertions.push(
       'Accepted tasks, completed images, history and URL reload remain visible without another paid request',
