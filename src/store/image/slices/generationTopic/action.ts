@@ -49,7 +49,9 @@ export class GenerationTopicActionImpl {
     const topicId = await internal_createGenerationTopic();
 
     // Auto-generate title from prompts
-    summaryGenerationTopicTitle(topicId, prompts);
+    summaryGenerationTopicTitle(topicId, prompts).catch((error) => {
+      console.error('Failed to summarize image topic title:', error);
+    });
 
     return topicId;
   };
@@ -150,16 +152,28 @@ export class GenerationTopicActionImpl {
 
     this.#get().internal_updateGenerationTopicLoading(tmpId, true);
 
-    // 2. Call backend service
-    const topicId = await generationTopicService.createTopic('image', newGenerationTopicVisibility);
-    this.#get().internal_updateGenerationTopicLoading(tmpId, false);
+    try {
+      const topicId = await generationTopicService.createTopic('image', newGenerationTopicVisibility);
 
-    // 3. Refresh data to ensure consistency
-    this.#get().internal_updateGenerationTopicLoading(topicId, true);
-    await this.#get().refreshGenerationTopics();
-    this.#get().internal_updateGenerationTopicLoading(topicId, false);
-
-    return topicId;
+      // Make the real topic selectable before refreshing. SWR mutate alone does not
+      // fetch anything when the history/sidebar has never mounted (e.g. on mobile).
+      this.#get().internal_dispatchGenerationTopic({ id: tmpId, type: 'deleteTopic' });
+      this.#get().internal_dispatchGenerationTopic({
+        type: 'addTopic',
+        value: { id: topicId, visibility: newGenerationTopicVisibility },
+      });
+      try {
+        await this.#get().refreshGenerationTopics();
+      } catch (error) {
+        console.error('Failed to refresh newly created image topic:', error);
+      }
+      return topicId;
+    } catch (error) {
+      this.#get().internal_dispatchGenerationTopic({ id: tmpId, type: 'deleteTopic' });
+      throw error;
+    } finally {
+      this.#get().internal_updateGenerationTopicLoading(tmpId, false);
+    }
   };
 
   setNewGenerationTopicVisibility = (visibility: GenerationTopicVisibility): void => {

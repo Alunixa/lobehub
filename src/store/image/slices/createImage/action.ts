@@ -2,6 +2,8 @@ import { handleGenerationPromptModerationError } from '@/business/client/handleG
 import { handleLobeHubModelDeprecatedError } from '@/business/client/handleLobeHubModelDeprecatedError';
 import { imageService } from '@/services/image';
 import { type StoreSetter } from '@/store/types';
+import { AsyncTaskStatus } from '@/types/asyncTask';
+import type { GenerationConfig } from '@/types/generation';
 
 import { type ImageStore } from '../../store';
 import { generationBatchSelectors } from '../generationBatch/selectors';
@@ -24,6 +26,9 @@ export class CreateImageActionImpl {
   }
 
   async createImage() {
+    // A second tap (or shortcut) must never submit another billable request.
+    if (this.#get().isCreating) return;
+
     this.#set({ isCreating: true }, false, 'createImage/startCreateImage');
 
     const store = this.#get();
@@ -34,46 +39,25 @@ export class CreateImageActionImpl {
     const activeGenerationTopicId = generationTopicSelectors.activeGenerationTopicId(store);
     const { createGenerationTopic, switchGenerationTopic, setTopicBatchLoaded } = store;
 
-    if (!parameters) {
-      throw new TypeError('parameters is not initialized');
-    }
-
-    if (!parameters.prompt) {
-      throw new TypeError('prompt is empty');
-    }
-
-    // Track the final topic ID to use for image creation
     let finalTopicId = activeGenerationTopicId;
-
-    // 1. Create generation topic if not exists
-    const generationTopicId = activeGenerationTopicId;
-    let isNewTopic = false;
-
-    if (!generationTopicId) {
-      isNewTopic = true;
-      const prompts = [parameters.prompt];
-      const newGenerationTopicId = await createGenerationTopic(prompts);
-      finalTopicId = newGenerationTopicId;
-
-      // 2. Initialize empty batch array to avoid skeleton screen
-      setTopicBatchLoaded(newGenerationTopicId);
-
-      // 3. Switch to the new topic (now it has empty data, so no skeleton screen)
-      switchGenerationTopic(newGenerationTopicId);
-    }
+    const isNewTopic = !activeGenerationTopicId;
 
     try {
-      // 4. If it's a new topic, set the creating state after topic creation
+      if (!parameters) throw new TypeError('parameters is not initialized');
+      if (!parameters.prompt?.trim()) throw new TypeError('prompt is empty');
+
       if (isNewTopic) {
         this.#set(
           { isCreatingWithNewTopic: true },
           false,
           'createImage/startCreateImageWithNewTopic',
         );
+        finalTopicId = await createGenerationTopic([parameters.prompt]);
+        setTopicBatchLoaded(finalTopicId);
+        switchGenerationTopic(finalTopicId);
       }
 
-      // 5. Create image via service
-      await imageService.createImage({
+      const result = await imageService.createImage({
         generationTopicId: finalTopicId!,
         provider,
         model,
@@ -81,34 +65,47 @@ export class CreateImageActionImpl {
         params: parameters as any,
       });
 
-      // 6. Only refresh generation batches if it's not a new topic
-      if (!isNewTopic) {
-        await this.#get().refreshGenerationBatches();
-      }
+      // Publish the accepted tasks immediately, including the first mobile request.
+      // Neither a mounted sidebar nor a successful follow-up GET is required.
+      const { batch, generations } = result.data;
+      this.#get().internal_dispatchGenerationBatch(finalTopicId!, {
+        type: 'addBatch',
+        value: {
+          ...batch,
+          config: batch.config as GenerationConfig,
+          generations: generations.map((generation) => ({
+            ...generation,
+            task: { id: generation.asyncTaskId, status: AsyncTaskStatus.Pending },
+          })),
+        },
+      });
 
-      // 7. Clear the prompt input after successful image creation
+      // Do not erase a draft edited while the request was in flight.
       this.#set(
-        (state) => ({
-          parameters: { ...state.parameters, prompt: '' },
-        }),
+        (state) =>
+          state.parameters?.prompt === parameters.prompt
+            ? { parameters: { ...state.parameters, prompt: '' } }
+            : {},
         false,
         'createImage/clearPrompt',
       );
+
+      // A failed refresh is not a failed generation: retrying POST could bill twice.
+      try {
+        await this.#get().refreshGenerationBatches(finalTopicId!);
+      } catch (error) {
+        console.error('Failed to refresh accepted image tasks:', error);
+      }
     } catch (error) {
       handleGenerationPromptModerationError(error);
       handleLobeHubModelDeprecatedError(error);
       throw error;
     } finally {
-      // 8. Reset all creating states
-      if (isNewTopic) {
-        this.#set(
-          { isCreating: false, isCreatingWithNewTopic: false },
-          false,
-          'createImage/endCreateImageWithNewTopic',
-        );
-      } else {
-        this.#set({ isCreating: false }, false, 'createImage/endCreateImage');
-      }
+      this.#set(
+        { isCreating: false, isCreatingWithNewTopic: false },
+        false,
+        'createImage/endCreateImage',
+      );
     }
   }
 

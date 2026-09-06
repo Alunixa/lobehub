@@ -155,10 +155,11 @@ export class GenerationBatchActionImpl {
     );
   };
 
-  refreshGenerationBatches = async (): Promise<void> => {
-    const { activeGenerationTopicId } = this.#get();
-    if (activeGenerationTopicId) {
-      await mutate(imageKeys.generationBatches(activeGenerationTopicId));
+  refreshGenerationBatches = async (
+    topicId = this.#get().activeGenerationTopicId,
+  ): Promise<void> => {
+    if (topicId) {
+      await mutate(imageKeys.generationBatches(topicId));
     }
   };
 
