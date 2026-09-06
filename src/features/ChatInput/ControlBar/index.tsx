@@ -1,4 +1,5 @@
-import { Flexbox, Skeleton } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
+import { Skeleton } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import { memo } from 'react';
 
@@ -53,8 +54,8 @@ const ControlBar = memo(() => {
   if (!agentId || isLoading) {
     return (
       <Flexbox horizontal align={'center'} className={styles.bar} gap={4}>
-        <Skeleton.Button active size="small" style={{ height: 22, minWidth: 64, width: 64 }} />
-        <Skeleton.Button active size="small" style={{ height: 22, minWidth: 100, width: 100 }} />
+        <Skeleton height={22} width={64} />
+        <Skeleton height={22} width={100} />
       </Flexbox>
     );
   }

@@ -1,8 +1,8 @@
 'use client';
 
-import { Alert, Flexbox, Text } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
 import type { TabsItem } from '@lobehub/ui/base-ui';
-import { Button, Tabs } from '@lobehub/ui/base-ui';
+import { Alert, Button, Tabs, Text } from '@lobehub/ui/base-ui';
 import { cx } from 'antd-style';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';

@@ -1,7 +1,7 @@
 'use client';
 
-import { ActionIcon, Avatar, Center, Flexbox, SearchBar, Text } from '@lobehub/ui';
-import { Button } from '@lobehub/ui/base-ui';
+import { Center, Flexbox, SearchBar } from '@lobehub/ui';
+import { ActionIcon, Avatar, Button, Text } from '@lobehub/ui/base-ui';
 import { ImageIcon, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';

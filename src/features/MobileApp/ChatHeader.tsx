@@ -1,7 +1,7 @@
 'use client';
 
-import { ActionIcon, Flexbox, Text } from '@lobehub/ui';
-import { Button, DropdownMenu } from '@lobehub/ui/base-ui';
+import { Flexbox } from '@lobehub/ui';
+import { ActionIcon, Button, DropdownMenu, Text } from '@lobehub/ui/base-ui';
 import {
   ArrowLeft,
   ChevronDown,

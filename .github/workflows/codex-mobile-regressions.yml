@@ -27,6 +27,21 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - run: pnpm install
+      - name: Validate mobile and image UI imports
+        run: |
+          node node_modules/eslint/bin/eslint.js --pass-on-unpruned-suppressions \
+            src/features/MobileApp src/features/ImageStudio \
+            src/hooks/useIsMobile.ts src/hooks/useEnterToSend.ts \
+            src/features/ChatInput/Mobile src/features/ChatInput/ControlBar/index.tsx \
+            src/features/ChatInput/Desktop/index.tsx \
+            src/features/Conversation/ChatInput/index.tsx \
+            src/store/image/slices/createImage/action.ts \
+            src/store/image/slices/generationTopic/action.ts \
+            src/store/image/slices/generationBatch/action.ts \
+            'src/routes/(main)/(create)/features/GenerationInput/UploadCard.tsx' \
+            'src/routes/(main)/(create)/image/features/ConfigPanel/components/Select/index.tsx' \
+            'src/routes/(main)/(create)/image/features/GenerationFeed/BatchItem.tsx' \
+            'src/routes/(main)/(create)/image/features/GenerationFeed/GenerationItem/ErrorState.tsx'
       - name: Mobile navigation and image lifecycle
         run: node node_modules/vitest/vitest.mjs run --config tests/mobile-studio/vitest.logic.config.mts --silent=passed-only
       - name: Real store and shared component regressions

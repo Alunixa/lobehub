@@ -1,7 +1,7 @@
 'use client';
 
-import { ActionIcon, Block } from '@lobehub/ui';
-import { Button } from '@lobehub/ui/base-ui';
+import { Block } from '@lobehub/ui';
+import { ActionIcon, Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { Plus, X } from 'lucide-react';
 import type { ChangeEvent, CSSProperties } from 'react';

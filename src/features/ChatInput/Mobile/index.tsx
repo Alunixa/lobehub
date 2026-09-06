@@ -1,7 +1,8 @@
 'use client';
 
 import { ChatInput } from '@lobehub/editor/react';
-import { Flexbox, Skeleton } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
+import { Skeleton } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { memo } from 'react';
 
@@ -77,7 +78,7 @@ const MobileChatInput = memo<DesktopChatInputProps>(
             <div className={styles.toolbar}>
               <Flexbox style={{ flex: 1, minWidth: 0 }}>
                 {isConfigLoading ? (
-                  <Skeleton.Button active size={'small'} />
+                  <Skeleton height={32} width={64} />
                 ) : (
                   leftContent || <ActionBar extraActionItems={extraActionItems} />
                 )}

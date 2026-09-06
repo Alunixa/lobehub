@@ -329,6 +329,7 @@ try {
     errors.length = 0;
     assert(bounds.scrollWidth <= bounds.clientWidth + 1, `${label}: horizontal overflow`);
     assert(!text.includes('页面暂时不可用'), `${label}: route error boundary`);
+    assert(!text.includes('页面不存在'), `${label}: route not found`);
   };
   const open = async (route) => {
     await page.goto(origin + route, { waitUntil: 'networkidle' });
@@ -348,9 +349,9 @@ try {
       '/settings/provider/openai',
       '/settings/profile',
       '/settings/security',
-      '/settings/agent',
+      '/settings/service-model',
       '/settings/memory',
-      '/settings/device',
+      '/settings/devices',
       '/settings/advanced',
       '/agent/agt_preview',
       '/agent/agt_preview/settings',
@@ -454,7 +455,7 @@ try {
     await page.locator('#image-studio-prompt').fill('错误反馈验证');
     generationPhase = 'error';
     await page.getByRole('button', { name: /生成 \d+ 张图片/ }).click();
-    await expect(page.getByTestId('studio-results')).toContainText(/生成失败|服务器错误/);
+    await expect(page.getByTestId('studio-results')).toContainText('生成遇到了问题');
     await capture('mobile-image-error');
     assertions.push('Failed generation is visible and actionable');
     mobile = false;
@@ -488,7 +489,7 @@ try {
     unknown: [...unknown],
   };
   await writeFile(path.join(output, 'report.json'), JSON.stringify(report, null, 2));
-  console.log(
+  console.info(
     JSON.stringify(
       {
         assertions,

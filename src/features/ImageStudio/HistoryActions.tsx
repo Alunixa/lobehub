@@ -1,7 +1,6 @@
 'use client';
 
-import { ActionIcon } from '@lobehub/ui';
-import { confirmModal, DropdownMenu } from '@lobehub/ui/base-ui';
+import { ActionIcon, confirmModal, DropdownMenu } from '@lobehub/ui/base-ui';
 import { App } from 'antd';
 import { EyeOff, MoreHorizontal, Trash2, Users } from 'lucide-react';
 import { useTranslation } from 'react-i18next';

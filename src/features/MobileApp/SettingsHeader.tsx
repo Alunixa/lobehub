@@ -47,8 +47,10 @@ export const MobileSettingsHeader = () => {
           navigate('/tools');
         } else if (isProviderDetail) {
           navigate('/settings/provider/all', { escape: true });
+        } else if (tab || providerId) {
+          navigate('/settings', { escape: true });
         } else {
-          navigate('/me/settings', { escape: true });
+          navigate('/me', { escape: true });
         }
       }}
     />

@@ -2,7 +2,8 @@
 
 import { type ChatInputProps } from '@lobehub/editor/react';
 import { ChatInput, ChatInputActionBar } from '@lobehub/editor/react';
-import { Center, Flexbox, Skeleton, Text } from '@lobehub/ui';
+import { Center, Flexbox } from '@lobehub/ui';
+import { Skeleton, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cx } from 'antd-style';
 import { type ReactNode, use } from 'react';
 import { memo, useEffect } from 'react';
@@ -157,17 +158,12 @@ const DesktopChatInput = memo<DesktopChatInputProps>(
 
     const loadingLeftSlot = isConfigLoading ? (
       <Flexbox horizontal align="center" gap={6} paddingInline={4}>
-        <Skeleton.Button active shape="circle" size="small" style={{ height: 28, width: 28 }} />
-        <Skeleton.Button active shape="circle" size="small" style={{ height: 28, width: 28 }} />
+        <Skeleton height={28} radius={'50%'} width={28} />
+        <Skeleton height={28} radius={'50%'} width={28} />
       </Flexbox>
     ) : null;
     const loadingRightSlot = isConfigLoading ? (
-      <Skeleton.Button
-        active
-        shape="round"
-        size="small"
-        style={{ height: 32, minWidth: 64, width: 64 }}
-      />
+      <Skeleton height={32} radius={16} width={64} />
     ) : null;
 
     const content = (

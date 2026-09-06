@@ -1,4 +1,5 @@
-import { Flexbox, Text } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { Divider } from 'antd';
 import { type FC, type ReactNode } from 'react';
 
@@ -9,14 +10,19 @@ interface SettingHeaderProps {
 
 const SettingHeader: FC<SettingHeaderProps> = ({ title, extra }) => {
   return (
-    <Flexbox gap={24} style={{ paddingTop: 12 }}>
+    <Flexbox
+      data-settings-section-header
+      data-has-extra={!!extra}
+      gap={24}
+      style={{ paddingTop: 12 }}
+    >
       <Flexbox horizontal align={'center'} justify={'space-between'}>
-        <Text strong fontSize={24}>
+        <Text data-settings-title strong fontSize={24}>
           {title}
         </Text>
         {extra}
       </Flexbox>
-      <Divider style={{ margin: 0 }} />
+      <Divider data-settings-title style={{ margin: 0 }} />
     </Flexbox>
   );
 };

@@ -168,6 +168,11 @@ export const mobileStyles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
     overflow-wrap: anywhere;
 
+    [data-settings-section-header][data-has-extra='false'],
+    [data-settings-title] {
+      display: none;
+    }
+
     .ant-form,
     .ant-form-item,
     .ant-form-item-control,
