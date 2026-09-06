@@ -16,36 +16,39 @@ vi.mock('@/business/client/handleGenerationPromptModerationError', () => ({
 
 vi.mock('@/services/image', () => ({
   imageService: {
-    createImage: vi.fn().mockResolvedValue({
-      success: true,
-      data: {
-        batch: {
-          generationTopicId: 'test-topic-id',
-          provider: 'test-provider',
-          model: 'test-model',
-          prompt: 'test prompt',
-          width: 1024,
-          height: 1024,
-          userId: 'test-user',
-          id: 'batch-id',
-          accessedAt: new Date(),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          ratio: null,
-          config: {},
-        },
-        generations: [],
-      },
-    }),
+    createImage: vi.fn(),
   },
 }));
 
 const mockImageService = vi.mocked(imageService);
 const initialState = useImageStore.getState();
+const createImageResponse = (): Awaited<ReturnType<typeof imageService.createImage>> => ({
+  data: {
+    batch: {
+      accessedAt: new Date(),
+      config: {},
+      createdAt: new Date(),
+      generationTopicId: 'test-topic-id',
+      height: 1024,
+      id: 'batch-id',
+      model: 'test-model',
+      prompt: 'test prompt',
+      provider: 'test-provider',
+      ratio: null,
+      updatedAt: new Date(),
+      userId: 'test-user',
+      width: 1024,
+      workspaceId: null,
+    },
+    generations: [],
+  },
+  success: true,
+});
 
 describe('CreateImageAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockImageService.createImage.mockReset().mockResolvedValue(createImageResponse());
     // Reset to initial state with proper defaults
     useImageStore.setState({
       ...initialState,
@@ -83,16 +86,7 @@ describe('CreateImageAction', () => {
         generationBatchesMap: {},
         refreshGenerationBatches: vi.fn().mockRejectedValue(new Error('GET offline')),
       });
-      const original = mockImageService.createImage.getMockImplementation()!;
-      const accepted = structuredClone(
-        await original({
-          generationTopicId: 'active-topic-id',
-          imageNum: 1,
-          model: 'test-model',
-          params: { prompt: 'test prompt' },
-          provider: 'test-provider',
-        }),
-      );
+      const accepted = createImageResponse();
       accepted.data.generations = [
         {
           accessedAt: new Date(),
@@ -123,14 +117,13 @@ describe('CreateImageAction', () => {
     it('prevents duplicate paid requests and preserves a newer draft while submitting', async () => {
       const deferred =
         Promise.withResolvers<Awaited<ReturnType<typeof imageService.createImage>>>();
-      const original = mockImageService.createImage.getMockImplementation()!;
       mockImageService.createImage.mockImplementationOnce(() => deferred.promise);
       useImageStore.setState({ refreshGenerationBatches: vi.fn().mockResolvedValue(undefined) });
       const first = useImageStore.getState().createImage();
       await useImageStore.getState().createImage();
       expect(mockImageService.createImage).toHaveBeenCalledTimes(1);
       useImageStore.setState({ parameters: { prompt: 'new unsent draft' } });
-      deferred.resolve(await original(mockImageService.createImage.mock.calls[0][0]));
+      deferred.resolve(createImageResponse());
       await first;
       expect(useImageStore.getState().parameters?.prompt).toBe('new unsent draft');
       expect(useImageStore.getState().isCreating).toBe(false);
