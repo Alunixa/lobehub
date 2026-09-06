@@ -36,7 +36,7 @@ export const ImageStudioPage = ({ mobile: forceMobile = false }: { mobile?: bool
   const createButton = (
     <Button
       disabled={studio.isCreating}
-      icon={Plus}
+      icon={<Plus size={18} />}
       size={mobile ? 'middle' : 'small'}
       onClick={studio.openNew}
     >

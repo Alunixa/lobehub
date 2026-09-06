@@ -247,7 +247,7 @@ const UploadCard = memo<UploadCardProps>(
         <>
           {fileInput}
           <Button
-            aria-label={t('upload')}
+            aria-label={t('mobile.uploadReference')}
             className={`${uploadCardStyles.addCircle} ${className || ''}`}
             style={style}
             type={'text'}
@@ -269,7 +269,7 @@ const UploadCard = memo<UploadCardProps>(
             variant={'outlined'}
           >
             <Button
-              aria-label={t('upload')}
+              aria-label={t('mobile.uploadReference')}
               disabled={uploading}
               style={{ position: 'absolute', inset: 0, zIndex: 6, height: '100%', width: '100%' }}
               type={'text'}
@@ -292,7 +292,7 @@ const UploadCard = memo<UploadCardProps>(
             {!uploading && (
               <ActionIcon
                 glass
-                aria-label={t('remove')}
+                aria-label={t('delete')}
                 className={cx(uploadCardStyles.closeButton, closeClassName, 'upload-card-close')}
                 icon={X}
                 size={{ blockSize: 32, size: 16 }}
@@ -312,7 +312,7 @@ const UploadCard = memo<UploadCardProps>(
       <>
         {fileInput}
         <Button
-          aria-label={t('upload')}
+          aria-label={t('mobile.uploadReference')}
           className={cx(uploadCardStyles.placeholderCard, className)}
           style={{ display: 'flex', flexDirection: 'column', gap: 4, ...style }}
           type={'text'}

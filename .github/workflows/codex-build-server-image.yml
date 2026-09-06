@@ -54,6 +54,25 @@ jobs:
             lobehub/lobehub:codex-${{ github.sha }} \
             -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require('next/dist/server/next-server.js')"
 
+      - name: Export static production UI for browser validation
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          target: spa-preview
+          platforms: linux/amd64
+          outputs: type=local,dest=/tmp/lobehub-spa-preview
+          provenance: false
+          sbom: false
+
+      - name: Upload production UI preview
+        uses: actions/upload-artifact@v4
+        with:
+          name: lobehub-spa-preview-${{ github.sha }}
+          path: /tmp/lobehub-spa-preview
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Upload OCI image
         uses: actions/upload-artifact@v4
         with:

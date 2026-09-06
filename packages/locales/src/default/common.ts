@@ -1,4 +1,5 @@
 export default {
+  'mobile.uploadReference': 'Upload or replace a reference image',
   'mobile.agentProfile': 'Agent profile and runtime',
   'mobile.autoSave': 'Changes are saved automatically',
   'mobile.clearSearch': 'Clear search',

@@ -10,7 +10,7 @@ import { useActiveWorkspaceSlug } from '@/business/client/hooks/useActiveWorkspa
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { featureFlagsSelectors, useServerConfigStore } from '@/store/serverConfig';
 
-import { resolveMobileNavigation } from './navigation';
+import { resolveMobileNavigation } from './navigationRules';
 import { mobileStyles as styles } from './styles';
 
 export const MobileNavigation = () => {

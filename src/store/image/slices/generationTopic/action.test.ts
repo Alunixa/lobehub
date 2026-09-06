@@ -599,6 +599,27 @@ describe('GenerationTopicAction', () => {
   });
 
   describe('internal_createGenerationTopic', () => {
+    it('makes the real topic selectable without mounting a history sidebar', async () => {
+      vi.mocked(generationTopicService.createTopic).mockResolvedValue('gt_mobile');
+      const store = useImageStore.getState();
+      const id = await store.internal_createGenerationTopic();
+      store.switchGenerationTopic(id);
+      expect(useImageStore.getState().activeGenerationTopicId).toBe('gt_mobile');
+      expect(useImageStore.getState().generationTopics.map((topic) => topic.id)).toEqual([
+        'gt_mobile',
+      ]);
+      expect(useImageStore.getState().loadingGenerationTopicIds).toEqual([]);
+    });
+
+    it('cleans the optimistic topic and loading indicator on failure', async () => {
+      vi.mocked(generationTopicService.createTopic).mockRejectedValueOnce(new Error('offline'));
+      await expect(useImageStore.getState().internal_createGenerationTopic()).rejects.toThrow(
+        'offline',
+      );
+      expect(useImageStore.getState().generationTopics).toEqual([]);
+      expect(useImageStore.getState().loadingGenerationTopicIds).toEqual([]);
+    });
+
     it('should create topic with optimistic update pattern', async () => {
       const { result } = renderHook(() => useImageStore());
       const newTopicId = 'gt_new_topic';
@@ -623,7 +644,8 @@ describe('GenerationTopicAction', () => {
 
       expect(dispatchSpy).toHaveBeenCalled();
       expect(loadingSpy).toHaveBeenCalledWith(expect.any(String), true);
-      expect(loadingSpy).toHaveBeenCalledWith(newTopicId, false);
+      expect(result.current.loadingGenerationTopicIds).toEqual([]);
+      expect(result.current.generationTopics.map((topic) => topic.id)).toEqual([newTopicId]);
       expect(generationTopicService.createTopic).toHaveBeenCalledWith('image', 'private');
     });
 

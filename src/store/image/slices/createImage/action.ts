@@ -77,10 +77,18 @@ export class CreateImageActionImpl {
           value: {
             ...batch,
             config: batch.config as GenerationConfig,
-            generations: generations.map((generation) => ({
-              ...generation,
-              task: { id: generation.asyncTaskId, status: AsyncTaskStatus.Pending },
-            })),
+            generations: generations.flatMap((generation) => {
+              if (!generation.id || !generation.asyncTaskId) return [];
+              return [
+                {
+                  ...generation,
+                  asyncTaskId: generation.asyncTaskId,
+                  createdAt: generation.createdAt ?? new Date(),
+                  id: generation.id,
+                  task: { id: generation.asyncTaskId, status: AsyncTaskStatus.Pending },
+                },
+              ];
+            }),
           },
         });
 

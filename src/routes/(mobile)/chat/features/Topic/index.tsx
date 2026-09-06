@@ -19,7 +19,7 @@ const Topic = () => {
       <Flexbox gap={8} height={'100%'} padding={'8px 8px 0'} style={{ overflow: 'hidden' }}>
         <Button
           block
-          icon={Plus}
+          icon={<Plus size={18} />}
           style={{ minHeight: 44, flex: 'none' }}
           onClick={async () => {
             await openNewTopic();

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { imageService } from '@/services/image';
 import { useImageStore } from '@/store/image';
+import { AsyncTaskStatus } from '@/types/asyncTask';
 
 const { handleGenerationPromptModerationErrorMock } = vi.hoisted(() => ({
   handleGenerationPromptModerationErrorMock: vi.fn(),
@@ -40,12 +41,12 @@ vi.mock('@/services/image', () => ({
 }));
 
 const mockImageService = vi.mocked(imageService);
+const initialState = useImageStore.getState();
 
 describe('CreateImageAction', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Reset to initial state with proper defaults
-    const initialState = useImageStore.getState();
     useImageStore.setState({
       ...initialState,
       isCreating: false,
@@ -76,6 +77,76 @@ describe('CreateImageAction', () => {
   });
 
   describe('createImage', () => {
+    it('shows accepted tasks immediately even when the follow-up fetch fails', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      useImageStore.setState({
+        generationBatchesMap: {},
+        refreshGenerationBatches: vi.fn().mockRejectedValue(new Error('GET offline')),
+      });
+      const original = mockImageService.createImage.getMockImplementation()!;
+      const accepted = structuredClone(
+        await original({
+          generationTopicId: 'active-topic-id',
+          imageNum: 1,
+          model: 'test-model',
+          params: { prompt: 'test prompt' },
+          provider: 'test-provider',
+        }),
+      );
+      accepted.data.generations = [
+        {
+          accessedAt: new Date(),
+          asset: null,
+          asyncTaskId: 'task-id',
+          createdAt: new Date(),
+          fileId: null,
+          generationBatchId: 'batch-id',
+          id: 'generation-id',
+          seed: null,
+          updatedAt: new Date(),
+          userId: 'user-id',
+          workspaceId: null,
+        },
+      ];
+      mockImageService.createImage.mockResolvedValueOnce(accepted);
+      await useImageStore.getState().createImage();
+      const state = useImageStore.getState();
+      expect(state.generationBatchesMap['active-topic-id'][0].generations[0].task).toEqual({
+        id: 'task-id',
+        status: AsyncTaskStatus.Pending,
+      });
+      expect(state.isCreating).toBe(false);
+      expect(state.parameters?.prompt).toBe('');
+      expect(mockImageService.createImage).toHaveBeenCalledTimes(1);
+    });
+
+    it('prevents duplicate paid requests and preserves a newer draft while submitting', async () => {
+      const deferred =
+        Promise.withResolvers<Awaited<ReturnType<typeof imageService.createImage>>>();
+      const original = mockImageService.createImage.getMockImplementation()!;
+      mockImageService.createImage.mockImplementationOnce(() => deferred.promise);
+      useImageStore.setState({ refreshGenerationBatches: vi.fn().mockResolvedValue(undefined) });
+      const first = useImageStore.getState().createImage();
+      await useImageStore.getState().createImage();
+      expect(mockImageService.createImage).toHaveBeenCalledTimes(1);
+      useImageStore.setState({ parameters: { prompt: 'new unsent draft' } });
+      deferred.resolve(await original(mockImageService.createImage.mock.calls[0][0]));
+      await first;
+      expect(useImageStore.getState().parameters?.prompt).toBe('new unsent draft');
+      expect(useImageStore.getState().isCreating).toBe(false);
+    });
+
+    it('resets busy state and keeps the draft when topic creation fails', async () => {
+      useImageStore.setState({
+        activeGenerationTopicId: null,
+        createGenerationTopic: vi.fn().mockRejectedValue(new Error('topic offline')),
+      });
+      await expect(useImageStore.getState().createImage()).rejects.toThrow('topic offline');
+      expect(useImageStore.getState().isCreating).toBe(false);
+      expect(useImageStore.getState().isCreatingWithNewTopic).toBe(false);
+      expect(useImageStore.getState().parameters?.prompt).toBe('test prompt');
+      expect(mockImageService.createImage).not.toHaveBeenCalled();
+    });
     it('should create image with existing topic', async () => {
       const { result } = renderHook(() => useImageStore());
       const mockRefreshGenerationBatches = vi.fn().mockResolvedValue(undefined);
@@ -203,6 +274,7 @@ describe('CreateImageAction', () => {
           await result.current.createImage();
         }),
       ).rejects.toThrow('parameters is not initialized');
+      expect(useImageStore.getState().isCreating).toBe(false);
     });
 
     it('should throw error when prompt is empty', async () => {
@@ -223,6 +295,7 @@ describe('CreateImageAction', () => {
           await result.current.createImage();
         }),
       ).rejects.toThrow('prompt is empty');
+      expect(useImageStore.getState().isCreating).toBe(false);
     });
 
     it('should handle service error', async () => {

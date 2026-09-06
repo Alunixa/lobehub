@@ -86,7 +86,7 @@ export const StudioComposer = ({
                 placement={'bottomLeft'}
                 pricingMode={'image'}
                 provider={provider}
-                onModelChange={({ model, provider }) => setModel(model, provider)}
+                onModelChange={async ({ model, provider }) => setModel(model, provider)}
               >
                 <Button
                   aria-label={t('config.model.label')}

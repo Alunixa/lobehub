@@ -32,7 +32,7 @@ const styles = createStaticStyles(({ css, cssVar }) => {
 });
 
 const ListItem = memo<
-  ListItemProps & {
+  Omit<ListItemProps, 'key'> & {
     avatar: string | { avatar: string; background?: string }[];
     avatarBackground?: string;
     type?: 'agent' | 'group' | 'inbox';

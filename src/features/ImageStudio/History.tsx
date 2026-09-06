@@ -75,6 +75,7 @@ export const StudioHistory = ({ disabled, onNew, onSelect, query }: StudioHistor
         ) : (
           filtered.slice(0, limit).map((topic) => (
             <NavItem
+              actions={<StudioHistoryActions disabled={disabled} topic={topic} />}
               active={activeId === topic.id}
               className={styles.historyRow}
               disabled={disabled}
@@ -82,7 +83,6 @@ export const StudioHistory = ({ disabled, onNew, onSelect, query }: StudioHistor
               key={topic.id}
               loading={loadingIds.includes(topic.id)}
               title={topic.title || t('topic.untitled')}
-              actions={<StudioHistoryActions disabled={disabled} topic={topic} />}
               description={
                 <Text fontSize={12} type={'secondary'}>
                   {new Date(topic.updatedAt).toLocaleDateString()} ·{' '}

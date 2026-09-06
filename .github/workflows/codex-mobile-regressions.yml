@@ -1,0 +1,44 @@
+name: Codex Mobile Regression
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - codex/**
+    paths:
+      - .github/workflows/codex-mobile-regressions.yml
+      - src/**
+      - packages/locales/**
+      - tests/mobile-studio/**
+      - locales/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codex-mobile-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+      - run: pnpm install
+      - name: Mobile navigation and image lifecycle
+        run: node node_modules/vitest/vitest.mjs run --config tests/mobile-studio/vitest.logic.config.mts --silent=passed-only
+      - name: Real store and shared component regressions
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only \
+            src/store/image/slices/createImage/action.test.ts \
+            src/store/image/slices/generationTopic/action.test.ts \
+            src/store/image/slices/generationBatch/action.test.ts \
+            src/store/image/slices/generationBatch/reducer.test.ts \
+            src/spa/router/desktopRouter.sync.test.tsx \
+            src/features/AgentTasks/TaskWorkspaceLayout.test.tsx \
+            src/features/ModelSwitchPanel \
+            'src/routes/(main)/(create)/image/features/ConfigPanel/components/Select/utils.test.ts' \
+            'src/routes/(main)/(create)/image/features/PromptInput/useImageReferenceUpload.test.ts' \
+            'src/routes/(main)/(create)/image/features/GenerationFeed/GenerationItem'

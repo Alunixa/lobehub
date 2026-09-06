@@ -124,7 +124,12 @@ const SizeSelect = memo<SizeSelectProps>(
     // If any option cannot be parsed as ratio, fallback to regular Select
     if (hasInvalidRatio) {
       return (
-        <Select options={options} style={{ width: '100%' }} value={active} onChange={onChange} />
+        <Select
+          options={options?.map((option) => ({ ...option, label: option.label || option.value }))}
+          style={{ width: '100%' }}
+          value={active}
+          onChange={onChange}
+        />
       );
     }
 

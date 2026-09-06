@@ -200,7 +200,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch, onRe
       <Flexbox horizontal align={'center'} className={styles.batchActions}>
         <Button
           disabled={isCreating}
-          icon={RotateCcwSquareIcon}
+          icon={<RotateCcwSquareIcon size={18} />}
           size={'small'}
           style={{ minHeight: 44 }}
           onClick={handleReuseSettings}

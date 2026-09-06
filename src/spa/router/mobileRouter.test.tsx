@@ -10,7 +10,7 @@ describe('mobileRouter task routes', () => {
       'utf8',
     );
 
-    expect(source).toContain("import('@/routes/(main)/(task-workspace)/_layout')");
+    expect(source).toContain("import('@/features/MobileApp/TaskLayout')");
     expect(source).toContain("import('@/routes/(main)/tasks')");
     expect(source).toContain("import('@/routes/(main)/task/[taskId]')");
     expect(source).toContain("import('@/routes/(main)/agent/task/[taskId]')");
@@ -35,15 +35,31 @@ describe('mobileRouter image generation routes', () => {
   });
 
   it('keeps the image route in the mobile bottom navigation', async () => {
-    const [layoutSource, navSource] = await Promise.all([
+    const [layoutSource, navSource, rulesSource] = await Promise.all([
       readFile(path.join(process.cwd(), 'src/routes/(mobile)/_layout/index.tsx'), 'utf8'),
-      readFile(path.join(process.cwd(), 'src/routes/(mobile)/_layout/NavBar.tsx'), 'utf8'),
+      readFile(path.join(process.cwd(), 'src/features/MobileApp/Navigation.tsx'), 'utf8'),
+      readFile(path.join(process.cwd(), 'src/features/MobileApp/navigationRules.ts'), 'utf8'),
     ]);
 
-    expect(layoutSource).toContain("'/image'");
-    expect(layoutSource).toContain("pathname.endsWith('/image')");
-    expect(navSource).toContain('key: SidebarTabKey.Image');
-    expect(navSource).toContain("navigate('/image')");
-    expect(navSource).toContain("pathname.endsWith('/image')");
+    expect(layoutSource).toContain('MobileAppShell');
+    expect(navSource).toContain("key: 'image'");
+    expect(navSource).toContain("path: '/image'");
+    expect(navSource).toContain('resolveMobileNavigation');
+    expect(rulesSource).toContain("'/image'");
+  });
+});
+
+describe('mobile settings coverage', () => {
+  it('uses mobile setting pages and exposes profile and workbench routes', async () => {
+    const source = await readFile(
+      path.join(process.cwd(), 'src/spa/router/mobileRouter.config.tsx'),
+      'utf8',
+    );
+    expect(source).toContain("import('@/routes/(mobile)/settings')");
+    expect(source).not.toContain("import('@/routes/(main)/settings')");
+    expect(source).toContain("path: 'profile'");
+    expect(source).toContain('MobileAgentProfile');
+    expect(source).toContain('MobileWorkspaceSettings');
+    expect(source).toContain("path: 'tools'");
   });
 });

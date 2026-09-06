@@ -50,7 +50,7 @@ export const MobileHomeLayout = ({ children }: PropsWithChildren) => {
         actions={
           <Button
             disabled={!canCreate || creating}
-            icon={MessageSquarePlus}
+            icon={<MessageSquarePlus size={18} />}
             loading={creating}
             style={{ minHeight: 44 }}
             type={'primary'}
@@ -67,7 +67,7 @@ export const MobileHomeLayout = ({ children }: PropsWithChildren) => {
             {t('mobile.yourAgents')}
           </Text>
           <Button
-            icon={ImagePlus}
+            icon={<ImagePlus size={18} />}
             size={'small'}
             style={{ minHeight: 44 }}
             type={'text'}

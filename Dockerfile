@@ -101,6 +101,12 @@ RUN rm -rf src/app/desktop "src/app/(backend)/trpc/desktop"
 # run build standalone for docker version
 RUN npm run build:docker
 
+## Static production UI preview for pre-deployment browser validation (no backend)
+FROM scratch AS spa-preview
+COPY --from=builder /app/public/_spa /_spa
+COPY --from=builder /app/dist/desktop/index.html /desktop.html
+COPY --from=builder /app/dist/mobile/index.mobile.html /mobile.html
+
 ## Application image, copy all the files for production
 FROM busybox:latest AS app
 
