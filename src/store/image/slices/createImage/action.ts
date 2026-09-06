@@ -71,12 +71,13 @@ export class CreateImageActionImpl {
       const alreadyLoaded = this.#get().generationBatchesMap[finalTopicId!]?.some(
         (item) => item.id === batch.id,
       );
-      if (!alreadyLoaded)
+      if (batch.id && !alreadyLoaded)
         this.#get().internal_dispatchGenerationBatch(finalTopicId!, {
           type: 'addBatch',
           value: {
             ...batch,
             config: batch.config as GenerationConfig,
+            createdAt: batch.createdAt ?? new Date(),
             generations: generations.flatMap((generation) => {
               if (!generation.id || !generation.asyncTaskId) return [];
               return [
@@ -89,6 +90,10 @@ export class CreateImageActionImpl {
                 },
               ];
             }),
+            id: batch.id,
+            model: batch.model ?? model,
+            prompt: batch.prompt ?? parameters.prompt,
+            provider: batch.provider ?? provider,
           },
         });
 

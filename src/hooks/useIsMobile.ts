@@ -6,8 +6,5 @@ export const useIsMobile = (): boolean => {
 
   // A phone's landscape viewport can exceed the responsive breakpoint, but the
   // dedicated mobile bundle must not suddenly mount desktop-only sidebars.
-  return useMemo(
-    () => (typeof __MOBILE__ !== 'undefined' && __MOBILE__) || !!mobile,
-    [mobile],
-  );
+  return useMemo(() => (typeof __MOBILE__ !== 'undefined' && __MOBILE__) || !!mobile, [mobile]);
 };
