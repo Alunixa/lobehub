@@ -20,6 +20,7 @@ export default defineConfig({
       'src/features/MobileApp/*.test.tsx',
       'src/features/ImageStudio/useImageStudio.test.tsx',
       'src/hooks/useIsMobile.test.ts',
+      'src/hooks/useEnterToSend.test.ts',
       'src/spa/router/mobileRouter.test.tsx',
     ],
     maxWorkers: 2,

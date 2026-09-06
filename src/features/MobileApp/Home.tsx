@@ -60,7 +60,7 @@ export const MobileHomeLayout = ({ children }: PropsWithChildren) => {
           </Button>
         }
       />
-      <Flexbox gap={12} padding={'16px 16px 12px'} style={{ flex: 'none' }}>
+      <Flexbox gap={12} style={{ flex: 'none', padding: '16px 16px 12px' }}>
         <SessionSearchBar mobile />
         <Flexbox horizontal align={'center'} justify={'space-between'}>
           <Text fontSize={13} type={'secondary'}>
@@ -77,7 +77,7 @@ export const MobileHomeLayout = ({ children }: PropsWithChildren) => {
           </Button>
         </Flexbox>
       </Flexbox>
-      <Flexbox className={styles.scroll} padding={'0 8px 16px'}>
+      <Flexbox className={styles.scroll} style={{ padding: '0 8px 16px' }}>
         {children}
       </Flexbox>
     </Flexbox>

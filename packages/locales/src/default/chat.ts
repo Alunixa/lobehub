@@ -714,6 +714,7 @@ export default {
   'sendPlaceholderChatWithAgentAssignment':
     'Ask, search, or brainstorm. @ to bring in other agents.',
   'sendPlaceholderHeterogeneous': 'Describe a task or ask a question to {{name}}',
+  'sendPlaceholderMobile': 'Write a message. Enter adds a new line…',
   'sendPlaceholderWithAgentAssignment':
     'Ask, create, or start a task. @ to assign tasks to other agents.',
   'sessionGroup.config': 'Category Management',

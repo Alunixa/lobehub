@@ -641,6 +641,7 @@
   "sendPlaceholderChat": "提问、搜索或头脑风暴… <hotkey><hotkey/>",
   "sendPlaceholderChatWithAgentAssignment": "提问、搜索或头脑风暴。@ 召唤其他智能体加入。",
   "sendPlaceholderHeterogeneous": "描述任务或向 {{name}} 提问",
+  "sendPlaceholderMobile": "输入消息，回车换行…",
   "sendPlaceholderWithAgentAssignment": "提问、创建或开始任务。使用 @ 分配任务给其他智能体。",
   "sessionGroup.config": "分类管理",
   "sessionGroup.confirmRemoveGroupAlert": "确认删除该分类吗？分类内的助理会移回默认列表",

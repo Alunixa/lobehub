@@ -117,7 +117,7 @@ const InputEditor = memo<{
 
   const { compositionProps, isComposingRef } = useIMECompositionEvent();
 
-  const shouldSendOnEnter = useEnterToSend();
+  const shouldSendOnEnter = useEnterToSend(mobile);
   const getMarkdownContent = useCallback(
     () => storeApi.getState().getMarkdownContent(),
     [storeApi],
@@ -552,6 +552,7 @@ const InputEditor = memo<{
             (placeholder ?? (
               <Placeholder
                 heterogeneousName={heterogeneousName}
+                mobile={mobile}
                 showAgentAssignmentHint={showAgentAssignmentHint}
                 variant={placeholderVariant}
               />

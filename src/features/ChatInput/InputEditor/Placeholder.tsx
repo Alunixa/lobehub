@@ -13,12 +13,13 @@ export type PlaceholderVariant = 'default' | 'followUp';
 
 interface PlaceholderProps {
   heterogeneousName?: string;
+  mobile?: boolean;
   showAgentAssignmentHint?: boolean;
   variant?: PlaceholderVariant;
 }
 
 const Placeholder = memo<PlaceholderProps>(
-  ({ heterogeneousName, showAgentAssignmentHint = false, variant = 'default' }) => {
+  ({ heterogeneousName, mobile = false, showAgentAssignmentHint = false, variant = 'default' }) => {
     const useCmdEnterToSend = useUserStore(preferenceSelectors.useCmdEnterToSend);
     const wrapperShortcut = useCmdEnterToSend
       ? KeyEnum.Enter
@@ -34,6 +35,16 @@ const Placeholder = memo<PlaceholderProps>(
       return (
         <span>
           {t(isHeterogeneous ? 'followUpPlaceholderHeterogeneous' : 'followUpPlaceholder')}
+        </span>
+      );
+    }
+
+    if (mobile) {
+      return (
+        <span>
+          {t(isHeterogeneous ? 'sendPlaceholderHeterogeneous' : 'sendPlaceholderMobile', {
+            name: heterogeneousName,
+          })}
         </span>
       );
     }
