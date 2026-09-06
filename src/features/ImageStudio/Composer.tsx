@@ -1,7 +1,8 @@
 'use client';
 
 import { ModelIcon } from '@lobehub/icons';
-import { Button, Flexbox, Icon, Text, TextArea } from '@lobehub/ui';
+import { Flexbox, Icon, Text, TextArea } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { ChevronDown, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 

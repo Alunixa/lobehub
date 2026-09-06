@@ -68,17 +68,21 @@ export class CreateImageActionImpl {
       // Publish the accepted tasks immediately, including the first mobile request.
       // Neither a mounted sidebar nor a successful follow-up GET is required.
       const { batch, generations } = result.data;
-      this.#get().internal_dispatchGenerationBatch(finalTopicId!, {
-        type: 'addBatch',
-        value: {
-          ...batch,
-          config: batch.config as GenerationConfig,
-          generations: generations.map((generation) => ({
-            ...generation,
-            task: { id: generation.asyncTaskId, status: AsyncTaskStatus.Pending },
-          })),
-        },
-      });
+      const alreadyLoaded = this.#get().generationBatchesMap[finalTopicId!]?.some(
+        (item) => item.id === batch.id,
+      );
+      if (!alreadyLoaded)
+        this.#get().internal_dispatchGenerationBatch(finalTopicId!, {
+          type: 'addBatch',
+          value: {
+            ...batch,
+            config: batch.config as GenerationConfig,
+            generations: generations.map((generation) => ({
+              ...generation,
+              task: { id: generation.asyncTaskId, status: AsyncTaskStatus.Pending },
+            })),
+          },
+        });
 
       // Do not erase a draft edited while the request was in flight.
       this.#set(

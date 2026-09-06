@@ -1,12 +1,13 @@
 'use client';
 
-import { Alert, Button, Flexbox, Text } from '@lobehub/ui';
+import { Alert, Flexbox, Text } from '@lobehub/ui';
 import type { TabsItem } from '@lobehub/ui/base-ui';
-import { Tabs } from '@lobehub/ui/base-ui';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
 import { cx } from 'antd-style';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 
+import AsyncError from '@/components/AsyncError';
 import { useCategory } from '@/features/AgentSetting/AgentCategory/useCategory';
 import AgentSettings from '@/features/AgentSetting/AgentSettings';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -29,6 +30,8 @@ export const MobileAgentSettings = () => {
   const categories = useCategory({ mobile: true });
   const { allowed: canEdit } = usePermission('edit_own_content');
   const { save, retry, status } = useSaveFeedback();
+  const error = useAgentStore(agentSelectors.currentAgentConfigError);
+  const retryConfig = useAgentStore((s) => s.retryAgentConfigFetch);
   const [updateConfig, updateMeta, config, meta, isLoading, isHeterogeneous] = useAgentStore(
     (s) => [
       s.updateAgentConfigById,
@@ -64,6 +67,10 @@ export const MobileAgentSettings = () => {
       </div>
       <Flexbox className={styles.scroll}>
         <Flexbox className={cx(styles.content, styles.settings)} gap={16}>
+          <Button onClick={() => navigate(`/agent/${aid}/profile`)}>
+            {t('mobile.agentProfile')}
+          </Button>
+          {error && <AsyncError error={error} onRetry={retryConfig} />}
           {status === 'error' && (
             <Alert
               action={<Button onClick={() => void retry()}>{t('retry')}</Button>}
@@ -71,7 +78,7 @@ export const MobileAgentSettings = () => {
               type={'error'}
             />
           )}
-          {activeTab === 'params' ? (
+          {error ? null : activeTab === 'params' ? (
             <ParamsSection />
           ) : (
             <>

@@ -65,6 +65,13 @@ export const sharedMainAreaChildren: RouteObject[] = [
           },
           {
             element: dynamicElement(
+              () => import('@/features/MobileApp/AgentProfile').then((m) => m.MobileAgentProfile),
+              'Mobile > Chat > Profile',
+            ),
+            path: 'profile',
+          },
+          {
+            element: dynamicElement(
               () => import('@/routes/(mobile)/chat/settings'),
               'Mobile > Chat > Settings',
             ),
@@ -423,9 +430,7 @@ export const mobileRoutes: RouteObject[] = [
             ),
           },
           ...sharedMainAreaChildren,
-          // Workspace settings — `/:slug/settings/*`. Mobile reuses the mobile
-          // settings chrome (header + content wrapper) for now; a dedicated
-          // mobile workspace sidebar is follow-up work.
+          // Workspace settings keep their scoped navigation on mobile.
           {
             children: [
               { element: redirectElement('general'), index: true },
@@ -480,7 +485,10 @@ export const mobileRoutes: RouteObject[] = [
               },
             ],
             element: dynamicLayout(
-              () => import('@/routes/(mobile)/settings/_layout'),
+              () =>
+                import('@/features/MobileApp/WorkspaceSettings').then(
+                  (m) => m.MobileWorkspaceSettings,
+                ),
               'Mobile > Workspace > Settings > Layout',
             ),
             errorElement: <ErrorBoundary />,

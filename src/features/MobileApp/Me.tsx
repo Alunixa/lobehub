@@ -1,6 +1,7 @@
 'use client';
 
-import { ActionIcon, Button, Center, Flexbox, Icon, Text } from '@lobehub/ui';
+import { ActionIcon, Center, Flexbox, Icon, Text } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { ChevronRight, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useTranslation } from 'react-i18next';

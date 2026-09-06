@@ -2,8 +2,8 @@
 
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { ModelTag } from '@lobehub/icons';
-import { ActionIconGroup, Block, Button, Flexbox, Image, Markdown, Tag, Text } from '@lobehub/ui';
-import { confirmModal } from '@lobehub/ui/base-ui';
+import { ActionIconGroup, Block, Flexbox, Image, Markdown, Tag, Text } from '@lobehub/ui';
+import { Button, confirmModal } from '@lobehub/ui/base-ui';
 import { App } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import dayjs from 'dayjs';
@@ -23,7 +23,7 @@ import { type GenerationBatch } from '@/types/generation';
 import { GenerationItem } from './GenerationItem';
 import { ReferenceImages } from './ReferenceImages';
 
-const styles = createStaticStyles(({ css, cssVar, cx }) => ({
+const styles = createStaticStyles(({ css, cssVar }) => ({
   batchActions: css`
     flex-wrap: wrap;
     gap: 8px;

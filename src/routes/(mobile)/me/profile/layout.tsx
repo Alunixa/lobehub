@@ -1,16 +1,1 @@
-import { memo } from 'react';
-import { Outlet } from 'react-router';
-
-import MobileContentLayout from '@/components/server/MobileNavLayout';
-
-import Header from './features/Header';
-
-const Layout = memo(() => {
-  return (
-    <MobileContentLayout header={<Header />}>
-      <Outlet />
-    </MobileContentLayout>
-  );
-});
-
-export default Layout;
+export { MobileProfileLayout as default } from '@/features/MobileApp/ProfileLayout';

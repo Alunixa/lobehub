@@ -27,7 +27,7 @@ const providerContentModerationKeyByDefaultMessage = new Map<
 
 // Error state component
 export const ErrorState = memo<ErrorStateProps>(
-  ({ generation, generationBatch, aspectRatio, onDelete, onCopyError }) => {
+  ({ generation, aspectRatio, onDelete, onCopyError }) => {
     const { t } = useTranslation('image');
     const { t: tError } = useTranslation(['error', 'modelRuntime']);
 

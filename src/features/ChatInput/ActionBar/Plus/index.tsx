@@ -676,6 +676,7 @@ const PlusAction = memo(() => {
     return [...attachmentsItems, ...capabilityItems];
   }, [
     activeSearchOption,
+    agentId,
     canUploadImage,
     canUploadVideo,
     canUploadAudio,

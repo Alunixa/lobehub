@@ -1,12 +1,14 @@
 'use client';
 
 import { ActionIcon, Block } from '@lobehub/ui';
-import { Spin } from 'antd';
+import { Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { Plus, X } from 'lucide-react';
 import type { ChangeEvent, CSSProperties } from 'react';
 import { memo, useCallback, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
+import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import Image from '@/libs/next/Image';
 import { useFileStore } from '@/store/file';
 
@@ -36,7 +38,8 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
 
     transition: all ${cssVar.motionDurationMid} ease;
 
-    &:hover {
+    &:hover,
+    &:focus-within {
       color: ${cssVar.colorPrimary};
       background: ${cssVar.colorPrimaryBg};
       box-shadow:
@@ -70,9 +73,16 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
       opacity: 0 !important;
     }
 
-    &:hover {
+    &:hover,
+    &:focus-within {
       z-index: 99 !important;
 
+      .upload-card-close {
+        opacity: 1 !important;
+      }
+    }
+
+    @media (hover: none), (pointer: coarse) {
       .upload-card-close {
         opacity: 1 !important;
       }
@@ -119,13 +129,7 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
 
     background: ${cssVar.colorBgMask};
 
-    /* antd resets the Spin's own color to colorText (near-black in the light
-       theme) and the percent ring's stroke is \`currentcolor\`, so it smears into
-       the dark mask. The mask is a dark scrim in both themes — override the Spin
-       color to white for contrast. */
-    .ant-spin {
-      color: ${cssVar.colorWhite};
-    }
+    color: ${cssVar.colorWhite};
   `,
 }));
 
@@ -166,6 +170,7 @@ const UploadCard = memo<UploadCardProps>(
     style,
     variant = 'card',
   }) => {
+    const { t } = useTranslation('common');
     const inputRef = useRef<HTMLInputElement>(null);
     const uploadWithProgress = useFileStore((s) => s.uploadWithProgress);
     const [isUploading, setIsUploading] = useState(false);
@@ -241,13 +246,15 @@ const UploadCard = memo<UploadCardProps>(
       return (
         <>
           {fileInput}
-          <div
+          <Button
+            aria-label={t('upload')}
             className={`${uploadCardStyles.addCircle} ${className || ''}`}
             style={style}
+            type={'text'}
             onClick={handleFileSelect}
           >
             <Plus size={14} />
-          </div>
+          </Button>
         </>
       );
     }
@@ -257,12 +264,17 @@ const UploadCard = memo<UploadCardProps>(
         <>
           {fileInput}
           <Block
-            clickable
             className={cx(uploadCardStyles.filledCard, className)}
             style={style}
             variant={'outlined'}
-            onClick={handleFileSelect}
           >
+            <Button
+              aria-label={t('upload')}
+              disabled={uploading}
+              style={{ position: 'absolute', inset: 0, zIndex: 6, height: '100%', width: '100%' }}
+              type={'text'}
+              onClick={handleFileSelect}
+            />
             <div className={uploadCardStyles.filledCardInner}>
               <Image
                 fill
@@ -273,16 +285,17 @@ const UploadCard = memo<UploadCardProps>(
               />
               {uploading && (
                 <div className={uploadCardStyles.uploadOverlay}>
-                  <Spin percent={'auto'} size="small" />
+                  <NeuralNetworkLoading size={24} />
                 </div>
               )}
             </div>
             {!uploading && (
               <ActionIcon
                 glass
+                aria-label={t('remove')}
                 className={cx(uploadCardStyles.closeButton, closeClassName, 'upload-card-close')}
                 icon={X}
-                size={12}
+                size={{ blockSize: 32, size: 16 }}
                 variant="outlined"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -298,19 +311,16 @@ const UploadCard = memo<UploadCardProps>(
     return (
       <>
         {fileInput}
-        <Block
-          clickable
-          align={'center'}
+        <Button
+          aria-label={t('upload')}
           className={cx(uploadCardStyles.placeholderCard, className)}
-          gap={4}
-          justify={'center'}
-          style={style}
-          variant={'filled'}
+          style={{ display: 'flex', flexDirection: 'column', gap: 4, ...style }}
+          type={'text'}
           onClick={handleFileSelect}
         >
           <Plus size={20} />
           {label && <span className={uploadCardStyles.label}>{label}</span>}
-        </Block>
+        </Button>
       </>
     );
   },

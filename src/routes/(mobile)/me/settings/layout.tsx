@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Outlet, useNavigate  } from 'react-router';
+import { Outlet, useNavigate } from 'react-router';
 
 import MobileContentLayout from '@/components/server/MobileNavLayout';
 import { MobilePageHeader } from '@/features/MobileApp/Header';

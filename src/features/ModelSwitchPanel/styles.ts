@@ -5,12 +5,14 @@ export const styles = createStaticStyles(({ css, cssVar }) => ({
     pointer-events: auto;
     user-select: none;
     overflow: hidden;
+    max-width: calc(100vw - 24px);
     padding: 0 !important;
   `,
   detailPopup: css`
     user-select: none;
     overscroll-behavior: contain;
     width: 400px;
+    max-width: calc(100vw - 24px);
   `,
   dropdownMenu: css`
     user-select: none;

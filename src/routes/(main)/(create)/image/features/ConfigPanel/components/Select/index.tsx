@@ -1,15 +1,14 @@
 'use client';
 
 import { type GridProps } from '@lobehub/ui';
-import { ActionIcon, Block, Center, Flexbox, Grid, InputNumber, Select, Text } from '@lobehub/ui';
+import { ActionIcon, Block, Center, Flexbox, Grid, InputNumber, Text } from '@lobehub/ui';
+import { Button, Select } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { Check, Plus, X } from 'lucide-react';
 import { type ReactNode } from 'react';
 import { memo, useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useMergeState from 'use-merge-value';
-
-import { useIsDark } from '@/hooks/useIsDark';
 
 import { isCustomDimensionValid, parseSizeValue } from './utils';
 
@@ -37,7 +36,6 @@ const canParseAsRatio = (value: string): boolean => {
 const SizeSelect = memo<SizeSelectProps>(
   ({ options, onChange, value, defaultValue, allowCustom, min, max, step, ...rest }) => {
     const { t } = useTranslation('image');
-    const isDarkMode = useIsDark();
     const [active, setActive] = useMergeState('auto', {
       defaultValue,
       onChange,
@@ -133,15 +131,15 @@ const SizeSelect = memo<SizeSelectProps>(
     if (isEditing) {
       return (
         <Flexbox gap={6}>
-          <Flexbox horizontal align={'center'} gap={6}>
+          <Flexbox horizontal align={'center'} gap={6} style={{ flexWrap: 'wrap' }}>
             <InputNumber
               aria-label={t('config.width.label')}
               max={max}
               min={min ?? 1}
               placeholder={t('config.width.label')}
-              size={'small'}
+              size={'large'}
               step={step}
-              style={{ flex: 1, minWidth: 0 }}
+              style={{ flex: '1 1 80px', minWidth: 0 }}
               value={customWidth}
               onChange={updateCustomWidth}
               onPressEnter={handleCustomConfirm}
@@ -152,21 +150,28 @@ const SizeSelect = memo<SizeSelectProps>(
               max={max}
               min={min ?? 1}
               placeholder={t('config.height.label')}
-              size={'small'}
+              size={'large'}
               step={step}
-              style={{ flex: 1, minWidth: 0 }}
+              style={{ flex: '1 1 80px', minWidth: 0 }}
               value={customHeight}
               onChange={updateCustomHeight}
               onPressEnter={handleCustomConfirm}
             />
             <ActionIcon
+              aria-label={t('confirm', { ns: 'common' })}
               disabled={!isValidCustomSize}
               icon={Check}
-              size={'small'}
+              size={{ blockSize: 44, size: 20 }}
               variant={'filled'}
               onClick={handleCustomConfirm}
             />
-            <ActionIcon icon={X} size={'small'} variant={'filled'} onClick={handleCustomCancel} />
+            <ActionIcon
+              aria-label={t('cancel', { ns: 'common' })}
+              icon={X}
+              size={{ blockSize: 44, size: 20 }}
+              variant={'filled'}
+              onClick={handleCustomCancel}
+            />
           </Flexbox>
           <Text fontSize={12} type={'secondary'}>
             {t('config.size.customHint', {
@@ -214,17 +219,20 @@ const SizeSelect = memo<SizeSelectProps>(
             }
 
             return (
-              <Block
-                clickable
-                align={'center'}
-                gap={4}
-                justify={'center'}
+              <Button
+                aria-pressed={isActive}
                 key={item.value}
-                padding={8}
-                shadow={isActive && !isDarkMode}
-                variant={'filled'}
+                type={'text'}
                 style={{
+                  alignItems: 'center',
                   backgroundColor: isActive ? cssVar.colorBgElevated : 'transparent',
+                  flexDirection: 'column',
+                  gap: 4,
+                  height: 'auto',
+                  minHeight: 64,
+                  minWidth: 0,
+                  padding: '8px 4px',
+                  whiteSpace: 'normal',
                 }}
                 onClick={() => {
                   if (item.value === CUSTOM_VALUE || (allowCustom && isCustomValue && isActive)) {
@@ -238,10 +246,14 @@ const SizeSelect = memo<SizeSelectProps>(
                 <Center height={16} style={{ marginTop: 4 }} width={16}>
                   {content}
                 </Center>
-                <Text fontSize={12} type={isActive ? undefined : 'secondary'}>
+                <Text
+                  fontSize={12}
+                  style={{ overflowWrap: 'anywhere' }}
+                  type={isActive ? undefined : 'secondary'}
+                >
                   {item.label || item.value}
                 </Text>
-              </Block>
+              </Button>
             );
           })}
         </Grid>

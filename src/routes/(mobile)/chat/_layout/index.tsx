@@ -13,7 +13,7 @@ import { styles } from './style';
 const Layout: FC = () => {
   useInitAgentConfig();
   const { pathname } = useLocation();
-  const isSettings = pathname.endsWith('/settings');
+  const isSettings = /\/(?:settings|profile)\/?$/.test(pathname);
 
   return (
     <>

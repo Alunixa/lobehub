@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Icon } from '@lobehub/ui';
+import { Icon } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { Compass, Grid2X2, ImageIcon, MessageSquare, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router';

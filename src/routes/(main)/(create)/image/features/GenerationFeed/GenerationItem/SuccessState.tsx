@@ -11,16 +11,7 @@ import { type SuccessStateProps } from './types';
 
 // Success state component
 export const SuccessState = memo<SuccessStateProps>(
-  ({
-    generation,
-    generationBatch,
-    prompt,
-    aspectRatio,
-    onDelete,
-    onDownload,
-    onCopySeed,
-    seedTooltip,
-  }) => {
+  ({ generation, prompt, aspectRatio, onDelete, onDownload, onCopySeed, seedTooltip }) => {
     return (
       <Block
         align={'center'}

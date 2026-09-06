@@ -44,17 +44,6 @@ const styles = createStaticStyles(({ css }) => ({
     min-width: 0;
     max-width: 100%;
   `,
-  fullscreen: css`
-    position: absolute;
-    z-index: 100;
-    inset: 0;
-
-    width: 100%;
-    height: 100%;
-    padding: 12px;
-
-    background: ${cssVar.colorBgLayout};
-  `,
 }));
 
 const MobileChatInput = memo<DesktopChatInputProps>(

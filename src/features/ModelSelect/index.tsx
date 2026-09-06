@@ -13,6 +13,8 @@ const prefixCls = 'ant';
 const styles = createStaticStyles(({ css }) => ({
   popup: css`
     width: max(360px, var(--anchor-width));
+    max-width: calc(100vw - 24px);
+    max-height: min(70dvh, var(--available-height, 600px));
 
     &.${prefixCls}-select-dropdown .${prefixCls}-select-item-option-grouped {
       padding-inline-start: 12px;

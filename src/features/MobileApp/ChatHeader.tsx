@@ -1,7 +1,7 @@
 'use client';
 
-import { ActionIcon, Button, Flexbox, Text } from '@lobehub/ui';
-import { DropdownMenu } from '@lobehub/ui/base-ui';
+import { ActionIcon, Flexbox, Text } from '@lobehub/ui';
+import { Button, DropdownMenu } from '@lobehub/ui/base-ui';
 import {
   ArrowLeft,
   ChevronDown,
@@ -9,6 +9,7 @@ import {
   MoreHorizontal,
   Settings2,
   SlidersHorizontal,
+  UserRound,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -66,6 +67,12 @@ export const MobileConversationHeader = () => {
             key: 'new',
             label: t('mobile.newConversation'),
             onClick: () => void openNewTopic(),
+          },
+          {
+            icon: UserRound,
+            key: 'profile',
+            label: t('mobile.agentProfile'),
+            onClick: () => agentId && navigate(`/agent/${agentId}/profile`),
           },
           {
             icon: Settings2,

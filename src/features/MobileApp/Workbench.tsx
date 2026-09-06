@@ -1,6 +1,7 @@
 'use client';
 
-import { Button, Flexbox, Icon, Text } from '@lobehub/ui';
+import { Flexbox, Icon, Text } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { Brain, BrainCircuit, ClipboardList, Compass, ImagePlus, Settings2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 

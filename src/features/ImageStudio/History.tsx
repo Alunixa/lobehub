@@ -1,9 +1,8 @@
 'use client';
 
-import { ActionIcon, Avatar, Button, Center, Flexbox, SearchBar, Text } from '@lobehub/ui';
-import { confirmModal } from '@lobehub/ui/base-ui';
-import { App } from 'antd';
-import { ImageIcon, Plus, Trash2 } from 'lucide-react';
+import { ActionIcon, Avatar, Center, Flexbox, SearchBar, Text } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
+import { ImageIcon, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -12,6 +11,7 @@ import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import { useImageStore } from '@/store/image';
 
+import { StudioHistoryActions } from './HistoryActions';
 import { studioStyles as styles } from './styles';
 import type { useImageStudio } from './useImageStudio';
 
@@ -24,13 +24,11 @@ interface StudioHistoryProps {
 
 export const StudioHistory = ({ disabled, onNew, onSelect, query }: StudioHistoryProps) => {
   const { t } = useTranslation('image');
-  const { message } = App.useApp();
   const [search, setSearch] = useState('');
   const [limit, setLimit] = useState(60);
   const topics = useImageStore((s) => s.generationTopics);
   const activeId = useImageStore((s) => s.activeGenerationTopicId);
   const loadingIds = useImageStore((s) => s.loadingGenerationTopicIds);
-  const removeTopic = useImageStore((s) => s.removeGenerationTopic);
   const filtered = useMemo(() => {
     const keyword = search.trim().toLocaleLowerCase();
     return topics.filter((topic) => (topic.title || '').toLocaleLowerCase().includes(keyword));
@@ -84,32 +82,7 @@ export const StudioHistory = ({ disabled, onNew, onSelect, query }: StudioHistor
               key={topic.id}
               loading={loadingIds.includes(topic.id)}
               title={topic.title || t('topic.untitled')}
-              actions={
-                <ActionIcon
-                  aria-label={t('topic.deleteConfirm')}
-                  disabled={disabled}
-                  icon={Trash2}
-                  size={{ blockSize: 44, size: 16 }}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    confirmModal({
-                      cancelText: t('cancel', { ns: 'common' }),
-                      content: t('topic.deleteConfirmDesc'),
-                      okButtonProps: { danger: true },
-                      okText: t('delete', { ns: 'common' }),
-                      title: t('topic.deleteConfirm'),
-                      onOk: async () => {
-                        try {
-                          await removeTopic(topic.id);
-                        } catch (error) {
-                          console.error('Failed to delete image history:', error);
-                          message.error(t('studio.deleteFailed'));
-                        }
-                      },
-                    });
-                  }}
-                />
-              }
+              actions={<StudioHistoryActions disabled={disabled} topic={topic} />}
               description={
                 <Text fontSize={12} type={'secondary'}>
                   {new Date(topic.updatedAt).toLocaleDateString()} ·{' '}

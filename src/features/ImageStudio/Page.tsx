@@ -1,7 +1,7 @@
 'use client';
 
-import { Button, Flexbox, Text } from '@lobehub/ui';
-import { Tabs } from '@lobehub/ui/base-ui';
+import { Flexbox, Text } from '@lobehub/ui';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
 import { cx } from 'antd-style';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
