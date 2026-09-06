@@ -69,8 +69,12 @@ const ActionToolbar = memo<ActionToolbarProps>(
     );
 
     const contextValue = useMemo(
-      () => ({ borderRadius, dropdownPlacement }),
-      [borderRadius, dropdownPlacement],
+      () => ({
+        actionSize: mobile ? { blockSize: 44, size: 22 } : undefined,
+        borderRadius,
+        dropdownPlacement,
+      }),
+      [borderRadius, dropdownPlacement, mobile],
     );
 
     return (

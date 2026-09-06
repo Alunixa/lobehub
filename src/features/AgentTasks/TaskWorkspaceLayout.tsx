@@ -16,8 +16,14 @@ const TaskWorkspaceLayout = memo(() => {
   }, []);
 
   return (
-    <Flexbox flex={1} height={'100%'} horizontal={!isMobile} width={'100%'}>
-      <Flexbox flex={1} style={{ minWidth: 0 }}>
+    <Flexbox
+      flex={1}
+      height={'100%'}
+      horizontal={!isMobile}
+      style={{ minHeight: 0 }}
+      width={'100%'}
+    >
+      <Flexbox flex={1} style={{ minHeight: 0, minWidth: 0 }}>
         <Outlet />
       </Flexbox>
       {!isMobile && <AgentTaskManager />}

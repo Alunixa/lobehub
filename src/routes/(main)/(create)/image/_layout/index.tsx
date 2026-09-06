@@ -1,10 +1,7 @@
 'use client';
 
-import GenerationLayout from '@/routes/(main)/(create)/features/GenerationLayout';
+import { ImageStudioLayout } from '@/features/ImageStudio';
 
-import RegisterHotkeys from './RegisterHotkeys';
-import Sidebar from './Sidebar';
-
-const ImageLayout = () => <GenerationLayout extra={<RegisterHotkeys />} sidebar={<Sidebar />} />;
+const ImageLayout = () => <ImageStudioLayout />;
 
 export default ImageLayout;

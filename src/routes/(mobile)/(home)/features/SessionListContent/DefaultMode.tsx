@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
+import AsyncError from '@/components/AsyncError';
 import { useFetchAgentList } from '@/hooks/useFetchAgentList';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
@@ -19,7 +20,7 @@ import Inbox from './Inbox';
 
 const DefaultMode = memo(() => {
   const { t } = useTranslation(['chat', 'common']);
-  useFetchAgentList();
+  const { error, mutate } = useFetchAgentList();
 
   const isInit = useHomeStore(homeAgentListSelectors.isAgentListInit);
   const pinnedAgents = useHomeStore(homeAgentListSelectors.pinnedAgents, isEqual);
@@ -93,10 +94,12 @@ const DefaultMode = memo(() => {
     ],
   );
 
+  if (error && !isInit) return <AsyncError error={error} onRetry={() => mutate()} />;
   if (!isInit) return <SkeletonList />;
 
   return (
     <>
+      {error && <AsyncError error={error} onRetry={() => mutate()} />}
       <Inbox />
       <CollapseGroup
         activeKey={sessionGroupKeys}

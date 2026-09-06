@@ -29,8 +29,9 @@ const Topics = memo(({ children }: PropsWithChildren) => {
         footer={null}
         open={open}
         title={t('title')}
+        width={'min(100vw - 24px, 680px)'}
         styles={{
-          body: { padding: 0 },
+          body: { padding: 0, height: 'min(75dvh, 720px)', minHeight: 0, overflow: 'hidden' },
         }}
         onCancel={() => setOpen(false)}
       >

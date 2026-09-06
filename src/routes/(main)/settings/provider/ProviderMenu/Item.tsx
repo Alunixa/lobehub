@@ -8,6 +8,7 @@ import { useLocation } from 'react-router';
 import { ProductLogo } from '@/components/Branding/ProductLogo';
 import { isCustomBranding } from '@/const/version';
 import NavItem from '@/features/NavPanel/components/NavItem';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { type AiProviderListItem } from '@/types/aiProvider';
 import { AiProviderSourceEnum } from '@/types/aiProvider';
 
@@ -18,6 +19,7 @@ interface ProviderItemProps extends AiProviderListItem {
 const ProviderItem = memo<ProviderItemProps>(
   ({ id, name, source, enabled, logo, onClick = () => {} }) => {
     const location = useLocation();
+    const mobile = useIsMobile();
 
     // Extract providerId from pathname: /settings/provider/xxx -> xxx
     const activeKey = useMemo(() => {
@@ -54,6 +56,7 @@ const ProviderItem = memo<ProviderItemProps>(
     return (
       <NavItem
         active={activeKey === id}
+        height={mobile ? 56 : undefined}
         icon={() => providerIcon}
         title={name}
         extra={

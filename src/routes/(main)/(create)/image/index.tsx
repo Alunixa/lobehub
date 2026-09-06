@@ -1,36 +1,9 @@
 'use client';
 
-import { memo } from 'react';
+import { ImageStudioPage } from '@/features/ImageStudio';
 
-import CreateGenerationPage from '@/routes/(main)/(create)/features/CreateGenerationPage';
+export const ImagePage = ImageStudioPage;
 
-import ImageWorkspace from './features/ImageWorkspace';
-import PromptInput from './features/PromptInput';
-import { useImageReferenceUpload } from './features/PromptInput/useImageReferenceUpload';
-
-interface ImagePageProps {
-  mobile?: boolean;
-}
-
-export const ImagePage = memo<ImagePageProps>(({ mobile = false }) => {
-  const { canDropImage, handleUploadFiles } = useImageReferenceUpload();
-
-  return (
-    <CreateGenerationPage
-      PromptInput={PromptInput}
-      Workspace={ImageWorkspace}
-      dragDisabled={!canDropImage}
-      mobile={mobile}
-      path="/image"
-      onUploadFiles={handleUploadFiles}
-    />
-  );
-});
-
-ImagePage.displayName = 'ImagePage';
-
-const DesktopImagePage = memo(() => <ImagePage />);
-
-DesktopImagePage.displayName = 'DesktopImagePage';
+const DesktopImagePage = () => <ImageStudioPage />;
 
 export default DesktopImagePage;

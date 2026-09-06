@@ -8,7 +8,6 @@ import ImageItem from '@/components/ImageItem';
 import { ActionButtons } from './ActionButtons';
 import { styles } from './styles';
 import { type SuccessStateProps } from './types';
-import { getThumbnailMaxWidth } from './utils';
 
 // Success state component
 export const SuccessState = memo<SuccessStateProps>(
@@ -30,7 +29,6 @@ export const SuccessState = memo<SuccessStateProps>(
         variant={'filled'}
         style={{
           aspectRatio,
-          maxWidth: getThumbnailMaxWidth(generation, generationBatch),
         }}
       >
         <ImageItem

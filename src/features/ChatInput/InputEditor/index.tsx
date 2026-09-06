@@ -104,6 +104,7 @@ const InputEditor = memo<{
   ]);
 
   const storeApi = useStoreApi();
+  const mobile = useChatInputStore((s) => s.mobile);
   const { restoreDraft, saveDraftDebounced } = useChatInputDraft();
   const restoredDraftEditorRef = useRef<IEditor | null>(null);
   const state = useEditorState(editor);
@@ -533,8 +534,8 @@ const InputEditor = memo<{
         onSelect={inputHistory.confirm}
       />
       <Editor
-        autoFocus
         pasteAsPlainText
+        autoFocus={!mobile}
         className={className}
         content={''}
         editable={canCreateContent}

@@ -18,9 +18,12 @@ const styles = createStaticStyles(({ css, cssVar }) => {
       border-radius: ${cssVar.borderRadius};
     `,
     mobile: css`
-      margin-block: 0;
-      padding-inline-start: 12px;
-      border-radius: 0;
+      min-height: 76px;
+      margin-block: 6px;
+      padding: 14px 12px;
+      border: 1px solid ${cssVar.colorBorderSecondary};
+      border-radius: 14px;
+      background: ${cssVar.colorBgContainer};
     `,
     title: css`
       line-height: 1.2;

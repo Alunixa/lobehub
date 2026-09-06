@@ -41,6 +41,7 @@ const styles = createStaticStyles(({ css }) => ({
 
 const ControlBar = memo(() => {
   const agentId = useAgentId();
+  const mobile = useChatInputStore((s) => s.mobile);
   const showContextWindow = useChatInputStore((s) =>
     s.rightActions.flat().includes('contextWindow'),
   );
@@ -59,7 +60,13 @@ const ControlBar = memo(() => {
   }
 
   return (
-    <Flexbox horizontal align={'center'} className={styles.bar} justify={'space-between'}>
+    <Flexbox
+      horizontal
+      align={'center'}
+      className={styles.bar}
+      justify={'space-between'}
+      style={mobile ? { height: 'auto', minHeight: 40, gap: 4 } : undefined}
+    >
       {/* Left: chat-mode switcher + (agent-only) execution device + working directory */}
       <Flexbox horizontal align={'center'} className={styles.leftGroup} gap={4}>
         <ModeSelector />

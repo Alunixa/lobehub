@@ -2,10 +2,10 @@
 
 import { memo } from 'react';
 
-import Category from './features/Category';
+import { MobileSettingsHub } from '@/features/MobileApp/SettingsHub';
 
 const MeSettingsPage = memo(() => {
-  return <Category />;
+  return <MobileSettingsHub />;
 });
 
 MeSettingsPage.displayName = 'MeSettingsPage';

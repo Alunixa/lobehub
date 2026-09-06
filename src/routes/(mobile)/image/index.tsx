@@ -1,7 +1,7 @@
 'use client';
 
-import { ImagePage } from '@/routes/(main)/(create)/image';
+import { ImageStudioPage } from '@/features/ImageStudio';
 
-const MobileImagePage = () => <ImagePage mobile />;
+const MobileImagePage = () => <ImageStudioPage mobile />;
 
 export default MobileImagePage;

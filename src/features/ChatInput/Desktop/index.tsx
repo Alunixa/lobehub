@@ -61,7 +61,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
   `,
 }));
 
-interface DesktopChatInputProps extends ActionToolbarProps {
+export interface DesktopChatInputProps extends ActionToolbarProps {
   actionBarStyle?: React.CSSProperties;
   /**
    * Collapse the editor to a single bordered row by dropping the action bar footer.

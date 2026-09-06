@@ -1,5 +1,6 @@
 import { SkillsIcon } from '@lobehub/ui/icons';
 import {
+  Bell,
   Brain,
   BrainCircuit,
   ChartColumnBigIcon,
@@ -12,9 +13,13 @@ import {
   KeyIcon,
   KeyRound,
   Map,
+  MessageSquare,
+  Monitor,
   PaletteIcon,
+  Shield,
   Sparkles,
   UserCircle,
+  Wrench,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +61,9 @@ export const useCategory = (): CategoryGroup[] => {
 
   return useMemo(() => {
     const navigateTo = (key: SettingsTabs) =>
-      navigate(key === SettingsTabs.Provider ? '/settings/provider/all' : `/settings/${key}`);
+      navigate(key === SettingsTabs.Provider ? '/settings/provider/all' : `/settings/${key}`, {
+        escape: true,
+      });
 
     const makeItem = (item: Omit<CategoryItem, 'onClick'>): CategoryItem => ({
       ...item,
@@ -66,6 +73,7 @@ export const useCategory = (): CategoryGroup[] => {
     const general: CategoryItem[] = [
       makeItem({ icon: UserCircle, key: SettingsTabs.Profile, label: t('auth:profile.title') }),
       makeItem({ icon: ChartColumnBigIcon, key: SettingsTabs.Stats, label: t('auth:tab.stats') }),
+      makeItem({ icon: Shield, key: SettingsTabs.Security, label: t('setting:tab.security') }),
       makeItem({
         icon: PaletteIcon,
         key: SettingsTabs.Appearance,
@@ -112,13 +120,31 @@ export const useCategory = (): CategoryGroup[] => {
       makeItem({ icon: SkillsIcon, key: SettingsTabs.Skill, label: t('setting:tab.skill') }),
       makeItem({ icon: BrainCircuit, key: SettingsTabs.Memory, label: t('setting:tab.memory') }),
       makeItem({ icon: KeyRound, key: SettingsTabs.Creds, label: t('setting:tab.creds') }),
+      makeItem({
+        icon: MessageSquare,
+        key: SettingsTabs.Messenger,
+        label: t('setting:tab.messenger'),
+      }),
       showApiKeyManage &&
         makeItem({ icon: KeyIcon, key: SettingsTabs.APIKey, label: t('auth:tab.apikey') }),
     ].filter((item): item is CategoryItem => Boolean(item));
 
     const system: CategoryItem[] = [
       makeItem({ icon: Database, key: SettingsTabs.Storage, label: t('setting:tab.storage') }),
+      makeItem({ icon: Monitor, key: SettingsTabs.Devices, label: t('setting:tab.devices') }),
+      makeItem({
+        icon: Wrench,
+        key: SettingsTabs.SystemTools,
+        label: t('setting:tab.systemTools'),
+      }),
+      enableBusinessFeatures &&
+        makeItem({
+          icon: Bell,
+          key: SettingsTabs.Notification,
+          label: t('setting:tab.notification'),
+        }),
       isDevMode &&
+        !showApiKeyManage &&
         makeItem({ icon: KeyIcon, key: SettingsTabs.APIKey, label: t('auth:tab.apikey') }),
       makeItem({
         icon: EllipsisIcon,

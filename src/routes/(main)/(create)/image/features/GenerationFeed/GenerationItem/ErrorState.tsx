@@ -13,7 +13,6 @@ import { getRuntimeErrorMessage } from '@/utils/locale/runtimeErrorMessage';
 import { ActionButtons } from './ActionButtons';
 import { styles } from './styles';
 import { type ErrorStateProps } from './types';
-import { getThumbnailMaxWidth } from './utils';
 
 const providerContentModerationErrorKeys = [
   'response.ProviderContentModeration',
@@ -93,7 +92,6 @@ export const ErrorState = memo<ErrorStateProps>(
         style={{
           aspectRatio,
           cursor: 'pointer',
-          maxWidth: getThumbnailMaxWidth(generation, generationBatch),
         }}
         onClick={onCopyError}
       >

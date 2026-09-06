@@ -10,7 +10,6 @@ import { ActionButtons } from './ActionButtons';
 import { ElapsedTime } from './ElapsedTime';
 import { styles } from './styles';
 import { type LoadingStateProps } from './types';
-import { getThumbnailMaxWidth } from './utils';
 
 // Loading state component
 export const LoadingState = memo<LoadingStateProps>(
@@ -27,10 +26,8 @@ export const LoadingState = memo<LoadingStateProps>(
         variant={'filled'}
         style={{
           aspectRatio,
-          maxWidth: getThumbnailMaxWidth(generation, generationBatch),
         }}
       >
-        <div className={`${styles.placeholderContainer} ${styles.placeholderContainerLoading}`} />
         <Center gap={8} style={{ zIndex: 2 }}>
           <NeuralNetworkLoading size={48} />
           <ElapsedTime generationId={generation.id} isActive={isGenerating} />

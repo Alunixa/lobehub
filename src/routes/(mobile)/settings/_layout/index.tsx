@@ -4,9 +4,9 @@ import { memo } from 'react';
 import { Outlet } from 'react-router';
 
 import MobileContentLayout from '@/components/server/MobileNavLayout';
+import { MobileSettingsHeader } from '@/features/MobileApp/SettingsHeader';
 
 import SettingsContextProvider from '../../../(main)/settings/_layout/ContextProvider';
-import Header from './Header';
 
 const MobileSettingsWrapper = memo(() => {
   return (
@@ -16,7 +16,7 @@ const MobileSettingsWrapper = memo(() => {
         showOpenAIProxyUrl: true,
       }}
     >
-      <MobileContentLayout header={<Header />}>
+      <MobileContentLayout header={<MobileSettingsHeader />}>
         <Outlet />
       </MobileContentLayout>
     </SettingsContextProvider>

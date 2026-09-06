@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 
 import { message } from '@/components/AntdStaticMethods';
 import { openAttachKnowledgeModal } from '@/features/LibraryModal';
+import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 import { useIsDark } from '@/hooks/useIsDark';
 import { useModelSupportToolUse } from '@/hooks/useModelSupportToolUse';
 import { useVisualMediaUploadAbility } from '@/hooks/useVisualMediaUploadAbility';
@@ -289,6 +290,8 @@ const PlusAction = memo(() => {
   const { t: tSetting } = useTranslation('setting');
   const isDark = useIsDark();
   const agentId = useAgentId();
+  const mobile = useChatInputStore((s) => s.mobile);
+  const navigate = useWorkspaceAwareNavigate();
   const { updateAgentChatConfig } = useUpdateAgentConfig();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
@@ -393,13 +396,17 @@ const PlusAction = memo(() => {
 
   const handleToggleParams = useCallback(() => {
     setDropdownOpen(false);
+    if (mobile) {
+      navigate(`/agent/${agentId}/settings?section=params`);
+      return;
+    }
     if (isParamsPanelActive) {
       toggleRightPanel(false);
       return;
     }
     setWorkingSidebarTab('params');
     toggleRightPanel(true);
-  }, [isParamsPanelActive, setWorkingSidebarTab, toggleRightPanel]);
+  }, [agentId, isParamsPanelActive, mobile, navigate, setWorkingSidebarTab, toggleRightPanel]);
 
   const items: ActionDropdownMenuItems = useMemo(() => {
     const renderActive = (label: string, active: boolean) =>
@@ -708,7 +715,7 @@ const PlusAction = memo(() => {
       <Action
         icon={PlusIcon}
         open={dropdownOpen}
-        size={{ blockSize: 32, borderRadius: 16, size: 18 }}
+        size={{ blockSize: mobile ? 44 : 32, borderRadius: 16, size: mobile ? 22 : 18 }}
         title={t('plus.tooltip')}
         tooltipProps={{ placement: 'top' }}
         dropdown={{

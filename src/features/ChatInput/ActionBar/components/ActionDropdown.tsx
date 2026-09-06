@@ -309,13 +309,13 @@ const ActionDropdown = memo<ActionDropdownProps>(
 
     const resolvedPopupStyle = useMemo<DropdownMenuPopupProps['style']>(() => {
       const baseStyle: CSSProperties = {
-        maxHeight,
-        maxWidth: isMobile ? undefined : maxWidth,
+        maxHeight: isMobile ? 'min(60dvh, 560px)' : maxHeight,
+        maxWidth: isMobile ? 'calc(100vw - 24px)' : maxWidth,
         minHeight,
         minWidth: isMobile ? undefined : minWidth,
         overflowX: 'hidden',
         overflowY: 'scroll',
-        width: isMobile ? '100vw' : undefined,
+        width: isMobile ? 'min(384px, calc(100vw - 24px))' : undefined,
       };
       const popupStyle = popupProps?.style;
 

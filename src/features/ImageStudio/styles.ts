@@ -1,7 +1,5 @@
 import { createStaticStyles } from 'antd-style';
 
-import { MOBILE_TABBAR_HEIGHT } from '@/const/layoutTokens';
-
 export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   layout: css`
     overflow: hidden;
@@ -12,11 +10,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     background: ${cssVar.colorBgContainer};
   `,
   mobileLayout: css`
-    height: calc(
-      var(--studio-viewport-height, 100dvh) - ${MOBILE_TABBAR_HEIGHT}px -
-        env(safe-area-inset-bottom, 0px)
-    );
-    padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+    height: 100%;
   `,
   page: css`
     overflow: hidden;
@@ -44,12 +38,14 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
     min-width: 0;
     min-height: 0;
+    width: 100%;
   `,
   mobileBody: css`
     grid-template-columns: minmax(0, 1fr);
   `,
   composer: css`
     overflow: hidden;
+    flex: 1;
     min-width: 0;
     min-height: 0;
     border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
@@ -144,6 +140,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   `,
   results: css`
     overflow: hidden;
+    flex: 1;
     min-width: 0;
     min-height: 0;
     background: ${cssVar.colorBgLayout};

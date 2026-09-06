@@ -18,6 +18,13 @@ import { dynamicElement, dynamicLayout, ErrorBoundary, redirectElement } from '@
  * home stay personal-only.
  */
 export const sharedMainAreaChildren: RouteObject[] = [
+  {
+    element: dynamicElement(
+      () => import('@/features/MobileApp/Workbench').then((m) => m.MobileWorkbench),
+      'Mobile > Workbench',
+    ),
+    path: 'tools',
+  },
   // Image generation routes
   {
     children: [
@@ -266,7 +273,7 @@ export const sharedMainAreaChildren: RouteObject[] = [
       },
     ],
     element: dynamicLayout(
-      () => import('@/routes/(main)/(task-workspace)/_layout'),
+      () => import('@/features/MobileApp/TaskLayout').then((m) => m.MobileTaskLayout),
       'Mobile > Task Workspace > Layout',
     ),
   },
@@ -315,7 +322,7 @@ export const mobileRoutes: RouteObject[] = [
           // Other settings tabs (common, agent, memory, tts, about, etc.)
           {
             element: dynamicElement(
-              () => import('@/routes/(main)/settings'),
+              () => import('@/routes/(mobile)/settings'),
               'Mobile > Settings > Tab',
             ),
             path: ':tab',
@@ -400,10 +407,20 @@ export const mobileRoutes: RouteObject[] = [
       // Must come AFTER all reserved root paths so they don't shadow e.g. /agent.
       {
         children: [
-          // Workspace home — handled by the persistent home layout (mirrors
-          // how `/` index is empty); rendering here would duplicate Home.
           {
-            index: true,
+            children: [
+              {
+                element: dynamicElement(
+                  () => import('@/routes/(mobile)/(home)'),
+                  'Mobile > Workspace > Home',
+                ),
+                index: true,
+              },
+            ],
+            element: dynamicLayout(
+              () => import('@/routes/(mobile)/(home)/_layout'),
+              'Mobile > Workspace > Home > Layout',
+            ),
           },
           ...sharedMainAreaChildren,
           // Workspace settings — `/:slug/settings/*`. Mobile reuses the mobile

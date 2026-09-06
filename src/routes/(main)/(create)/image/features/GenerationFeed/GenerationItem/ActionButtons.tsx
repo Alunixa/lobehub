@@ -26,9 +26,10 @@ export const ActionButtons = memo<ActionButtonsProps>(
 
     return (
       <ActionIconGroup
+        horizontal
         actionIconProps={actionIconProps}
         className={styles.generationActionButton}
-        horizontal={false}
+        size={{ blockSize: 44, size: 18 }}
         variant="outlined"
         items={useMemo(
           () =>

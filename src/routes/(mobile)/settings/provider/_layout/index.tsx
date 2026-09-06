@@ -1,7 +1,9 @@
 'use client';
 
+import { Flexbox } from '@lobehub/ui';
 import { Outlet, useParams } from 'react-router';
 
+import { mobileStyles } from '@/features/MobileApp/styles';
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
 
 import ProviderMenu from '../../../../(main)/settings/provider/ProviderMenu';
@@ -11,13 +13,19 @@ const Layout = () => {
   const navigate = useWorkspaceAwareNavigate();
 
   const handleProviderSelect = (providerKey: string) => {
-    navigate(`/settings/provider/${providerKey}`);
+    navigate(`/settings/provider/${providerKey}`, { escape: true });
   };
 
-  return params.providerId === 'all' ? (
-    <ProviderMenu mobile={true} onProviderSelect={handleProviderSelect} />
-  ) : (
-    <Outlet />
+  return (
+    <Flexbox className={mobileStyles.settings} style={{ minWidth: 0 }}>
+      {params.providerId === 'all' ? (
+        <ProviderMenu mobile onProviderSelect={handleProviderSelect} />
+      ) : (
+        <Flexbox className={mobileStyles.content}>
+          <Outlet />
+        </Flexbox>
+      )}
+    </Flexbox>
   );
 };
 

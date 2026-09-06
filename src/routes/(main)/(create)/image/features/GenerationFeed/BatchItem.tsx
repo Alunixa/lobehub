@@ -2,7 +2,8 @@
 
 import { useAutoAnimate } from '@formkit/auto-animate/react';
 import { ModelTag } from '@lobehub/icons';
-import { ActionIconGroup, Block, Flexbox, Grid, Image, Markdown, Tag, Text } from '@lobehub/ui';
+import { ActionIconGroup, Block, Button, Flexbox, Image, Markdown, Tag, Text } from '@lobehub/ui';
+import { confirmModal } from '@lobehub/ui/base-ui';
 import { App } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import dayjs from 'dayjs';
@@ -16,20 +17,17 @@ import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspace
 import useRenderBusinessBatchItem from '@/business/client/hooks/useRenderBusinessBatchItem';
 import { GenerationInvalidAPIKey } from '@/routes/(main)/(create)/features/GenerationInput';
 import { useImageStore } from '@/store/image';
-import { AsyncTaskErrorType } from '@/types/asyncTask';
+import { AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import { type GenerationBatch } from '@/types/generation';
 
 import { GenerationItem } from './GenerationItem';
 import { ReferenceImages } from './ReferenceImages';
 
 const styles = createStaticStyles(({ css, cssVar, cx }) => ({
-  batchActions: cx(
-    'batch-actions',
-    css`
-      opacity: 0;
-      transition: opacity 0.1s ${cssVar.motionEaseInOut};
-    `,
-  ),
+  batchActions: css`
+    flex-wrap: wrap;
+    gap: 8px;
+  `,
   batchDeleteButton: css`
     &:hover {
       border-color: ${cssVar.colorError} !important;
@@ -38,14 +36,23 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
     }
   `,
   container: css`
-    &:hover {
-      .batch-actions {
-        opacity: 1;
-      }
-    }
+    min-width: 0;
+    padding: 16px;
+    background: ${cssVar.colorBgContainer};
+  `,
+  grid: css`
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 12px;
+    align-items: start;
+    min-width: 0;
   `,
 
   prompt: css`
+    overflow: auto;
+    max-height: 160px;
+    overflow-wrap: anywhere;
+
     pre {
       overflow: hidden !important;
       padding-block: 4px;
@@ -56,9 +63,10 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
 
 interface GenerationBatchItemProps {
   batch: GenerationBatch;
+  onReuse?: () => void;
 }
 
-export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) => {
+export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch, onReuse }) => {
   const { t } = useTranslation('image');
   const { message } = App.useApp();
 
@@ -67,6 +75,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
   const activeTopicId = useImageStore((s) => s.activeGenerationTopicId);
   const removeGenerationBatch = useImageStore((s) => s.removeGenerationBatch);
   const reuseSettings = useImageStore((s) => s.reuseSettings);
+  const isCreating = useImageStore((s) => s.isCreating);
   const activeWorkspaceId = useActiveWorkspaceId();
   const { shouldRenderBusinessBatchItem, businessBatchItem } = useRenderBusinessBatchItem(batch);
 
@@ -89,11 +98,13 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
   };
 
   const handleReuseSettings = () => {
+    if (isCreating) return;
     reuseSettings(
       batch.model,
       batch.provider,
       omit(batch.config as RuntimeImageGenParams, ['seed']),
     );
+    onReuse?.();
   };
 
   const handleDeleteBatch = async () => {
@@ -103,6 +114,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
       await removeGenerationBatch(batch.id, activeTopicId);
     } catch (error) {
       console.error('Failed to delete batch:', error);
+      message.error(t('studio.deleteFailed'));
     }
   };
 
@@ -131,13 +143,15 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
   }
 
   return (
-    <Block className={styles.container} gap={8} variant="borderless">
-      <Flexbox horizontal align={'flex-start'} gap={16}>
-        <ReferenceImages imageUrl={batch.config?.imageUrl} imageUrls={batch.config?.imageUrls} />
+    <Block className={styles.container} gap={12} variant="outlined">
+      <div className={styles.prompt}>
         <Markdown variant={'chat'}>{batch.prompt}</Markdown>
+      </div>
+      <Flexbox align={'flex-start'} gap={8}>
+        <ReferenceImages imageUrl={batch.config?.imageUrl} imageUrls={batch.config?.imageUrls} />
       </Flexbox>
       <Image.PreviewGroup>
-        <Grid maxItemWidth={200} ref={imageGridRef} rows={batch.generations.length}>
+        <div className={styles.grid} ref={imageGridRef}>
           {batch.generations.map((generation) => (
             <GenerationItem
               generation={generation}
@@ -146,7 +160,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
               prompt={batch.prompt}
             />
           ))}
-        </Grid>
+        </div>
       </Image.PreviewGroup>
       <Flexbox
         horizontal
@@ -154,8 +168,9 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
         gap={4}
         justify={'space-between'}
         style={{ opacity: 0.66 }}
+        wrap={'wrap'}
       >
-        <Flexbox horizontal align={'center'} gap={4}>
+        <Flexbox horizontal align={'center'} gap={4} wrap={'wrap'}>
           <ModelTag model={batch.model} variant={'borderless'} />
           {batch.width && batch.height && (
             <Tag variant={'borderless'}>
@@ -166,7 +181,7 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
             {t('generation.metadata.count', { count: batch.generations.length })}
           </Tag>
         </Flexbox>
-        <Flexbox horizontal align={'center'} gap={6}>
+        <Flexbox horizontal align={'center'} gap={6} wrap={'wrap'}>
           {showCreator && (
             <>
               <Text fontSize={12} type={'secondary'}>
@@ -183,14 +198,20 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
         </Flexbox>
       </Flexbox>
       <Flexbox horizontal align={'center'} className={styles.batchActions}>
+        <Button
+          disabled={isCreating}
+          icon={RotateCcwSquareIcon}
+          size={'small'}
+          style={{ minHeight: 44 }}
+          onClick={handleReuseSettings}
+        >
+          {batch.generations.some((generation) => generation.task.status === AsyncTaskStatus.Error)
+            ? t('studio.adjustAndRetry')
+            : t('generation.actions.reuseSettings')}
+        </Button>
         <ActionIconGroup
+          size={{ blockSize: 44, size: 18 }}
           items={[
-            {
-              icon: RotateCcwSquareIcon,
-              key: 'reuseSettings',
-              label: t('generation.actions.reuseSettings'),
-              onClick: handleReuseSettings,
-            },
             {
               icon: CopyIcon,
               key: 'copyPrompt',
@@ -202,7 +223,16 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch }) =>
               icon: Trash2,
               key: 'deleteBatch',
               label: t('generation.actions.deleteBatch'),
-              onClick: handleDeleteBatch,
+              onClick: () => {
+                confirmModal({
+                  cancelText: t('cancel', { ns: 'common' }),
+                  content: t('studio.deleteBatchDescription'),
+                  okButtonProps: { danger: true },
+                  okText: t('delete', { ns: 'common' }),
+                  onOk: handleDeleteBatch,
+                  title: t('generation.actions.deleteBatch'),
+                });
+              },
             },
           ]}
         />

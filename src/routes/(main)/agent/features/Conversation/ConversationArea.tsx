@@ -104,6 +104,8 @@ const Conversation = memo(() => {
         flex={1}
         width={'100%'}
         style={{
+          minHeight: 0,
+          minWidth: 0,
           overflowX: 'hidden',
           overflowY: 'auto',
           position: 'relative',

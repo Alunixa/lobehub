@@ -14,7 +14,7 @@ import {
 } from '@/business/client/hooks/useBusinessChatInputSendAreaPrefix';
 import { useBusinessInputCompletionErrorAlert } from '@/business/client/hooks/useBusinessInputCompletionErrorAlert';
 import type { ActionKeys, ChatInputFeature } from '@/features/ChatInput';
-import { ChatInputProvider, DesktopChatInput } from '@/features/ChatInput';
+import { ChatInputProvider, DesktopChatInput, MobileChatInput } from '@/features/ChatInput';
 import { selectors as chatInputSelectors, useChatInputStore } from '@/features/ChatInput/store';
 import {
   type InputCompletionError,
@@ -382,10 +382,16 @@ const ChatInput = memo<ChatInputProps>(
         : undefined),
     };
     const isMobile = useServerConfigStore((state) => state.isMobile);
+    const InputSurface = isMobile ? MobileChatInput : DesktopChatInput;
 
     const defaultContent = (
       <WideScreenContainer
-        style={{ position: 'relative', ...(skipScrollMarginWithList ? { marginTop: -12 } : null) }}
+        fullWidth={isMobile}
+        wrapperStyle={isMobile ? { flex: 'none', minWidth: 0 } : undefined}
+        style={{
+          position: 'relative',
+          ...(!isMobile && skipScrollMarginWithList ? { marginTop: -12 } : null),
+        }}
       >
         {hasPendingInterventions && <InterventionBar interventions={pendingInterventions} />}
         {/* Keep the chat input mounted while an intervention panel is showing —
@@ -418,7 +424,7 @@ const ChatInput = memo<ChatInputProps>(
             <TodoProgress topAttached={!disableQueue && hasQueuedMessages} />
             <OpStatusTray topAttached={(!disableQueue && hasQueuedMessages) || hasTodos} />
           </Flexbox>
-          <DesktopChatInput
+          <InputSurface
             actionBarStyle={actionBarStyle}
             borderRadius={12}
             compact={compact}

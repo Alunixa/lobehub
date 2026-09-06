@@ -2,7 +2,7 @@
 
 import { ModelIcon } from '@lobehub/icons';
 import { Button, Flexbox, Icon, Text, TextArea } from '@lobehub/ui';
-import { ChevronDown, ImagePlus, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import ModelSwitchPanel from '@/features/ModelSwitchPanel';
@@ -37,7 +37,12 @@ export const StudioComposer = ({
   const { t } = useTranslation('image');
   const navigate = useWorkspaceAwareNavigate();
   const { value: prompt, setValue: setPrompt } = useGenerationConfigParam('prompt');
-  const { model, provider, imageNum, activeGenerationTopicId: topicId } = useImageStore((s) => ({
+  const {
+    model,
+    provider,
+    imageNum,
+    activeGenerationTopicId: topicId,
+  } = useImageStore((s) => ({
     activeGenerationTopicId: s.activeGenerationTopicId,
     imageNum: s.imageNum,
     model: s.model,

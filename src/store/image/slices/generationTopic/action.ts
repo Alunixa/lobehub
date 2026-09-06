@@ -153,7 +153,10 @@ export class GenerationTopicActionImpl {
     this.#get().internal_updateGenerationTopicLoading(tmpId, true);
 
     try {
-      const topicId = await generationTopicService.createTopic('image', newGenerationTopicVisibility);
+      const topicId = await generationTopicService.createTopic(
+        'image',
+        newGenerationTopicVisibility,
+      );
 
       // Make the real topic selectable before refreshing. SWR mutate alone does not
       // fetch anything when the history/sidebar has never mounted (e.g. on mobile).
