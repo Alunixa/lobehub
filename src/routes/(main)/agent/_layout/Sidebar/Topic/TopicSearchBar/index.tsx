@@ -34,7 +34,7 @@ const TopicSearchBar = memo<{ onClear?: () => void }>(({ onClear }) => {
 
   return (
     <SearchBar
-      autoFocus
+      autoFocus={!mobile}
       placeholder={t('searchPlaceholder')}
       spotlight={!mobile}
       value={tempValue}

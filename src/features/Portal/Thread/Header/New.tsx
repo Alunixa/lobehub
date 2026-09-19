@@ -1,4 +1,5 @@
-import { Flexbox, Icon, Text } from '@lobehub/ui';
+import { Flexbox, Icon } from '@lobehub/ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { Switch } from 'antd';
 import { GitBranch } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,12 @@ const NewThreadHeader = () => {
   const [newThreadMode] = useChatStore((s) => [portalThreadSelectors.newThreadMode(s)]);
 
   return (
-    <Flexbox horizontal align={'center'} gap={8} style={{ marginInlineStart: 4 }}>
+    <Flexbox
+      horizontal
+      align={'center'}
+      gap={8}
+      style={{ marginInlineStart: 4, minWidth: 0, flexWrap: 'wrap' }}
+    >
       <Icon icon={GitBranch} size={18} />
       <Text ellipsis className={oneLineEllipsis} style={{ fontSize: 14 }}>
         {t('newPortalThread.title')}
@@ -25,9 +31,11 @@ const NewThreadHeader = () => {
           size={'small'}
           style={{ marginInlineStart: 12 }}
           onChange={(e) => {
+            const state = useChatStore.getState();
             useChatStore.setState({
               newThreadMode: e ? ThreadType.Continuation : ThreadType.Standalone,
             });
+            if (state.threadStartMessageId) state.openThreadCreator(state.threadStartMessageId);
           }}
         />
         {t('newPortalThread.includeContext')}

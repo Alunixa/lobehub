@@ -9,6 +9,8 @@ on:
       - .github/workflows/codex-mobile-regressions.yml
       - src/**
       - packages/locales/**
+      - packages/database/src/models/topic.ts
+      - packages/database/src/models/__tests__/topic.test.ts
       - tests/mobile-studio/**
       - locales/**
 
@@ -47,6 +49,8 @@ jobs:
       - name: Real store and shared component regressions
         run: |
           node node_modules/vitest/vitest.mjs run --silent=passed-only \
+            src/store/chat/slices/thread/action.test.ts \
+            src/hooks/useHotkeys/useHotkeyById.test.ts \
             src/store/image/slices/createImage/action.test.ts \
             src/store/image/slices/generationTopic/action.test.ts \
             src/store/image/slices/generationBatch/action.test.ts \
@@ -57,3 +61,6 @@ jobs:
             'src/routes/(main)/(create)/image/features/ConfigPanel/components/Select/utils.test.ts' \
             'src/routes/(main)/(create)/image/features/PromptInput/useImageReferenceUpload.test.ts' \
             'src/routes/(main)/(create)/image/features/GenerationFeed/GenerationItem'
+      - name: Topic clone attachment and ownership regressions
+        working-directory: packages/database
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts

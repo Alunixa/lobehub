@@ -100,6 +100,7 @@ export const store: CreateStore = (publicState) => (set, get) => ({
     if (get().expand) {
       set({ _savedEditorState: undefined, expand: false });
     }
+    if (get().mobile) return;
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         editor.focus();

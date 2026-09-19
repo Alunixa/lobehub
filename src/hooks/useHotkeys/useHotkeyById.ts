@@ -42,10 +42,18 @@ export const useHotkeyById = (
       return callback(...props);
     },
     {
-      enableOnFormTags: true,
+      enableOnFormTags: false,
       preventDefault: true,
       ..._options,
-      enabled: !mobile && _options?.enabled,
+      enabled: !mobile && (_options?.enabled ?? true),
+      ignoreEventWhen: (event) =>
+        event.isComposing ||
+        (event.key === 'Enter' &&
+          event.shiftKey &&
+          !event.ctrlKey &&
+          !event.metaKey &&
+          !event.altKey) ||
+        (_options?.ignoreEventWhen?.(event) ?? false),
       scopes: uniq([hotkeyId, ...(item?.scopes || []), ...(_options?.scopes || [])]),
     },
     _deps,

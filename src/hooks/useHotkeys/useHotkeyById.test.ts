@@ -72,7 +72,8 @@ describe('useHotkeyById', () => {
 
     // 验证第三个参数包含预期的属性
     expect(callArgs[2]).toMatchObject({
-      enableOnFormTags: true,
+      enableOnFormTags: false,
+      enabled: true,
       preventDefault: true,
       scopes: [HotkeyEnum.Search, HotkeyScopeEnum.Global],
     });
@@ -100,6 +101,20 @@ describe('useHotkeyById', () => {
         enabled: false, // Should be disabled on mobile
       }),
       undefined,
+    );
+  });
+
+  it('reserves Shift+Enter for newline and ignores IME composition', () => {
+    renderHook(() => useHotkeyById(HotkeyEnum.Search, mockCallback));
+    const options = (mockUseHotkeys.mock.calls[0] as any)[2];
+    expect(
+      options.ignoreEventWhen(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true })),
+    ).toBe(true);
+    expect(
+      options.ignoreEventWhen(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true })),
+    ).toBe(true);
+    expect(options.ignoreEventWhen(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }))).toBe(
+      false,
     );
   });
 

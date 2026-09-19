@@ -63,16 +63,17 @@ export class ChatThreadActionImpl {
       groupId: activeGroupId,
       topicId: activeTopicId,
     });
-    const displayMessages = this.#get().messagesMap[mainKey] || [];
+    const displayMessages = this.#get().dbMessagesMap[mainKey] || [];
     // Filter out messages that have threadId (they belong to other threads)
     const mainMessages = displayMessages.filter((m) => !m.threadId);
     const parentMessages = genParentMessages(mainMessages, messageId, newThreadMode);
 
     // Initialize messages in thread scope for optimistic update
     // This ensures the UI can display messages immediately
-    if (parentMessages.length > 0) {
+    {
       const context = {
         agentId: activeAgentId,
+        groupId: activeGroupId,
         isNew: true,
         scope: 'thread' as const,
         topicId: activeTopicId,
@@ -140,15 +141,16 @@ export class ChatThreadActionImpl {
   }): Promise<{ threadId: string; messageId: string }> => {
     this.#set({ isCreatingThread: true }, false, n('creatingThread/start'));
 
-    const data = await threadService.createThreadWithMessage({
-      topicId,
-      sourceMessageId,
-      type,
-      message,
-    });
-    this.#set({ isCreatingThread: false }, false, n('creatingThread/end'));
-
-    return data;
+    try {
+      return await threadService.createThreadWithMessage({
+        topicId,
+        sourceMessageId,
+        type,
+        message,
+      });
+    } finally {
+      this.#set({ isCreatingThread: false }, false, n('creatingThread/end'));
+    }
   };
 
   useFetchThreads = (enable: boolean, topicId?: string): SWRResponse<ThreadItem[]> => {

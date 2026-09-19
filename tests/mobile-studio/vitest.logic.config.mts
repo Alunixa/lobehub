@@ -10,6 +10,8 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@/types', replacement: path.resolve('packages/types/src') },
+      { find: '@/const', replacement: path.resolve('packages/const/src') },
+      { find: '@/utils/env', replacement: path.resolve('packages/utils/src/env.ts') },
       { find: '@', replacement: path.resolve('src') },
     ],
   },
@@ -21,6 +23,7 @@ export default defineConfig({
       'src/features/ImageStudio/useImageStudio.test.tsx',
       'src/hooks/useIsMobile.test.ts',
       'src/hooks/useEnterToSend.test.ts',
+      'src/hooks/useHotkeys/useHotkeyById.test.ts',
       'src/spa/router/mobileRouter.test.tsx',
     ],
     maxWorkers: 2,

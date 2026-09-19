@@ -3,7 +3,18 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../core/getTestDB';
-import { agents, chatGroups, messages, sessions, topics, users } from '../../schemas';
+import {
+  agents,
+  chatGroups,
+  files,
+  messageGroups,
+  messages,
+  messagesFiles,
+  sessions,
+  threads,
+  topics,
+  users,
+} from '../../schemas';
 import type { LobeChatDatabase } from '../../type';
 import { TopicModel } from '../topic';
 
@@ -460,6 +471,99 @@ describe('TopicModel', () => {
   });
 
   describe('duplicate', () => {
+    it('preserves user/assistant attachments and independent threads/groups after source deletion', async () => {
+      const topic = await topicModel.create({ title: 'images' });
+      await serverDB.insert(files).values({
+        fileType: 'image/png',
+        id: 'dup-image',
+        name: 'image.png',
+        size: 42,
+        url: '/image.png',
+        userId,
+      });
+      await serverDB.insert(threads).values({
+        id: 'dup-thread',
+        sourceMessageId: 'dup-user',
+        topicId: topic.id,
+        type: 'continuation',
+        userId,
+      });
+      await serverDB.insert(messageGroups).values({
+        id: 'dup-group',
+        topicId: topic.id,
+        type: 'parallel',
+        userId,
+      });
+      await serverDB.insert(messages).values([
+        { id: 'dup-user', role: 'user', topicId: topic.id, userId },
+        {
+          id: 'dup-assistant',
+          messageGroupId: 'dup-group',
+          parentId: 'dup-user',
+          role: 'assistant',
+          topicId: topic.id,
+          userId,
+        },
+        {
+          id: 'dup-child',
+          parentId: 'dup-assistant',
+          role: 'assistant',
+          threadId: 'dup-thread',
+          topicId: topic.id,
+          userId,
+        },
+      ]);
+      await serverDB
+        .update(messageGroups)
+        .set({ parentMessageId: 'dup-user' })
+        .where(eq(messageGroups.id, 'dup-group'));
+      await serverDB.insert(messagesFiles).values(
+        ['dup-user', 'dup-assistant', 'dup-child'].map((messageId) => ({
+          fileId: 'dup-image',
+          messageId,
+          userId,
+        })),
+      );
+
+      const cloned = await topicModel.duplicate(topic.id);
+      await topicModel.delete(topic.id);
+      const rows = await serverDB
+        .select()
+        .from(messages)
+        .where(eq(messages.topicId, cloned.topic.id));
+      const attachments = await serverDB.select().from(messagesFiles);
+      const clonedThreads = await serverDB
+        .select()
+        .from(threads)
+        .where(eq(threads.topicId, cloned.topic.id));
+      const clonedGroups = await serverDB
+        .select()
+        .from(messageGroups)
+        .where(eq(messageGroups.topicId, cloned.topic.id));
+      expect(rows).toHaveLength(3);
+      expect(attachments).toHaveLength(3);
+      expect(
+        attachments.every(
+          (a) => a.fileId === 'dup-image' && rows.some((m) => m.id === a.messageId),
+        ),
+      ).toBe(true);
+      expect(clonedThreads).toHaveLength(1);
+      expect(clonedGroups).toHaveLength(1);
+      expect(rows.some((m) => m.threadId === clonedThreads[0].id)).toBe(true);
+      expect(rows.some((m) => m.messageGroupId === clonedGroups[0].id)).toBe(true);
+      expect(clonedThreads[0].sourceMessageId).toBe(rows.find((m) => m.role === 'user')!.id);
+      expect(clonedGroups[0].parentMessageId).toBe(rows.find((m) => m.role === 'user')!.id);
+      expect(
+        rows
+          .filter((m) => m.parentId)
+          .every((m) => rows.some((parent) => parent.id === m.parentId)),
+      ).toBe(true);
+    });
+
+    it('does not clone another user topic or attachments', async () => {
+      const foreign = await new TopicModel(serverDB, otherUserId).create({ title: 'private' });
+      await expect(topicModel.duplicate(foreign.id)).rejects.toThrow('not found');
+    });
     it('copies the topic and its messages under a new id', async () => {
       const topic = await topicModel.create({ title: 'original' });
       await serverDB.insert(messages).values([

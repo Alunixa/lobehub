@@ -64,7 +64,7 @@ const NavHeader = memo<NavHeaderProps>(
             className={slotClassNames?.left}
             gap={2}
             justify={'flex-start'}
-            style={styles?.left}
+            style={{ minWidth: 0, flex: 1, ...styles?.left }}
           >
             {showTogglePanelButton && !expand && <ToggleLeftPanelButton />}
             {left}
@@ -80,7 +80,7 @@ const NavHeader = memo<NavHeaderProps>(
             className={slotClassNames?.right}
             gap={2}
             justify={'flex-end'}
-            style={styles?.right}
+            style={{ flex: 'none', ...styles?.right }}
           >
             {right}
           </Flexbox>

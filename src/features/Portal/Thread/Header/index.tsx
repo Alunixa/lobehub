@@ -1,7 +1,9 @@
-import { ActionIcon, Flexbox } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
+import { ActionIcon } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { ArrowLeftRight, XIcon } from 'lucide-react';
 import { memo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import NavHeader from '@/features/NavHeader';
 import { useChatStore } from '@/store/chat';
@@ -9,6 +11,7 @@ import { useChatStore } from '@/store/chat';
 import Title from './Title';
 
 const Header = memo(() => {
+  const { t } = useTranslation('common');
   const [hasPortal, portalThreadId, closeThreadPortal, switchThread] = useChatStore((s) => [
     !!s.portalThreadId,
     s.portalThreadId,
@@ -36,7 +39,12 @@ const Header = memo(() => {
               }}
             />
           )}
-          <ActionIcon icon={XIcon} size={'small'} onClick={closeThreadPortal} />
+          <ActionIcon
+            aria-label={t('close')}
+            icon={XIcon}
+            size={'small'}
+            onClick={closeThreadPortal}
+          />
         </Flexbox>
       }
       style={{

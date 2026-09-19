@@ -6,7 +6,6 @@ import { useTranslation } from 'react-i18next';
 
 import ImperativeModal from '@/components/ImperativeModal';
 import { OverlayContainerContext } from '@/features/NavPanel/OverlayContainer';
-import { useFetchTopics } from '@/hooks/useFetchTopics';
 import { useWorkspaceModal } from '@/hooks/useWorkspaceModal';
 import { useGlobalStore } from '@/store/global';
 import { systemStatusSelectors } from '@/store/global/selectors';
@@ -19,8 +18,6 @@ const Topics = memo(({ children }: PropsWithChildren) => {
   const [open, setOpen] = useWorkspaceModal(showAgentSettings, toggleConfig);
   const { t } = useTranslation('topic');
   const [overlayContainer, setOverlayContainer] = useState<HTMLDivElement | null>(null);
-
-  useFetchTopics();
 
   return (
     <OverlayContainerContext value={overlayContainer}>

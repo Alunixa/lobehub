@@ -30,7 +30,16 @@ import {
 } from 'drizzle-orm';
 
 import type { TopicItem } from '../schemas';
-import { agents, messagePlugins, messages, threads, topicDocuments, topics } from '../schemas';
+import {
+  agents,
+  messageGroups,
+  messagePlugins,
+  messages,
+  messagesFiles,
+  threads,
+  topicDocuments,
+  topics,
+} from '../schemas';
 import type { LobeChatDatabase } from '../type';
 import { sanitizeBm25Query } from '../utils/bm25';
 import { genEndDateWhere, genRangeWhere, genStartDateWhere, genWhere } from '../utils/genWhere';
@@ -837,6 +846,48 @@ export class TopicModel {
         idMap.set(message.id, idGenerator('messages'));
       });
 
+      // A duplicate owns its thread/group graph. Leaving the original IDs here
+      // makes copied messages disappear when the source conversation is deleted.
+      const originalThreads = await tx.select().from(threads).where(eq(threads.topicId, topicId));
+      const threadIdMap = new Map(originalThreads.map((t) => [t.id, idGenerator('threads', 16)]));
+      for (const thread of originalThreads) {
+        await tx.insert(threads).values({
+          ...thread,
+          clientId: null,
+          id: threadIdMap.get(thread.id)!,
+          parentThreadId: null,
+          sourceMessageId: thread.sourceMessageId
+            ? (idMap.get(thread.sourceMessageId) ?? null)
+            : null,
+          topicId: duplicatedTopic.id,
+        });
+      }
+      for (const thread of originalThreads) {
+        if (!thread.parentThreadId) continue;
+        await tx
+          .update(threads)
+          .set({
+            parentThreadId: threadIdMap.get(thread.parentThreadId) ?? null,
+          })
+          .where(eq(threads.id, threadIdMap.get(thread.id)!));
+      }
+
+      const originalGroups = await tx
+        .select()
+        .from(messageGroups)
+        .where(eq(messageGroups.topicId, topicId));
+      const groupIdMap = new Map(originalGroups.map((g) => [g.id, idGenerator('messageGroups')]));
+      for (const group of originalGroups) {
+        await tx.insert(messageGroups).values({
+          ...group,
+          clientId: null,
+          id: groupIdMap.get(group.id)!,
+          parentGroupId: null,
+          parentMessageId: null,
+          topicId: duplicatedTopic.id,
+        });
+      }
+
       // Build oldToolId -> newToolId mapping for tools
       const toolIdMap = new Map<string, string>();
       originalMessages.forEach((message) => {
@@ -853,7 +904,6 @@ export class TopicModel {
       const duplicatedMessages: DBMessageItem[] = [];
       for (const message of originalMessages) {
         const newId = idMap.get(message.id)!;
-        const newParentId = message.parentId ? idMap.get(message.parentId) || null : null;
 
         // Update tool IDs in tools array
         let newTools = message.tools;
@@ -870,7 +920,11 @@ export class TopicModel {
             ...message,
             clientId: null,
             id: newId,
-            parentId: newParentId,
+            messageGroupId: message.messageGroupId
+              ? (groupIdMap.get(message.messageGroupId) ?? null)
+              : null,
+            parentId: null,
+            threadId: message.threadId ? (threadIdMap.get(message.threadId) ?? null) : null,
             tools: newTools,
             topicId: duplicatedTopic.id,
           })
@@ -889,6 +943,47 @@ export class TopicModel {
             id: newId,
             toolCallId: newToolCallId,
           });
+        }
+      }
+
+      // Restore links only after all rows exist (parents may have later timestamps).
+      for (const message of originalMessages) {
+        const parentId = message.parentId ? (idMap.get(message.parentId) ?? null) : null;
+        if (!parentId) continue;
+        await tx
+          .update(messages)
+          .set({ parentId })
+          .where(eq(messages.id, idMap.get(message.id)!));
+        duplicatedMessages.find((m) => m.id === idMap.get(message.id))!.parentId = parentId;
+      }
+      for (const group of originalGroups) {
+        await tx
+          .update(messageGroups)
+          .set({
+            parentGroupId: group.parentGroupId
+              ? (groupIdMap.get(group.parentGroupId) ?? null)
+              : null,
+            parentMessageId: group.parentMessageId
+              ? (idMap.get(group.parentMessageId) ?? null)
+              : null,
+          })
+          .where(eq(messageGroups.id, groupIdMap.get(group.id)!));
+      }
+
+      // Share immutable file objects, not message associations. No upload or
+      // image regeneration is needed, and deleting either topic keeps the other.
+      if (messageIds.length > 0) {
+        const attachments = await tx
+          .select()
+          .from(messagesFiles)
+          .where(inArray(messagesFiles.messageId, messageIds));
+        if (attachments.length > 0) {
+          await tx.insert(messagesFiles).values(
+            attachments.map((attachment) => ({
+              ...attachment,
+              messageId: idMap.get(attachment.messageId)!,
+            })),
+          );
         }
       }
 

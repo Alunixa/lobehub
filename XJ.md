@@ -102,3 +102,9 @@
 
 ## 21. Change Log
 - 2026-09-19：创建项目记忆；记录新请求、历史部署约束、验证和回滚规则。
+### 2026-09-19 继续执行
+- 编辑前检查点：`4b9ff2426b`；已实现但尚未验证：话题复制附件/线程/消息组独立关联，thread 原始数据初始化，手机完整分页搜索与全入口直接输入焦点保护，面板尺寸/标题关闭区，快捷键输入边界。
+- 新文件：`src/features/MobileApp/TopicList.tsx`、`inputFocusGuard.ts`。
+- 下一步：新增/调整专项回归，生产 bundle 浏览器验证，Actions / Release / 窄部署；线上未改变。
+- 已验证：PGlite 38 tests 通过；轻量逻辑 34 tests + 快捷键 8 tests 通过；目标 lint 0 errors / 3 既有 warnings。
+- 首次 Actions 推送内容为本轮修复与测试；最终部署与 Release 尚未开始。线上 22:47 只读核验镜像与历史相同、running、restart=8。

@@ -96,6 +96,7 @@ beforeEach(() => {
       isCreatingThread: false,
       isCreatingThreadMessage: false,
       messagesMap: {},
+      dbMessagesMap: {},
       newThreadMode: ThreadType.Continuation,
       portalThreadId: undefined,
       startToForkThread: undefined,
@@ -143,6 +144,32 @@ describe('thread action', () => {
   });
 
   describe('openThreadCreator', () => {
+    it('uses raw assistant images instead of processed assistant groups and clears stale drafts', () => {
+      const raw = [
+        {
+          id: 'image-msg',
+          role: 'assistant',
+          content: '',
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          imageList: [{ id: 'image', url: '/image.png', alt: 'image' }],
+        },
+      ] as UIChatMessage[];
+      useChatStore.setState({
+        dbMessagesMap: { 'main_test-session-id_test-topic-id': raw },
+        messagesMap: {
+          'main_test-session-id_test-topic-id': [
+            { ...raw[0], role: 'assistantGroup', imageList: undefined },
+          ] as UIChatMessage[],
+        },
+      });
+      act(() => useChatStore.getState().openThreadCreator('image-msg'));
+      const key = 'thread_test-session-id_test-topic-id_new';
+      const seeded = useChatStore.getState().dbMessagesMap[key];
+      expect(seeded?.[0].imageList).toEqual(raw[0].imageList);
+      act(() => useChatStore.getState().openThreadCreator('missing-msg'));
+      expect(useChatStore.getState().dbMessagesMap[key]).toEqual([]);
+    });
     it('should set thread creator state and open portal', () => {
       const { result } = renderHook(() => useChatStore());
       const pushPortalViewSpy = vi.spyOn(result.current, 'pushPortalView');
@@ -192,7 +219,7 @@ describe('thread action', () => {
 
       act(() => {
         useChatStore.setState({
-          messagesMap: {
+          dbMessagesMap: {
             'main_test-session-id_test-topic-id': mainMessages,
           },
         });
@@ -273,7 +300,7 @@ describe('thread action', () => {
       act(() => {
         useChatStore.setState({
           activeThreadId: 'existing-thread',
-          messagesMap: {
+          dbMessagesMap: {
             // Main scope has all messages including msg-3
             'main_test-session-id_test-topic-id': mainMessages,
             // Thread scope does NOT have msg-3
@@ -359,6 +386,18 @@ describe('thread action', () => {
   });
 
   describe('createThread', () => {
+    it('clears busy state after creation fails', async () => {
+      vi.mocked(threadService.createThreadWithMessage).mockRejectedValueOnce(new Error('offline'));
+      await expect(
+        useChatStore.getState().createThread({
+          message: { content: 'retry', role: 'user', agentId: 'test-session-id' },
+          sourceMessageId: 'source',
+          topicId: 'test-topic-id',
+          type: ThreadType.Continuation,
+        }),
+      ).rejects.toThrow('offline');
+      expect(useChatStore.getState().isCreatingThread).toBe(false);
+    });
     it('should create thread with message and return ids', async () => {
       const { result } = renderHook(() => useChatStore());
 
