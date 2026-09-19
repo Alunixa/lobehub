@@ -1,10 +1,11 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { installMobileInputFocusGuard } from './inputFocusGuard';
 
 let cleanup: (() => void) | undefined;
 afterEach(() => {
   cleanup?.();
+  vi.useRealTimers();
   document.body.innerHTML = '';
 });
 
@@ -62,6 +63,21 @@ describe('mobile input focus policy', () => {
     touch(document.querySelector('label')!);
     input.focus();
     expect(document.activeElement).toBe(input);
+  });
+
+  it('retains label activation through click microtasks, then expires it', async () => {
+    vi.useFakeTimers();
+    const { input, button } = setup();
+    const label = document.querySelector('label')!;
+    touch(label);
+    label.dispatchEvent(new Event('click', { bubbles: true }));
+    await Promise.resolve();
+    input.focus();
+    expect(document.activeElement).toBe(input);
+    vi.runAllTimers();
+    button.focus();
+    input.focus();
+    expect(document.activeElement).toBe(button);
   });
 
   it('dismisses input focus when tapping outside and prevents toolbar restoration', () => {

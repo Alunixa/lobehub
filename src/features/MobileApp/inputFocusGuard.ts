@@ -30,7 +30,22 @@ export const installMobileInputFocusGuard = (doc: Document = document) => {
       gestureTarget = null;
     }, 1000);
   };
-  const endGesture = () => {
+  const clearGesture = () => {
+    gestureTarget = null;
+    clearTimeout(gestureTimer);
+  };
+  const endGesture = (event: Event) => {
+    // A label's default action focuses its control after click listeners and
+    // their microtasks. Keep this explicit input gesture until that action runs.
+    if (
+      event.type === 'click' &&
+      event.target instanceof Element &&
+      event.target.closest('label')?.control === gestureTarget
+    ) {
+      clearTimeout(gestureTimer);
+      gestureTimer = setTimeout(clearGesture, 0);
+      return;
+    }
     queueMicrotask(() => {
       gestureTarget = null;
       clearTimeout(gestureTimer);
