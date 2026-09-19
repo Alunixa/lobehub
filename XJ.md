@@ -13,9 +13,10 @@
 - 任务开始时跟踪文件干净，分支 `codex/deploy-server-image-20260720`，HEAD `8ba37c3a64`，比远端多 4 个仅记录提交。
 - 上次发布 `v2.2.8-codex.20260906.1`，功能提交 `652341201828548f3347e1ca92c79cfcf874f768`；本轮功能首提交 `6bcd6fc02b` 已推送，线上未改变。
 - 首轮及 `56ff56bf7b` 候选 Actions 镜像/专项均成功；56ff 在全页面矩阵发现任务页抢焦点，未发布部署。
-- 最终功能提交 `c0523ea95239057eb0913207f74f56b99f955143`；Actions 镜像 `35452632395`、专项 `35452632378` 全部成功。
+- 功能源码提交 `c0523ea95239057eb0913207f74f56b99f955143`；最终发布提交 `cd0a25f68b7b219b239ee6c3130e8df44f5d14ea` 只补测试/CI/记录，运行时代码不变。
 - 候选专项 46 + 184 + 38 次测试执行通过，同源生产 SPA 47 页面/尺寸 + 普通/分组各 7 子话题场景通过，runtime errors=0。
-- `.20260919.1` 已发布但未部署；总 CI 最后发现任务编辑器两个测试缺 MotionProvider（实际页面 61 场景通过），补齐测试 wrapper 并纳入专项，功能源码保持 c052 不变，需再构建发布 `.20260919.2`。
+- `.20260919.1` 已发布但未部署；最后补齐任务测试 MotionProvider，`.2` 的镜像 Actions `35453712795` 与专项 `35453712723` 均成功，46 + 188 + 38 测试执行通过。
+- `.2` 同源生产 UI 再跑 47 + 7 + 7 场景全部通过、runtime errors=0，准备发布并部署最终 `.2`。
 - 本文件此前不存在，2026-09-19 根据仓库日志初始化；旧记录仍完整保留于 `YHYQ.md`。
 
 ## 4. Repository Structure
@@ -97,11 +98,11 @@
 
 ## 19. Current Task
 - 2026-09-19 用户要求自主完成修复与上线，不需等待睡眠中的用户决策。
-- 当前阶段：只补任务编辑器测试 Provider 与移动/桌面自动焦点回归；线上未变，旧 `.1` 不部署，最终 `.2` 构建后部署。
+- 当前阶段：最终 `.2` 构建/专项/61 浏览器场景全部通过，部署脚本和校验清单已固定 `cd0a25f68b`，准备单服务部署。
 
 ## 20. Next Steps
-1. 验证任务编辑器四项测试，推送后专项应为 46 + 188 + 38；重新构建，发布 `.20260919.2`（不可复用旧 SHA）。
-2. 更新 deploy.sh、manifest、Release Notes 到最终 SHA；最终镜像/SPA 通过后单服务部署。
+1. 发布 `.20260919.2`，源码 `cd0a25f68b7b219b239ee6c3130e8df44f5d14ea`，资产使用 release-published 文件夹。
+2. 上传最终镜像，执行已更新的 deploy.sh 单服务部署。
 3. 运行 production-backup/verify-production.py 只读验证，检查其他服务与配置不变，确认回滚 guard；更新发布说明、清理暂存。
 
 ## 21. Change Log
@@ -127,3 +128,6 @@
 - 最终镜像 `297839104` 字节、SHA-256 `bf91e4cefb019c512301770a7491a48e7bd74afac3fad939183d806c21bfcdfa`；位于 `D:\Cursor\lobehub-backups\20260919-conversation-repair\release-validated`，不是 release-final 里的旧候选。
 - 同源真实生产 UI 验证报告在 `ui-matrix-validated` / `ui-conversation-validated` / `ui-grouped-validated`；所有 61 页面/场景通过，任务草稿重载、手动输入与子话题图片/拖拽/关闭/换行均通过。
 - 全仓最终审计发现新增任务编辑器测试缺 MotionProvider，并非页面异常；补齐真实 Provider、增加手机禁自动 focus 和桌面保留 focus 回归，纳入专项 CI 后再发布 `.2`；不得将这两项误称为历史失败。
+- 任务四项回归在固定 UI 5.40.0 的 CI 全通过；本机5.19.0没有 base-ui ActionIcon/Text，故本机该组件测试失败不代表 CI / 生产结果。
+- 最终 `.2` 镜像 `297830400` 字节，SHA-256 `2eaecdfe281bb942e23eb3a3480c79ef2f9b011990e7630c705f11ce4cb9e8f3`；最终报告 `ui-matrix-release` / `ui-conversation-release` / `ui-grouped-release`，不要部署候选资产。
+- 最终部署前数据库归档 `database-final-predeploy.dump` 本机/远端哈希一致：`cb8d675723dd2a0323ce5e38ce57221398e6bfc53fbf4226021a30ec145c86d7`。
