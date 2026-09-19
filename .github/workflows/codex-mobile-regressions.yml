@@ -61,6 +61,7 @@ jobs:
             src/store/image/slices/generationBatch/reducer.test.ts \
             src/spa/router/desktopRouter.sync.test.tsx \
             src/features/AgentTasks/TaskWorkspaceLayout.test.tsx \
+            src/features/AgentTasks/AgentTaskList/CreateTaskInlineEntry.test.tsx \
             src/features/ModelSwitchPanel \
             'src/routes/(main)/(create)/image/features/ConfigPanel/components/Select/utils.test.ts' \
             'src/routes/(main)/(create)/image/features/PromptInput/useImageReferenceUpload.test.ts' \

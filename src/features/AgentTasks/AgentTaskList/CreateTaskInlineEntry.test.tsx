@@ -1,11 +1,19 @@
 /**
  * @vitest-environment happy-dom
  */
+import { MotionProvider } from '@lobehub/ui';
 import { render, screen } from '@testing-library/react';
+import * as motion from 'motion/react-m';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as mobileHooks from '@/hooks/useIsMobile';
+
 import CreateTaskInlineEntry from './CreateTaskInlineEntry';
+
+const wrapper = ({ children }: { children: ReactNode }) => (
+  <MotionProvider motion={motion}>{children}</MotionProvider>
+);
 
 const permissionMock = vi.hoisted(() => ({
   allowed: true,
@@ -95,12 +103,13 @@ describe('CreateTaskInlineEntry', () => {
     permissionMock.allowed = true;
     activeWorkspaceMock.id = 'workspace-1';
     focusMock.mockReset();
+    vi.spyOn(mobileHooks, 'useIsMobile').mockReturnValue(false);
   });
 
   it('renders the task editor as disabled when the user cannot create content', () => {
     permissionMock.allowed = false;
 
-    render(<CreateTaskInlineEntry variant="hero" />);
+    render(<CreateTaskInlineEntry variant="hero" />, { wrapper });
 
     expect(screen.getByTestId('task-editor')).toHaveAttribute('data-disabled', 'true');
     expect(focusMock).not.toHaveBeenCalled();
@@ -109,6 +118,7 @@ describe('CreateTaskInlineEntry', () => {
   it('clears the private-agent visibility lock when switching to the all-tasks create form', () => {
     const { rerender } = render(
       <CreateTaskInlineEntry lockAssignee agentId="agent-private" variant="hero" />,
+      { wrapper },
     );
 
     expect(screen.getByTestId('visibility-trigger')).toHaveAttribute('data-locked', 'true');
@@ -116,5 +126,20 @@ describe('CreateTaskInlineEntry', () => {
     rerender(<CreateTaskInlineEntry variant="hero" />);
 
     expect(screen.getByTestId('visibility-trigger')).toHaveAttribute('data-locked', 'false');
+  });
+
+  it('does not autofocus the mobile task editor even when explicitly requested', () => {
+    vi.spyOn(mobileHooks, 'useIsMobile').mockReturnValue(true);
+
+    render(<CreateTaskInlineEntry autoFocus variant="hero" />, { wrapper });
+
+    expect(screen.getByTestId('task-editor')).toHaveAttribute('data-disabled', 'false');
+    expect(focusMock).not.toHaveBeenCalled();
+  });
+
+  it('retains desktop task editor autofocus', () => {
+    render(<CreateTaskInlineEntry variant="hero" />, { wrapper });
+
+    expect(focusMock).toHaveBeenCalled();
   });
 });
