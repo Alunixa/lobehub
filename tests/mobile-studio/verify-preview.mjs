@@ -9,6 +9,9 @@ import { chromium, expect } from '@playwright/test';
 import superjson from 'superjson';
 
 const [previewPath, outputPath, probePath = '/image'] = process.argv.slice(2);
+const conversationFixture = probePath.startsWith('--conversation');
+const verifyConversation = conversationFixture && !probePath.endsWith('probe');
+const groupedReply = probePath.includes('grouped');
 assert(previewPath && outputPath, 'Usage: node verify-preview.mjs PREVIEW_DIR OUTPUT_DIR [PATH]');
 const preview = path.resolve(previewPath);
 const output = path.resolve(outputPath);
@@ -112,7 +115,13 @@ function rpc(method, input) {
       onboarding: { finishedAt: now.toISOString() },
       preference: { useCmdEnterToSend: false },
       settings: {
-        general: { language: 'zh-CN', responseLanguage: 'zh-CN', timezone: 'Asia/Singapore' },
+        general: {
+          isDevMode: conversationFixture,
+          contextMenuMode: 'default',
+          language: 'zh-CN',
+          responseLanguage: 'zh-CN',
+          timezone: 'Asia/Singapore',
+        },
       },
       userId: user.id,
       username: user.username,
@@ -136,6 +145,139 @@ function rpc(method, input) {
   if (method === 'agent.getBuiltinAgent') return { ...agent, id: `agt_builtin_${input.slug}` };
   if (method === 'agent.getAgentConfigById' || method === 'agent.getAgentById') return agent;
   if (/^agent.count|^topic.count|^message.count/.test(method)) return 1;
+  if (conversationFixture) {
+    const chatTopics = Array.from({ length: 65 }, (_, index) => ({
+      agentId: agent.id,
+      createdAt: now,
+      favorite: false,
+      id: `tpc_preview_${index}`,
+      title: `图片回归对话 ${String(index + 1).padStart(2, '0')}`,
+      updatedAt: now,
+    }));
+    if (method === 'topic.getTopics') {
+      const size = input.pageSize || 20;
+      return {
+        items: chatTopics.slice((input.current || 0) * size, ((input.current || 0) + 1) * size),
+        total: chatTopics.length,
+      };
+    }
+    if (method === 'topic.searchTopics')
+      return chatTopics.filter((topic) => topic.title.includes(input.keywords));
+    if (method === 'topic.getTopic')
+      return chatTopics.find((topic) => topic.id === (input.id || input));
+    if (method === 'thread.getThreads') return [];
+    if (method === 'message.getMessages') {
+      if (!input.topicId) return [];
+      return [
+        {
+          agentId: agent.id,
+          content: '用户参考图片',
+          createdAt: now.getTime(),
+          id: 'msg_user',
+          imageList: [
+            {
+              id: 'file_user',
+              alt: 'user-reference',
+              url: `${origin}/fixture.svg?user`,
+              width: 1024,
+              height: 768,
+            },
+          ],
+          role: 'user',
+          topicId: input.topicId,
+          updatedAt: now.getTime(),
+        },
+        {
+          ...(groupedReply
+            ? {
+                agentId: agent.id,
+                content: '准备生成图片',
+                createdAt: now.getTime() + 1,
+                id: 'msg_prepare',
+                model: 'gpt-4o',
+                parentId: 'msg_user',
+                provider: 'openai',
+                role: 'assistant',
+                tools: [
+                  {
+                    id: 'tool_image',
+                    apiName: 'generateImage',
+                    arguments: '{}',
+                    identifier: 'image-fixture',
+                    type: 'default',
+                    result_msg_id: 'msg_tool',
+                  },
+                ],
+                topicId: input.topicId,
+                updatedAt: now.getTime() + 1,
+              }
+            : {
+                agentId: agent.id,
+                content: '助手生成图片',
+                createdAt: now.getTime() + 1,
+                id: 'msg_assistant',
+                imageList: [
+                  {
+                    id: 'file_assistant',
+                    alt: 'assistant-image',
+                    url: `${origin}/fixture.svg?assistant`,
+                    width: 1024,
+                    height: 768,
+                  },
+                ],
+                model: 'gpt-4o',
+                parentId: 'msg_user',
+                provider: 'openai',
+                role: 'assistant',
+                topicId: input.topicId,
+                updatedAt: now.getTime() + 1,
+              }),
+        },
+        ...(groupedReply
+          ? [
+              {
+                agentId: agent.id,
+                content: 'Image ready',
+                createdAt: now.getTime() + 2,
+                id: 'msg_tool',
+                parentId: 'msg_prepare',
+                plugin: {
+                  apiName: 'generateImage',
+                  identifier: 'image-fixture',
+                  arguments: '{}',
+                  type: 'default',
+                },
+                tool_call_id: 'tool_image',
+                role: 'tool',
+                topicId: input.topicId,
+                updatedAt: now.getTime() + 2,
+              },
+              {
+                agentId: agent.id,
+                content: '助手生成图片',
+                createdAt: now.getTime() + 1,
+                id: 'msg_assistant',
+                imageList: [
+                  {
+                    id: 'file_assistant',
+                    alt: 'assistant-image',
+                    url: `${origin}/fixture.svg?assistant`,
+                    width: 1024,
+                    height: 768,
+                  },
+                ],
+                model: 'gpt-4o',
+                parentId: 'msg_prepare',
+                provider: 'openai',
+                role: 'assistant',
+                topicId: input.topicId,
+                updatedAt: now.getTime() + 3,
+              },
+            ]
+          : []),
+      ];
+    }
+  }
   if (method === 'topic.getTopics') return { items: [], total: 0 };
   if (method === 'task.list') return { data: [], total: 0 };
   if (method === 'userMemory.getPersona') return null;
@@ -344,8 +486,196 @@ try {
     if (/^\/agent\/[^/?]+$/.test(route)) {
       await page.locator('[contenteditable="true"]').first().waitFor({ timeout: 15000 });
     }
+    if (mobile && probePath !== '--conversation-probe') {
+      const editing = await page.evaluate(() =>
+        document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
+      );
+      assert(!editing, `${route}: navigation must not autofocus a mobile input`);
+    }
   };
-  if (probePath === '--matrix') {
+  if (conversationFixture) {
+    await open('/agent/agt_preview/tpc_preview_0');
+    await capture('conversation-initial');
+    await writeFile(
+      path.join(output, 'conversation-dom.json'),
+      JSON.stringify(
+        {
+          buttons: await page.getByRole('button').evaluateAll((items) =>
+            items.map((item) => ({
+              label: item.getAttribute('aria-label'),
+              text: item.textContent,
+              title: item.getAttribute('title'),
+            })),
+          ),
+          images: await page
+            .locator('img')
+            .evaluateAll((items) => items.map((item) => ({ src: item.src, alt: item.alt }))),
+        },
+        null,
+        2,
+      ),
+    );
+    await page.getByRole('button', { name: '查看历史对话' }).click();
+    await page.getByRole('dialog').waitFor();
+    await capture('mobile-history');
+    const mobileFocus = await page.evaluate(() => ({
+      tag: document.activeElement?.tagName,
+      placeholder: document.activeElement?.getAttribute('placeholder'),
+    }));
+    await writeFile(path.join(output, 'mobile-focus.json'), JSON.stringify(mobileFocus));
+    if (verifyConversation) {
+      assert.notEqual(mobileFocus.tag, 'INPUT', 'Opening history must not focus search');
+      const dialog = page.getByRole('dialog');
+      const search = dialog.getByPlaceholder('搜索话题…');
+      await search.tap();
+      await expect(search).toBeFocused();
+      await search.fill('65');
+      await expect(dialog.getByText('图片回归对话 65', { exact: true })).toBeVisible();
+      await search.fill('');
+      await expect(dialog.getByText('图片回归对话 01', { exact: true })).toBeVisible();
+      const scroller = dialog.locator('[style*="contain: strict"]');
+      const box = await scroller.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      for (let index = 0; index < 12; index += 1) {
+        if (await dialog.getByText('图片回归对话 65', { exact: true }).isVisible()) break;
+        await page.mouse.wheel(0, 1500);
+        await page.waitForTimeout(200);
+      }
+      await writeFile(
+        path.join(output, 'history-scroll.json'),
+        JSON.stringify(
+          await dialog.locator('*').evaluateAll((elements) =>
+            elements
+              .filter((element) => element.scrollHeight > element.clientHeight + 5)
+              .map((element) => ({
+                className: element.className,
+                style: element.getAttribute('style'),
+                overflow: getComputedStyle(element).overflowY,
+                clientHeight: element.clientHeight,
+                scrollHeight: element.scrollHeight,
+                scrollTop: element.scrollTop,
+                box: element.getBoundingClientRect().toJSON(),
+              })),
+          ),
+          null,
+          2,
+        ),
+      );
+      await expect(dialog.getByText('图片回归对话 65', { exact: true })).toBeVisible();
+      assert(
+        requests.some(({ method, input }) => method === 'topic.getTopics' && input.current > 0),
+      );
+      await capture('mobile-full-history-65');
+      await dialog.getByText('图片回归对话 65', { exact: true }).click();
+      await expect(dialog).not.toBeVisible();
+      await expect(page.locator('[contenteditable="true"]').first()).not.toBeFocused();
+      const url = page.url();
+      const editor = page.locator('[contenteditable="true"]').first();
+      await editor.tap();
+      await editor.fill('第一行');
+      await editor.press('Shift+Enter');
+      await editor.pressSequentially('第二行');
+      await expect(editor).toContainText('第一行');
+      await expect(editor).toContainText('第二行');
+      assert.equal(page.url(), url);
+      assertions.push(
+        'Mobile history has all 65 paginated topics and live search; keyboard focus requires direct input tap',
+      );
+    }
+    await page.keyboard.press('Escape');
+    mobile = false;
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await open('/agent/agt_preview/tpc_preview_0');
+    await page.getByText('助手生成图片', { exact: true }).click({ button: 'right' });
+    await capture('desktop-context-menu');
+    await writeFile(path.join(output, 'desktop-menu.txt'), await page.locator('body').innerText());
+    if (conversationFixture) {
+      const branch = page.getByRole('menuitem', { name: /创建子话题/ });
+      if (await branch.count()) {
+        await branch.click();
+        await capture('desktop-thread');
+        await writeFile(
+          path.join(output, 'thread-dom.json'),
+          JSON.stringify(
+            {
+              buttons: await page.getByRole('button').evaluateAll((items) =>
+                items.map((item) => ({
+                  label: item.getAttribute('aria-label'),
+                  text: item.textContent,
+                  title: item.getAttribute('title'),
+                })),
+              ),
+              images: await page
+                .locator('img')
+                .evaluateAll((items) => items.map((item) => ({ src: item.src, alt: item.alt }))),
+              panels: await page.locator('[class*="draggable"]').evaluateAll((items) =>
+                items.map((item) => ({
+                  class: item.className,
+                  rect: item.getBoundingClientRect().toJSON(),
+                })),
+              ),
+            },
+            null,
+            2,
+          ),
+        );
+        if (verifyConversation) {
+          const panel = page
+            .locator('.ant-draggable-panel')
+            .filter({ has: page.getByText('开启新的子话题', { exact: true }) })
+            .last();
+          const close = panel.getByRole('button', { name: '关闭', exact: true });
+          await expect(close).toBeVisible();
+          const closeBox = await close.boundingBox();
+          assert(closeBox.x + closeBox.width <= 1440, 'Thread close button must be on screen');
+          await expect(panel.locator('img[alt="assistant-image"]')).toBeVisible();
+          await expect(panel.locator('img[alt="user-reference"]')).toBeVisible();
+          const widthBefore = (await panel.boundingBox()).width;
+          const handle = panel.locator('[class*="-left-handle"]').first();
+          const handleBox = await handle.boundingBox();
+          await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + 100);
+          await page.mouse.down();
+          await page.mouse.move(handleBox.x - 130, handleBox.y + 100, { steps: 12 });
+          await page.mouse.up();
+          await expect
+            .poll(async () => (await panel.boundingBox()).width)
+            .toBeGreaterThan(widthBefore + 60);
+          await capture('desktop-thread-resized');
+          const editor = panel.locator('[contenteditable="true"]');
+          const url = page.url();
+          const writesBefore = requests.filter(({ method }) =>
+            /createMessage|execAgent|sendMessage/.test(method),
+          ).length;
+          await editor.click();
+          await editor.fill('第一行');
+          await editor.press('Shift+Enter');
+          await editor.pressSequentially('第二行');
+          await expect(editor).toContainText('第一行');
+          await expect(editor).toContainText('第二行');
+          assert.equal(page.url(), url);
+          assert.equal(
+            requests.filter(({ method }) => /createMessage|execAgent|sendMessage/.test(method))
+              .length,
+            writesBefore,
+          );
+          await panel.getByRole('switch').click();
+          await expect(panel.locator('img[alt="user-reference"]')).toHaveCount(0);
+          await expect(panel.locator('img[alt="assistant-image"]')).toBeVisible();
+          await panel.getByRole('switch').click();
+          await expect(panel.locator('img[alt="user-reference"]')).toBeVisible();
+          await close.click();
+          await expect(page.getByText('开启新的子话题', { exact: true })).not.toBeVisible();
+          await expect(page.locator('[contenteditable="true"]:visible')).toHaveCount(1);
+          assertions.push(
+            'Thread images, context toggle, resize, close and Shift+Enter pass on the real desktop bundle',
+          );
+          await capture('desktop-thread-closed');
+        }
+      } else if (verifyConversation) {
+        assert.fail('Create subtopic action missing');
+      }
+    }
+  } else if (probePath === '--matrix') {
     const routes = [
       '/',
       '/tools',

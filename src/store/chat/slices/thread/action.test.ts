@@ -144,6 +144,51 @@ describe('thread action', () => {
   });
 
   describe('openThreadCreator', () => {
+    it('includes final image replies in grouped assistant turns', () => {
+      const raw = [
+        {
+          id: 'assistant-first',
+          role: 'assistant',
+          content: 'Preparing',
+          createdAt: 1,
+          updatedAt: 1,
+        },
+        {
+          id: 'tool-result',
+          role: 'tool',
+          content: 'Done',
+          parentId: 'assistant-first',
+          createdAt: 2,
+          updatedAt: 2,
+        },
+        {
+          id: 'assistant-last',
+          role: 'assistant',
+          content: 'Image',
+          parentId: 'tool-result',
+          imageList: [{ id: 'image', url: '/result.png', alt: 'result' }],
+          createdAt: 3,
+          updatedAt: 3,
+        },
+      ] as UIChatMessage[];
+      useChatStore.setState({
+        dbMessagesMap: { 'main_test-session-id_test-topic-id': raw },
+        messagesMap: {
+          'main_test-session-id_test-topic-id': [
+            {
+              ...raw[0],
+              role: 'assistantGroup',
+              children: raw.filter((m) => m.role === 'assistant'),
+            },
+          ] as UIChatMessage[],
+        },
+      });
+      act(() => useChatStore.getState().openThreadCreator('assistant-first'));
+      expect(useChatStore.getState().threadStartMessageId).toBe('assistant-last');
+      expect(
+        useChatStore.getState().dbMessagesMap['thread_test-session-id_test-topic-id_new'],
+      ).toEqual(raw);
+    });
     it('uses raw assistant images instead of processed assistant groups and clears stale drafts', () => {
       const raw = [
         {

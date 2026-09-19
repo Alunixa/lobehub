@@ -1383,3 +1383,7 @@
 - 定向 ESLint 无错误，3 条既有未使用变量警告；手机焦点保护覆盖按钮 / 弹层、直接输入、编辑器子节点、label、异步恢复和卸载清理喵~
 - 线上只读核验仍为 9 月 6 日镜像，running、累计重启 8 次，磁盘余量 84.8 GB；未改服务喵~
 - 首次推送范围：本轮交互与数据关联修复、针对性回归及 CI；所有推送均走 Actions 服务器镜像构建，最终成功产物将发布 Release 并部署喵~
+- 首轮 Actions 镜像 `35450117784` 与专项 `35450117793` 成功；从同源生产 bundle 完成真实浏览器验证，手机 65 条分页 / 搜索 / 直接输入焦点、桌面子话题图片 / 上下文切换 / 拖动 / 关闭 / Shift+Enter 均通过，无 runtime errors 喵~
+- 旧生产 bundle 已复现子话题外层宽 401px、内层宽 600px且越界，关闭和拖动区域被裁切；新 bundle 已实际截图确认修复，不只依赖单元测试喵~
+- 2026-09-19 新备份目录为 `/mnt/sda1/lobehub-backups/20260919-conversation-repair` 与 `D:\Cursor\lobehub-backups\20260919-conversation-repair\production-backup`；旧镜像、数据库、配置、容器元数据全部 SHA-256 一致，数据库目录可读取喵~
+- 继续补充 assistantGroup 来源规范化为末尾真实消息，确保工具调用后的最终图片在子话题保留；真实 store 原 31 tests 已过，新分组测试待执行，最终版尚未推送喵~

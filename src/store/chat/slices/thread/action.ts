@@ -63,17 +63,23 @@ export class ChatThreadActionImpl {
       groupId: activeGroupId,
       topicId: activeTopicId,
     });
-    const displayMessages = this.#get().dbMessagesMap[mainKey] || [];
+    const rawMessages = this.#get().dbMessagesMap[mainKey] || [];
+    const displayedSource = this.#get().messagesMap[mainKey]?.find((m) => m.id === messageId);
+    // A rendered assistant turn can contain tool calls plus a final image reply.
+    // Persist the last real message as the boundary, not the virtual group's ID.
+    const sourceMessageId =
+      displayedSource?.role === 'assistantGroup'
+        ? (displayedSource.children?.at(-1)?.id ?? messageId)
+        : messageId;
     // Filter out messages that have threadId (they belong to other threads)
-    const mainMessages = displayMessages.filter((m) => !m.threadId);
-    const parentMessages = genParentMessages(mainMessages, messageId, newThreadMode);
+    const mainMessages = rawMessages.filter((m) => !m.threadId);
+    const parentMessages = genParentMessages(mainMessages, sourceMessageId, newThreadMode);
 
     // Initialize messages in thread scope for optimistic update
     // This ensures the UI can display messages immediately
     {
       const context = {
         agentId: activeAgentId,
-        groupId: activeGroupId,
         isNew: true,
         scope: 'thread' as const,
         topicId: activeTopicId,
@@ -82,12 +88,12 @@ export class ChatThreadActionImpl {
     }
 
     this.#set(
-      { threadStartMessageId: messageId, portalThreadId: undefined, startToForkThread: true },
+      { threadStartMessageId: sourceMessageId, portalThreadId: undefined, startToForkThread: true },
       false,
       'openThreadCreator',
     );
     // Push Thread view to portal stack instead of togglePortal
-    this.#get().pushPortalView({ type: PortalViewType.Thread, startMessageId: messageId });
+    this.#get().pushPortalView({ type: PortalViewType.Thread, startMessageId: sourceMessageId });
   };
 
   openThreadInPortal = (threadId: string, sourceMessageId?: string | null): void => {

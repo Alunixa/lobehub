@@ -11,7 +11,8 @@
 
 ## 3. Current Status
 - 任务开始时跟踪文件干净，分支 `codex/deploy-server-image-20260720`，HEAD `8ba37c3a64`，比远端多 4 个仅记录提交。
-- 上次发布 `v2.2.8-codex.20260906.1`，功能提交 `652341201828548f3347e1ca92c79cfcf874f768`；本轮尚未修改功能或线上服务。
+- 上次发布 `v2.2.8-codex.20260906.1`，功能提交 `652341201828548f3347e1ca92c79cfcf874f768`；本轮功能首提交 `6bcd6fc02b` 已推送，线上未改变。
+- 首轮 Actions 专项 `35450117793` 已成功；镜像 `35450117784` 构建中；当前补充分组助手图片边界及生产 UI 验证。
 - 本文件此前不存在，2026-09-19 根据仓库日志初始化；旧记录仍完整保留于 `YHYQ.md`。
 
 ## 4. Repository Structure
@@ -64,18 +65,19 @@
 ## 12. APIs, Interfaces, and Data Formats
 - `/trpc/lambda/*` 客户端接口，SuperJSON 传输。
 - `/api/version` 健康检查；Better Auth 签名会话 Cookie 只在内存中处理。
-- 消息复制及 thread 图片关系本轮待追踪，不能将纯文本复制当完整对话克隆。
+- 复制话题必须复制 `messages_files`、threads/message_groups 独立图与父链；文件对象复用，不重复上传。
+- 新 thread 的 `replaceMessages` 必须写原始 `dbMessagesMap` 数据；assistantGroup 的来源规范化为末尾真实子消息。
 
 ## 13. Completed Work
 - 2026-09-06 手机全面改版与独立生图已发布并部署，详见历史日志。
 - 2026-09-19 已检查 Git、读取历史和相关规范，初始化本项目记忆。
 
 ## 14. Pending Work
-- 定位五类本轮问题并实现窄修复；专项单元/集成/生产浏览器验证。
+- 完成分组图片边界补充回归、最终生产浏览器矩阵。
 - 新备份、Actions 构建、Release、单服务部署、真实 UI 验证与清理。
 
 ## 15. Known Bugs and Limitations
-- 用户报告复制/子话题缺图片、窗口失去关闭/缩放、快捷键误跳转、移动搜索列表不能展开和自动弹键盘，尚未逐项复现。
+- 旧生产 bundle 已复现手机历史弹层自动 focus 搜索框，以及子话题外层 401px、内层 600px 且右缘超出视口，关闭按钮和拖拽因此不可用；修复后的 bundle 待验证。
 - 原有未跟踪 build/release 目录与 `问题.txt` 不提交、不删除。
 
 ## 16. Design Decisions
@@ -93,11 +95,11 @@
 
 ## 19. Current Task
 - 2026-09-19 用户要求自主完成修复与上线，不需等待睡眠中的用户决策。
-- 当前阶段：源码与运行环境诊断，尚未改变线上状态。
+- 当前阶段：首轮单元/数据库/CI通过，生产浏览器验证与新备份准备，尚未改变线上状态。
 
 ## 20. Next Steps
-1. 建立本轮 Git 检查点，分开检查消息克隆关系、Thread 面板与快捷键/焦点/搜索。
-2. 实现与回归，记录证据；只读核验线上并创建新备份。
+1. 完成 `tests/mobile-studio/verify-preview.mjs --conversation` 专项真实 UI 场景。
+2. 完成分组图片末尾边界补充测试；创建本轮旧镜像、数据库、配置备份。
 3. Actions 构建并发布，通过后窄部署与最终验证。
 
 ## 21. Change Log
@@ -108,3 +110,6 @@
 - 下一步：新增/调整专项回归，生产 bundle 浏览器验证，Actions / Release / 窄部署；线上未改变。
 - 已验证：PGlite 38 tests 通过；轻量逻辑 34 tests + 快捷键 8 tests 通过；目标 lint 0 errors / 3 既有 warnings。
 - 首次 Actions 推送内容为本轮修复与测试；最终部署与 Release 尚未开始。线上 22:47 只读核验镜像与历史相同、running、restart=8。
+- 首轮镜像与专项 CI 均成功；真实生产 UI `ui-scroll-corrected/report.json` 验证全65条、搜索、焦点、子话题图片/上下文/拖拽/关闭/Shift+Enter，通过且无运行时异常。
+- 新备份远端 `/mnt/sda1/lobehub-backups/20260919-conversation-repair`、本机同名 `production-backup`，4个资产哈希一致；线上未部署。
+- 当前补充 assistantGroup 来源为末尾真实消息和对应浏览器场景；最终提交将再构建。
