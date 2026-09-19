@@ -13,7 +13,8 @@
 - 任务开始时跟踪文件干净，分支 `codex/deploy-server-image-20260720`，HEAD `8ba37c3a64`，比远端多 4 个仅记录提交。
 - 上次发布 `v2.2.8-codex.20260906.1`，功能提交 `652341201828548f3347e1ca92c79cfcf874f768`；本轮功能首提交 `6bcd6fc02b` 已推送，线上未改变。
 - 首轮及 `56ff56bf7b` 候选 Actions 镜像/专项均成功；56ff 在全页面矩阵发现任务页抢焦点，未发布部署。
-- 继续工作检查点 `85eafa9aa9` 包含原生 focusin、任务编辑器、附件和共享编辑器焦点修复；最新轻量 9 files / 46 tests 通过，真实 Chromium 手势/label/选区/Tab 通过，等待最终同源 CI / 浏览器验证。
+- 最终功能提交 `c0523ea95239057eb0913207f74f56b99f955143`；Actions 镜像 `35452632395`、专项 `35452632378` 全部成功。
+- 最终专项 46 + 184 + 38 次测试执行通过，同源生产 SPA 47 页面/尺寸 + 普通/分组各 7 子话题场景通过，runtime errors=0；准备 Release 和部署。
 - 本文件此前不存在，2026-09-19 根据仓库日志初始化；旧记录仍完整保留于 `YHYQ.md`。
 
 ## 4. Repository Structure
@@ -74,11 +75,10 @@
 - 2026-09-19 已检查 Git、读取历史和相关规范，初始化本项目记忆。
 
 ## 14. Pending Work
-- 完成分组图片边界补充回归、最终生产浏览器矩阵。
-- 已完成新备份及第二份部署前数据库归档；剩余最终 Actions 构建、Release、单服务部署、真实 UI 验证与清理。
+- Release、单服务部署、只读线上 UI 验证与暂存清理；代码、最终 Actions 与生产浏览器矩阵均已验证。
 
 ## 15. Known Bugs and Limitations
-- 旧生产 bundle 已复现手机历史弹层自动 focus 搜索框，以及子话题外层 401px、内层 600px 且右缘超出视口，关闭按钮和拖拽因此不可用；修复后的 bundle 待验证。
+- 旧生产 bundle 已复现自动 focus 与子话题内外宽度不一致；最终 bundle 已验证修复，等待上线。
 - 原有未跟踪 build/release 目录与 `问题.txt` 不提交、不删除。
 
 ## 16. Design Decisions
@@ -96,12 +96,12 @@
 
 ## 19. Current Task
 - 2026-09-19 用户要求自主完成修复与上线，不需等待睡眠中的用户决策。
-- 当前阶段：继续工作已复核之前状态；补齐任务页直接输入、换行、点击外部收起和草稿重载回归，准备重新构建，尚未改变线上状态。
+- 当前阶段：最终源码、CI、61 个真实生产浏览器场景通过；备份和部署脚本就绪，发布与单服务部署前检查点。
 
 ## 20. Next Steps
-1. 完成 `tests/mobile-studio/verify-preview.mjs --conversation` 专项真实 UI 场景。
-2. 完成分组图片末尾边界补充测试；创建本轮旧镜像、数据库、配置备份。
-3. Actions 构建并发布，通过后窄部署与最终验证。
+1. 发布 `v2.2.8-codex.20260919.1`，标签必须指向 `c0523ea95239057eb0913207f74f56b99f955143`。
+2. 上传 release-validated 最终镜像和 SHA256SUMS，执行 production-backup/deploy.sh（已设最终 SHA）。
+3. 运行 production-backup/verify-production.py 只读验证，检查其他服务与配置不变，确认回滚 guard；更新发布说明、清理暂存。
 
 ## 21. Change Log
 - 2026-09-19：创建项目记忆；记录新请求、历史部署约束、验证和回滚规则。
@@ -123,3 +123,5 @@
 - 最小真实 Chromium 手势验证发现关联 label 的默认聚焦发生在 click 微任务之后；仅为直接点击 label 延长到默认动作结束，普通按钮及异步恢复仍禁止，增加对应回归；尚未部署。
 - `dec9f81542` 专项 CI 扩大 lint 后发现任务编辑器三项旧导入不符合固定 UI 5.40.0，迁移 ActionIcon/Button/Text 到 base-ui；本机实际依赖仍为 5.19.0，不能以本机 lint 代替 CI。
 - 部署前第二份数据库归档本机/远端 SHA-256 一致：`28555455fe5be3655721192a988fe24ed8582aadf887eac0eb64dfbb808343f6`；Compose/.env 未变；部署脚本已语法校验，后续需更新最终 SHA。
+- 最终镜像 `297839104` 字节、SHA-256 `bf91e4cefb019c512301770a7491a48e7bd74afac3fad939183d806c21bfcdfa`；位于 `D:\Cursor\lobehub-backups\20260919-conversation-repair\release-validated`，不是 release-final 里的旧候选。
+- 同源真实生产 UI 验证报告在 `ui-matrix-validated` / `ui-conversation-validated` / `ui-grouped-validated`；所有 61 页面/场景通过，任务草稿重载、手动输入与子话题图片/拖拽/关闭/换行均通过。
