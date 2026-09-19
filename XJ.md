@@ -113,3 +113,6 @@
 - 首轮镜像与专项 CI 均成功；真实生产 UI `ui-scroll-corrected/report.json` 验证全65条、搜索、焦点、子话题图片/上下文/拖拽/关闭/Shift+Enter，通过且无运行时异常。
 - 新备份远端 `/mnt/sda1/lobehub-backups/20260919-conversation-repair`、本机同名 `production-backup`，4个资产哈希一致；线上未部署。
 - 当前补充 assistantGroup 来源为末尾真实消息和对应浏览器场景；最终提交将再构建。
+- 全仓类型检查已结束：213 条诊断（主要旧 UI/双 React 类型）；本轮 `this` 注解已修复，不声称全仓 typecheck 通过。
+- 最后补充：分组助手右键入口一致性、手机点击输入区外 blur 且禁止工具栏恢复；重新构建最终产物前验证。
+- 最新本机验证：ChatStore 32 tests、轻量逻辑 43 tests，全部通过；定向 lint 无错误。准备最终 Actions 构建并验证分组工具图片场景。

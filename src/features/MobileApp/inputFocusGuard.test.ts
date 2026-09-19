@@ -64,6 +64,16 @@ describe('mobile input focus policy', () => {
     expect(document.activeElement).toBe(input);
   });
 
+  it('dismisses input focus when tapping outside and prevents toolbar restoration', () => {
+    const { input, button } = setup();
+    touch(input);
+    input.focus();
+    touch(button);
+    expect(document.activeElement).not.toBe(input);
+    input.focus();
+    expect(document.activeElement).not.toBe(input);
+  });
+
   it('restores desktop focus behavior when disposed', () => {
     const { input } = setup();
     cleanup?.();

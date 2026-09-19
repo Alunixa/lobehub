@@ -181,10 +181,12 @@ export const useChatItemContextMenu = ({
       }
 
       const collapseAction = isCollapsed ? expand : collapse;
+      const threadAction = !inThread && !isGroupSession ? [branching] : [];
       const list: MenuItem[] = [
         edit,
         copy,
         collapseAction,
+        ...threadAction,
         divider,
         share,
         divider,

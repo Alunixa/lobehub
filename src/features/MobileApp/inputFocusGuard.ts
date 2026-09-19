@@ -15,13 +15,20 @@ export const installMobileInputFocusGuard = (doc: Document = document) => {
     if (target instanceof Element && !gestureTarget) {
       gestureTarget = target.closest('label')?.control ?? null;
     }
+    if (
+      !gestureTarget &&
+      doc.activeElement instanceof HTMLElement &&
+      doc.activeElement.matches(editableSelector)
+    ) {
+      doc.activeElement.blur();
+    }
   };
   const endGesture = () => {
     queueMicrotask(() => {
       gestureTarget = null;
     });
   };
-  const guardedFocus: HTMLElement['focus'] = function (options) {
+  const guardedFocus: HTMLElement['focus'] = function (this: HTMLElement, options) {
     if (this.matches(editableSelector) && doc.activeElement !== this && gestureTarget !== this)
       return;
     originalFocus.call(this, { ...options, preventScroll: true });
