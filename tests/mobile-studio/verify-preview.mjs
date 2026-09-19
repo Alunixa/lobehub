@@ -716,6 +716,26 @@ try {
     for (const [index, route] of routes.entries()) {
       await open(route);
       await capture(`mobile-390-${index}`);
+      if (route === '/tasks') {
+        const taskEditor = page.locator('[contenteditable="true"]').first();
+        await expect(taskEditor).not.toBeFocused();
+        await taskEditor.tap();
+        await expect(taskEditor).toBeFocused();
+        await taskEditor.fill('任务输入第一行');
+        await taskEditor.press('Shift+Enter');
+        await taskEditor.pressSequentially('第二行');
+        await expect(taskEditor).toContainText('第二行');
+        await expect(taskEditor).toBeFocused();
+        assert.equal(new URL(page.url()).pathname, '/tasks');
+        await page.getByText('今天想搞定点什么？', { exact: true }).tap();
+        await expect(taskEditor).not.toBeFocused();
+        await page.reload({ waitUntil: 'networkidle' });
+        await expect(taskEditor).toContainText('第二行');
+        await expect(taskEditor).not.toBeFocused();
+        assertions.push(
+          'Task editor requires a tap, retains multiline input and reloads drafts without autofocus',
+        );
+      }
     }
     for (const [width, height] of [
       [320, 568],
@@ -747,6 +767,7 @@ try {
         /send|createMessage|execAgent|aiAgent|POST .*\/chat\//.test(method),
       ).length;
     const before = chatRequests();
+    await editor.tap();
     await editor.fill('第一行');
     await editor.press('Enter');
     await editor.pressSequentially('第二行');
@@ -772,9 +793,15 @@ try {
       ]);
     await expect.poll(() => fileCount).toBe(2);
     await page.getByRole('button', { name: '自定义', exact: true }).click();
-    await page.getByRole('spinbutton', { name: '宽度', exact: true }).fill('1280');
-    await page.getByRole('spinbutton', { name: '高度', exact: true }).fill('768');
+    const widthInput = page.getByRole('spinbutton', { name: '宽度', exact: true });
+    const heightInput = page.getByRole('spinbutton', { name: '高度', exact: true });
+    await expect(widthInput).not.toBeFocused();
+    await widthInput.tap();
+    await widthInput.fill('1280');
+    await heightInput.tap();
+    await heightInput.fill('768');
     await page.getByRole('button', { name: '确认', exact: true }).click();
+    await page.locator('#image-studio-prompt').tap();
     await page.locator('#image-studio-prompt').fill('海边山峦与落日，宽画幅');
     await capture('mobile-image-references-size');
     const submit = page.getByRole('button', { name: /生成 \d+ 张图片/ });
@@ -803,6 +830,8 @@ try {
     );
 
     await page.getByRole('button', { name: '新建项目', exact: true }).click();
+    await expect(page.locator('#image-studio-prompt')).not.toBeFocused();
+    await page.locator('#image-studio-prompt').tap();
     await page.locator('#image-studio-prompt').fill('错误反馈验证');
     generationPhase = 'error';
     await page.getByRole('button', { name: /生成 \d+ 张图片/ }).click();

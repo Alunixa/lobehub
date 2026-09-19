@@ -695,6 +695,7 @@ const PlusAction = memo(() => {
     isMemoryEnabled,
     isParamsPanelActive,
     knowledgeEnabledCount,
+    mobile,
     setShowTypoBar,
     showProviderSearch,
     showTypoBar,
