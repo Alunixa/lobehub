@@ -11,12 +11,12 @@
 
 ## 3. Current Status
 - 任务开始时跟踪文件干净，分支 `codex/deploy-server-image-20260720`，HEAD `8ba37c3a64`，比远端多 4 个仅记录提交。
-- 上次发布 `v2.2.8-codex.20260906.1`，功能提交 `652341201828548f3347e1ca92c79cfcf874f768`；本轮功能首提交 `6bcd6fc02b` 已推送，线上未改变。
-- 首轮及 `56ff56bf7b` 候选 Actions 镜像/专项均成功；56ff 在全页面矩阵发现任务页抢焦点，未发布部署。
+- 当前已发布并部署 `v2.2.8-codex.20260919.2`；服务器记录 2026-09-20 00:18 UTC+8 更新、00:20 确认回滚保护，00:23 稳定复查通过。
+- 当前容器 `cd5ff10f6d040ba9193af6365240a141d4b3294ec7ca8ec618cde6751b32f40b`，running，restart=0；镜像 `sha256:4b2d6cb7823bb11ae9ebf9638c7214fe40d6aeefa23149d71c4512a17c6cfb59`。
 - 功能源码提交 `c0523ea95239057eb0913207f74f56b99f955143`；最终发布提交 `cd0a25f68b7b219b239ee6c3130e8df44f5d14ea` 只补测试/CI/记录，运行时代码不变。
-- 候选专项 46 + 184 + 38 次测试执行通过，同源生产 SPA 47 页面/尺寸 + 普通/分组各 7 子话题场景通过，runtime errors=0。
 - `.20260919.1` 已发布但未部署；最后补齐任务测试 MotionProvider，`.2` 的镜像 Actions `35453712795` 与专项 `35453712723` 均成功，46 + 188 + 38 测试执行通过。
-- `.2` 同源生产 UI 再跑 47 + 7 + 7 场景全部通过、runtime errors=0，准备发布并部署最终 `.2`。
+- `.2` 同源生产 UI 61 场景与线上只读 7 入口全部通过、runtime errors=0；其他 7 服务及配置不变。
+- 功能、发布和上线已完成；本机预览/下载包与远端上传暂存删除被执行工具拒绝，未绕过，保留并记为清理待办。
 - 本文件此前不存在，2026-09-19 根据仓库日志初始化；旧记录仍完整保留于 `YHYQ.md`。
 
 ## 4. Repository Structure
@@ -49,15 +49,17 @@
 - 生产构建工作流 `.github/workflows/codex-build-server-image.yml`；输出镜像和静态 SPA preview。
 
 ## 9. Testing and Verification
-- 上次专项 173 tests、最终生产 bundle 47 场景通过，不能替代本轮验证。
-- 上次全仓 CI 有既有 App fixtures/assertions、Database lint、自动滚动 E2E 失败；不得称全仓全绿。
-- 上次本机完整类型检查受依赖导出问题影响，目标文件检查与 CI 需分开报告。
+- 本轮专项 CI：46 逻辑 + 188 共享/store + 38 数据库测试执行通过，任务编辑器 4 项测试在专项与全仓分片都通过。
+- 最终真实生产 SPA：47 页面/尺寸 + 普通/分组图片子话题各 7 场景通过；线上实际会话只读 7 入口通过，14 次生产写请求被拦截。
+- Test CI `35453712766`：Server 两分片、Packages、Desktop、Server Coverage 成功；App 仍有旧 OIDC/chat instructions/Host Executor no-suite/ComfyUI/settings fixtures 阻塞；Database lint 1598 errors / 261 warnings。
+- E2E `35453712748`：旧关闭自动滚动断言失败，81/82 场景、490/491 步骤通过；本机全仓类型检查旧 UI/双 React 依赖 213 诊断，不声称全仓全绿。
 
 ## 10. Deployment and Operations
 - 部署前保存实际运行镜像、Compose/.env、数据库、其他容器 ID/状态与哈希，备份权限限制。
 - 镜像校验 SHA-256，真实加载 Next / SWC，240 秒回滚保护，仅 `docker compose up -d --no-deps --force-recreate lobehub`。
 - 验证内外 HTTP、日志、重启计数、Host Executor、其他服务不变及真实 UI，成功后确认 guard。
-- 上次运行镜像 `sha256:a9fbc27eed8b54083db86df46d69ee059c4af35f5383e40c4ae918e1e79685e9`，仅为历史，部署前重新核验。
+- 当前镜像见第3节；回滚镜像 `sha256:a9fbc27eed8b54083db86df46d69ee059c4af35f5383e40c4ae918e1e79685e9` 已保存在本轮独立备份。
+- 内部/公网 `/api/version` 正常；Host Executor health=200/success/host；无 fatal/panic/unhandled/migration failed 日志，Nginx 配置通过。
 
 ## 11. Important Files
 - `YHYQ.md`：用户要求与操作历史。
@@ -75,12 +77,15 @@
 ## 13. Completed Work
 - 2026-09-06 手机全面改版与独立生图已发布并部署，详见历史日志。
 - 2026-09-19 已检查 Git、读取历史和相关规范，初始化本项目记忆。
+- 对话复制附件/线程/消息组独立关联、子话题原始图片及分组末尾边界、面板关闭/拖拽、Shift+Enter/IME、手机完整分页搜索与主动点击输入策略均已发布上线。
+- 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
-- Release、单服务部署、只读线上 UI 验证与暂存清理；代码、最终 Actions 与生产浏览器矩阵均已验证。
+- 仅暂存清理未完成：执行工具拒绝带递归删除的批量命令，命令未执行且未改用其他方式绕过。
+- 本机 `D:\Cursor\lobehub-backups\20260919-conversation-repair` 下 `preview-first/final/validated/release` 和 `release-final/validated/published` 保留；远端 `/mnt/sda1/lobehub-release-20260919-conversation-repair` 保留，不影响线上服务。
 
 ## 15. Known Bugs and Limitations
-- 旧生产 bundle 已复现自动 focus 与子话题内外宽度不一致；最终 bundle 已验证修复，等待上线。
+- 本轮报告的交互问题已修复并上线；桌面/移动浏览器回归通过，未连接手机真机验证实体输入法。
 - 原有未跟踪 build/release 目录与 `问题.txt` 不提交、不删除。
 
 ## 16. Design Decisions
@@ -90,20 +95,23 @@
 ## 17. Failed Approaches
 - 上次本机完整 Vitest 初始化卡住，CI 干净依赖可验证真实 store。
 - 上次工具拒绝本机批量递归删除预览，不绕过工具限制；原暂存仍可能存在。
+- 本轮同样拒绝清理命令；Release Notes 更新随后单独执行成功，但任何删除均未执行。
+- 只包装 HTMLElement.focus 会遗漏 Lexical 原生 Selection 聚焦；加入 focusin 兜底后通过真实浏览器。直接 label 的原生默认动作晚于 click 微任务，需要单独延迟清理许可。
 
 ## 18. Rollback and Recovery
 - 本轮源码起点 `8ba37c3a64`，编辑前建立检查点。
-- 旧备份 `D:\Cursor\lobehub-backups\20260906-mobile-redesign`，线上对应 `/mnt/sda1/lobehub-backups/20260906-mobile-redesign`；本轮建立独立新备份。
+- 本轮备份 `D:\Cursor\lobehub-backups\20260919-conversation-repair\production-backup`，线上 `/mnt/sda1/lobehub-backups/20260919-conversation-repair`；旧 20260906 备份仍保留。
+- 单应用回滚：远端运行 `sh /mnt/sda1/lobehub-backups/20260919-conversation-repair/rollback.sh`；旧镜像和数据库/config 哈希备份完整，当前部署已确认，不应自动重跑 deploy.sh。
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
 - 2026-09-19 用户要求自主完成修复与上线，不需等待睡眠中的用户决策。
-- 当前阶段：最终 `.2` 构建/专项/61 浏览器场景全部通过，部署脚本和校验清单已固定 `cd0a25f68b`，准备单服务部署。
+- 当前阶段：修复、发布、部署和线上验证已完成，仅暂存清理受执行工具限制保留。
 
 ## 20. Next Steps
-1. 发布 `.20260919.2`，源码 `cd0a25f68b7b219b239ee6c3130e8df44f5d14ea`，资产使用 release-published 文件夹。
-2. 上传最终镜像，执行已更新的 deploy.sh 单服务部署。
-3. 运行 production-backup/verify-production.py 只读验证，检查其他服务与配置不变，确认回滚 guard；更新发布说明、清理暂存。
+1. 无需重复部署；用户刷新现有页面即可加载新版。
+2. 若以后处理暂存清理，仅处理第14节明确列出的下载/预览目录，保留 production-backup、source-before-repair.zip 和 UI/CI 报告；不得绕过工具限制。
+3. 若继续修全仓旧 CI/本机依赖问题，单独开工作范围，不把本轮专项通过误当全仓通过。
 
 ## 21. Change Log
 - 2026-09-19：创建项目记忆；记录新请求、历史部署约束、验证和回滚规则。
@@ -131,3 +139,8 @@
 - 任务四项回归在固定 UI 5.40.0 的 CI 全通过；本机5.19.0没有 base-ui ActionIcon/Text，故本机该组件测试失败不代表 CI / 生产结果。
 - 最终 `.2` 镜像 `297830400` 字节，SHA-256 `2eaecdfe281bb942e23eb3a3480c79ef2f9b011990e7630c705f11ce4cb9e8f3`；最终报告 `ui-matrix-release` / `ui-conversation-release` / `ui-grouped-release`，不要部署候选资产。
 - 最终部署前数据库归档 `database-final-predeploy.dump` 本机/远端哈希一致：`cb8d675723dd2a0323ce5e38ce57221398e6bfc53fbf4226021a30ec145c86d7`。
+### 上线与交付
+- `.2` Release 两个资产已核验：镜像 ID 575071815（297830400 bytes），manifest ID 575071816（1358 bytes，SHA-256 `1f6224c0a9773133aacd199437f8ba4c9f52ef6b7939ca7009007f8106d7552e`）；标签指向 cd0a25f68b。
+- 服务器 00:18:18 启动 240 秒保护，00:20:01 完成 UI 后确认，00:23:24 再查仍为新镜像 running / restart=0，无回滚。
+- 只读线上报告 `ui-live-final/live-report.json` 7 入口通过；`production-backup` 已复制部署日志、guard、健康结果、其他服务前/后/最终状态、发布校验清单。
+- 本机/远端暂存删除命令被执行工具拒绝，保留原状；发布说明独立更新成功，并已注明 `.1` 被 `.2` 取代、从未部署。
