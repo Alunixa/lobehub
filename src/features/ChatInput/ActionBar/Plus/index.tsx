@@ -497,7 +497,7 @@ const PlusAction = memo(() => {
                 return false;
               }
               setDropdownOpen(false);
-              editor?.focus();
+              if (!mobile) editor?.focus();
               await upload([file], agentId);
               return false;
             }}

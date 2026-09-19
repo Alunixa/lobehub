@@ -16,6 +16,7 @@ import {
   getAttachmentFileIdsFromEditor,
   pickAndInsertAttachments,
 } from '@/features/EditorCanvas/editorAttachments';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { usePermission } from '@/hooks/usePermission';
 import { useGlobalStore } from '@/store/global';
 import { useTaskStore } from '@/store/task';
@@ -59,6 +60,7 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
     variant = 'default',
   } = props;
   const isHero = variant === 'hero';
+  const isMobile = useIsMobile();
   const { t } = useTranslation('chat');
   const { allowed: canCreateTask, reason } = usePermission('create_content');
 
@@ -112,9 +114,9 @@ const CreateTaskInlineEntry = memo<CreateTaskInlineEntryProps>((props) => {
   }, [agentId, lockAssignee]);
 
   useEffect(() => {
-    if (!canCreateTask) return;
+    if (!canCreateTask || isMobile) return;
     if (autoFocus || isHero) editor?.focus?.();
-  }, [autoFocus, canCreateTask, editor, isHero]);
+  }, [autoFocus, canCreateTask, editor, isHero, isMobile]);
 
   // Hydrate the editor with the current scope's saved draft. Re-runs whenever
   // the scope key changes (not just on mount): it first resets to this scope's

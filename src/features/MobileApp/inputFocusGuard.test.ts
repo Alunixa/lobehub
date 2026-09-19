@@ -50,7 +50,7 @@ describe('mobile input focus policy', () => {
     const { input, button } = setup();
     touch(input);
     input.focus();
-    document.dispatchEvent(new Event('pointerup'));
+    document.dispatchEvent(new Event('click'));
     await Promise.resolve();
     button.focus();
     input.focus();
@@ -77,6 +77,23 @@ describe('mobile input focus policy', () => {
   it('restores desktop focus behavior when disposed', () => {
     const { input } = setup();
     cleanup?.();
+    input.focus();
+    expect(document.activeElement).toBe(input);
+  });
+
+  it('blocks native selection focus that bypasses HTMLElement.focus', () => {
+    const nativeFocus = HTMLElement.prototype.focus;
+    const { editor } = setup();
+    nativeFocus.call(editor);
+    expect(document.activeElement).not.toBe(editor);
+    touch(editor);
+    nativeFocus.call(editor);
+    expect(document.activeElement).toBe(editor);
+  });
+
+  it('retains external keyboard Tab navigation', () => {
+    const { input } = setup();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
     input.focus();
     expect(document.activeElement).toBe(input);
   });

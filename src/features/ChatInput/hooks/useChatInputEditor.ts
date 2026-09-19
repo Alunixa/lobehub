@@ -14,7 +14,7 @@ export interface ChatInputEditor {
   setJSONState: (content: any) => void;
 }
 export const useChatInputEditor = () => {
-  const [editor, getMarkdownContent, getJSONState, setExpand, setJSONState, setDocument] =
+  const [editor, getMarkdownContent, getJSONState, setExpand, setJSONState, setDocument, mobile] =
     useChatInputStore((s) => [
       s.editor,
       s.getMarkdownContent,
@@ -22,6 +22,7 @@ export const useChatInputEditor = () => {
       s.setExpand,
       s.setJSONState,
       s.setDocument,
+      s.mobile,
     ]);
 
   return useMemo<ChatInputEditor>(
@@ -30,7 +31,7 @@ export const useChatInputEditor = () => {
         editor?.cleanDocument();
       },
       focus: () => {
-        editor?.focus();
+        if (!mobile) editor?.focus();
       },
       getJSONState,
       getMarkdownContent,
@@ -39,6 +40,6 @@ export const useChatInputEditor = () => {
       setExpand,
       setJSONState,
     }),
-    [editor],
+    [editor, getJSONState, getMarkdownContent, mobile, setDocument, setExpand, setJSONState],
   );
 };

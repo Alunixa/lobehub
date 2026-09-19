@@ -7,7 +7,7 @@ import { chromium, devices, expect } from '@playwright/test';
 
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
-const { appUrl, cookie, outputDir } = JSON.parse(input);
+const { appUrl, chatPath, cookie, outputDir } = JSON.parse(input);
 const origin = new URL(appUrl).origin;
 const output = path.resolve(outputDir);
 await mkdir(output, { recursive: true });
@@ -40,14 +40,29 @@ try {
       return route.continue();
     });
     const page = await context.newPage();
-    for (const route of mobile
-      ? ['/image', '/tools', '/settings', '/settings/security']
-      : ['/image']) {
+    const routes = mobile ? ['/image', '/tools', '/settings', '/settings/security'] : ['/image'];
+    if (chatPath) routes.push(chatPath);
+    for (const route of routes) {
       const runtimeErrors = [];
       const onError = (error) => runtimeErrors.push(error.name);
       page.on('pageerror', onError);
       await page.goto(origin + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      if (route === '/image') {
+      if (route === chatPath) {
+        await expect(page.locator('[contenteditable="true"]').first()).toBeVisible({
+          timeout: 45000,
+        });
+        if (mobile) {
+          await expect(page.locator('[contenteditable="true"]').first()).not.toBeFocused();
+          await page.getByRole('button', { name: '查看历史对话' }).click();
+          const dialog = page.getByRole('dialog');
+          await expect(dialog).toBeVisible();
+          const search = dialog.getByPlaceholder('搜索话题…');
+          await expect(search).not.toBeFocused();
+          await search.tap();
+          await expect(search).toBeFocused();
+          await page.keyboard.press('Escape');
+        }
+      } else if (route === '/image') {
         await expect(page.getByTestId('image-studio')).toBeVisible({ timeout: 45000 });
         await expect(page.locator('#image-studio-prompt')).toBeEnabled({ timeout: 30000 });
       } else if (route === '/settings/security') {

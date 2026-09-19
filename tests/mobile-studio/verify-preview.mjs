@@ -490,6 +490,21 @@ try {
       const editing = await page.evaluate(() =>
         document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
       );
+      if (editing) {
+        await writeFile(
+          path.join(output, 'unexpected-focus.json'),
+          JSON.stringify(
+            await page.evaluate(() => ({
+              active: document.activeElement?.outerHTML,
+              body: document.body.innerText,
+              route: location.pathname,
+            })),
+            null,
+            2,
+          ),
+        );
+        await page.screenshot({ path: path.join(output, 'unexpected-focus.png') });
+      }
       assert(!editing, `${route}: navigation must not autofocus a mobile input`);
     }
   };
