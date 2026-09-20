@@ -17,8 +17,10 @@ import { agentSelectors, chatConfigByIdSelectors } from '@/store/agent/selectors
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useChatStore } from '@/store/chat';
 import { useToolStore } from '@/store/tool';
+import { useUserStore } from '@/store/user';
 import { settingsSelectors } from '@/store/user/selectors';
 
+import * as chatHelper from './helper';
 import { chatService } from './index';
 import * as mechaModule from './mecha';
 import { type ResolvedAgentConfig } from './mecha';
@@ -1703,6 +1705,43 @@ describe('ChatService', () => {
       mockFetchSSE = vi.fn().mockResolvedValue(new Response('mock response'));
       vi.mocked(fetchSSE).mockImplementation(mockFetchSSE);
       mockCreateHeaderWithAuth.mockClear();
+    });
+
+    it('refreshes current time at each client request and leaves the original messages intact', async () => {
+      vi.useFakeTimers();
+      const previousSettings = useUserStore.getState().settings;
+      const previousSignedIn = useUserStore.getState().isSignedIn;
+      const original = [{ content: 'What time is it?', role: 'user' as const }];
+      const snapshots: ChatStreamPayload[] = [];
+      vi.spyOn(chatHelper, 'isEnableFetchOnClient').mockReturnValue(true);
+      vi.spyOn(mechaModule, 'initializeWithClientStore').mockResolvedValue({
+        chat: async (payload: ChatStreamPayload) => {
+          snapshots.push(structuredClone(payload));
+          return new Response('test response');
+        },
+      } as Awaited<ReturnType<typeof mechaModule.initializeWithClientStore>>);
+      mockFetchSSE.mockImplementation((_url: string, options: { fetcher: typeof fetch }) =>
+        options.fetcher('https://unused.test'),
+      );
+      useUserStore.setState({
+        isSignedIn: true,
+        settings: { general: { injectCurrentTime: true, timezone: 'Asia/Shanghai' } },
+      });
+      try {
+        vi.setSystemTime(new Date('2026-09-20T15:59:57Z'));
+        await chatService.getChatCompletion({ messages: original, model: 'test-model' });
+        vi.setSystemTime(new Date('2026-09-20T16:00:02Z'));
+        await chatService.getChatCompletion({ messages: original, model: 'test-model' });
+        useUserStore.setState({ settings: { general: { injectCurrentTime: false } } });
+        await chatService.getChatCompletion({ messages: original, model: 'test-model' });
+        expect(snapshots[0].messages[0].content).toContain('2026-09-20 23:59');
+        expect(snapshots[1].messages[0].content).toContain('2026-09-21 00:00');
+        expect(snapshots[2].messages).toEqual(original);
+        expect(original).toEqual([{ content: 'What time is it?', role: 'user' }]);
+      } finally {
+        vi.useRealTimers();
+        useUserStore.setState({ isSignedIn: previousSignedIn, settings: previousSettings });
+      }
     });
 
     it('should make a POST request with the correct payload', async () => {

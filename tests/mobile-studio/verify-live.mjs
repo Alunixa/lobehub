@@ -40,7 +40,9 @@ try {
       return route.continue();
     });
     const page = await context.newPage();
-    const routes = mobile ? ['/image', '/tools', '/settings', '/settings/security'] : ['/image'];
+    const routes = mobile
+      ? ['/image', '/tools', '/settings', '/settings/security', '/settings/appearance']
+      : ['/image', '/settings/appearance'];
     if (chatPath) routes.push(chatPath);
     for (const route of routes) {
       const runtimeErrors = [];
@@ -62,6 +64,13 @@ try {
           await expect(search).toBeFocused();
           await page.keyboard.press('Escape');
         }
+      } else if (route === '/settings/appearance') {
+        const toggle = page.getByRole('switch', { name: '每次 AI 请求附带当前日期和时间' });
+        await expect(toggle).toBeVisible({ timeout: 30000 });
+        await expect(toggle).toBeEnabled({ timeout: 30000 });
+        await page.screenshot({
+          path: path.join(output, mobile ? 'current-time-mobile.png' : 'current-time-desktop.png'),
+        });
       } else if (route === '/image') {
         await expect(page.getByTestId('image-studio')).toBeVisible({ timeout: 45000 });
         await expect(page.locator('#image-studio-prompt')).toBeEnabled({ timeout: 30000 });

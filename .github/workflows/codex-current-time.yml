@@ -9,12 +9,14 @@ on:
       - .github/workflows/codex-current-time.yml
       - apps/server/src/modules/ModelRuntime/**
       - apps/server/src/services/toolExecution/serverRuntimes/skills.ts
+      - apps/server/src/services/toolExecution/serverRuntimes/__tests__/skills.test.ts
       - packages/builtin-skills/**
       - packages/builtin-tool-skills/**
       - packages/utils/src/currentTime*
       - packages/types/src/user/settings/general.ts
       - src/features/Setting/CurrentTimeSetting.tsx
       - src/services/chat/index.ts
+      - src/services/chat/chat.test.ts
       - src/store/user/slices/settings/**
       - tests/current-time/**
 
@@ -51,3 +53,5 @@ jobs:
             src/store/user/slices/settings/action.test.ts \
             src/services/chat/chat.test.ts \
             src/helpers/skillFilters.test.ts
+      - name: Server skill adapter timezone and sandbox independence
+        run: node node_modules/vitest/vitest.mjs run --silent=passed-only apps/server/src/services/toolExecution/serverRuntimes/__tests__/skills.test.ts

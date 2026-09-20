@@ -1,7 +1,4 @@
 {
-  "settingCommon.currentTime.title": "Include current date and time in every AI request",
-  "settingCommon.currentTime.desc": "Off by default. When enabled, every model request includes a fresh date, weekday and time to the minute, with timezone {{timezone}}. The current-time skill can query live seconds independently.",
-  "settingCommon.currentTime.saveFailed": "Could not save. Please try the switch again.",
   "_cloud.officialProvider": "{{name}} Official Model Service",
   "about.title": "About",
   "accountDeletion.cancelButton": "Cancel Deletion",
@@ -633,6 +630,9 @@
   "settingChatAppearance.transitionMode.options.none.value": "None",
   "settingChatAppearance.transitionMode.options.smooth": "Smooth",
   "settingChatAppearance.transitionMode.title": "Transition Animation",
+  "settingCommon.currentTime.desc": "Off by default. When enabled, every model request includes a fresh date, weekday and time to the minute, with timezone {{timezone}}. The current-time skill can query live seconds independently.",
+  "settingCommon.currentTime.saveFailed": "Could not save. Please try the switch again.",
+  "settingCommon.currentTime.title": "Include current date and time in every AI request",
   "settingCommon.devMode.desc": "Show technical details and manual controls for chats, models, and local tools. This does not change model responses.",
   "settingCommon.devMode.title": "Advanced tools",
   "settingCommon.lang.autoMode": "Follow System",

@@ -1,5 +1,4 @@
 {
-  "builtins.lobe-skills.apiName.getCurrentTime": "获取当前日期和时间",
   "arguments.moreParams": "等 {{count}} 个参数",
   "arguments.title": "参数列表",
   "builtins.codex.apiName.collab_tool_call": "协调子代理",
@@ -339,6 +338,7 @@
   "builtins.lobe-skills.apiName.activateSkill": "激活技能",
   "builtins.lobe-skills.apiName.execScript": "执行脚本",
   "builtins.lobe-skills.apiName.exportFile": "导出文件",
+  "builtins.lobe-skills.apiName.getCurrentTime": "获取当前日期和时间",
   "builtins.lobe-skills.apiName.importFromMarket": "从市场导入",
   "builtins.lobe-skills.apiName.importSkill": "导入技能",
   "builtins.lobe-skills.apiName.readReference": "读取参考资料",

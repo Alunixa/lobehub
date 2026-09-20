@@ -1,8 +1,8 @@
 import { builtinSkills, CurrentTimeIdentifier } from '@lobechat/builtin-skills';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SkillsManifest as DesktopSkillsManifest } from '../manifest.desktop';
 import { SkillsManifest } from '../manifest';
+import { SkillsManifest as DesktopSkillsManifest } from '../manifest.desktop';
 import { SkillsApiName } from '../types';
 import { SkillsExecutionRuntime } from './index';
 
@@ -60,9 +60,9 @@ describe('current-time skill and tool', () => {
 
   it('honors an explicit timezone and rejects invalid input instead of inventing local time', async () => {
     const runtime = new SkillsExecutionRuntime({ getTimezone: () => 'Asia/Shanghai', service });
-    expect(
-      JSON.parse((await runtime.getCurrentTime({ timezone: 'UTC' })).content).timezone,
-    ).toBe('UTC');
+    expect(JSON.parse((await runtime.getCurrentTime({ timezone: 'UTC' })).content).timezone).toBe(
+      'UTC',
+    );
     expect((await runtime.getCurrentTime({ timezone: 'invalid' })).success).toBe(false);
     expect((await runtime.getCurrentTime({ timezone: '' })).success).toBe(false);
   });

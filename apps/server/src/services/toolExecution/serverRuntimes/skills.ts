@@ -13,12 +13,7 @@ import {
   type SkillRuntimeService,
   SkillsExecutionRuntime,
 } from '@lobechat/builtin-tool-skills/executionRuntime';
-import type {
-  BuiltinSkill,
-  SkillItem,
-  SkillListItem,
-  SkillResourceContent,
-} from '@lobechat/types';
+import type { BuiltinSkill, SkillItem, SkillListItem, SkillResourceContent } from '@lobechat/types';
 import debug from 'debug';
 
 import { AgentSkillModel } from '@/database/models/agentSkill';
@@ -274,8 +269,7 @@ export const skillsRuntime: ServerRuntimeRegistration = {
     try {
       const userModel = new UserModel(context.serverDB, context.userId);
       const userSettings = await userModel.getUserSettings();
-      userTimezone = (userSettings as UserSettingsWithMarketToken | undefined)?.general
-        ?.timezone;
+      userTimezone = (userSettings as UserSettingsWithMarketToken | undefined)?.general?.timezone;
       marketAccessToken = (userSettings as UserSettingsWithMarketToken | undefined)?.market
         ?.accessToken;
       log(
@@ -287,11 +281,7 @@ export const skillsRuntime: ServerRuntimeRegistration = {
       log('Failed to fetch market accessToken for user %s: %O', context.userId, error);
     }
 
-    const skillModel = new AgentSkillModel(
-      context.serverDB,
-      context.userId,
-      context.workspaceId,
-    );
+    const skillModel = new AgentSkillModel(context.serverDB, context.userId, context.workspaceId);
     const resourceService = new SkillResourceService(
       context.serverDB,
       context.userId,

@@ -186,9 +186,7 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
         upperProvider = ModelProvider.OpenAI.toUpperCase(); // Use OpenAI options as default
       }
 
-      const apiKey = apiKeyManager.pick(
-        payload?.apiKey || llmConfig[`${upperProvider}_API_KEY`],
-      );
+      const apiKey = apiKeyManager.pick(payload?.apiKey || llmConfig[`${upperProvider}_API_KEY`]);
       const baseURL = payload?.baseURL || process.env[`${upperProvider}_PROXY_URL`];
 
       return baseURL ? { apiKey, baseURL } : { apiKey };
@@ -215,8 +213,7 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     }
 
     case ModelProvider.Bedrock: {
-      const { AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SESSION_TOKEN } =
-        llmConfig;
+      const { AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SESSION_TOKEN } = llmConfig;
 
       const hasUserBedrockAuth = !!(
         payload.apiKey ||
@@ -351,8 +348,7 @@ const buildVertexOptions = (
     process.env.VERTEXAI_LOCATION ||
     undefined;
 
-  const googleAuthOptions =
-    params.googleAuthOptions || (credentials ? { credentials } : undefined);
+  const googleAuthOptions = params.googleAuthOptions || (credentials ? { credentials } : undefined);
 
   const options: GoogleGenAIOptions = {
     ...params,
@@ -452,7 +448,7 @@ export const initModelRuntimeFromDB = async (
     return settings?.general;
   });
   const hooks = mergeModelRuntimeHooks(
-    mergeModelRuntimeHooks(currentTimeHooks, businessHooks),
+    mergeModelRuntimeHooks(businessHooks, currentTimeHooks),
     tracingHooks,
   );
 

@@ -31,9 +31,7 @@ class SkillsExecutor extends BaseExecutor<typeof SkillsApiName> {
     const result = await this.runtime.getCurrentTime(params);
     return {
       content: result.content,
-      error: result.success
-        ? undefined
-        : { message: result.content, type: 'PluginServerError' },
+      error: result.success ? undefined : { message: result.content, type: 'PluginServerError' },
       state: result.state,
       success: result.success,
     };

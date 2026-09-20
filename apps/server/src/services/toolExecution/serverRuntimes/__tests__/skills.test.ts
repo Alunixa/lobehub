@@ -122,6 +122,30 @@ describe('skillsRuntime', () => {
     });
   });
 
+  it('reads current time in the saved user timezone without opening a sandbox', async () => {
+    mocks.getUserSettings.mockResolvedValue({ general: { timezone: 'Asia/Shanghai' } });
+    const { skillsRuntime } = await import('../skills');
+    const runtime = await skillsRuntime.factory({
+      serverDB: {} as never,
+      toolManifestMap: {},
+      userId: 'user-1',
+    });
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date('2026-09-20T09:12:07Z'));
+      const result = await runtime.getCurrentTime({});
+      expect(result.success).toBe(true);
+      expect(JSON.parse(result.content)).toMatchObject({
+        date: '2026-09-20',
+        time: '17:12:07',
+        timezone: 'Asia/Shanghai',
+      });
+      expect(mocks.createSandboxService).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('executes scripts through the sandbox service and only attaches persisted skill zips', async () => {
     const { skillsRuntime } = await import('../skills');
     const runtime = await skillsRuntime.factory({

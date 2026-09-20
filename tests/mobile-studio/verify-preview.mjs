@@ -14,10 +14,7 @@ const verifyConversation = conversationFixture && !probePath.endsWith('probe');
 const groupedReply = probePath.includes('grouped');
 const verifyCurrentTime = probePath === '--current-time';
 let timePreference = false;
-assert(
-  previewPath && outputPath,
-  'Usage: node verify-preview.mjs PREVIEW_DIR OUTPUT_DIR [PATH]',
-);
+assert(previewPath && outputPath, 'Usage: node verify-preview.mjs PREVIEW_DIR OUTPUT_DIR [PATH]');
 const preview = path.resolve(previewPath);
 const output = path.resolve(outputPath);
 await mkdir(output, { recursive: true });
@@ -645,10 +642,7 @@ try {
     await open('/agent/agt_preview/tpc_preview_0');
     await page.getByText('助手生成图片', { exact: true }).click({ button: 'right' });
     await capture('desktop-context-menu');
-    await writeFile(
-      path.join(output, 'desktop-menu.txt'),
-      await page.locator('body').innerText(),
-    );
+    await writeFile(path.join(output, 'desktop-menu.txt'), await page.locator('body').innerText());
     if (conversationFixture) {
       const branch = page.getByRole('menuitem', { name: /创建子话题/ });
       if (await branch.count()) {
@@ -667,9 +661,7 @@ try {
               ),
               images: await page
                 .locator('img')
-                .evaluateAll((items) =>
-                  items.map((item) => ({ src: item.src, alt: item.alt })),
-                ),
+                .evaluateAll((items) => items.map((item) => ({ src: item.src, alt: item.alt }))),
               panels: await page.locator('[class*="draggable"]').evaluateAll((items) =>
                 items.map((item) => ({
                   class: item.className,

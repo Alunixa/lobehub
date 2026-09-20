@@ -109,8 +109,7 @@ export const getCurrentTimeApi: LobeChatPluginApi = {
     additionalProperties: false,
     properties: {
       timezone: {
-        description:
-          'Optional IANA timezone, e.g. Asia/Shanghai. Defaults to the user timezone.',
+        description: 'Optional IANA timezone, e.g. Asia/Shanghai. Defaults to the user timezone.',
         type: 'string',
       },
     },

@@ -45,9 +45,7 @@ export const CurrentTimeSetting = memo(() => {
         />
       }
     >
-      {failed ? (
-        <Alert message={t('settingCommon.currentTime.saveFailed')} type={'error'} />
-      ) : null}
+      {failed ? <Alert message={t('settingCommon.currentTime.saveFailed')} type={'error'} /> : null}
     </FormGroup>
   );
 });

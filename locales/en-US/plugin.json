@@ -1,5 +1,4 @@
 {
-  "builtins.lobe-skills.apiName.getCurrentTime": "Get Current Date and Time",
   "arguments.moreParams": "{{count}} params in total",
   "arguments.title": "Arguments",
   "builtins.codex.apiName.collab_tool_call": "Coordinate subagents",
@@ -339,6 +338,7 @@
   "builtins.lobe-skills.apiName.activateSkill": "Activate Skill",
   "builtins.lobe-skills.apiName.execScript": "Run Script",
   "builtins.lobe-skills.apiName.exportFile": "Export File",
+  "builtins.lobe-skills.apiName.getCurrentTime": "Get Current Date and Time",
   "builtins.lobe-skills.apiName.importFromMarket": "Import from Market",
   "builtins.lobe-skills.apiName.importSkill": "Import Skill",
   "builtins.lobe-skills.apiName.readReference": "Read Reference",

@@ -67,6 +67,21 @@ describe('SettingsAction', () => {
   });
 
   describe('setSettings', () => {
+    it('retains the saved time preference if only the subsequent refresh fails', async () => {
+      useUserStore.setState({ settings: { general: { injectCurrentTime: false } } });
+      const refresh = vi
+        .spyOn(useUserStore.getState(), 'refreshUserState')
+        .mockRejectedValueOnce(new Error('refresh offline'));
+      try {
+        await expect(
+          useUserStore.getState().setSettings({ general: { injectCurrentTime: true } }),
+        ).rejects.toThrow('refresh offline');
+        expect(useUserStore.getState().settings.general?.injectCurrentTime).toBe(true);
+      } finally {
+        refresh.mockRestore();
+      }
+    });
+
     it('rolls back a failed time preference and allows retrying the same value', async () => {
       const previous = { general: { injectCurrentTime: false } };
       useUserStore.setState({ settings: previous });
@@ -93,9 +108,7 @@ describe('SettingsAction', () => {
             rejectWrite = reject;
           }),
       );
-      const pending = useUserStore
-        .getState()
-        .setSettings({ general: { injectCurrentTime: true } });
+      const pending = useUserStore.getState().setSettings({ general: { injectCurrentTime: true } });
       const newer = { general: { injectCurrentTime: true, fontSize: 18 } };
       useUserStore.setState({ settings: newer });
       rejectWrite(new Error('old request failed'));

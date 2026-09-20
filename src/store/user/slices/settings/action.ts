@@ -193,7 +193,6 @@ export class UserSettingsActionImpl {
     const abortController = this.#get().internal_createSignal();
     try {
       await userService.updateUserSettings(diffs, abortController.signal);
-      await this.#get().refreshUserState();
     } catch (error) {
       // Roll back only this optimistic write, never a newer concurrent settings update.
       if (this.#get().settings === diffs) {
@@ -201,6 +200,8 @@ export class UserSettingsActionImpl {
       }
       throw error;
     }
+    // A refresh failure must not undo a preference already persisted by the server.
+    await this.#get().refreshUserState();
   };
 
   updateDefaultAgent = async (defaultAgent: PartialDeep<LobeAgentSettings>): Promise<void> => {

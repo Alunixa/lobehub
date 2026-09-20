@@ -39,7 +39,7 @@ export default {
   'accountDeletion.requestSuccess': 'Deletion request submitted',
   'accountDeletion.sectionTitle': 'Account Deletion',
   'accountDeletion.title': 'Delete Account',
-  advancedSettings: 'Advanced Settings',
+  'advancedSettings': 'Advanced Settings',
   'agentCronJobs.addJob': 'Add Scheduled Task',
   'agentCronJobs.clearTopics': 'Clear Topics',
   'agentCronJobs.clearTopicsFailed': 'Failed to clear topics',
@@ -163,10 +163,8 @@ export default {
   'agentSkillEdit.instructions': 'Instructions',
   'agentSkillEdit.instructionsDesc':
     'The core instructions in Markdown that define the skill behavior and workflow',
-  'agentSkillEdit.instructionsPlaceholder':
-    'Enter the skill instructions in Markdown format...',
-  'agentSkillEdit.nameDesc':
-    'The unique identifier for this skill, not editable after creation',
+  'agentSkillEdit.instructionsPlaceholder': 'Enter the skill instructions in Markdown format...',
+  'agentSkillEdit.nameDesc': 'The unique identifier for this skill, not editable after creation',
   'agentSkillEdit.saveSuccess': 'Skill updated successfully',
   'agentSkillEdit.title': 'Skill Settings',
   'agentSkillItem.deleteConfirm.desc':
@@ -187,15 +185,14 @@ export default {
   'agentSkillModal.upload.dragText': 'Drag and drop or click to upload',
   'agentSkillModal.upload.requirementSkillMd':
     'SKILL.md contains skill name and description in YAML format',
-  'agentSkillModal.upload.requirementZip':
-    '.zip or .skill file with SKILL.md in root directory',
+  'agentSkillModal.upload.requirementZip': '.zip or .skill file with SKILL.md in root directory',
   'agentSkillModal.upload.requirements': 'File Requirements',
   'agentSkillModal.upload.title': 'Upload Skill',
   'agentSkillModal.upload.uploading': 'Uploading...',
   'agentSkillModal.url.desc': 'Import a skill by providing a direct link to a SKILL.md file.',
   'agentSkillModal.url.title': 'Import from URL',
   'agentSkillModal.url.urlPlaceholder': 'https://example.com/path/to/SKILL.md',
-  agentSkillTag: 'Agent Skill',
+  'agentSkillTag': 'Agent Skill',
   'agentTab.opening': 'Opening Settings',
   'agentTab.plugin': 'Skill Settings',
   'agentTab.prompt': 'Agent Profile',
@@ -276,7 +273,7 @@ export default {
   'platformAgentConfig.redetect': 'Re-detect',
   'platformAgentConfig.selectDevice': 'Select a device',
 
-  checking: 'Checking...',
+  'checking': 'Checking...',
 
   // Credentials Management
   'creds.actions.delete': 'Delete',
@@ -308,8 +305,7 @@ export default {
   'creds.form.file': 'Credential File',
   'creds.form.fileRequired': 'Please upload a file',
   'creds.form.key': 'Identifier',
-  'creds.form.keyPattern':
-    'Identifier can only contain letters, numbers, underscores, and hyphens',
+  'creds.form.keyPattern': 'Identifier can only contain letters, numbers, underscores, and hyphens',
   'creds.form.keyRequired': 'Identifier is required',
   'creds.form.name': 'Display Name',
   'creds.form.nameRequired': 'Display name is required',
@@ -322,8 +318,7 @@ export default {
   'creds.form.uploadHint': 'Click or drag file to upload',
   'creds.form.valuePlaceholder': 'Enter value',
   'creds.form.values': 'Key-Value Pairs',
-  'creds.oauth.noConnections':
-    'No OAuth connections available. Please connect an account first.',
+  'creds.oauth.noConnections': 'No OAuth connections available. Please connect an account first.',
   'creds.table.actions': 'Actions',
   'creds.table.key': 'Identifier',
   'creds.table.lastUsed': 'Last Used',
@@ -423,7 +418,7 @@ export default {
   'devices.status.online': 'Online',
   'devices.title': 'My Devices',
   'devices.workingDirectory': 'Working dir: {{path}}',
-  checkingPermissions: 'Checking permissions...',
+  'checkingPermissions': 'Checking permissions...',
   'danger.clear.action': 'Clear Now',
   'danger.clear.confirm': "Clear all chat data? This can't be undone.",
   'danger.clear.desc':
@@ -457,8 +452,7 @@ export default {
   'header.title': 'Settings',
   'hotkey.clearBinding': 'Clear binding',
   'hotkey.conflicts': 'Conflicts with existing hotkeys',
-  'hotkey.errors.CONFLICT':
-    'Hotkey conflict: This hotkey is already assigned to another function',
+  'hotkey.errors.CONFLICT': 'Hotkey conflict: This hotkey is already assigned to another function',
   'hotkey.errors.INVALID_FORMAT':
     'Invalid hotkey format: Please use the correct format (e.g., CommandOrControl+E)',
   'hotkey.errors.INVALID_ID': 'Invalid hotkey ID',
@@ -602,17 +596,14 @@ export default {
   'plugin.clearDeprecated': 'Remove Deprecated Skills',
   'plugin.empty': 'No Skills installed yet. Explore the <1>Skill Store</1> to get started.',
   'plugin.installStatus.deprecated': 'Uninstalled',
-  'plugin.settings.hint':
-    'Please fill in the following configurations based on the description',
+  'plugin.settings.hint': 'Please fill in the following configurations based on the description',
   'plugin.settings.title': '{{id}} Skill Configuration',
   'plugin.settings.tooltip': 'Skill Configuration',
   'plugin.store': 'Skill Store',
-  'settingAgent.avatar.sizeExceeded':
-    'Image size exceeds 1MB limit, please choose a smaller image',
+  'settingAgent.avatar.sizeExceeded': 'Image size exceeds 1MB limit, please choose a smaller image',
   'settingAgent.avatar.title': 'Avatar',
   'settingAgent.backgroundColor.title': 'Background Color',
-  'settingAgent.description.desc':
-    'A brief introduction to your agent, not for character setting',
+  'settingAgent.description.desc': 'A brief introduction to your agent, not for character setting',
   'settingAgent.description.placeholder': 'Enter agent description',
   'settingAgent.description.title': 'Agent Description',
   'settingAgent.export.dialogTitle': 'Export Agent Profile',
@@ -690,8 +681,7 @@ export default {
   'settingChat.enableStreaming.title': 'Enable Streaming Output',
   'settingChat.historyCount.desc': 'Number of historical messages carried with each request',
   'settingChat.historyCount.title': 'Attached History Message Count',
-  'settingChat.inputTemplate.desc':
-    "The user's latest message will be filled into this template",
+  'settingChat.inputTemplate.desc': "The user's latest message will be filled into this template",
   'settingChat.inputTemplate.placeholder':
     'Preprocessing template {{text}} will be replaced with real-time input information',
   'settingChat.inputTemplate.title': 'User Input Preprocessing',
@@ -769,8 +759,7 @@ export default {
   'settingGroupChat.responseSpeed.options.slow': 'Slow',
   'settingGroupChat.responseSpeed.placeholder': 'Select reply speed',
   'settingGroupChat.responseSpeed.title': 'Reply Speed',
-  'settingGroupChat.revealDM.desc':
-    'Make private messages sent to other members visible to you.',
+  'settingGroupChat.revealDM.desc': 'Make private messages sent to other members visible to you.',
   'settingGroupChat.revealDM.title': 'Show Private Messages',
   'settingGroupChat.submit': 'Update Settings',
   'settingGroupChat.systemPrompt.desc':
@@ -891,8 +880,7 @@ export default {
   'settingSystemTools.category.cliAgents.desc':
     'Agentic coding CLIs detected on your system, such as Claude Code, Codex, and Kimi',
   'settingSystemTools.category.contentSearch': 'Content Search',
-  'settingSystemTools.category.contentSearch.desc':
-    'Tools for searching text content within files',
+  'settingSystemTools.category.contentSearch.desc': 'Tools for searching text content within files',
   'settingSystemTools.category.fileSearch': 'File Search',
   'settingSystemTools.category.fileSearch.desc': 'Tools for finding files by name or pattern',
   'settingSystemTools.category.runtimeEnvironment': 'Runtime Environment',
@@ -916,13 +904,11 @@ export default {
   'settingSystemTools.tools.grep.desc': 'GNU grep - standard text search tool',
   'settingSystemTools.tools.kimi.desc': 'Kimi CLI - Moonshot AI agentic coding CLI',
   'settingSystemTools.tools.mdfind.desc': 'macOS Spotlight search (fast indexed search)',
-  'settingSystemTools.tools.lobehub.desc':
-    'LobeHub CLI - manage and connect to LobeHub services',
+  'settingSystemTools.tools.lobehub.desc': 'LobeHub CLI - manage and connect to LobeHub services',
   'settingSystemTools.tools.bun.desc': 'Bun - fast JavaScript runtime and package manager',
   'settingSystemTools.tools.bunx.desc': 'bunx - Bun package runner for executing npm packages',
   'settingSystemTools.tools.node.desc': 'Node.js - JavaScript runtime for executing JS/TS',
-  'settingSystemTools.tools.npm.desc':
-    'npm - Node.js package manager for installing dependencies',
+  'settingSystemTools.tools.npm.desc': 'npm - Node.js package manager for installing dependencies',
   'settingSystemTools.tools.pnpm.desc': 'pnpm - fast, disk space efficient package manager',
   'settingSystemTools.tools.python.desc': 'Python - programming language runtime',
   'settingSystemTools.tools.qwen.desc': 'Qwen Code - Alibaba Qwen agentic coding CLI',
@@ -994,7 +980,7 @@ When I am ___, I need ___
   'skillStore.wantMore.reachedEnd': "You've reached the end. Can't find what you need?",
   'skillView.connectors': 'Connectors',
   'skillView.skills': 'Skills',
-  startConversation: 'Start Conversation',
+  'startConversation': 'Start Conversation',
   'storage.actions.transfer.button': 'Move to...',
   'storage.actions.transfer.desc':
     'Move agents and their data to another Workspace or your personal account. The originals leave the current space. LobeAI cannot be moved; copy it instead.',
@@ -1062,8 +1048,7 @@ When I am ___, I need ___
   'storageOverage.monthlyCap': 'Monthly Spending Cap',
   'storageOverage.monthlyCapDesc':
     'Leave empty for unlimited. Uploads will be blocked when the cap is reached.',
-  'storageOverage.noPaymentMethod':
-    'Please add a payment method to enable storage pay-as-you-go.',
+  'storageOverage.noPaymentMethod': 'Please add a payment method to enable storage pay-as-you-go.',
   'storageOverage.rate':
     'About {{limitedMonthlyRate}}/GB/month for a limited time (regular {{regularMonthlyRate}}).',
   'storageOverage.subscriptionRequired.action': 'View plans',
@@ -1173,8 +1158,7 @@ When I am ___, I need ___
   'tab.advanced.memoryEmbedding.enabled.desc':
     'When disabled, memory is stored without vectors and retrieved with BM25 keyword search.',
   'tab.advanced.memoryEmbedding.enabled.title': 'Use embedding model',
-  'tab.advanced.memoryEmbedding.model.desc':
-    'Embedding model name accepted by the configured API.',
+  'tab.advanced.memoryEmbedding.model.desc': 'Embedding model name accepted by the configured API.',
   'tab.advanced.memoryEmbedding.model.title': 'Embedding model name',
   'tab.advanced.memoryEmbedding.save': 'Save',
   'tab.advanced.memoryEmbedding.saveError': 'Failed to save memory embedding settings',
@@ -1396,19 +1380,16 @@ When I am ___, I need ___
   'workspace.billingPage.billing.change.closeWhileSubmitting.continueCta': 'Keep waiting',
   'workspace.billingPage.billing.change.closeWhileSubmitting.description':
     "Closing this window won't cancel the request — your subscription update will continue to process in the background.",
-  'workspace.billingPage.billing.change.closeWhileSubmitting.title':
-    'Request still in progress',
+  'workspace.billingPage.billing.change.closeWhileSubmitting.title': 'Request still in progress',
   'workspace.billingPage.billing.change.currentIntervalTag': 'Current plan',
   'workspace.billingPage.billing.change.currentPlanWithInterval': 'Current plan',
   'workspace.billingPage.billing.change.immediateChangeSeatReductionHint':
     'Reduce seats separately after this immediate plan change.',
   'workspace.billingPage.billing.change.minPurchasedSeatsHint':
     'This workspace currently has {{members}} billable members and requires at least {{count}} extra seats.',
-  'workspace.billingPage.billing.change.preview':
-    '{{seats}} seats · {{interval}} billing preview',
+  'workspace.billingPage.billing.change.preview': '{{seats}} seats · {{interval}} billing preview',
   'workspace.billingPage.billing.change.purchasedSeats': 'Prepaid extra seats',
-  'workspace.billingPage.billing.change.purchasedSeatsWithMax':
-    'Prepaid seats (max {{max}} seats)',
+  'workspace.billingPage.billing.change.purchasedSeatsWithMax': 'Prepaid seats (max {{max}} seats)',
   'workspace.billingPage.billing.change.memberLimitReached':
     'This workspace currently has {{count}} billable members. Remove members or change them to {{viewerRole}} before reducing seats further.',
   'workspace.billingPage.billing.change.seatReductionHint':
@@ -1432,8 +1413,7 @@ When I am ___, I need ___
   'workspace.billingPage.billing.upgradePlanModal.memberSeatSummary':
     'This workspace has {{members}} billable members. At least {{count}} extra seats are required.',
   'workspace.billingPage.billing.upgradePlanModal.noChargeToday': 'No charge today',
-  'workspace.billingPage.billing.upgradePlanModal.paymentMethodFallback':
-    'Current payment method',
+  'workspace.billingPage.billing.upgradePlanModal.paymentMethodFallback': 'Current payment method',
   'workspace.billingPage.billing.upgradePlanModal.seatLimitReached':
     'Current plan supports up to {{maxSeats}} seats.',
   'workspace.billingPage.billing.upgradePlanModal.paymentMethodLabel': 'Payment method',
@@ -1480,8 +1460,7 @@ When I am ___, I need ___
     'Calculated from the seat adjustment and the remaining time in the current billing cycle.',
   'workspace.billingPage.billing.upgradePlanModal.todayAmountLabel': 'Estimated due today',
   'workspace.billingPage.billing.upgradePlanModal.title': 'Upgrade?',
-  'workspace.billingPage.billing.upgradePlanModal.totalSummary':
-    '{{seats}} seats after upgrade',
+  'workspace.billingPage.billing.upgradePlanModal.totalSummary': '{{seats}} seats after upgrade',
   'workspace.billingPage.billing.downgrade.confirmBody':
     'The workspace becomes Free right away. Members and shared resources are preserved; the workspace exits the read-only state. Re-subscribe at any time to restore Pro features.',
   'workspace.billingPage.billing.downgrade.confirmCta': 'Downgrade now',
@@ -1508,8 +1487,7 @@ When I am ___, I need ___
   'workspace.billingPage.billing.invoice.tab.failed': 'Closed',
   'workspace.billingPage.billing.invoice.tab.open': 'Unpaid',
   'workspace.billingPage.billing.invoice.tab.paid': 'Paid',
-  'workspace.billingPage.billing.invoice.subtitle':
-    'View and download invoices for this workspace',
+  'workspace.billingPage.billing.invoice.subtitle': 'View and download invoices for this workspace',
   'workspace.billingPage.billing.invoice.title': 'Billing history',
   'workspace.billingPage.billing.manage.cancelItem': 'Cancel Subscription',
   'workspace.billingPage.billing.manage.cta': 'Manage',
@@ -1565,8 +1543,7 @@ When I am ___, I need ___
   'workspace.billingPage.billing.currentPlan.descPro':
     'Team workspace with monthly credits allowance',
   'workspace.billingPage.billing.currentPlan.title': 'Current plan',
-  'workspace.billingPage.billing.summarySubtitle':
-    'Workspace subscription and billing breakdown',
+  'workspace.billingPage.billing.summarySubtitle': 'Workspace subscription and billing breakdown',
   'workspace.billingPage.billing.summaryTitle': 'Subscription',
   'workspace.billingPage.billing.totalLabel': 'Total',
   'workspace.billingPage.billing.upgradeFailedToast': 'Failed to start checkout.',
@@ -1607,12 +1584,10 @@ When I am ___, I need ___
   'workspace.billingPage.credits.packages.sourceLabel.autoTopUp': 'Auto top-up',
   'workspace.billingPage.credits.packages.sourceLabel.systemGift': 'System gift',
   'workspace.billingPage.credits.packages.sourceLabel.userPurchase': 'Sales add-on',
-  'workspace.billingPage.credits.packages.subtitle':
-    'All credit packages owned by this workspace',
+  'workspace.billingPage.credits.packages.subtitle': 'All credit packages owned by this workspace',
   'workspace.billingPage.credits.packages.title': 'Workspace credit packages',
   'workspace.billingPage.credits.packages.usedPercent': 'Used',
-  'workspace.billingPage.credits.poolDesc':
-    'Shared across all seats. Resets each billing cycle.',
+  'workspace.billingPage.credits.poolDesc': 'Shared across all seats. Resets each billing cycle.',
   'workspace.billingPage.credits.poolTitle': 'Workspace credit pool',
   'workspace.billingPage.credits.resetAt': 'Next reset: {{date}}',
   'workspace.billingPage.credits.status.cancelledCta': 'Resume subscription',
@@ -1642,8 +1617,7 @@ When I am ___, I need ___
     'Add credits to this workspace with a one-time purchase',
   'workspace.billingPage.credits.topUp.title': 'Purchase credits',
   'workspace.billingPage.credits.topUp.total': 'Total',
-  'workspace.billingPage.credits.topUp.unitPriceFormat':
-    '${{price}} per million compute credits',
+  'workspace.billingPage.credits.topUp.unitPriceFormat': '${{price}} per million compute credits',
   'workspace.billingPage.credits.topUp.upgradePlanName': 'Pro',
   'workspace.billingPage.credits.topUp.upgradePrefix': 'Upgrade to',
   'workspace.billingPage.credits.topUp.upgradeSuffix': 'to save ${{savings}}',
@@ -1658,8 +1632,7 @@ When I am ___, I need ___
   'workspace.billingPage.credits.autoTopUp.setupPaymentMethod': 'Set up payment method',
   'workspace.billingPage.credits.autoTopUp.monthlyLimitReached':
     "This month's auto top-up has reached the cap; will resume next month.",
-  'workspace.billingPage.credits.autoTopUp.pausedReason.manual':
-    'Auto top-up was paused manually.',
+  'workspace.billingPage.credits.autoTopUp.pausedReason.manual': 'Auto top-up was paused manually.',
   'workspace.billingPage.credits.autoTopUp.pausedReason.monthly_cap':
     'Monthly cap reached. Auto top-up will resume on the next billing cycle, or you can raise the cap and re-enable.',
   'workspace.billingPage.credits.autoTopUp.pausedReason.payment_failed':
@@ -1678,8 +1651,7 @@ When I am ___, I need ___
   'workspace.billingPage.plans.currentTag': 'Current plan',
   'workspace.billingPage.plans.currentTitle': 'Current plan',
   'workspace.billingPage.plans.businessTag': 'Higher limits',
-  'workspace.billingPage.plans.businessDesc':
-    'For growing teams that need higher workspace limits',
+  'workspace.billingPage.plans.businessDesc': 'For growing teams that need higher workspace limits',
   'workspace.billingPage.plans.businessTagline':
     'Advanced collaboration and higher workspace limits.',
   'workspace.billingPage.plans.buyMoreSeatsCta': 'Adjust seats',
@@ -1732,8 +1704,7 @@ When I am ___, I need ___
   'workspace.billingPage.plans.priceBusinessHeadline': '${{fee}} / mo',
   'workspace.billingPage.plans.priceProHeadline': '${{fee}} / mo',
   'workspace.billingPage.plans.priceYearlyHeadline': '${{fee}} / year',
-  'workspace.billingPage.plans.proDesc':
-    'Designed for professional teams that frequently use AI',
+  'workspace.billingPage.plans.proDesc': 'Designed for professional teams that frequently use AI',
   'workspace.billingPage.plans.proCapacity': 'Up to {{max}} seats · ${{seatFee}}/seat / month',
   'workspace.billingPage.plans.seatPriceCaption': '${{seatFee}}/seat/month',
   'workspace.billingPage.plans.switchPlanCta': 'Downgrade',
@@ -1826,8 +1797,7 @@ When I am ___, I need ___
   'workspace.auditLog.actions.auto_top_up.failed': 'Auto top-up failed',
   'workspace.auditLog.actions.auto_top_up.succeeded': 'Auto top-up succeeded',
   'workspace.auditLog.actions.auto_top_up.updated': 'Auto top-up updated',
-  'workspace.auditLog.actions.budget.default_member_limit_updated':
-    'Default member budget updated',
+  'workspace.auditLog.actions.budget.default_member_limit_updated': 'Default member budget updated',
   'workspace.auditLog.actions.budget.member_limit_updated': 'Member budget updated',
   'workspace.auditLog.actions.budget.member_override_created': 'Member budget override created',
   'workspace.auditLog.actions.budget.member_override_removed': 'Member budget override removed',
@@ -1912,8 +1882,7 @@ When I am ___, I need ___
   'workspace.auditLog.detail.fields.chargeAmount': 'Charge amount',
   'workspace.auditLog.detail.fields.currency': 'Currency',
   'workspace.auditLog.detail.fields.currentDefaultMaxBudget': 'New default member budget',
-  'workspace.auditLog.detail.fields.currentDefaultPaymentMethodId':
-    'New default payment method',
+  'workspace.auditLog.detail.fields.currentDefaultPaymentMethodId': 'New default payment method',
   'workspace.auditLog.detail.fields.currentEnabled': 'New enabled state',
   'workspace.auditLog.detail.fields.currentMaxBudget': 'New member budget',
   'workspace.auditLog.detail.fields.currentMode': 'New mode',
@@ -2068,8 +2037,7 @@ When I am ___, I need ___
     'All agents, skills, and their configurations',
   'workspace.general.delete.confirm.warning.items.billing':
     'Subscription, budget settings, and auto top-up',
-  'workspace.general.delete.confirm.warning.items.conversations':
-    'All messages, topics, and tasks',
+  'workspace.general.delete.confirm.warning.items.conversations': 'All messages, topics, and tasks',
   'workspace.general.delete.confirm.warning.items.files':
     'Uploaded files, generations, and knowledge base data',
   'workspace.general.delete.confirm.warning.items.members':
@@ -2139,8 +2107,7 @@ When I am ___, I need ___
   'workspace.general.transferAgentGroups.modal.goToTarget': 'Go to {{target}}',
   'workspace.general.transferAgentGroups.modal.loadFailed': 'Failed to load agent groups',
   'workspace.general.transferAgentGroups.modal.noGroups': 'No agent groups in this workspace',
-  'workspace.general.transferAgentGroups.modal.selectGroups':
-    'Select agent groups to transfer.',
+  'workspace.general.transferAgentGroups.modal.selectGroups': 'Select agent groups to transfer.',
   'workspace.general.transferAgentGroups.modal.selectPlaceholder':
     'Select workspace or personal account...',
   'workspace.general.transferAgentGroups.modal.selectTarget':
@@ -2162,8 +2129,7 @@ When I am ___, I need ___
   'workspace.general.copyLobeAI.modal.copyOptions.history.title': 'Topics and messages',
   'workspace.general.copyLobeAI.modal.copyOptions.knowledgeBase.reason':
     'Not supported yet. Reconnect them in the target workspace or personal account after copying.',
-  'workspace.general.copyLobeAI.modal.copyOptions.knowledgeBase.title':
-    'Knowledge bases and files',
+  'workspace.general.copyLobeAI.modal.copyOptions.knowledgeBase.title': 'Knowledge bases and files',
   'workspace.general.copyLobeAI.modal.copyOptions.optional': 'Optional',
   'workspace.general.copyLobeAI.modal.copyOptions.required': 'Selected by default',
   'workspace.general.copyLobeAI.modal.copyOptions.title': 'Copy options',
@@ -2183,8 +2149,7 @@ When I am ___, I need ___
     'This Agent will be copied. The original stays where it is.',
   'workspace.general.copyLobeAI.modal.selectAgents':
     'Select Agents to copy. Originals stay where they are.',
-  'workspace.general.copyLobeAI.modal.selectPlaceholder':
-    'Select workspace or personal account...',
+  'workspace.general.copyLobeAI.modal.selectPlaceholder': 'Select workspace or personal account...',
   'workspace.general.copyLobeAI.modal.selectTarget':
     'You can copy to personal or workspaces that have permission to create an agent.',
   'workspace.general.copyLobeAI.modal.success': '{{count}} agent(s) copied',
@@ -2194,8 +2159,7 @@ When I am ___, I need ___
   'workspace.general.copyAgentGroups.modal.continue': 'Continue',
   'workspace.general.copyAgentGroups.modal.copyOptions.config.desc':
     'Required. Copies group metadata, members, member roles, and Agent profiles.',
-  'workspace.general.copyAgentGroups.modal.copyOptions.config.title':
-    'Agent group configuration',
+  'workspace.general.copyAgentGroups.modal.copyOptions.config.title': 'Agent group configuration',
   'workspace.general.copyAgentGroups.modal.copyOptions.history.desc':
     'Optional. Copies selected groups’ topics and messages into the new groups.',
   'workspace.general.copyAgentGroups.modal.copyOptions.history.title': 'Topics and messages',
@@ -2226,8 +2190,7 @@ When I am ___, I need ___
   'workspace.general.transferPrimary.cta': 'Transfer Primary Owner',
   'workspace.general.transferPrimary.description':
     'Transfer primary ownership to another owner. The new primary owner will take over billing and primary privileges for this workspace.',
-  'workspace.general.transferPrimary.hint':
-    'You will remain an owner but lose primary privileges.',
+  'workspace.general.transferPrimary.hint': 'You will remain an owner but lose primary privileges.',
   'workspace.general.transferPrimary.title': 'Transfer Primary Ownership',
   'workspace.general.leave.confirm.ok': 'Leave workspace',
   'workspace.general.leave.confirm.title': 'Leave this workspace?',
@@ -2243,8 +2206,7 @@ When I am ___, I need ___
     "This is your workspace's visible name. For example, the name of your company or department.",
   'workspace.general.name.hint': 'Please use {{max}} characters at maximum.',
   'workspace.general.name.title': 'Workspace Name',
-  'workspace.general.noPermissionHint':
-    'You need additional permissions to manage this setting.',
+  'workspace.general.noPermissionHint': 'You need additional permissions to manage this setting.',
   'workspace.general.role.label': 'Your role',
   'workspace.general.save': 'Save',
   'workspace.general.scenarios.description':
@@ -2269,8 +2231,7 @@ When I am ___, I need ___
   'workspace.general.url.invalidPattern':
     'Slug must start and end with a letter or number; only lowercase letters, numbers and single dashes are allowed.',
   'workspace.general.url.invalidReserved': 'That slug is reserved. Please choose another.',
-  'workspace.general.url.renameWarning':
-    'Renaming will break existing links to this workspace.',
+  'workspace.general.url.renameWarning': 'Renaming will break existing links to this workspace.',
   'workspace.general.url.taken': 'This URL is already taken.',
   'workspace.general.url.title': 'Workspace URL',
   'workspace.slugBrandApply.button': 'Apply',
@@ -2425,8 +2386,7 @@ When I am ___, I need ___
   'workspace.members.pending.resendFailed': 'Failed to resend invitation',
   'workspace.members.pending.resendSuccess': 'Invitation email resent',
   'workspace.members.pending.revoke': 'Revoke',
-  'workspace.members.pending.revokeConfirm.content':
-    'The invitation link will no longer be valid.',
+  'workspace.members.pending.revokeConfirm.content': 'The invitation link will no longer be valid.',
   'workspace.members.pending.revokeConfirm.title': 'Revoke this invitation?',
   'workspace.members.seatChange.memberJoinBlocked':
     'Current members have reached the scheduled seat limit, so new paid members may not be able to join this workspace',
@@ -2455,8 +2415,7 @@ When I am ___, I need ___
   'workspace.upgradeModal.createTeam': 'Create workspace',
   'workspace.upgradeModal.formSubtitle':
     'The platform fee includes 3 seats. Extra seats can be prepaid from billing settings.',
-  'workspace.upgradeModal.formDescription':
-    'Review the details below and confirm your upgrade.',
+  'workspace.upgradeModal.formDescription': 'Review the details below and confirm your upgrade.',
   'workspace.upgradeModal.formTitle': 'Upgrade {{name}} to {{plan}}',
   'workspace.upgradeModal.heading': 'Upgrade a workspace',
   'workspace.upgradeModal.basicTag': 'Basic',
@@ -2489,8 +2448,7 @@ When I am ___, I need ___
   'workspace.wizard.back': 'Back',
   'workspace.wizard.cancel': 'Cancel',
   'workspace.wizard.next': 'Next',
-  'workspace.wizard.step1.avatar.hint':
-    'Add an avatar to help your team recognize this workspace.',
+  'workspace.wizard.step1.avatar.hint': 'Add an avatar to help your team recognize this workspace.',
   'workspace.wizard.step1.avatar.tooLarge': 'Avatar file must be smaller than 5MB.',
   'workspace.wizard.step1.avatar.uploadFailed': 'Failed to upload avatar',
   'workspace.wizard.step1.avatar.uploading': 'Uploading avatar…',
@@ -2517,8 +2475,7 @@ When I am ___, I need ___
     'Workspace URL must be {{min}}–{{max}} characters long.',
   'workspace.wizard.step1.slug.invalidPattern':
     'Slug must start and end with a letter or number; only lowercase letters, numbers and single dashes are allowed.',
-  'workspace.wizard.step1.slug.invalidReserved':
-    'That slug is reserved. Please choose another.',
+  'workspace.wizard.step1.slug.invalidReserved': 'That slug is reserved. Please choose another.',
   'workspace.wizard.step1.slug.label': 'Workspace URL',
   'workspace.wizard.step1.slug.placeholder': 'example-team',
   'workspace.wizard.step1.slug.required': 'Workspace URL is required',
@@ -2571,10 +2528,8 @@ When I am ___, I need ___
     'On-demand usage · Auto top-up (${{price}} / 1M credits)',
   'workspace.wizard.step2.features.free.upgradable': 'Upgrade anytime for more seats',
   'workspace.wizard.step2.features.business.auditLog': 'Audit logs',
-  'workspace.wizard.step2.features.pro.adminControls':
-    'Centralized billing and role management',
-  'workspace.wizard.step2.features.pro.collaboration':
-    'Invite members · share agents and files',
+  'workspace.wizard.step2.features.pro.adminControls': 'Centralized billing and role management',
+  'workspace.wizard.step2.features.pro.collaboration': 'Invite members · share agents and files',
   'workspace.wizard.step2.features.pro.memberBudget': 'Per-member budget control',
   'workspace.wizard.step2.features.pro.onDemand':
     'On-demand usage · Auto top-up (${{price}} / 1M credits)',
@@ -2582,16 +2537,13 @@ When I am ___, I need ___
   'workspace.wizard.step2.features.pro.support': 'Priority email support',
   'workspace.wizard.step2.left.creditsBasicHint': 'No monthly credits · pay as you go',
   'workspace.wizard.step2.left.creditsLabel': 'Credits per month',
-  'workspace.wizard.step2.left.creditsProHint':
-    'Shared workspace pool · seats do not add credits',
+  'workspace.wizard.step2.left.creditsProHint': 'Shared workspace pool · seats do not add credits',
   'workspace.wizard.step2.left.basicHeadline': 'Basic workspace',
-  'workspace.wizard.step2.left.basicTagline':
-    'For up to 3 members. Upgrade later for more seats.',
+  'workspace.wizard.step2.left.basicTagline': 'For up to 3 members. Upgrade later for more seats.',
   'workspace.wizard.step2.left.headline': 'Team workspace',
   'workspace.wizard.step2.left.basicTopUpHint':
     'Top up anytime: ${{price}}/M ({{percent}}% above base, with no subscription fee)',
-  'workspace.wizard.step2.left.proTagline':
-    '${{fee}}/seat/month. Extra usage is billed on demand.',
+  'workspace.wizard.step2.left.proTagline': '${{fee}}/seat/month. Extra usage is billed on demand.',
   'workspace.wizard.step2.left.proTopUpHint':
     'Top up when credits run low: ${{price}}/M ({{percent}}% off the standard rate)',
   'workspace.wizard.step2.payFailed': 'Failed to start checkout',
@@ -2674,8 +2626,7 @@ When I am ___, I need ___
   'workspace.onboarding.step1.footer':
     "Set up your workspace's LobeAI assistant — it learns from every conversation and grows into your team's go-to teammate.",
   'workspace.onboarding.step1.sentence.1': "Ready? Let me be your team's go-to teammate.",
-  'workspace.onboarding.step1.sentence.2':
-    'What role do you want me to play in this workspace?',
+  'workspace.onboarding.step1.sentence.2': 'What role do you want me to play in this workspace?',
   'workspace.onboarding.step1.sentence.3': 'First, give me a name your team will love :)',
   'workspace.onboarding.step2.heading': "What's this workspace mostly for?",
   'workspace.onboarding.step2.sentence.1': "What's this workspace mostly for?",
@@ -2766,8 +2717,7 @@ When I am ___, I need ___
   'workspaceSetting.tab.auditLog': 'Audit logs',
   'workspaceSetting.tab.general': 'General',
   'workspaceSetting.tab.members': 'Members',
-  'workspaceSetting.storage.comingSoon':
-    'Workspace-scoped data import & export is coming soon.',
+  'workspaceSetting.storage.comingSoon': 'Workspace-scoped data import & export is coming soon.',
   'workspaceSetting.storage.danger.clear.desc':
     'Delete all data in this workspace, including agents, files, messages, and skills. The workspace itself will NOT be deleted.',
   'workspaceSetting.storage.danger.clear.title': 'Clear Workspace Data',
@@ -2780,8 +2730,7 @@ When I am ___, I need ___
   'workspaceSetting.tab.skill': 'Skills',
   'tools.add': 'Add Skill',
   'tools.addSkillOrConnector': 'Add Skills / Connectors',
-  'tools.noConfigurablePermissions':
-    'This skill does not expose configurable tool permissions.',
+  'tools.noConfigurablePermissions': 'This skill does not expose configurable tool permissions.',
   'tools.builtins.groupName': 'Built-ins',
   'tools.builtins.install': 'Install',
   'tools.builtins.installed': 'Installed',
@@ -2805,8 +2754,7 @@ When I am ___, I need ___
   'tools.builtins.lobe-local-system.readme':
     'Access your local filesystem on desktop. Read, write, search, and organize files. Execute shell commands with background task support and grep content with regex patterns.',
   'tools.builtins.lobe-local-system.title': 'Local System',
-  'tools.builtins.lobe-notebook.description':
-    'Create and manage documents in the topic notebook',
+  'tools.builtins.lobe-notebook.description': 'Create and manage documents in the topic notebook',
   'tools.builtins.lobe-notebook.readme':
     'Create and manage persistent documents within conversation topics. Save notes, reports, articles, and markdown content that stays accessible across sessions.',
   'tools.builtins.lobe-notebook.title': 'Notebook',
@@ -2824,8 +2772,7 @@ When I am ___, I need ___
   'tools.builtins.lobe-agent-documents.description':
     'Manage agent-scoped documents (list, create, read, edit, remove, rename) and load rules',
   'tools.builtins.lobe-agent-documents.title': 'Documents',
-  'tools.builtins.lobe-agent-management.description':
-    'Create, manage, and orchestrate AI agents',
+  'tools.builtins.lobe-agent-management.description': 'Create, manage, and orchestrate AI agents',
   'tools.builtins.lobe-agent-management.title': 'Agent Management',
   'tools.builtins.lobe-agent.description':
     'Built-in Lobe Agent capabilities: plan and todo management, sub-agent dispatch, and visual media analysis',
@@ -2905,8 +2852,7 @@ When I am ___, I need ___
     'Are you sure you want to uninstall {{name}}? This skill will be removed from the current agent.',
   'tools.builtins.uninstallConfirm.title': 'Uninstall {{name}}',
   'tools.builtins.uninstalled': 'Uninstalled',
-  'tools.disabled':
-    'The current model does not support function calls and cannot use the skill',
+  'tools.disabled': 'The current model does not support function calls and cannot use the skill',
   'tools.composio.addServer': 'Add Server',
   'tools.composio.authCompleted': 'Authentication Completed',
   'tools.composio.authFailed': 'Authentication Failed',
@@ -2975,8 +2921,7 @@ When I am ___, I need ___
     'Connect to GitHub to manage repositories, issues, pull requests, and code. Search code, review changes, create branches, and collaborate on software development projects through conversational AI.',
 
   // Composio Servers i18n
-  'tools.composio.servers.gmail.description':
-    'Gmail is a free email service provided by Google',
+  'tools.composio.servers.gmail.description': 'Gmail is a free email service provided by Google',
 
   'tools.composio.servers.gmail.readme':
     'Bring the power of Gmail directly into your AI assistant. Read, compose, and send emails, search your inbox, manage labels, and organize your communications—all through natural conversation.',
@@ -3063,8 +3008,7 @@ When I am ___, I need ___
   'tools.composio.servers.youtube.readme':
     'Connect to YouTube to search videos, access transcripts, and retrieve video information. Analyze content, extract metadata, and discover videos through natural conversation.',
 
-  'tools.composio.servers.zendesk.description':
-    'Zendesk is a customer service software company',
+  'tools.composio.servers.zendesk.description': 'Zendesk is a customer service software company',
 
   'tools.composio.servers.zendesk.readme':
     'Integrate with Zendesk to manage support tickets and customer interactions. Create, update, and track support requests, access customer data, and streamline your support operations.',
@@ -3136,8 +3080,7 @@ When I am ___, I need ___
   'tools.skillActivateMode.auto.desc':
     'AI can autonomously activate tools, run skills, and install new skills from the store',
   'tools.skillActivateMode.auto.title': 'Auto',
-  'tools.skillActivateMode.manual.desc':
-    'Only user-selected tools and skills are available to AI',
+  'tools.skillActivateMode.manual.desc': 'Only user-selected tools and skills are available to AI',
   'tools.skillActivateMode.manual.title': 'Manual',
   'tools.skillActivateMode.title': 'Activate Mode',
   'tools.tabs.all': 'All',

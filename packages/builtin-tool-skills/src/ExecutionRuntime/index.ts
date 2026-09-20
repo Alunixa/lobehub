@@ -130,10 +130,7 @@ const hasHiddenSegment = (rel: string): boolean =>
  * casing than what's registered (e.g. `Agent-Browser` for `agent-browser`,
  * `lobehub` for `LobeHub`); normalize both sides before comparing.
  */
-const findByNameCI = <T extends { name: string }>(
-  items: T[],
-  target: string,
-): T | undefined => {
+const findByNameCI = <T extends { name: string }>(items: T[], target: string): T | undefined => {
   const lower = target.toLowerCase();
   return items.find((s) => s.name.toLowerCase() === lower);
 };
@@ -167,7 +164,9 @@ export class SkillsExecutionRuntime {
   async getCurrentTime(args: GetCurrentTimeParams = {}): Promise<BuiltinServerRuntimeOutput> {
     if (args.timezone !== undefined) {
       try {
-        if (typeof args.timezone !== 'string' || !args.timezone.trim()) throw new RangeError();
+        if (typeof args.timezone !== 'string' || !args.timezone.trim()) {
+          throw new RangeError('Timezone must be a non-empty string');
+        }
         new Intl.DateTimeFormat('en-US', { timeZone: args.timezone });
       } catch {
         return {
@@ -313,9 +312,7 @@ export class SkillsExecutionRuntime {
         // filters hidden files; we re-check here as defense in depth.
         const skillDir = getDirname(projectSkill.location);
         const allowed = new Set(
-          (await this.deviceFileAccess.listFiles(skillDir)).map((f) =>
-            normalizeRelativePath(f),
-          ),
+          (await this.deviceFileAccess.listFiles(skillDir)).map((f) => normalizeRelativePath(f)),
         );
         if (!allowed.has(normalized)) {
           return {
@@ -518,10 +515,7 @@ export class SkillsExecutionRuntime {
    * Format command result using the shared formatCommandResult from @lobechat/prompts.
    * This ensures consistent content format across all runtimes.
    */
-  private formatCommandOutput(
-    command: string,
-    result: CommandResult,
-  ): BuiltinServerRuntimeOutput {
+  private formatCommandOutput(command: string, result: CommandResult): BuiltinServerRuntimeOutput {
     const content = formatCommandResult({
       stderr: result.stderr,
       stdout: result.output,
