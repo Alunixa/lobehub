@@ -938,6 +938,7 @@ try {
 } finally {
   const report = {
     assertions,
+    consoleErrors: [...errors],
     createCount,
     fileCount,
     pages,

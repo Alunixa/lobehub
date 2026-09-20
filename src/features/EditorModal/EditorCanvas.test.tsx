@@ -70,6 +70,29 @@ afterEach(() => {
 });
 
 describe('EditorModal EditorCanvas', () => {
+  it.each([
+    {},
+    { defaultValue: '' },
+    { editorData: { root: { ...mentionEditorState.root, children: [] } } },
+  ])('should open an empty context or attachment-only message safely: %j', async (props) => {
+    let editor: IEditor | undefined;
+    const { container } = render(
+      <TestWrapper
+        {...props}
+        onEditorReady={(ready) => {
+          editor = ready;
+        }}
+      />,
+    );
+
+    await act(async () => {
+      await moment();
+    });
+
+    expect(container.querySelector('[contenteditable="true"]')).toBeInTheDocument();
+    expect(String(editor?.getDocument('markdown') ?? '').trim()).toBe('');
+  });
+
   it('should render mention nodes from editor data', async () => {
     const { container } = render(<TestWrapper editorData={mentionEditorState} />);
 

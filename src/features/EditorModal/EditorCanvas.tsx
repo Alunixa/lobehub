@@ -1,3 +1,4 @@
+import { isRecord } from '@lobechat/utils/object';
 import { type IEditor } from '@lobehub/editor';
 import { ReactLinkPlugin, ReactTablePlugin } from '@lobehub/editor';
 import { Editor } from '@lobehub/editor/react';
@@ -31,14 +32,22 @@ const EditorCanvas: FC<EditorCanvasProps> = ({
 }) => {
   const mobile = useIsMobile();
   const { content, type } = useMemo(() => {
+    const root = isRecord(editorData) && isRecord(editorData.root) ? editorData.root : undefined;
     const hasValidEditorData =
-      editorData && typeof editorData === 'object' && Object.keys(editorData).length > 0;
+      isRecord(editorData) &&
+      Object.keys(editorData).length > 0 &&
+      !(Array.isArray(root?.children) && root.children.length === 0);
 
     if (hasValidEditorData) {
       return { content: JSON.stringify(editorData), type: 'json' as const };
     }
 
-    return { content: defaultValue || '', type: 'markdown' as const };
+    // The markdown reader produces an empty root for an empty document, which
+    // Lexical rejects. The text reader creates the editable empty paragraph.
+    return {
+      content: defaultValue || '',
+      type: defaultValue?.trim() ? ('markdown' as const) : ('text' as const),
+    };
   }, [editorData, defaultValue]);
 
   return (
