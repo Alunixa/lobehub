@@ -11,10 +11,12 @@
 
 ## 3. Current Status
 - 2026-09-20 新故障调查中：用户反馈外网超时，并明确使用公网 IPv6 直连；之前上线验证不等于用户当前外网可达，尚不能宣布恢复。
-- 17:03 UTC+8 只读实测：AAAA 与当前 PPPoE 公网 IPv6 一致；本机强制 IPv6 直连 `:3210` 返回登录 302，宿主应用版本接口正常；尚缺真正外部 IPv6 节点的成功证据。
+- 17:05–17:08 UTC+8 实测：AAAA 与当前 PPPoE 公网 IPv6 一致；真正外部 IPv6 节点北京/上海访问3210版本接口200，北京/深圳访问3210登录页200，TLS校验成功；北京/深圳访问443均在TCP建连约15秒超时。本机443返回301到3210，不能把本机结果当公网443可达。
+- 目前仅确认端口路径差异；用户实际访问URL/是否保留`:3210`尚未知，未确认其具体故障根因、未宣称恢复，线上配置未改。
 - 任务开始时跟踪文件干净，分支 `codex/deploy-server-image-20260720`，HEAD `8ba37c3a64`，比远端多 4 个仅记录提交。
 - 当前已发布并部署 `v2.2.8-codex.20260919.2`；服务器记录 2026-09-20 00:18 UTC+8 更新、00:20 确认回滚保护，00:23 稳定复查通过。
-- 当前容器 `cd5ff10f6d040ba9193af6365240a141d4b3294ec7ca8ec618cde6751b32f40b`，running，restart=0；镜像 `sha256:4b2d6cb7823bb11ae9ebf9638c7214fe40d6aeefa23149d71c4512a17c6cfb59`。
+- 当前容器 `cd5ff10f6d040ba9193af6365240a141d4b3294ec7ca8ec618cde6751b32f40b`，镜像 `sha256:4b2d6cb7823bb11ae9ebf9638c7214fe40d6aeefa23149d71c4512a17c6cfb59`；部署确认时restart=0，9月20日17:06复查running、restart=7，最后启动05:04:48 UTC+8，OOM=false。
+- 路由器05:02重启后的应用重试日志为PostgreSQL还在recovery（57P03）；最后数据库迁移通过、Next Ready，05:05启动本地任务调度，此后未发现同类重启。不能把重启阶段错误误当当前持续故障。
 - 功能源码提交 `c0523ea95239057eb0913207f74f56b99f955143`；最终发布提交 `cd0a25f68b7b219b239ee6c3130e8df44f5d14ea` 只补测试/CI/记录，运行时代码不变。
 - `.20260919.1` 已发布但未部署；最后补齐任务测试 MotionProvider，`.2` 的镜像 Actions `35453712795` 与专项 `35453712723` 均成功，46 + 188 + 38 测试执行通过。
 - `.2` 同源生产 UI 61 场景与线上只读 7 入口全部通过、runtime errors=0；其他 7 服务及配置不变。
@@ -61,7 +63,8 @@
 - 镜像校验 SHA-256，真实加载 Next / SWC，240 秒回滚保护，仅 `docker compose up -d --no-deps --force-recreate lobehub`。
 - 验证内外 HTTP、日志、重启计数、Host Executor、其他服务不变及真实 UI，成功后确认 guard。
 - 当前镜像见第3节；回滚镜像 `sha256:a9fbc27eed8b54083db86df46d69ee059c4af35f5383e40c4ae918e1e79685e9` 已保存在本轮独立备份。
-- 内部/公网 `/api/version` 正常；Host Executor health=200/success/host；无 fatal/panic/unhandled/migration failed 日志，Nginx 配置通过。
+- 上线确认窗口内部/公网 `/api/version` 正常；Host Executor health=200/success/host，无 fatal/panic/unhandled/migration failed 日志，Nginx配置通过；9月20日路由器重启后的独立调查见第3节。
+- 公网入口是HTTPS域名加`:3210`；Nginx的443仅作重定向，但当前外部IPv6到443无法建连，不能依赖该重定向。尚无抓包证据确定是运营商还是其他上游环节阻断。
 
 ## 11. Important Files
 - `YHYQ.md`：用户要求与操作历史。
@@ -83,7 +86,8 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
-- 仅暂存清理未完成：执行工具拒绝带递归删除的批量命令，命令未执行且未改用其他方式绕过。
+- 新访问超时调查未闭环：需要用户实际URL或带地址栏的报错截图，以确认是否命中已复现的443建连超时；若用户确实使用3210，应继续从用户网络/缓存/代理或应用发送请求定位，不复述为已修好。
+- 原交互修复任务仅暂存清理未完成：执行工具拒绝带递归删除的批量命令，命令未执行且未改用其他方式绕过。
 - 本机 `D:\Cursor\lobehub-backups\20260919-conversation-repair` 下 `preview-first/final/validated/release` 和 `release-final/validated/published` 保留；远端 `/mnt/sda1/lobehub-release-20260919-conversation-repair` 保留，不影响线上服务。
 
 ## 15. Known Bugs and Limitations
@@ -95,6 +99,8 @@
 - 手机输入必须由直接点击输入区域启动，不因页面挂载、导航、弹层或其他按钮自动 focus。
 
 ## 17. Failed Approaches
+- 2026-09-20：外部SSH节点f/myhf无全局IPv6，mylf连接关闭，ff主机密钥不匹配；未绕过认证校验。改用Globalping真实IPv6节点取得有效证据。
+- 路由器未安装timeout和tcpdump，未安装新依赖，未取得抓包证据；不得声称已抓包证明443被运营商拦截。探测进程已自然结束。
 - 上次本机完整 Vitest 初始化卡住，CI 干净依赖可验证真实 store。
 - 上次工具拒绝本机批量递归删除预览，不绕过工具限制；原暂存仍可能存在。
 - 本轮同样拒绝清理命令；Release Notes 更新随后单独执行成功，但任何删除均未执行。
@@ -110,15 +116,17 @@
 - 2026-09-20：优先排查公网 IPv6 访问超时，不改成 Tunnel、不盲目重新部署或重启路由器；当前只读调查域名、IPv6、实际 Nginx、入站规则和外部探测。
 - 排查前检查点已由上轮建立：`c608d0b8e5`；当前未修改应用或线上配置。
 - 2026-09-19 用户要求自主完成修复与上线，不需等待睡眠中的用户决策。
-- 当前阶段：修复、发布、部署和线上验证已完成，仅暂存清理受执行工具限制保留。
+- 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-0. 先完成当前超时调查：用真正外部 IPv6 节点探测 HTTPS 3210 与 443，区分网络不可达和发送消息超时；尚无根因证据时不改配置。
+0. 真正外部IPv6探测已完成；核对用户实际访问地址/截图，区分不带端口的443超时与3210上的其他故障。未有对应证据前不更改DNS、防火墙、代理或重新部署。
 1. 无需重复部署；用户刷新现有页面即可加载新版。
 2. 若以后处理暂存清理，仅处理第14节明确列出的下载/预览目录，保留 production-backup、source-before-repair.zip 和 UI/CI 报告；不得绕过工具限制。
 3. 若继续修全仓旧 CI/本机依赖问题，单独开工作范围，不把本轮专项通过误当全仓通过。
 
 ## 21. Change Log
+- 2026-09-20 17:08 UTC+8：外部Globalping结果：`23KxuVAYUMwc4dcC400021AYb`北京/上海3210 `/api/version` 200（305/155ms）；`24sXFZ32KPrs8lU6A00021AYc`北京/深圳3210 `/signin` 200（440/433ms）；`2plPX70v761y4UayO00021AYc`北京/深圳443 TCP连接超时（14982/15003ms）。
+- 外部3210请求已在Nginx access.log看到真实外部IPv6来源，证书有效；本机无代理强制IPv6到443为301跳3210。记录已告知用户并索取实际地址/截图；本轮只更新项目记录，未变更线上服务。
 - 2026-09-20 17:04 UTC+8：重新完整读取 XJ、近期 YHYQ 和相关部署记忆；核对 Git、容器、IPv6 地址/路由、DNS、Nginx 实际配置/监听、fw4、DDNS 非敏感项和日志，线上未改动。
 - 路由器本轮启动约 05:02，LobeHub 已运行约12小时；DDNS 使用 pppoe-wan，AAAA 匹配当前地址；防火墙 WAN input ACCEPT、Lucky 附加链空，Nginx 实际配置为 `/etc/nginx/nginx.conf`，3210 双栈监听。
 - 外部 SSH 节点 f 无全局 IPv6/默认 IPv6 路由，不可把其 IPv6 探测失败算成家庭服务失败；ff 主机密钥与记录不一致，停止该入口，未绕过主机密钥校验。
