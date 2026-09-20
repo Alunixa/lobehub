@@ -7,10 +7,17 @@ import path from 'node:path';
 
 import { chromium, expect } from '@playwright/test';
 import superjson from 'superjson';
+import {
+  createMessageContentFixture,
+  verifyMessageContent as verifyMessageContentUI,
+} from '../message-content/previewFixture.mjs';
 
 const [previewPath, outputPath, probePath = '/image'] = process.argv.slice(2);
-const conversationFixture = probePath.startsWith('--conversation');
-const verifyConversation = conversationFixture && !probePath.endsWith('probe');
+const verifyMessageContent = probePath === '--message-content';
+const conversationFixture = probePath.startsWith('--conversation') || verifyMessageContent;
+const verifyConversation =
+  conversationFixture && !verifyMessageContent && !probePath.endsWith('probe');
+let messageContentFixture;
 const groupedReply = probePath.includes('grouped');
 const verifyCurrentTime = probePath === '--current-time';
 let timePreference = false;
@@ -104,6 +111,11 @@ let mobile = true;
 
 function rpc(method, input) {
   requests.push({ input, method });
+  if (verifyMessageContent) {
+    messageContentFixture ??= createMessageContentFixture(origin);
+    const result = messageContentFixture.rpc(method, input);
+    if (result) return result.data;
+  }
   if (verifyCurrentTime && method === 'user.updateSettings') {
     if (typeof input?.general?.injectCurrentTime === 'boolean') {
       timePreference = input.general.injectCurrentTime;
@@ -519,7 +531,20 @@ try {
       assert(!editing, `${route}: navigation must not autofocus a mobile input`);
     }
   };
-  if (verifyCurrentTime) {
+  if (verifyMessageContent) {
+    await verifyMessageContentUI({
+      page,
+      open,
+      capture,
+      setMobile: (value) => {
+        mobile = value;
+      },
+      getFixture: () => messageContentFixture,
+      requests,
+      assertions,
+    });
+    assert.equal(runtimeErrors.length, 0);
+  } else if (verifyCurrentTime) {
     for (const desktop of [false, true]) {
       mobile = !desktop;
       timePreference = false;
