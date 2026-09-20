@@ -117,11 +117,9 @@ export const messageRouter = router({
       return ctx.messageModel.queryAll(input);
     }),
 
-  count: messageProcedure
-    .input(messageAnalyticsSchema.optional())
-    .query(async ({ ctx, input }) => {
-      return ctx.messageModel.count(input);
-    }),
+  count: messageProcedure.input(messageAnalyticsSchema.optional()).query(async ({ ctx, input }) => {
+    return ctx.messageModel.count(input);
+  }),
 
   /**
    * Count messages grouped by topic (server-side GROUP BY), sorted by count

@@ -27,6 +27,45 @@ const mockIsCanUseVideo = vi.fn();
 const mockIsCanUseAudio = vi.fn();
 
 describe('MessageContentProcessor', () => {
+  it('projects inserted user context text, image and document content without changing its position', async () => {
+    const processor = new MessageContentProcessor({
+      fileContext: { enabled: true, includeFileUrl: false },
+      isCanUseVision: () => true,
+      model: 'gpt-4-vision',
+      provider: 'openai',
+    });
+    const result = await processor.process(
+      createContext([
+        { content: 'earlier', createdAt: 1, id: 'before', role: 'user', updatedAt: 1 },
+        {
+          content: 'custom context',
+          createdAt: 100,
+          id: 'context',
+          fileList: [
+            {
+              content: 'new document knowledge',
+              fileType: 'text/plain',
+              id: 'doc',
+              name: 'context.txt',
+              size: 20,
+              url: '/private-file',
+            },
+          ],
+          imageList: [{ alt: 'reference', id: 'image', url: 'https://example.test/reference.png' }],
+          metadata: { isCustomContext: true },
+          role: 'user',
+          updatedAt: 100,
+        },
+        { content: 'later', createdAt: 2, id: 'after', role: 'assistant', updatedAt: 2 },
+      ]),
+    );
+    expect(result.messages.map((message) => message.id)).toEqual(['before', 'context', 'after']);
+    const payload = JSON.stringify(result.messages[1].content);
+    expect(payload).toContain('custom context');
+    expect(payload).toContain('new document knowledge');
+    expect(payload).toContain('image_url');
+    expect(payload).not.toContain('/private-file');
+  });
   describe('Image processing functionality', () => {
     it('should downgrade image to placeholder text if model cannot use vision', async () => {
       mockIsCanUseVision.mockReturnValue(false);

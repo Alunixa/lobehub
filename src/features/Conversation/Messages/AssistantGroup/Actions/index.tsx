@@ -32,7 +32,13 @@ const IN_PROGRESS_BAR: MessageActionSlot[] = ['del'];
 // There's no text block to edit/copy, but the turn IS complete — it can still be
 // shared and, crucially, multi-selected/forwarded like a native reply.
 const NO_TEXT_BLOCK_BAR: MessageActionSlot[] = ['delAndRegenerate'];
-const NO_TEXT_BLOCK_MENU: MessageActionSlot[] = ['insertContext', 'share', 'select', 'divider', 'del'];
+const NO_TEXT_BLOCK_MENU: MessageActionSlot[] = [
+  'insertContext',
+  'share',
+  'select',
+  'divider',
+  'del',
+];
 
 interface GroupActionsProps {
   actionsConfig?: MessageActionsConfig;

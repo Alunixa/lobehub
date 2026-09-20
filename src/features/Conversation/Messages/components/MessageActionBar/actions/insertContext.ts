@@ -11,12 +11,15 @@ export const insertContextAction = defineAction({
   useBuild: (ctx) => {
     const { t } = useTranslation('chat');
     const { disabled, open } = useInsertContext(ctx.id);
-    return useMemo(() => ({
-      disabled,
-      handleClick: () => void open(),
-      icon: BetweenHorizontalStart,
-      key: 'insertContext',
-      label: t('messageContent.insertContext'),
-    }), [disabled, open, t]);
+    return useMemo(
+      () => ({
+        disabled,
+        handleClick: () => void open(),
+        icon: BetweenHorizontalStart,
+        key: 'insertContext',
+        label: t('messageContent.insertContext'),
+      }),
+      [disabled, open, t],
+    );
   },
 });

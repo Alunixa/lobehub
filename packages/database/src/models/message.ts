@@ -1554,12 +1554,15 @@ export class MessageModel {
           or(
             lte(messages.createdAt, sourceMessage.createdAt),
             eq(messages.id, sourceMessageId), // Ensure source message is always included
+            sql`${messages.metadata}->>'isCustomContext' = 'true'`,
           ),
         ),
       )
       .orderBy(asc(messages.createdAt));
 
-    return result as DBMessageItem[];
+    const positioned = orderMessagesWithContext(result as DBMessageItem[]);
+    const sourceIndex = positioned.findIndex((message) => message.id === sourceMessageId);
+    return sourceIndex < 0 ? positioned : positioned.slice(0, sourceIndex + 1);
   };
 
   findMessageQueriesById = async (messageId: string) => {

@@ -5,6 +5,7 @@ import {
   agentsToSessions,
   files,
   messageGroups,
+  messagePlugins,
   messages,
   sessions,
   topics,
@@ -22,9 +23,112 @@ import { MessageService } from '../index';
 // Mock FileService to avoid S3 environment variable requirements
 vi.mock('@/server/services/file', () => ({
   FileService: vi.fn().mockImplementation(() => ({
+    getFileAccessUrl: vi
+      .fn()
+      .mockImplementation(({ url }: { url: string }) => Promise.resolve(`/files${url}`)),
     getFullFileUrl: vi.fn().mockImplementation((path: string) => (path ? `/files${path}` : null)),
   })),
 }));
+
+describe('positioned context service integration', () => {
+  const topicId = 'positioned-service-topic';
+  let service: MessageService;
+  beforeEach(async () => {
+    service = new MessageService(serverDB, userId);
+    await serverDB.insert(topics).values({ id: topicId, title: 'context test', userId });
+    await serverDB.insert(messages).values([
+      {
+        content: 'question',
+        createdAt: new Date(1000),
+        id: 'context-u1',
+        role: 'user',
+        topicId,
+        userId,
+      },
+      {
+        content: '',
+        createdAt: new Date(2000),
+        id: 'context-a1',
+        parentId: 'context-u1',
+        role: 'assistant',
+        topicId,
+        tools: [
+          {
+            apiName: 'readFile',
+            arguments: '{}',
+            id: 'context-call',
+            identifier: 'local',
+            type: 'builtin',
+          },
+        ],
+        userId,
+      },
+      {
+        content: 'file text',
+        createdAt: new Date(3000),
+        id: 'context-tool',
+        parentId: 'context-a1',
+        role: 'tool',
+        topicId,
+        userId,
+      },
+    ]);
+    await serverDB
+      .insert(messagePlugins)
+      .values({ id: 'context-tool', toolCallId: 'context-call', userId });
+  });
+
+  it('inserts after a grouped tool turn without splitting the tool call and result', async () => {
+    await serverDB
+      .insert(messages)
+      .values({
+        content: 'next question',
+        createdAt: new Date(4000),
+        id: 'context-u2',
+        parentId: 'context-a1',
+        role: 'user',
+        topicId,
+        userId,
+      });
+    const result = await service.insertContextMessage({
+      anchorId: 'context-a1',
+      content: 'injected context',
+      fileIds: ['f1'],
+      id: 'context-new',
+      position: 'after',
+    });
+    expect(result.success).toBe(true);
+    expect(result.messages?.map((message) => message.id)).toEqual([
+      'context-u1',
+      'context-a1',
+      'context-tool',
+      'context-new',
+      'context-u2',
+    ]);
+    expect(
+      result.messages?.find((message) => message.id === 'context-new')?.imageList?.[0].id,
+    ).toBe('f1');
+    expect(result.messages?.find((message) => message.id === 'context-tool')?.parentId).toBe(
+      'context-a1',
+    );
+  });
+
+  it('inserts after a final tool result and does not trigger generation', async () => {
+    const result = await service.insertContextMessage({
+      anchorId: 'context-a1',
+      content: 'end context',
+      fileIds: [],
+      id: 'context-end',
+      position: 'after',
+    });
+    expect(result.messages?.map((message) => message.id)).toEqual([
+      'context-u1',
+      'context-a1',
+      'context-tool',
+      'context-end',
+    ]);
+  });
+});
 
 const serverDB: LobeChatDatabase = await getTestDB();
 

@@ -33,7 +33,9 @@ export const useMessageAttachments = (initial: MessageAttachment[]) => {
   const upload = async (item: PendingAttachment) => {
     const controller = new AbortController();
     controllers.current.set(item.id, controller);
-    setPending((list) => list.map((entry) => entry.id === item.id ? { ...entry, error: false } : entry));
+    setPending((list) =>
+      list.map((entry) => (entry.id === item.id ? { ...entry, error: false } : entry)),
+    );
     try {
       const uploaded = await useFileStore.getState().uploadWithProgress({
         abortController: controller,
@@ -41,9 +43,13 @@ export const useMessageAttachments = (initial: MessageAttachment[]) => {
         uploadId: item.id,
         onStatusUpdate: (event) => {
           if (!mounted.current || controller.signal.aborted || event.type !== 'updateFile') return;
-          setPending((list) => list.map((entry) => entry.id === item.id
-            ? { ...entry, progress: event.value.uploadState?.progress ?? entry.progress }
-            : entry));
+          setPending((list) =>
+            list.map((entry) =>
+              entry.id === item.id
+                ? { ...entry, progress: event.value.uploadState?.progress ?? entry.progress }
+                : entry,
+            ),
+          );
         },
       });
       if (!uploaded) throw new Error('Attachment upload did not complete');
@@ -57,8 +63,9 @@ export const useMessageAttachments = (initial: MessageAttachment[]) => {
     } catch (error) {
       if (!mounted.current || controller.signal.aborted) return;
       console.error('Message attachment upload failed:', error);
-      setPending((list) => list.map((entry) =>
-        entry.id === item.id ? { ...entry, error: true } : entry));
+      setPending((list) =>
+        list.map((entry) => (entry.id === item.id ? { ...entry, error: true } : entry)),
+      );
     } finally {
       controllers.current.delete(item.id);
     }

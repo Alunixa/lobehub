@@ -19,7 +19,10 @@ const EditorModal = dynamic(
   { ssr: false },
 );
 const UserMessageEditor = dynamic(
-  () => import('@/features/MessageContentEditor/UserMessageEditor').then((module) => module.UserMessageEditor),
+  () =>
+    import('@/features/MessageContentEditor/UserMessageEditor').then(
+      (module) => module.UserMessageEditor,
+    ),
   { ssr: false },
 );
 

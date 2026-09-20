@@ -1,6 +1,6 @@
+import { parse } from '@lobechat/conversation-flow';
 import { type LobeChatDatabase } from '@lobechat/database';
 import { CompressionRepository } from '@lobechat/database';
-import { parse } from '@lobechat/conversation-flow';
 import {
   type CreateMessageParams,
   type EditMessageContentParams,

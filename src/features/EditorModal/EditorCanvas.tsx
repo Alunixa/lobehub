@@ -10,11 +10,11 @@ import { useIsMobile } from '@/hooks/useIsMobile';
 import TypoBar from './Typobar';
 
 interface EditorCanvasProps {
+  compact?: boolean;
   defaultValue?: string;
   editor?: IEditor;
   editorData?: unknown;
   onChange?: () => void;
-  compact?: boolean;
 }
 
 const EDITOR_PLUGINS = [
@@ -22,7 +22,13 @@ const EDITOR_PLUGINS = [
   ReactTablePlugin,
 ];
 
-const EditorCanvas: FC<EditorCanvasProps> = ({ defaultValue, editor, editorData, onChange, compact }) => {
+const EditorCanvas: FC<EditorCanvasProps> = ({
+  defaultValue,
+  editor,
+  editorData,
+  onChange,
+  compact,
+}) => {
   const mobile = useIsMobile();
   const { content, type } = useMemo(() => {
     const hasValidEditorData =
@@ -40,7 +46,12 @@ const EditorCanvas: FC<EditorCanvasProps> = ({ defaultValue, editor, editorData,
       <TypoBar editor={editor} />
       <Flexbox
         padding={16}
-        style={{ cursor: 'text', maxHeight: compact ? '38dvh' : '80vh', minHeight: compact ? '20dvh' : '50vh', overflowY: 'auto' }}
+        style={{
+          cursor: 'text',
+          maxHeight: compact ? '38dvh' : '80vh',
+          minHeight: compact ? '20dvh' : '50vh',
+          overflowY: 'auto',
+        }}
       >
         <Editor
           autoFocus={!mobile}
@@ -49,10 +60,10 @@ const EditorCanvas: FC<EditorCanvasProps> = ({ defaultValue, editor, editorData,
           plugins={EDITOR_PLUGINS}
           type={type}
           variant={'chat'}
-          onChange={onChange}
           style={{
             paddingBottom: compact ? 24 : 120,
           }}
+          onChange={onChange}
         />
       </Flexbox>
     </>

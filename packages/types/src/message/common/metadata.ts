@@ -241,8 +241,6 @@ export interface ModelPerformance {
 }
 
 export interface MessageMetadata {
-  /** User-authored context inserted into an existing conversation. */
-  isCustomContext?: boolean;
   // ───────────────────────────────────────────────────────────────
   // Token usage + performance fields — DEPRECATED flat shape.
   // Token usage now lives in the dedicated top-level `usage` column
@@ -321,6 +319,8 @@ export interface MessageMetadata {
    * Thread's sourceMessageId links back to this message for status tracking
    */
   instruction?: string;
+  /** User-authored context inserted into an existing conversation. */
+  isCustomContext?: boolean;
   /**
    * Flag indicating if message content is multimodal (serialized MessageContentPart[])
    */

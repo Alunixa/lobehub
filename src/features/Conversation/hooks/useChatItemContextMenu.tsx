@@ -136,10 +136,14 @@ export const useChatItemContextMenu = ({
       !canEdit
         ? items.filter((item) => 'key' in item && item.key === 'copy')
         : [
-          ...items.slice(0, 1),
-          { disabled: contextDisabled, key: 'insertContext', label: t('messageContent.insertContext', { ns: 'chat' }) },
-          ...items.slice(1),
-        ].map((item) => {
+            ...items.slice(0, 1),
+            {
+              disabled: contextDisabled,
+              key: 'insertContext',
+              label: t('messageContent.insertContext', { ns: 'chat' }),
+            },
+            ...items.slice(1),
+          ].map((item) => {
             if ('type' in item && item.type === 'divider') return item;
             if (['edit', 'del'].includes(String(item.key))) return { ...item, disabled: !canEdit };
             if (

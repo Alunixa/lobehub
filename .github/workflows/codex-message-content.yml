@@ -1,0 +1,74 @@
+name: Codex Message Content Regression
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - codex/**
+    paths:
+      - .github/workflows/codex-message-content.yml
+      - apps/server/src/routers/lambda/message.ts
+      - apps/server/src/services/message/**
+      - packages/conversation-flow/**
+      - packages/database/src/models/message*
+      - packages/database/src/models/__tests__/messageContent.test.ts
+      - packages/types/src/message/**
+      - src/features/Conversation/**
+      - src/features/EditorModal/**
+      - src/features/MessageContentEditor/**
+      - src/services/message/**
+      - tests/message-content/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codex-message-content-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+      - run: pnpm install
+      - name: Lint message editing and insertion
+        run: |
+          node node_modules/eslint/bin/eslint.js --pass-on-unpruned-suppressions \
+            src/features/MessageContentEditor \
+            src/features/EditorModal \
+            src/features/Conversation/hooks/useInsertContext.ts \
+            src/features/Conversation/hooks/useChatItemContextMenu.tsx \
+            src/features/Conversation/ChatItem/components/MessageContent/index.tsx \
+            src/features/Conversation/store/slices/message/action/content.ts \
+            src/features/Conversation/Messages/components/MessageActionBar/actions/insertContext.ts \
+            src/features/Conversation/Messages/components/MessageActionBar/useBuildActions.ts \
+            src/features/Conversation/Messages/User/components/MessageContent.tsx \
+            apps/server/src/services/message/index.ts \
+            packages/database/src/models/messageContent.ts \
+            packages/conversation-flow/src/orderMessagesWithContext.ts \
+            packages/types/src/message/context.ts
+      - name: Upload, draft and ordering logic
+        run: node node_modules/vitest/vitest.mjs run --config tests/message-content/vitest.config.mts --silent=passed-only
+      - name: Database atomicity, ownership, ordering, branches and duplication
+        working-directory: packages/database
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only \
+            src/models/__tests__/messageContent.test.ts \
+            src/models/__tests__/messages/message.thread-query.test.ts \
+            src/models/__tests__/topic.test.ts
+      - name: Real store, editor and grouped tool boundary integration
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only \
+            src/features/Conversation/store/slices/message/action/content.test.ts \
+            src/features/Conversation/store/slices/message/action/crud.test.ts \
+            src/features/EditorModal/EditorCanvas.test.tsx \
+            src/features/Conversation/Messages/User/components/MessageContent.test.tsx \
+            src/features/Conversation/Messages/components/MessageActionBar/index.test.tsx \
+            src/features/Conversation/Messages/AssistantGroup/Actions/index.test.tsx \
+            apps/server/src/services/message/__tests__/index.integration.test.ts
+      - name: Model-bound image and document context projection
+        working-directory: packages/context-engine
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/processors/__tests__/MessageContent.test.ts

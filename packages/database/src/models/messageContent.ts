@@ -3,7 +3,14 @@ import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 
 import { sanitizeNullBytes } from '@/utils/sanitizeNullBytes';
 
-import { files, messages, messagesFiles, topics } from '../schemas';
+import {
+  files,
+  messageQueries,
+  messageQueryChunks,
+  messages,
+  messagesFiles,
+  topics,
+} from '../schemas';
 import type { LobeChatDatabase, Transaction } from '../type';
 import { buildWorkspacePayload, buildWorkspaceWhere } from '../utils/workspace';
 
@@ -55,13 +62,32 @@ export class MessageContentModel {
         .update(messages)
         .set({ content: sanitizeNullBytes(content), editorData: editorData ?? null })
         .where(eq(messages.id, id));
+      // Old retrieval snippets were derived from the previous text/file set.
+      // Reusing them after removal would still send removed context to the AI.
+      await tx
+        .delete(messageQueryChunks)
+        .where(
+          and(
+            eq(messageQueryChunks.messageId, id),
+            buildWorkspaceWhere(this.scope, messageQueryChunks),
+          ),
+        );
+      await tx
+        .delete(messageQueries)
+        .where(
+          and(eq(messageQueries.messageId, id), buildWorkspaceWhere(this.scope, messageQueries)),
+        );
       await tx
         .delete(messagesFiles)
-        .where(and(eq(messagesFiles.messageId, id), buildWorkspaceWhere(this.scope, messagesFiles)));
-      if (ids.length) {
-        await tx.insert(messagesFiles).values(
-          ids.map((fileId) => buildWorkspacePayload(this.scope, { fileId, messageId: id })),
+        .where(
+          and(eq(messagesFiles.messageId, id), buildWorkspaceWhere(this.scope, messagesFiles)),
         );
+      if (ids.length) {
+        await tx
+          .insert(messagesFiles)
+          .values(
+            ids.map((fileId) => buildWorkspacePayload(this.scope, { fileId, messageId: id })),
+          );
       }
       return message;
     });
@@ -73,9 +99,7 @@ export class MessageContentModel {
       const [candidate] = await tx
         .select({ topicId: messages.topicId })
         .from(messages)
-        .where(
-          and(eq(messages.id, params.anchorId), buildWorkspaceWhere(this.scope, messages)),
-        );
+        .where(and(eq(messages.id, params.anchorId), buildWorkspaceWhere(this.scope, messages)));
       if (!candidate?.topicId) throw new Error('Save the conversation before inserting context');
       await tx
         .select({ id: topics.id })
@@ -93,7 +117,8 @@ export class MessageContentModel {
           existing.userId !== this.userId ||
           existing.topicId !== candidate.topicId ||
           !metadata?.isCustomContext
-        ) throw new Error('Message ID is already in use');
+        )
+          throw new Error('Message ID is already in use');
         return existing;
       }
 
@@ -107,7 +132,8 @@ export class MessageContentModel {
       if (
         (params.position === 'before' && anchor.role === 'tool') ||
         (params.position === 'after' && Array.isArray(anchor.tools) && anchor.tools.length)
-      ) throw new Error('Context cannot split a tool call and its results');
+      )
+        throw new Error('Context cannot split a tool call and its results');
 
       const ids = await this.validateFiles(tx, params.fileIds);
       if (!params.content.trim() && !ids.length) throw new Error('Context cannot be empty');
@@ -156,11 +182,13 @@ export class MessageContentModel {
           );
       }
       if (ids.length) {
-        await tx.insert(messagesFiles).values(
-          ids.map((fileId) =>
-            buildWorkspacePayload(this.scope, { fileId, messageId: inserted.id }),
-          ),
-        );
+        await tx
+          .insert(messagesFiles)
+          .values(
+            ids.map((fileId) =>
+              buildWorkspacePayload(this.scope, { fileId, messageId: inserted.id }),
+            ),
+          );
       }
       await tx.update(topics).set({ updatedAt: new Date() }).where(eq(topics.id, anchor.topicId!));
       return inserted;

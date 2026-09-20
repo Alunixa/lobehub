@@ -16,8 +16,10 @@ const loadDraft = (key: string, fallback: MessageContentDraft): MessageContentDr
       return fallback;
     const attachments = raw.attachments.filter(
       (item): item is MessageAttachment =>
-        isRecord(item) && typeof item.id === 'string' &&
-        typeof item.name === 'string' && typeof item.url === 'string',
+        isRecord(item) &&
+        typeof item.id === 'string' &&
+        typeof item.name === 'string' &&
+        typeof item.url === 'string',
     );
     return {
       attachments,
@@ -37,8 +39,11 @@ export const useContentDraft = (key: string, fallback: MessageContentDraft) => {
   const [storageError, setStorageError] = useState(false);
   return {
     clear: () => {
-      try { localStorage.removeItem(key); }
-      catch (error) { console.error('Failed to clear message content draft:', error); }
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.error('Failed to clear message content draft:', error);
+      }
     },
     content,
     editorData,

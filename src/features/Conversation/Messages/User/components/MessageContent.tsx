@@ -34,7 +34,9 @@ const UserMessageContent = memo<UIChatMessage>(
 
     return (
       <Flexbox gap={8} id={id}>
-        {metadata?.isCustomContext && <Text type={'secondary'}>{t('messageContent.contextLabel')}</Text>}
+        {metadata?.isCustomContext && (
+          <Text type={'secondary'}>{t('messageContent.contextLabel')}</Text>
+        )}
         {pageSelections && pageSelections.length > 0 && (
           <PageSelections selections={pageSelections} />
         )}

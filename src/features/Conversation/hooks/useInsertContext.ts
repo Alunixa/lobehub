@@ -6,7 +6,12 @@ import { usePermission } from '@/hooks/usePermission';
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
 
-import { dataSelectors, messageStateSelectors, useConversationStore, useConversationStoreApi } from '../store';
+import {
+  dataSelectors,
+  messageStateSelectors,
+  useConversationStore,
+  useConversationStoreApi,
+} from '../store';
 
 export const useInsertContext = (id: string) => {
   const { t } = useTranslation('chat');
@@ -15,8 +20,9 @@ export const useInsertContext = (id: string) => {
   const userId = useUserStore(userProfileSelectors.userId);
   const { allowed: canCreate } = usePermission('create_content');
   const { allowed: canEdit } = usePermission('edit_own_content');
-  const disabled = useConversationStore((s) =>
-    !s.context.topicId || messageStateSelectors.isInputLoading(s));
+  const disabled = useConversationStore(
+    (s) => !s.context.topicId || messageStateSelectors.isInputLoading(s),
+  );
   const open = useCallback(async () => {
     const state = api.getState();
     if (!canCreate || !canEdit) return;
@@ -29,7 +35,8 @@ export const useInsertContext = (id: string) => {
     // Virtual groups use their first real message as a stable server-side anchor.
     const anchorId = item.children?.[0]?.id ?? item.id;
     try {
-      const { openContextMessageEditor } = await import('@/features/MessageContentEditor/ContextMessageEditor');
+      const { openContextMessageEditor } =
+        await import('@/features/MessageContentEditor/ContextMessageEditor');
       openContextMessageEditor({
         anchorId,
         draftKey: `lobehub:context:${userId}:${state.context.topicId}:${state.context.threadId ?? 'main'}:${anchorId}`,

@@ -10,8 +10,11 @@ export const getMessageAttachments = (message?: UIChatMessage): MessageAttachmen
   if (!message) return [];
   const attachments = [
     ...(message.fileList ?? []).map(({ id, name, url }) => ({ id, name, url })),
-    ...[...(message.imageList ?? []), ...(message.videoList ?? []), ...(message.audioList ?? [])]
-      .map(({ id, alt, url }) => ({ id, name: alt || id, url })),
+    ...[
+      ...(message.imageList ?? []),
+      ...(message.videoList ?? []),
+      ...(message.audioList ?? []),
+    ].map(({ id, alt, url }) => ({ id, name: alt || id, url })),
   ];
   return [...new Map(attachments.map((attachment) => [attachment.id, attachment])).values()];
 };

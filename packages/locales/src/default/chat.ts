@@ -2,15 +2,19 @@ export default {
   'messageContent.addAttachments': 'Add attachments',
   'messageContent.after': 'After this message',
   'messageContent.before': 'Before this message',
-  'messageContent.contextDescription': 'Insert text and attachments as user-provided context at this position. Existing replies stay unchanged; no AI response is started. Future requests use this context within the conversation history limit.',
+  'messageContent.contextDescription':
+    'Insert text and attachments as user-provided context at this position. Existing replies stay unchanged; no AI response is started. Future requests use this context within the conversation history limit.',
   'messageContent.contextLabel': 'Custom context',
-  'messageContent.draftFailed': 'The browser could not back up this draft. Keep this window open until it is saved.',
+  'messageContent.draftFailed':
+    'The browser could not back up this draft. Keep this window open until it is saved.',
   'messageContent.editTitle': 'Edit message and attachments',
   'messageContent.insertContext': 'Insert context here',
   'messageContent.position': 'Insertion position',
-  'messageContent.saveFailed': 'Could not save. Your text and attachments are kept here; please retry.',
+  'messageContent.saveFailed':
+    'Could not save. Your text and attachments are kept here; please retry.',
   'messageContent.uploadFailed': 'Upload or processing failed',
-  'messageContent.waitForResponse': 'Save the conversation and wait for the current response to finish first.',
+  'messageContent.waitForResponse':
+    'Save the conversation and wait for the current response to finish first.',
   'ModelSwitch.title': 'Model',
   'active': 'Active',
   'audioPlayer.pause': 'Pause audio',

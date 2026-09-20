@@ -25,8 +25,13 @@ export interface MessageContentEditorProps {
 }
 
 export const MessageContentEditor = ({
-  attachments: initialAttachments = [], children, draftKey, editorData: initialEditorData,
-  onCancel, onSave, value = '',
+  attachments: initialAttachments = [],
+  children,
+  draftKey,
+  editorData: initialEditorData,
+  onCancel,
+  onSave,
+  value = '',
 }: MessageContentEditorProps) => {
   const { t } = useTranslation(['chat', 'common']);
   const editor = useEditor();
@@ -40,9 +45,15 @@ export const MessageContentEditor = ({
     editorData: isRecord(initialEditorData) ? initialEditorData : undefined,
   });
   const uploads = useMessageAttachments(draft.initial.attachments);
-  usePersistContentDraft(draftKey, {
-    attachments: uploads.attachments, content: draft.content, editorData: draft.editorData,
-  }, draft.setStorageError);
+  usePersistContentDraft(
+    draftKey,
+    {
+      attachments: uploads.attachments,
+      content: draft.content,
+      editorData: draft.editorData,
+    },
+    draft.setStorageError,
+  );
 
   const save = async () => {
     if (savingRef.current || uploads.pending.length) return;
@@ -111,11 +122,14 @@ export const MessageContentEditor = ({
           {uploads.pending.map((item) => (
             <Flexbox horizontal align={'center'} gap={8} key={item.id} wrap={'wrap'}>
               <Text style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>
-                {item.file.name} · {item.error ? t('messageContent.uploadFailed') : `${Math.round(item.progress)}%`}
+                {item.file.name} ·{' '}
+                {item.error ? t('messageContent.uploadFailed') : `${Math.round(item.progress)}%`}
               </Text>
-              {item.error && <Button size={'small'} onClick={() => void uploads.retry(item)}>
-                {t('common:retry')}
-              </Button>}
+              {item.error && (
+                <Button size={'small'} onClick={() => void uploads.retry(item)}>
+                  {t('common:retry')}
+                </Button>
+              )}
               <Button size={'small'} onClick={() => uploads.remove(item.id)}>
                 {t('common:remove')}
               </Button>
@@ -142,11 +156,15 @@ export const MessageContentEditor = ({
           {t('messageContent.addAttachments')}
         </Button>
         <Flexbox horizontal gap={8}>
-          <Button disabled={saving} onClick={onCancel}>{t('common:cancel')}</Button>
+          <Button disabled={saving} onClick={onCancel}>
+            {t('common:cancel')}
+          </Button>
           <Button
-            disabled={!!uploads.pending.length || (!draft.content.trim() && !uploads.attachments.length)}
             loading={saving}
             type={'primary'}
+            disabled={
+              !!uploads.pending.length || (!draft.content.trim() && !uploads.attachments.length)
+            }
             onClick={() => void save()}
           >
             {t('common:save')}
