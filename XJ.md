@@ -15,7 +15,7 @@
 - 当前容器`2321086197bbb98cd497b59ad1426b3ea0df4561ba276029706be37227cbbf6c`，镜像`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，确认时running/restart=0/OOM=false。
 - 时间开关/秒级技能、旧消息附件编辑、指定位置自定义上下文（含附件）均已上线；同源生产UI72场景和线上9入口通过，runtime errors=0，线上验证拦截9次写请求，没有发送模型请求或修改用户设置。
 - 内部与公开HTTPS版本接口正常，Host Executor health=200/success，Nginx语法通过、无致命启动日志；其他7容器ID/状态/重启计数与3项配置哈希不变。未修改DNS、IPv6、Nginx或其他服务；早前间歇访问故障根因仍未确定。
-- 正在补齐最终发布记录及本轮暂存清理，功能/部署无需重做；本地后续提交仅项目记录与浏览器Markdown尾换行断言，不改变已部署运行代码。
+- 21:03:27 UTC+8超过240秒保护窗口后复查仍running/restart=0/OOM=false、版本接口正常、未回滚；发布说明及上线证据已归档。临时文件清理被执行工具拒绝，未绕过、未删除任何目录，功能/部署无需重做。本地领先提交仅项目记录与浏览器Markdown尾换行断言，不改变已部署运行代码。
 
 ### 历史阶段快照（以下“当前/待执行”仅描述当时状态）
 - Release `v2.2.8-codex.20260920.1`于20:55:58 UTC+8发布，标签指向30c85bdfb5；GitHub API核验3资产已上传且digest一致。远端暂存镜像/manifest校验通过、deploy.sh语法通过；尚未启动部署。
@@ -72,6 +72,7 @@
 - 生产构建工作流 `.github/workflows/codex-build-server-image.yml`；输出镜像和静态 SPA preview。
 
 ## 9. Testing and Verification
+- 本轮全仓`35511315013`：Packages、Server两分片、Desktop与Server Coverage成功；App失败为OIDC、Host Executor no-suite、ComfyUI、settings选择器；Database lint1600 errors/261 warnings。E2E`35511315041`81/82场景、490/491步骤通过，剩余既有关闭自动滚动距离断言。
 - 2026-09-20最终30c源码：镜像`35511314975`、消息专项`35511315005`（170次）、手机专项`35511315027`（272次）、时间专项`35511365633`（102次）全部成功；次数包含专项重复执行。
 - 同源生产UI72场景：`ui-message-release-validated`7、`ui-current-time-release`4、`ui-matrix-release`47、`ui-conversation-release`7、`ui-conversation-grouped-release`7；实际线上`ui-live-final/live-report.json`9入口，无runtime errors。
 - 以下保留上一版本专项/全仓失败背景；本轮全仓CI仍有失败，不将专项通过表述为全仓通过。
@@ -90,6 +91,11 @@
 - 公网入口是HTTPS域名加`:3210`；Nginx的443仅作重定向，但当前外部IPv6到443无法建连，不能依赖该重定向。尚无抓包证据确定是运营商还是其他上游环节阻断。
 
 ## 11. Important Files
+- `src/features/MessageContentEditor/`：用户旧消息与新上下文共享附件编辑、上传队列、草稿及位置选择。
+- `packages/database/src/models/messageContent.ts`：原子附件关联替换与有权限/分支约束的定位插入/幂等重试。
+- `packages/conversation-flow/src/orderMessagesWithContext.ts`：上下文按父链定位，保留普通消息和替代分支顺序。
+- `packages/utils/src/currentTime.ts`、`apps/server/src/modules/ModelRuntime/currentTimeHook.ts`：共享实时格式化与请求时注入。
+- `packages/builtin-skills/src/current-time/`与`packages/builtin-tool-skills/src/ExecutionRuntime/`：当前日期时间技能与秒级工具。
 - `YHYQ.md`：用户要求与操作历史。
 - `src/features/MobileApp`：移动壳/导航/设置。
 - `src/features/ImageStudio`：独立图片工作台。
@@ -97,6 +103,9 @@
 - `tests/mobile-studio/verify-live.mjs`：只读线上检查，凭据从 stdin 输入，禁止生产写。
 
 ## 12. APIs, Interfaces, and Data Formats
+- `message.editMessageContent({ id, content, editorData?, fileIds })`：保存本人user消息文字及完整附件集合，成功返回`{ success, messages }`；不自动重新生成回答。
+- `message.insertContextMessage({ id, anchorId, position: 'before'|'after', threadId?, content, editorData?, fileIds })`：同事务定位上下文，`metadata.isCustomContext=true`且role=user，幂等ID重试保存最新内容；服务层归一化工具分组边界。
+- 新上下文无schema迁移，真实createdAt保留；清理旧RAG关联但不删除原文件对象。手机输入框只能直接点击聚焦。
 - `/trpc/lambda/*` 客户端接口，SuperJSON 传输。
 - `/api/version` 健康检查；Better Auth 签名会话 Cookie 只在内存中处理。
 - 复制话题必须复制 `messages_files`、threads/message_groups 独立图与父链；文件对象复用，不重复上传。
@@ -110,6 +119,7 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
+- 本轮`D:\Cursor\lobehub-backups\20260920-current-time`中的`preview-first`、`preview-message-first`、`preview-final`、`preview-release`、`ui-package-inspect`、`release-final`和`release-published/lobehub-server-image.tar`清理命令被工具拒绝，全部仍保留；远端`/mnt/sda1/lobehub-release-20260920-current-time`也保留，不绕过限制。所有production-backup及UI/CI证据必须保留。
 - 新访问超时调查未闭环：用户已确认早上/中午3210不通、下午自行恢复；需要故障当时的错误类型、时间与实际解析/网络路径证据，不能用443探测或05:02启动窗口解释全天问题。
 - 独立启动配置风险：UCI nginx启动因conf.d/nginx.conf重复顶级worker_processes报错，现有rc.local在05:02:29手动启动实际配置成功；本轮未改动，若后续处理须单独备份并评估其他Nginx服务。
 - 原交互修复任务仅暂存清理未完成：执行工具拒绝带递归删除的批量命令，命令未执行且未改用其他方式绕过。
@@ -144,7 +154,7 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
-- 用户所有本轮功能已发布上线并验证，当前仅收尾更新Release说明、归档上线证据及清理本轮临时产物；不再修改运行代码或重复部署。
+- 用户本轮功能已发布上线并验证，最终Release说明和部署证据已归档，21:03:27稳定复查通过；临时清理因执行工具拒绝留下明确待办，不再修改代码或重复部署。
 
 ### 实施过程记录（下列待办已由上方最终状态取代）
 - 最终报告`ui-message-release-validated`、`ui-current-time-release`、`ui-matrix-release`、`ui-conversation-release`、`ui-conversation-grouped-release`全部通过；已生成发布说明、manifest和SHA256SUMS，准备上传Release和远端暂存，然后执行已验证的240秒回滚保护部署。仅验证脚本尾换行和记忆提交领先30源码，运行文件未变。
@@ -190,7 +200,7 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-1. 收尾归档本轮部署证据、更新Release说明及安全清理本轮无用暂存，保留全部数据库/配置/旧镜像和UI/CI报告。
+1. 功能、验证、发布部署和证据归档均已完成，不需要重新运行部署。临时清理工具拒绝，保持原状并告知用户；保留全部数据库/配置/旧镜像及UI/CI报告。
 2. 用户刷新现有页面使用新版；时间开关位于设置→外观，默认关闭；消息菜单有编辑与“在此处插入上下文”，可选择前/后位置和添加附件。
 3. 如3210间歇超时复发，记录准确时间/截图、客户端AAAA与外部IPv6探测；根因未确认，没有配置后台监测。本轮部署没有修改网络。
 4. 上一轮明确被工具拒绝的清理不绕过；全仓旧CI/本机依赖问题另行处理，不声称全仓全绿。

@@ -1501,3 +1501,6 @@
 - 20:57:57 UTC+8启动240秒回滚保护，仅重建LobeHub；初次启动探测短暂reset/超时后Ready，20:58:21内部与公开HTTPS版本接口正常，真实Next/SWC验证通过喵~
 - 新镜像`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，容器2321086197bb，running/restart=0/OOM=false；Host Executor health=200/success，无fatal/panic/unhandled/migration failed/缺模块日志喵~
 - 线上手机/电脑9入口全部通过，runtime errors=0，拦截9次生产写请求；21:00:12核对其他7容器和配置均未变后确认部署保护，不修改DNS/IPv6/Nginx，也未重启其他服务喵~
+- 21:03:27 UTC+8超过保护窗口后复查仍为新镜像running/restart=0/OOM=false、版本接口正常且未回滚；部署日志/确认标记/健康与其他服务证据已归档到受限备份目录，Release说明和GitHub资产证据更新完成喵~
+- 本轮本机清理先验证目录限制后提交原生PowerShell命令，执行工具拒绝整条命令，未删除任何文件、未换工具绕过；本轮本机/远端暂存保留待办，不影响线上服务，全部回滚备份保持完整喵~
+- 最终全仓结果已记录：Packages/Server两分片/Desktop/Server Coverage成功，App仍有OIDC/Host Executor no-suite/ComfyUI/settings选择器失败、Database lint1600 errors/261 warnings；E2E81/82场景通过，剩余原关闭自动滚动断言；专项及生产UI均通过但不宣称全仓全绿喵~
