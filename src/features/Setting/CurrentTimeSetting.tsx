@@ -1,8 +1,8 @@
 'use client';
 
 import { resolveTimeZone } from '@lobechat/utils/currentTime';
-import { Alert, FormGroup } from '@lobehub/ui';
-import { Switch } from '@lobehub/ui/base-ui';
+import { FormGroup } from '@lobehub/ui';
+import { Alert, Switch } from '@lobehub/ui/base-ui';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -45,7 +45,7 @@ export const CurrentTimeSetting = memo(() => {
         />
       }
     >
-      {failed ? <Alert message={t('settingCommon.currentTime.saveFailed')} type={'error'} /> : null}
+      {failed ? <Alert title={t('settingCommon.currentTime.saveFailed')} type={'error'} /> : null}
     </FormGroup>
   );
 });

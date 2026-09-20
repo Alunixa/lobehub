@@ -2,6 +2,7 @@ import { AgentBuilderIdentifier } from '@lobechat/builtin-tool-agent-builder';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
 import { REQUEST_TRIGGER_HEADER } from '@lobechat/const';
 import { createVisualFileRef } from '@lobechat/const/visualRef';
+import { ModelRuntime } from '@lobechat/model-runtime';
 import type { ChatStreamPayload, LobeTool, UIChatMessage } from '@lobechat/types';
 import { ChatErrorType, RequestTrigger } from '@lobechat/types';
 import { act } from '@testing-library/react';
@@ -14,7 +15,7 @@ import * as toolEngineeringModule from '@/helpers/toolEngineering';
 import { agentDocumentService } from '@/services/agentDocument';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors, chatConfigByIdSelectors } from '@/store/agent/selectors';
-import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
+import { aiModelSelectors, aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useChatStore } from '@/store/chat';
 import { useToolStore } from '@/store/tool';
 import { useUserStore } from '@/store/user';
@@ -1714,12 +1715,12 @@ describe('ChatService', () => {
       const original = [{ content: 'What time is it?', role: 'user' as const }];
       const snapshots: ChatStreamPayload[] = [];
       vi.spyOn(chatHelper, 'isEnableFetchOnClient').mockReturnValue(true);
-      vi.spyOn(mechaModule, 'initializeWithClientStore').mockResolvedValue({
-        chat: async (payload: ChatStreamPayload) => {
-          snapshots.push(structuredClone(payload));
-          return new Response('test response');
-        },
-      } as Awaited<ReturnType<typeof mechaModule.initializeWithClientStore>>);
+      const runtime = new ModelRuntime('openai', { apiKey: 'test-current-time' });
+      vi.spyOn(runtime, 'chat').mockImplementation(async (payload) => {
+        snapshots.push(structuredClone(payload));
+        return new Response('test response');
+      });
+      vi.spyOn(mechaModule, 'initializeWithClientStore').mockResolvedValue(runtime);
       mockFetchSSE.mockImplementation((_url: string, options: { fetcher: typeof fetch }) =>
         options.fetcher('https://unused.test'),
       );
@@ -1792,6 +1793,8 @@ describe('ChatService', () => {
     });
 
     it('should send instructions through the system layer for providers without a native field', async () => {
+      // This fixture exercises chat-completion mode, not the provider's Responses override.
+      vi.spyOn(aiProviderSelectors, 'isProviderEnableResponseApi').mockReturnValue(() => false);
       await chatService.getChatCompletion(
         {
           instructions: 'Advanced rule',

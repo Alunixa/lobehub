@@ -437,11 +437,6 @@ class ChatService {
        */
       fetcher = async () => {
         try {
-          const general = userGeneralSettingsSelectors.config(getUserStoreState());
-          payload.messages = withCurrentTime(payload.messages ?? [], {
-            ...general,
-            timezone: general.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
-          });
           return await this.fetchOnClient({
             payload,
             provider,
@@ -611,6 +606,11 @@ class ChatService {
       runtimeProvider: params.runtimeProvider,
     });
     const data = params.payload as ChatStreamPayload;
+    const general = userGeneralSettingsSelectors.config(getUserStoreState());
+    data.messages = withCurrentTime(data.messages ?? [], {
+      ...general,
+      timezone: general.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+    });
 
     return agentRuntime.chat(data, { signal: params.signal });
   };
