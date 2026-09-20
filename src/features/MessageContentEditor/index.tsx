@@ -115,7 +115,7 @@ export const MessageContentEditor = ({
             <Flexbox horizontal align={'center'} gap={8} key={item.id}>
               <Text style={{ flex: 1, minWidth: 0, overflowWrap: 'anywhere' }}>{item.name}</Text>
               <Button disabled={saving} size={'small'} onClick={() => uploads.remove(item.id)}>
-                {t('common:remove')}
+                {t('messageContent.removeAttachment')}
               </Button>
             </Flexbox>
           ))}
@@ -131,7 +131,7 @@ export const MessageContentEditor = ({
                 </Button>
               )}
               <Button size={'small'} onClick={() => uploads.remove(item.id)}>
-                {t('common:remove')}
+                {t('messageContent.removeAttachment')}
               </Button>
             </Flexbox>
           ))}
@@ -152,7 +152,11 @@ export const MessageContentEditor = ({
             void uploads.addFiles(files);
           }}
         />
-        <Button disabled={saving} icon={Paperclip} onClick={() => input.current?.click()}>
+        <Button
+          disabled={saving}
+          icon={<Paperclip size={16} />}
+          onClick={() => input.current?.click()}
+        >
           {t('messageContent.addAttachments')}
         </Button>
         <Flexbox horizontal gap={8}>

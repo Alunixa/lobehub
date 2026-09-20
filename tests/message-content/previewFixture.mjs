@@ -128,8 +128,14 @@ export const verifyMessageContent = async ({
   const route = '/agent/agt_preview/tpc_preview_0';
   const dialog = page.getByRole('dialog');
   const startEdit = async () => {
-    await page.locator('#msg_user').dblclick();
+    await page
+      .locator('#msg_user')
+      .getByText(/历史消息/)
+      .first()
+      .click({ button: 'right' });
+    await page.getByRole('menuitem', { name: '编辑', exact: true }).click();
     await expect(dialog).toBeVisible();
+    await capture('message-editor-open');
     await expect(dialog.getByText('编辑消息与附件', { exact: true })).toBeVisible();
   };
   const startInsert = async () => {
@@ -199,13 +205,11 @@ export const verifyMessageContent = async ({
     await contextEditor.tap();
     await contextEditor.fill(desktop ? '前置自定义上下文' : '附带文件的自定义上下文');
     if (!desktop) {
-      await dialog
-        .locator('input[type=file]')
-        .setInputFiles({
-          buffer: Buffer.from('important context'),
-          mimeType: 'text/plain',
-          name: 'context.txt',
-        });
+      await dialog.locator('input[type=file]').setInputFiles({
+        buffer: Buffer.from('important context'),
+        mimeType: 'text/plain',
+        name: 'context.txt',
+      });
       await expect(dialog.getByText('context.txt', { exact: true })).toBeVisible();
     }
     await dialog.getByRole('button', { name: '保存', exact: true }).click();

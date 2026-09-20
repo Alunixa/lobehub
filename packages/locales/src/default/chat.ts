@@ -10,6 +10,7 @@ export default {
   'messageContent.editTitle': 'Edit message and attachments',
   'messageContent.insertContext': 'Insert context here',
   'messageContent.position': 'Insertion position',
+  'messageContent.removeAttachment': 'Remove',
   'messageContent.saveFailed':
     'Could not save. Your text and attachments are kept here; please retry.',
   'messageContent.uploadFailed': 'Upload or processing failed',

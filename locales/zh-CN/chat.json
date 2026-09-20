@@ -456,6 +456,7 @@
   "messageContent.editTitle": "编辑消息与附件",
   "messageContent.insertContext": "在此处插入上下文",
   "messageContent.position": "插入位置",
+  "messageContent.removeAttachment": "移除",
   "messageContent.saveFailed": "保存失败，文字和附件已保留在这里，请重试。",
   "messageContent.uploadFailed": "上传或解析失败",
   "messageContent.waitForResponse": "请先保存会话，并等待当前回复结束。",

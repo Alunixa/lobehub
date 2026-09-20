@@ -50,46 +50,50 @@ export class MessageContentModel {
     return message;
   }
 
-  edit = async ({ id, content, editorData, fileIds }: EditMessageContentParams) =>
+  private async writeContent(
+    tx: Transaction,
+    { id, content, editorData, fileIds }: EditMessageContentParams,
+  ) {
+    const ids = await this.validateFiles(tx, fileIds);
+    if (!content.trim() && !ids.length) throw new Error('Message cannot be empty');
+
+    const [updated] = await tx
+      .update(messages)
+      .set({ content: sanitizeNullBytes(content), editorData: editorData ?? null })
+      .where(eq(messages.id, id))
+      .returning();
+    // Old retrieval snippets were derived from the previous text/file set.
+    // Reusing them after removal would still send removed context to the AI.
+    await tx
+      .delete(messageQueryChunks)
+      .where(
+        and(
+          eq(messageQueryChunks.messageId, id),
+          buildWorkspaceWhere(this.scope, messageQueryChunks),
+        ),
+      );
+    await tx
+      .delete(messageQueries)
+      .where(
+        and(eq(messageQueries.messageId, id), buildWorkspaceWhere(this.scope, messageQueries)),
+      );
+    await tx
+      .delete(messagesFiles)
+      .where(and(eq(messagesFiles.messageId, id), buildWorkspaceWhere(this.scope, messagesFiles)));
+    if (ids.length) {
+      await tx
+        .insert(messagesFiles)
+        .values(ids.map((fileId) => buildWorkspacePayload(this.scope, { fileId, messageId: id })));
+    }
+    return updated;
+  }
+
+  edit = async (params: EditMessageContentParams) =>
     this.db.transaction(async (tx) => {
-      const message = await this.findMessage(tx, id);
+      const message = await this.findMessage(tx, params.id);
       if (message.role !== 'user' || message.userId !== this.userId)
         throw new Error('Only your own user messages can be edited with attachments');
-      const ids = await this.validateFiles(tx, fileIds);
-      if (!content.trim() && !ids.length) throw new Error('Message cannot be empty');
-
-      await tx
-        .update(messages)
-        .set({ content: sanitizeNullBytes(content), editorData: editorData ?? null })
-        .where(eq(messages.id, id));
-      // Old retrieval snippets were derived from the previous text/file set.
-      // Reusing them after removal would still send removed context to the AI.
-      await tx
-        .delete(messageQueryChunks)
-        .where(
-          and(
-            eq(messageQueryChunks.messageId, id),
-            buildWorkspaceWhere(this.scope, messageQueryChunks),
-          ),
-        );
-      await tx
-        .delete(messageQueries)
-        .where(
-          and(eq(messageQueries.messageId, id), buildWorkspaceWhere(this.scope, messageQueries)),
-        );
-      await tx
-        .delete(messagesFiles)
-        .where(
-          and(eq(messagesFiles.messageId, id), buildWorkspaceWhere(this.scope, messagesFiles)),
-        );
-      if (ids.length) {
-        await tx
-          .insert(messagesFiles)
-          .values(
-            ids.map((fileId) => buildWorkspacePayload(this.scope, { fileId, messageId: id })),
-          );
-      }
-      return message;
+      return this.writeContent(tx, params);
     });
 
   insert = async (params: InsertContextMessageParams) =>
@@ -110,16 +114,28 @@ export class MessageContentModel {
       const [existing] = await tx
         .select()
         .from(messages)
-        .where(and(eq(messages.id, params.id), buildWorkspaceWhere(this.scope, messages)));
+        .where(and(eq(messages.id, params.id), buildWorkspaceWhere(this.scope, messages)))
+        .for('update');
       if (existing) {
         const metadata = existing.metadata as { isCustomContext?: boolean } | null;
         if (
           existing.userId !== this.userId ||
           existing.topicId !== candidate.topicId ||
+          (existing.threadId ?? null) !== (params.threadId ?? null) ||
           !metadata?.isCustomContext
         )
           throw new Error('Message ID is already in use');
-        return existing;
+        const anchor = await this.findMessage(tx, params.anchorId);
+        const samePosition =
+          params.position === 'before'
+            ? params.anchorId === existing.id || anchor.parentId === existing.id
+            : existing.parentId === params.anchorId;
+        if (!samePosition)
+          throw new Error('The context has already been saved at a different position');
+        // A lost response may be followed by further editing before retry.
+        // Keep one row, but persist the latest text/files rather than falsely
+        // acknowledging the first payload and discarding the newer draft.
+        return this.writeContent(tx, params);
       }
 
       const anchor = await this.findMessage(tx, params.anchorId);

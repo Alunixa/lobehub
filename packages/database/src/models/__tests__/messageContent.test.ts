@@ -169,18 +169,41 @@ describe('MessageContentModel', () => {
     ).toHaveLength(1);
   });
 
+  it('keeps edits made after a lost insertion response without creating duplicate context', async () => {
+    await insert();
+    await model.insert({
+      anchorId: 'u1',
+      content: 'changed after retry',
+      fileIds: ['image'],
+      id: 'context',
+      position: 'after',
+    });
+    const saved = (await read()).filter((message) => message.id === 'context');
+    expect(saved).toHaveLength(1);
+    expect(saved[0].content).toBe('changed after retry');
+    expect(saved[0].imageList?.[0].id).toBe('image');
+    expect(saved[0].fileList).toEqual([]);
+    await expect(
+      model.insert({
+        anchorId: 'u1',
+        content: 'wrong position',
+        fileIds: [],
+        id: 'context',
+        position: 'before',
+      }),
+    ).rejects.toThrow('different position');
+  });
+
   it('does not change the active alternative branch when inserting before that branch', async () => {
-    await db
-      .insert(messages)
-      .values({
-        content: 'alternative',
-        createdAt: new Date(+originalDate + 3),
-        id: 'a2',
-        parentId: 'u1',
-        role: 'assistant',
-        topicId,
-        userId,
-      });
+    await db.insert(messages).values({
+      content: 'alternative',
+      createdAt: new Date(+originalDate + 3),
+      id: 'a2',
+      parentId: 'u1',
+      role: 'assistant',
+      topicId,
+      userId,
+    });
     await db
       .update(messages)
       .set({ metadata: { activeBranchIndex: 1 } })
@@ -195,17 +218,15 @@ describe('MessageContentModel', () => {
   });
 
   it('preserves all alternative branches after insertion', async () => {
-    await db
-      .insert(messages)
-      .values({
-        content: 'alternative',
-        createdAt: new Date(+originalDate + 3),
-        id: 'a2',
-        parentId: 'u1',
-        role: 'assistant',
-        topicId,
-        userId,
-      });
+    await db.insert(messages).values({
+      content: 'alternative',
+      createdAt: new Date(+originalDate + 3),
+      id: 'a2',
+      parentId: 'u1',
+      role: 'assistant',
+      topicId,
+      userId,
+    });
     await db
       .update(messages)
       .set({ metadata: { activeBranchIndex: 1 } })
@@ -246,39 +267,33 @@ describe('MessageContentModel', () => {
   });
 
   it('isolates workspace files from personal requests', async () => {
-    await db
-      .insert(workspaces)
-      .values({
-        id: 'context-workspace',
-        name: 'team',
-        primaryOwnerId: userId,
-        slug: 'context-test',
-      });
+    await db.insert(workspaces).values({
+      id: 'context-workspace',
+      name: 'team',
+      primaryOwnerId: userId,
+      slug: 'context-test',
+    });
     await db.update(files).set({ workspaceId: 'context-workspace' }).where(eq(files.id, 'doc'));
     await expect(model.edit({ content: 'x', fileIds: ['doc'], id: 'u1' })).rejects.toThrow();
   });
 
   it('keeps thread messages isolated from main-history insertion', async () => {
-    await db
-      .insert(threads)
-      .values({
-        id: 'context-thread',
-        sourceMessageId: 'u1',
-        topicId,
-        type: 'continuation',
-        userId,
-      });
-    await db
-      .insert(messages)
-      .values({
-        content: 'thread question',
-        id: 'thread-user',
-        parentId: 'u1',
-        role: 'user',
-        threadId: 'context-thread',
-        topicId,
-        userId,
-      });
+    await db.insert(threads).values({
+      id: 'context-thread',
+      sourceMessageId: 'u1',
+      topicId,
+      type: 'continuation',
+      userId,
+    });
+    await db.insert(messages).values({
+      content: 'thread question',
+      id: 'thread-user',
+      parentId: 'u1',
+      role: 'user',
+      threadId: 'context-thread',
+      topicId,
+      userId,
+    });
     await insert('u1', 'after');
     const [thread] = await db.select().from(messages).where(eq(messages.id, 'thread-user'));
     expect(thread.parentId).toBe('u1');
@@ -337,15 +352,13 @@ describe('MessageContentModel', () => {
   it('includes inserted context in a continuation thread only when positioned before its source', async () => {
     await insert('u1', 'before', 'before');
     await insert('u1', 'after', 'after');
-    await db
-      .insert(threads)
-      .values({
-        id: 'context-thread',
-        sourceMessageId: 'u1',
-        topicId,
-        type: 'continuation',
-        userId,
-      });
+    await db.insert(threads).values({
+      id: 'context-thread',
+      sourceMessageId: 'u1',
+      topicId,
+      type: 'continuation',
+      userId,
+    });
     const list = await reader.query({ threadId: 'context-thread', topicId });
     expect(list.map((message) => message.id)).toEqual(['before', 'u1']);
   });
