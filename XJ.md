@@ -11,6 +11,7 @@
 - 2026-09-19：修复复制对话/子话题图片丢失、子话题关闭/调整大小、Shift+Enter 等误跳转、手机搜索完整列表和所有输入框非主动唤起键盘；完成后自行部署。
 
 ## 3. Current Status
+- Release `v2.2.8-codex.20260920.1`于20:55:58 UTC+8发布，标签指向30c85bdfb5；GitHub API核验3资产已上传且digest一致。远端暂存镜像/manifest校验通过、deploy.sh语法通过；尚未启动部署。
 - 待发布部署最终版`v2.2.8-codex.20260920.1`：运行源码`30c85bdfb5b47cc311f815788132bb719b95289b`，镜像/三专项全部通过，最终同源生产UI72场景全通过、runtime errors=0。资产`release-published/lobehub-server-image.tar`为297941504 bytes、SHA256 `d63b15652befd133d26e20e5c3617ee9995a80197fa837a12e7e89e9801c4431`；请勿使用`release-final`内a23候选。
 - 候选a23镜像构建成功，但真实生产UI发现新增空白上下文弹窗触发Lexical #38（空markdown生成无子节点root）；不发布或部署该候选。手机附件完整增删/保稿/重试已通过，时间开关手机/电脑4场景通过。当前修复共享EditorCanvas空白初始化为text reader，并补3项真实编辑器回归。
 - 最终候选`a23af8fa83cf8ec1cc79ed01e446c8a9a0467529`已推送；消息专项`35510649207`成功（167次测试），手机专项`35510649206`成功（272次测试），时间专项`35510742391`成功（102次测试）；镜像`35510649562`构建中。20:28线上仍为4b2d旧镜像且本轮未部署。
@@ -111,6 +112,7 @@
 - 手机输入必须由直接点击输入区域启动，不因页面挂载、导航、弹层或其他按钮自动 focus。
 
 ## 17. Failed Approaches
+- 本轮发布SHA256SUMS最初由Windows Python文本模式写成CRLF，远端把CR视作文件名导致校验失败；部署未执行。改为LF bytes，远端两项重新校验成功并替换Release校验清单，最终清单179 bytes、SHA256 `4402d112248194661c414c40f0b303c85ac5eac5978f19bc04a9be9619e3bc6b`，镜像与manifest未改。
 - 本机chat单worker专项在收集`@lobehub/icons/es/icons.js`时超时（488秒、no tests）；全仓tsgo长时间无诊断而停止，均不能记为通过。定向lint0 errors/1旧unused warning；本机旧UI无法发现CI5.40的Alert/Text迁移规则。
 - 远端备份脚本经PowerShell文本管道末尾多出CR导致空命令错误，发生在BACKUP_COMPLETE和所有SHA256输出之后；备份已生成，后续校验已有文件，不重跑覆盖备份。
 - 2026-09-20：外部SSH节点f/myhf无全局IPv6，mylf连接关闭，ff主机密钥不匹配；未绕过认证校验。改用Globalping真实IPv6节点取得有效证据。
