@@ -1,5 +1,6 @@
 // Main parse function
 export { parse } from './parse';
+export { orderMessagesWithContext } from './orderMessagesWithContext';
 
 // Context Tree Types - for navigation and context understanding
 export type {

@@ -1,5 +1,5 @@
 import { INBOX_SESSION_ID } from '@lobechat/const';
-import { parse } from '@lobechat/conversation-flow';
+import { orderMessagesWithContext, parse } from '@lobechat/conversation-flow';
 import type {
   ChatAudioItem,
   ChatFileItem,
@@ -736,7 +736,7 @@ export class MessageModel {
       stageMs: getDurationMs(totalStartedAt),
     });
 
-    return allItems;
+    return orderMessagesWithContext(allItems);
   };
 
   private queryMessageGroupNodesForPage = async ({

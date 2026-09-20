@@ -1,7 +1,10 @@
 import { type LobeChatDatabase } from '@lobechat/database';
 import { CompressionRepository } from '@lobechat/database';
+import { parse } from '@lobechat/conversation-flow';
 import {
   type CreateMessageParams,
+  type EditMessageContentParams,
+  type InsertContextMessageParams,
   type QueryMessageParams,
   type UIChatMessage,
   type UpdateMessageParams,
@@ -9,6 +12,7 @@ import {
 import { createTimingHelpers, getDurationMs } from '@lobechat/utils';
 
 import { MessageModel } from '@/database/models/message';
+import { MessageContentModel } from '@/database/models/messageContent';
 
 import { FileService } from '../file';
 
@@ -52,11 +56,13 @@ export class MessageService {
   private messageModel: MessageModel;
   private fileService: FileService;
   private compressionRepository: CompressionRepository;
+  private messageContentModel: MessageContentModel;
 
   constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
     this.messageModel = new MessageModel(db, userId, workspaceId);
     this.fileService = new FileService(db, userId, workspaceId);
     this.compressionRepository = new CompressionRepository(db, userId, workspaceId);
+    this.messageContentModel = new MessageContentModel(db, userId, workspaceId);
   }
 
   /**
@@ -123,6 +129,50 @@ export class MessageService {
    */
   async queryMessages(params: QueryMessageParams): Promise<UIChatMessage[]> {
     return this.messageModel.query(params, this.getQueryOptions());
+  }
+
+  async editMessageContent(params: EditMessageContentParams) {
+    const item = await this.messageContentModel.edit(params);
+    return this.queryWithSuccess(item);
+  }
+
+  async insertContextMessage(params: InsertContextMessageParams) {
+    const anchor = await this.messageModel.findById(params.anchorId);
+    if (!anchor) throw new Error('Message not found or inaccessible');
+    const context = {
+      agentId: anchor.agentId,
+      groupId: anchor.groupId,
+      threadId: params.threadId,
+      topicId: anchor.topicId,
+    };
+    const raw = await this.messageModel.query(context);
+    const { flatList } = parse(raw);
+    const index = flatList.findIndex(
+      (message) =>
+        message.id === params.anchorId ||
+        message.children?.some((child) => child.id === params.anchorId),
+    );
+    if (index < 0) throw new Error('The selected message is not in the active conversation');
+    const selected = flatList[index];
+    const firstId = (message: (typeof flatList)[number]) => message.children?.[0]?.id ?? message.id;
+
+    // After a grouped assistant turn means before the next visible message,
+    // not between its tool call and results (which may have sibling parents).
+    let anchorId = firstId(selected);
+    let position = params.position;
+    if (position === 'after') {
+      const next = flatList[index + 1];
+      if (next) {
+        anchorId = firstId(next);
+        position = 'before';
+      } else {
+        const lastBlock = selected.children?.at(-1);
+        anchorId = lastBlock?.tools?.at(-1)?.result_msg_id ?? lastBlock?.id ?? selected.id;
+      }
+    }
+    const item = await this.messageContentModel.insert({ ...params, anchorId, position });
+    const result = await this.queryWithSuccess({ ...item, threadId: params.threadId });
+    return { ...result, id: item.id };
   }
 
   /**

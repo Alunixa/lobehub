@@ -1,4 +1,5 @@
 import { buildHelperMaps } from './indexing';
+import { orderMessagesWithContext } from './orderMessagesWithContext';
 import { buildIdTree } from './structuring';
 import { Transformer } from './transformation';
 import type { Message, MessageGroupMetadata, ParseResult } from './types';
@@ -25,7 +26,7 @@ export function parse(messages: Message[], messageGroups?: MessageGroupMetadata[
   // This ensures FlatListBuilder and MessageCollector see the correct agentId
   // and won't merge messages from different agents into the same group
   // Only applies to scope: 'sub_agent' (agent-to-agent calls, not group orchestration)
-  const processedMessages = messages.map((msg) => {
+  const processedMessages = orderMessagesWithContext(messages).map((msg) => {
     if (msg.metadata?.scope === 'sub_agent' && msg.metadata?.subAgentId) {
       return { ...msg, agentId: msg.metadata.subAgentId };
     }

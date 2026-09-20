@@ -179,6 +179,7 @@ export const MessageTaskCallbackSchema = z.object({
 });
 
 export const MessageMetadataSchema = ModelUsageSchema.merge(ModelPerformanceSchema).extend({
+  isCustomContext: z.boolean().optional(),
   collapsed: z.boolean().optional(),
   // Hetero-agent (Claude Code) per-message provenance. Listed here so zod does
   // NOT strip them from writes going through UpdateMessageParamsSchema /
@@ -240,6 +241,8 @@ export interface ModelPerformance {
 }
 
 export interface MessageMetadata {
+  /** User-authored context inserted into an existing conversation. */
+  isCustomContext?: boolean;
   // ───────────────────────────────────────────────────────────────
   // Token usage + performance fields — DEPRECATED flat shape.
   // Token usage now lives in the dedicated top-level `usage` column

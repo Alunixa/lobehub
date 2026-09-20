@@ -1,5 +1,7 @@
 import {
   CreateNewMessageParamsSchema,
+  EditMessageContentSchema,
+  InsertContextMessageSchema,
   UpdateMessageParamsSchema,
   UpdateMessagePluginSchema,
   UpdateMessageRAGParamsSchema,
@@ -190,6 +192,17 @@ export const messageRouter = router({
       // Create message with the resolved agentId
       return ctx.messageService.createMessage({ ...input, agentId } as any);
     }),
+
+  editMessageContent: messageProcedure
+    .use(withScopedPermission('message:update'))
+    .input(EditMessageContentSchema)
+    .mutation(async ({ input, ctx }) => ctx.messageService.editMessageContent(input)),
+
+  insertContextMessage: messageProcedure
+    .use(withScopedPermission('message:create'))
+    .use(withScopedPermission('message:update'))
+    .input(InsertContextMessageSchema)
+    .mutation(async ({ input, ctx }) => ctx.messageService.insertContextMessage(input)),
 
   /**
    * Finalize compression by updating the group with generated summary

@@ -5,6 +5,8 @@ import {
   type ChatTTS,
   type CreateMessageParams,
   type CreateMessageResult,
+  type EditMessageContentParams,
+  type InsertContextMessageParams,
   type MessageMetadata,
   type MessagePluginItem,
   type ModelRankItem,
@@ -32,6 +34,12 @@ export interface MessageQueryContext {
 }
 
 export class MessageService {
+  editMessageContent = async (params: EditMessageContentParams) =>
+    lambdaClient.message.editMessageContent.mutate(params);
+
+  insertContextMessage = async (params: InsertContextMessageParams) =>
+    lambdaClient.message.insertContextMessage.mutate(params);
+
   createMessage = async (params: CreateMessageParams): Promise<CreateMessageResult> => {
     return lambdaClient.message.createMessage.mutate(params as any);
   };
