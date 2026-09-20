@@ -101,3 +101,20 @@ export const manifestMeta = {
   description: 'Activate and use reusable skill packages',
   title: 'Skills',
 };
+export const getCurrentTimeApi: LobeChatPluginApi = {
+  description:
+    'Read the current date and time from the live execution clock, including year, month, day, weekday, hour, minute, second, timezone and UTC offset. Call again for each current-time question; never reuse a previous result. This is read-only and needs no sandbox.',
+  name: SkillsApiName.getCurrentTime,
+  parameters: {
+    additionalProperties: false,
+    properties: {
+      timezone: {
+        description:
+          'Optional IANA timezone, e.g. Asia/Shanghai. Defaults to the user timezone.',
+        type: 'string',
+      },
+    },
+    required: [],
+    type: 'object',
+  },
+};

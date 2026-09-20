@@ -18,6 +18,8 @@ export const systemPrompt = `You have access to a Skills tool that can activate 
 </workflow>
 
 <tool_selection_guidelines>
+- **getCurrentTime**: Read the live current date and time to the second. Use the user's timezone by default, or specify an IANA timezone. Call again whenever asked for the current time; never infer seconds from a request timestamp or reuse a stale result. This read-only tool needs no command execution or sandbox.
+
 - **activateSkill**: Call this when the user's task matches one of the available skills
   - Provide the exact skill name
   - Returns the skill content (instructions, templates, guidelines) that you should follow

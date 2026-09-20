@@ -67,6 +67,42 @@ describe('SettingsAction', () => {
   });
 
   describe('setSettings', () => {
+    it('rolls back a failed time preference and allows retrying the same value', async () => {
+      const previous = { general: { injectCurrentTime: false } };
+      useUserStore.setState({ settings: previous });
+      vi.mocked(userService.updateUserSettings).mockRejectedValueOnce(new Error('offline'));
+
+      await expect(
+        useUserStore.getState().setSettings({ general: { injectCurrentTime: true } }),
+      ).rejects.toThrow('offline');
+      expect(useUserStore.getState().settings).toEqual(previous);
+
+      await useUserStore.getState().setSettings({ general: { injectCurrentTime: true } });
+      expect(userService.updateUserSettings).toHaveBeenLastCalledWith(
+        expect.objectContaining({ general: { injectCurrentTime: true } }),
+        expect.any(AbortSignal),
+      );
+    });
+
+    it('does not roll back a newer settings update when an older write fails', async () => {
+      useUserStore.setState({ settings: { general: { injectCurrentTime: false } } });
+      let rejectWrite: (error: Error) => void = () => {};
+      vi.mocked(userService.updateUserSettings).mockImplementationOnce(
+        () =>
+          new Promise((_, reject) => {
+            rejectWrite = reject;
+          }),
+      );
+      const pending = useUserStore
+        .getState()
+        .setSettings({ general: { injectCurrentTime: true } });
+      const newer = { general: { injectCurrentTime: true, fontSize: 18 } };
+      useUserStore.setState({ settings: newer });
+      rejectWrite(new Error('old request failed'));
+      await expect(pending).rejects.toThrow('old request failed');
+      expect(useUserStore.getState().settings).toEqual(newer);
+    });
+
     it('should set partial settings', async () => {
       const { result } = renderHook(() => useUserStore());
       const partialSettings: PartialDeep<UserSettings> = { general: { fontSize: 12 } };

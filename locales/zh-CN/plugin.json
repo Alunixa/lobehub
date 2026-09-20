@@ -1,4 +1,5 @@
 {
+  "builtins.lobe-skills.apiName.getCurrentTime": "获取当前日期和时间",
   "arguments.moreParams": "等 {{count}} 个参数",
   "arguments.title": "参数列表",
   "builtins.codex.apiName.collab_tool_call": "协调子代理",

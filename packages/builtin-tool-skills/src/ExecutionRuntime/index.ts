@@ -7,12 +7,14 @@ import type {
   SkillListItem,
   SkillResourceContent,
 } from '@lobechat/types';
+import { getCurrentTime } from '@lobechat/utils/currentTime';
 
 import type {
   ActivateSkillParams,
   CommandResult,
   ExecScriptParams,
   ExportFileParams,
+  GetCurrentTimeParams,
   ReadReferenceParams,
   RunCommandOptions,
   RunCommandParams,
@@ -88,6 +90,7 @@ export interface SkillsExecutionRuntimeOptions {
   builtinSkills?: BuiltinSkill[];
   /** Reads project skill files from the device (local-system over the gateway). */
   deviceFileAccess?: DeviceFileAccess;
+  getTimezone?: () => string | undefined;
   /** Filesystem skills discovered on the execution device. */
   projectSkills?: ProjectSkillRuntimeItem[];
   service: SkillRuntimeService;
@@ -127,7 +130,10 @@ const hasHiddenSegment = (rel: string): boolean =>
  * casing than what's registered (e.g. `Agent-Browser` for `agent-browser`,
  * `lobehub` for `LobeHub`); normalize both sides before comparing.
  */
-const findByNameCI = <T extends { name: string }>(items: T[], target: string): T | undefined => {
+const findByNameCI = <T extends { name: string }>(
+  items: T[],
+  target: string,
+): T | undefined => {
   const lower = target.toLowerCase();
   return items.find((s) => s.name.toLowerCase() === lower);
 };
@@ -144,16 +150,34 @@ const buildProjectDirectoryHint = (skillName: string, skillDir: string): string 
 This filesystem skill lives in \`${skillDir}\`. Use \`local-system.globFiles\` with scope="${skillDir}" and pattern="**/*" to discover reference files, then \`readReference\` with skillName="${skillName}" + the relative path to load any of them.`;
 
 export class SkillsExecutionRuntime {
+  private getTimezone?: () => string | undefined;
   private builtinSkills: BuiltinSkill[];
   private projectSkills: ProjectSkillRuntimeItem[];
   private deviceFileAccess?: DeviceFileAccess;
   private service: SkillRuntimeService;
 
   constructor(options: SkillsExecutionRuntimeOptions) {
+    this.getTimezone = options.getTimezone;
     this.service = options.service;
     this.builtinSkills = options.builtinSkills || [];
     this.projectSkills = options.projectSkills || [];
     this.deviceFileAccess = options.deviceFileAccess;
+  }
+
+  async getCurrentTime(args: GetCurrentTimeParams = {}): Promise<BuiltinServerRuntimeOutput> {
+    if (args.timezone !== undefined) {
+      try {
+        if (typeof args.timezone !== 'string' || !args.timezone.trim()) throw new RangeError();
+        new Intl.DateTimeFormat('en-US', { timeZone: args.timezone });
+      } catch {
+        return {
+          content: 'Invalid timezone. Supply an IANA timezone such as Asia/Shanghai or UTC.',
+          success: false,
+        };
+      }
+    }
+    const state = getCurrentTime(args.timezone ?? this.getTimezone?.());
+    return { content: JSON.stringify(state), state, success: true };
   }
 
   async execScript(args: ExecScriptParams): Promise<BuiltinServerRuntimeOutput> {
@@ -289,7 +313,9 @@ export class SkillsExecutionRuntime {
         // filters hidden files; we re-check here as defense in depth.
         const skillDir = getDirname(projectSkill.location);
         const allowed = new Set(
-          (await this.deviceFileAccess.listFiles(skillDir)).map((f) => normalizeRelativePath(f)),
+          (await this.deviceFileAccess.listFiles(skillDir)).map((f) =>
+            normalizeRelativePath(f),
+          ),
         );
         if (!allowed.has(normalized)) {
           return {
@@ -492,7 +518,10 @@ export class SkillsExecutionRuntime {
    * Format command result using the shared formatCommandResult from @lobechat/prompts.
    * This ensures consistent content format across all runtimes.
    */
-  private formatCommandOutput(command: string, result: CommandResult): BuiltinServerRuntimeOutput {
+  private formatCommandOutput(
+    command: string,
+    result: CommandResult,
+  ): BuiltinServerRuntimeOutput {
     const content = formatCommandResult({
       stderr: result.stderr,
       stdout: result.output,

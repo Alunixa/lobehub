@@ -1,12 +1,18 @@
 export const SkillsIdentifier = 'lobe-skills';
 
 export const SkillsApiName = {
+  getCurrentTime: 'getCurrentTime',
   execScript: 'execScript',
   exportFile: 'exportFile',
   readReference: 'readReference',
   runCommand: 'runCommand',
   activateSkill: 'activateSkill',
 };
+
+export interface GetCurrentTimeParams {
+  /** Optional IANA timezone; defaults to the user's saved timezone, then UTC. */
+  timezone?: string;
+}
 
 export interface ActivateSkillParams {
   name: string;

@@ -5,6 +5,7 @@ import {
   type ActivateSkillParams,
   type ExecScriptParams,
   type ExportFileParams,
+  type GetCurrentTimeParams,
   type ReadReferenceParams,
   type RunCommandParams,
   SkillsApiName,
@@ -21,6 +22,22 @@ class SkillsExecutor extends BaseExecutor<typeof SkillsApiName> {
     super();
     this.runtime = runtime;
   }
+
+  getCurrentTime = async (
+    params: GetCurrentTimeParams,
+    ctx: BuiltinToolContext,
+  ): Promise<BuiltinToolResult> => {
+    if (ctx.signal?.aborted) return { stop: true, success: false };
+    const result = await this.runtime.getCurrentTime(params);
+    return {
+      content: result.content,
+      error: result.success
+        ? undefined
+        : { message: result.content, type: 'PluginServerError' },
+      state: result.state,
+      success: result.success,
+    };
+  };
 
   execScript = async (
     params: ExecScriptParams,

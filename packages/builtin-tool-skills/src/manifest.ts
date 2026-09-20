@@ -4,6 +4,7 @@ import {
   activateSkillApi,
   execScriptBaseParams,
   exportFileApi,
+  getCurrentTimeApi,
   manifestMeta,
   readReferenceApi,
   runCommandApi,
@@ -13,6 +14,7 @@ import { SkillsApiName, SkillsIdentifier } from './types';
 
 export const SkillsManifest: BuiltinToolManifest = {
   api: [
+    getCurrentTimeApi,
     activateSkillApi,
     readReferenceApi,
     runCommandApi,

@@ -12,8 +12,13 @@ import { filterBuiltinSkills } from '@/helpers/skillFilters';
 import { desktopSkillRuntimeService } from '@/services/electron/desktopSkillRuntime';
 import { localFileService } from '@/services/electron/localFileService';
 import { agentSkillService } from '@/services/skill';
+import { getUserStoreState } from '@/store/user';
+import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 const runtime = new SkillsExecutionRuntime({
+  getTimezone: () =>
+    userGeneralSettingsSelectors.config(getUserStoreState()).timezone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
   builtinSkills: filterBuiltinSkills(builtinSkills),
   service: {
     execScript: async (command, options) => {

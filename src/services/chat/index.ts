@@ -10,7 +10,11 @@ import { type OfficialToolItem } from '@lobechat/context-engine';
 import { type FetchSSEOptions } from '@lobechat/fetch-sse';
 import { fetchSSE, standardizeAnimationStyle } from '@lobechat/fetch-sse';
 import type { ChatCompletionErrorPayload } from '@lobechat/model-runtime';
-import { AgentRuntimeError, isResponsesAPIModel, routeInstructions } from '@lobechat/model-runtime';
+import {
+  AgentRuntimeError,
+  isResponsesAPIModel,
+  routeInstructions,
+} from '@lobechat/model-runtime';
 import type {
   RuntimeInitialContext,
   RuntimeStepContext,
@@ -18,6 +22,7 @@ import type {
   UIChatMessage,
 } from '@lobechat/types';
 import { ChatErrorType, TraceTagMap } from '@lobechat/types';
+import { withCurrentTime } from '@lobechat/utils/currentTime';
 import { merge } from 'es-toolkit/compat';
 import { ModelProvider } from 'model-bank';
 
@@ -238,7 +243,9 @@ class ChatService {
         const allComposioServers = composioStoreSelectors.getServers(toolState);
 
         for (const composioType of COMPOSIO_APP_TYPES) {
-          const server = allComposioServers.find((s) => s.identifier === composioType.identifier);
+          const server = allComposioServers.find(
+            (s) => s.identifier === composioType.identifier,
+          );
 
           officialTools.push({
             description: `LobeHub Mcp Server: ${composioType.label}`,
@@ -322,7 +329,8 @@ class ChatService {
       {
         ...params,
         ...extendParams,
-        enabledSearch: searchConfig.enabledSearch && searchConfig.useModelSearch ? true : undefined,
+        enabledSearch:
+          searchConfig.enabledSearch && searchConfig.useModelSearch ? true : undefined,
         instructions: agentConfig.instructions,
         messages: modelMessages,
         // Use the chatConfig from the target agent for streaming preference
@@ -383,11 +391,10 @@ class ChatService {
     // When user explicitly disables Responses API, set apiMode to 'chatCompletion'
     // This ensures the user's preference takes priority over provider's useResponseModels config
     // When user enables Responses API, set to 'responses' to force use Responses API
-    const apiMode: 'responses' | 'chatCompletion' = aiProviderSelectors.isProviderEnableResponseApi(
-      provider,
-    )(getAiInfraStoreState())
-      ? 'responses'
-      : 'chatCompletion';
+    const apiMode: 'responses' | 'chatCompletion' =
+      aiProviderSelectors.isProviderEnableResponseApi(provider)(getAiInfraStoreState())
+        ? 'responses'
+        : 'chatCompletion';
 
     // Get the chat config to check streaming preference
     const chatConfig = agentChatConfigSelectors.currentChatConfig(getAgentStoreState());
@@ -436,7 +443,17 @@ class ChatService {
        */
       fetcher = async () => {
         try {
-          return await this.fetchOnClient({ payload, provider, runtimeProvider: sdkType, signal });
+          const general = userGeneralSettingsSelectors.config(getUserStoreState());
+          payload.messages = withCurrentTime(payload.messages ?? [], {
+            ...general,
+            timezone: general.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone,
+          });
+          return await this.fetchOnClient({
+            payload,
+            provider,
+            runtimeProvider: sdkType,
+            signal,
+          });
         } catch (e) {
           const {
             errorType = ChatErrorType.BadRequest,

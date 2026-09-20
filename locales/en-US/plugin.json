@@ -1,4 +1,5 @@
 {
+  "builtins.lobe-skills.apiName.getCurrentTime": "Get Current Date and Time",
   "arguments.moreParams": "{{count}} params in total",
   "arguments.title": "Arguments",
   "builtins.codex.apiName.collab_tool_call": "Coordinate subagents",

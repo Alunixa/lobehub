@@ -12,9 +12,14 @@ import { filterBuiltinSkills } from '@/helpers/skillFilters';
 import { cloudSandboxService } from '@/services/cloudSandbox';
 import { agentSkillService } from '@/services/skill';
 import { useChatStore } from '@/store/chat';
+import { getUserStoreState } from '@/store/user';
+import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 // Create runtime with client-side service
 const runtime = new SkillsExecutionRuntime({
+  getTimezone: () =>
+    userGeneralSettingsSelectors.config(getUserStoreState()).timezone ||
+    Intl.DateTimeFormat().resolvedOptions().timeZone,
   builtinSkills: filterBuiltinSkills(builtinSkills),
   service: {
     execScript: async (command, options) => {

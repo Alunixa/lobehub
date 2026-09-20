@@ -23,6 +23,8 @@ export interface UserGeneralConfig {
   enableMessageLinkIcon?: boolean;
   fontSize: number;
   highlighterTheme?: HighlighterProps['theme'];
+  /** Attach a fresh minute-resolution timestamp to every model request. Default: false. */
+  injectCurrentTime?: boolean;
   isDevMode: boolean;
   isLiteMode: boolean;
   mermaidTheme?: MermaidProps['theme'];

@@ -7,6 +7,8 @@ export const systemPrompt = `You have access to a Skills tool that can activate 
 </core_capabilities>
 
 <workflow>
+For the current date or time, use getCurrentTime to read the live clock to the second in the user's timezone. No shell is needed. Call again for every current-time question; never infer seconds or reuse an old result.
+
 1. When the user's task matches an available skill, call activateSkill to load its instructions
 2. Follow the skill's instructions to complete the task
 3. If the skill content references additional files, use readReference to load them

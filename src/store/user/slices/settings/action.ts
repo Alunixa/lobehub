@@ -145,7 +145,9 @@ export class UserSettingsActionImpl {
     const defaultSystemAgent = defaultSettings.systemAgent;
 
     if (changedSystemAgent && nextSystemAgent) {
-      const mutableDiffs = diffs as PartialDeep<UserSettings> & { systemAgent?: SystemAgentDiff };
+      const mutableDiffs = diffs as PartialDeep<UserSettings> & {
+        systemAgent?: SystemAgentDiff;
+      };
 
       for (const key of Object.keys(changedSystemAgent)) {
         const changedSystemAgentItem = changedSystemAgent[key];
@@ -189,8 +191,16 @@ export class UserSettingsActionImpl {
     this.#set({ settings: diffs }, false, 'optimistic_updateSettings');
 
     const abortController = this.#get().internal_createSignal();
-    await userService.updateUserSettings(diffs, abortController.signal);
-    await this.#get().refreshUserState();
+    try {
+      await userService.updateUserSettings(diffs, abortController.signal);
+      await this.#get().refreshUserState();
+    } catch (error) {
+      // Roll back only this optimistic write, never a newer concurrent settings update.
+      if (this.#get().settings === diffs) {
+        this.#set({ settings: prevSetting }, false, 'rollback_updateSettings');
+      }
+      throw error;
+    }
   };
 
   updateDefaultAgent = async (defaultAgent: PartialDeep<LobeAgentSettings>): Promise<void> => {

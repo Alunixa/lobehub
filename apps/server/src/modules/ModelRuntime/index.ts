@@ -20,12 +20,14 @@ import { ModelProvider } from 'model-bank';
 
 import { getBusinessModelRuntimeHooks } from '@/business/server/model-runtime';
 import { AiProviderModel } from '@/database/models/aiProvider';
+import { UserModel } from '@/database/models/user';
 import { type LobeChatDatabase } from '@/database/type';
 import { getLLMConfig } from '@/envs/llm';
 import { createLLMGenerationTracingHook } from '@/server/services/llmGenerationTracing/hook';
 
 import { KeyVaultsGateKeeper } from '../KeyVaultsEncrypt';
 import apiKeyManager from './apiKeyManager';
+import { createCurrentTimeHook } from './currentTimeHook';
 
 export * from './trace';
 
@@ -184,7 +186,9 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
         upperProvider = ModelProvider.OpenAI.toUpperCase(); // Use OpenAI options as default
       }
 
-      const apiKey = apiKeyManager.pick(payload?.apiKey || llmConfig[`${upperProvider}_API_KEY`]);
+      const apiKey = apiKeyManager.pick(
+        payload?.apiKey || llmConfig[`${upperProvider}_API_KEY`],
+      );
       const baseURL = payload?.baseURL || process.env[`${upperProvider}_PROXY_URL`];
 
       return baseURL ? { apiKey, baseURL } : { apiKey };
@@ -211,7 +215,8 @@ const getParamsFromPayload = (provider: string, payload: ClientSecretPayload) =>
     }
 
     case ModelProvider.Bedrock: {
-      const { AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SESSION_TOKEN } = llmConfig;
+      const { AWS_SECRET_ACCESS_KEY, AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SESSION_TOKEN } =
+        llmConfig;
 
       const hasUserBedrockAuth = !!(
         payload.apiKey ||
@@ -346,7 +351,8 @@ const buildVertexOptions = (
     process.env.VERTEXAI_LOCATION ||
     undefined;
 
-  const googleAuthOptions = params.googleAuthOptions || (credentials ? { credentials } : undefined);
+  const googleAuthOptions =
+    params.googleAuthOptions || (credentials ? { credentials } : undefined);
 
   const options: GoogleGenAIOptions = {
     ...params,
@@ -441,7 +447,14 @@ export const initModelRuntimeFromDB = async (
   // 5. Compose with the per-call llm_generation_tracing hook (no-op when the
   //    service is unconfigured, so OSS / self-hosted setups pay nothing for it).
   const tracingHooks = createLLMGenerationTracingHook(userId, provider, workspaceId);
-  const hooks = mergeModelRuntimeHooks(businessHooks, tracingHooks);
+  const currentTimeHooks = createCurrentTimeHook(async () => {
+    const settings = await new UserModel(db, userId).getUserSettings();
+    return settings?.general;
+  });
+  const hooks = mergeModelRuntimeHooks(
+    mergeModelRuntimeHooks(currentTimeHooks, businessHooks),
+    tracingHooks,
+  );
 
   // 6. Initialize ModelRuntime with the payload and hooks
   return initModelRuntimeWithUserPayload(provider, payload, { userId }, hooks);

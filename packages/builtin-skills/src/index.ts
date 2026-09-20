@@ -2,11 +2,13 @@ import type { BuiltinSkill } from '@lobechat/types';
 
 import { AgentBrowserSkill } from './agent-browser';
 import { ArtifactsSkill } from './artifacts';
+import { CurrentTimeSkill } from './current-time';
 import { LobeHubSkill } from './lobehub';
 import { TaskSkill } from './task';
 
 export { AgentBrowserIdentifier } from './agent-browser';
 export { ArtifactsIdentifier } from './artifacts';
+export { CurrentTimeIdentifier } from './current-time';
 export { LobeHubIdentifier } from './lobehub';
 export { TaskIdentifier } from './task';
 
@@ -21,6 +23,7 @@ export { TaskIdentifier } from './task';
 export { VerifyIdentifier, VerifySkill } from './verify';
 
 export const builtinSkills: BuiltinSkill[] = [
+  CurrentTimeSkill,
   AgentBrowserSkill,
   ArtifactsSkill,
   LobeHubSkill,

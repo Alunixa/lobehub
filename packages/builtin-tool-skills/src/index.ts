@@ -7,6 +7,7 @@ export {
   type CommandResult,
   type ExecScriptActivatedSkill,
   type ExecScriptParams,
+  type GetCurrentTimeParams,
   type ReadReferenceParams,
   SkillsApiName,
   SkillsIdentifier,

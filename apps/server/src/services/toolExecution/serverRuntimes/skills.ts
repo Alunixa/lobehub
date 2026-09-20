@@ -13,7 +13,12 @@ import {
   type SkillRuntimeService,
   SkillsExecutionRuntime,
 } from '@lobechat/builtin-tool-skills/executionRuntime';
-import type { BuiltinSkill, SkillItem, SkillListItem, SkillResourceContent } from '@lobechat/types';
+import type {
+  BuiltinSkill,
+  SkillItem,
+  SkillListItem,
+  SkillResourceContent,
+} from '@lobechat/types';
 import debug from 'debug';
 
 import { AgentSkillModel } from '@/database/models/agentSkill';
@@ -34,6 +39,7 @@ import { type ServerRuntimeRegistration } from './types';
 const log = debug('lobe-server:skills-runtime');
 
 interface UserSettingsWithMarketToken {
+  general?: { timezone?: string };
   market?: {
     accessToken?: string;
   };
@@ -107,7 +113,9 @@ class SkillServerRuntimeService implements SkillRuntimeService {
         topicId: this.topicId,
         userId: this.userId,
       });
-      const response = await sandboxService.callTool('runCommand', { command: lhResult.command });
+      const response = await sandboxService.callTool('runCommand', {
+        command: lhResult.command,
+      });
 
       log('runCommand response: %O', response);
 
@@ -262,9 +270,12 @@ export const skillsRuntime: ServerRuntimeRegistration = {
 
     // Fetch market access token from user settings
     let marketAccessToken: string | undefined;
+    let userTimezone: string | undefined;
     try {
       const userModel = new UserModel(context.serverDB, context.userId);
       const userSettings = await userModel.getUserSettings();
+      userTimezone = (userSettings as UserSettingsWithMarketToken | undefined)?.general
+        ?.timezone;
       marketAccessToken = (userSettings as UserSettingsWithMarketToken | undefined)?.market
         ?.accessToken;
       log(
@@ -276,7 +287,11 @@ export const skillsRuntime: ServerRuntimeRegistration = {
       log('Failed to fetch market accessToken for user %s: %O', context.userId, error);
     }
 
-    const skillModel = new AgentSkillModel(context.serverDB, context.userId, context.workspaceId);
+    const skillModel = new AgentSkillModel(
+      context.serverDB,
+      context.userId,
+      context.workspaceId,
+    );
     const resourceService = new SkillResourceService(
       context.serverDB,
       context.userId,
@@ -390,6 +405,7 @@ export const skillsRuntime: ServerRuntimeRegistration = {
     }
 
     return new SkillsExecutionRuntime({
+      getTimezone: () => userTimezone,
       builtinSkills: [
         // Device-only skills resolve in device-capable runs — mirrors the
         // SkillEngine gate in aiAgent that builds <available_skills>, so a

@@ -1,0 +1,53 @@
+name: Codex Current Time Regression
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - codex/**
+    paths:
+      - .github/workflows/codex-current-time.yml
+      - apps/server/src/modules/ModelRuntime/**
+      - apps/server/src/services/toolExecution/serverRuntimes/skills.ts
+      - packages/builtin-skills/**
+      - packages/builtin-tool-skills/**
+      - packages/utils/src/currentTime*
+      - packages/types/src/user/settings/general.ts
+      - src/features/Setting/CurrentTimeSetting.tsx
+      - src/services/chat/index.ts
+      - src/store/user/slices/settings/**
+      - tests/current-time/**
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+      - run: pnpm install
+      - name: Check changed production code
+        run: |
+          node node_modules/eslint/bin/eslint.js --pass-on-unpruned-suppressions \
+            packages/utils/src/currentTime.ts \
+            packages/builtin-skills/src/current-time/index.ts \
+            packages/builtin-tool-skills/src \
+            apps/server/src/modules/ModelRuntime/currentTimeHook.ts \
+            apps/server/src/modules/ModelRuntime/index.ts \
+            apps/server/src/services/toolExecution/serverRuntimes/skills.ts \
+            src/features/Setting/CurrentTimeSetting.tsx \
+            src/services/chat/index.ts \
+            src/store/tool/slices/builtin/executors/lobe-skills.ts \
+            src/store/tool/slices/builtin/executors/lobe-skills.desktop.ts \
+            src/store/user/slices/settings/action.ts
+      - name: Clock, live request hooks and real skill runtime
+        run: node node_modules/vitest/vitest.mjs run --config tests/current-time/vitest.config.mts --silent=passed-only
+      - name: Settings persistence and chat regressions
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only \
+            src/store/user/slices/settings/action.test.ts \
+            src/services/chat/chat.test.ts \
+            src/helpers/skillFilters.test.ts

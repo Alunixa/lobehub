@@ -1,4 +1,7 @@
 {
+  "settingCommon.currentTime.title": "每次 AI 请求附带当前日期和时间",
+  "settingCommon.currentTime.desc": "默认关闭。开启后，每次模型请求都会重新附上当前日期、星期和精确到分钟的时间，使用时区 {{timezone}}。「current-time」技能可独立查询精确到秒的实时结果。",
+  "settingCommon.currentTime.saveFailed": "保存失败，请再次点击开关重试。",
   "_cloud.officialProvider": "{{name}} 官方模型服务",
   "about.title": "关于",
   "accountDeletion.cancelButton": "取消注销",

@@ -12,7 +12,12 @@ const [previewPath, outputPath, probePath = '/image'] = process.argv.slice(2);
 const conversationFixture = probePath.startsWith('--conversation');
 const verifyConversation = conversationFixture && !probePath.endsWith('probe');
 const groupedReply = probePath.includes('grouped');
-assert(previewPath && outputPath, 'Usage: node verify-preview.mjs PREVIEW_DIR OUTPUT_DIR [PATH]');
+const verifyCurrentTime = probePath === '--current-time';
+let timePreference = false;
+assert(
+  previewPath && outputPath,
+  'Usage: node verify-preview.mjs PREVIEW_DIR OUTPUT_DIR [PATH]',
+);
 const preview = path.resolve(previewPath);
 const output = path.resolve(outputPath);
 await mkdir(output, { recursive: true });
@@ -102,6 +107,12 @@ let mobile = true;
 
 function rpc(method, input) {
   requests.push({ input, method });
+  if (verifyCurrentTime && method === 'user.updateSettings') {
+    if (typeof input?.general?.injectCurrentTime === 'boolean') {
+      timePreference = input.general.injectCurrentTime;
+    }
+    return {};
+  }
   if (method === 'config.getGlobalConfig') {
     return { serverConfig: config, serverFeatureFlags: flags };
   }
@@ -116,6 +127,7 @@ function rpc(method, input) {
       preference: { useCmdEnterToSend: false },
       settings: {
         general: {
+          injectCurrentTime: timePreference,
           isDevMode: conversationFixture,
           contextMenuMode: 'default',
           language: 'zh-CN',
@@ -425,7 +437,9 @@ const server = createServer(async (req, res) => {
           ),
       );
     }
-    res.writeHead(200, { 'content-type': mime[path.extname(file)] || 'application/octet-stream' });
+    res.writeHead(200, {
+      'content-type': mime[path.extname(file)] || 'application/octet-stream',
+    });
     res.end(data);
   } catch (error) {
     res.writeHead(404);
@@ -508,7 +522,35 @@ try {
       assert(!editing, `${route}: navigation must not autofocus a mobile input`);
     }
   };
-  if (conversationFixture) {
+  if (verifyCurrentTime) {
+    for (const desktop of [false, true]) {
+      mobile = !desktop;
+      timePreference = false;
+      await page.setViewportSize(
+        desktop ? { width: 1440, height: 900 } : { width: 390, height: 844 },
+      );
+      await open('/settings/appearance');
+      const toggle = page.getByRole('switch', { name: '每次 AI 请求附带当前日期和时间' });
+      await expect(toggle).toBeVisible();
+      await expect(toggle).not.toBeChecked();
+      await toggle.click();
+      await expect(toggle).toBeChecked();
+      await expect.poll(() => timePreference).toBe(true);
+      await open('/settings/appearance');
+      await expect(toggle).toBeChecked();
+      await expect(page.getByText(/使用时区 Asia\/Singapore/)).toBeVisible();
+      await capture(desktop ? 'current-time-desktop-on' : 'current-time-mobile-on');
+      await toggle.click();
+      await expect.poll(() => timePreference).toBe(false);
+      await open('/settings/appearance');
+      await expect(toggle).not.toBeChecked();
+      await capture(desktop ? 'current-time-desktop-off' : 'current-time-mobile-off');
+    }
+    assert.equal(runtimeErrors.length, 0);
+    assertions.push(
+      'Current-time switch defaults off, persists on/off after reload on mobile and desktop, and shows the timezone',
+    );
+  } else if (conversationFixture) {
     await open('/agent/agt_preview/tpc_preview_0');
     await capture('conversation-initial');
     await writeFile(
@@ -603,7 +645,10 @@ try {
     await open('/agent/agt_preview/tpc_preview_0');
     await page.getByText('助手生成图片', { exact: true }).click({ button: 'right' });
     await capture('desktop-context-menu');
-    await writeFile(path.join(output, 'desktop-menu.txt'), await page.locator('body').innerText());
+    await writeFile(
+      path.join(output, 'desktop-menu.txt'),
+      await page.locator('body').innerText(),
+    );
     if (conversationFixture) {
       const branch = page.getByRole('menuitem', { name: /创建子话题/ });
       if (await branch.count()) {
@@ -622,7 +667,9 @@ try {
               ),
               images: await page
                 .locator('img')
-                .evaluateAll((items) => items.map((item) => ({ src: item.src, alt: item.alt }))),
+                .evaluateAll((items) =>
+                  items.map((item) => ({ src: item.src, alt: item.alt })),
+                ),
               panels: await page.locator('[class*="draggable"]').evaluateAll((items) =>
                 items.map((item) => ({
                   class: item.className,

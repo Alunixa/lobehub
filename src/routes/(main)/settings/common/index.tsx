@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
+import { CurrentTimeSetting } from '@/features/Setting/CurrentTimeSetting';
 import SettingHeader from '@/routes/(main)/settings/features/SettingHeader';
 
 import Appearance from './features/Appearance';
@@ -11,6 +12,7 @@ const Page = () => {
     <>
       <SettingHeader title={t('tab.common')} />
       <Common />
+      <CurrentTimeSetting />
       <Appearance />
     </>
   );
