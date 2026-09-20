@@ -1,9 +1,9 @@
 'use client';
 
 import { resolveTimeZone } from '@lobechat/utils/currentTime';
-import { FormGroup } from '@lobehub/ui';
-import { Alert, Switch } from '@lobehub/ui/base-ui';
-import { memo, useState } from 'react';
+import { Flexbox, FormGroup } from '@lobehub/ui';
+import { Alert, Switch, Text } from '@lobehub/ui/base-ui';
+import { memo, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useUserStore } from '@/store/user';
@@ -11,6 +11,7 @@ import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 export const CurrentTimeSetting = memo(() => {
   const { t } = useTranslation('setting');
+  const switchId = useId();
   const general = useUserStore(userGeneralSettingsSelectors.config);
   const [setSettings, ready] = useUserStore((s) => [s.setSettings, s.isUserStateInit]);
   const [saving, setSaving] = useState(false);
@@ -22,14 +23,15 @@ export const CurrentTimeSetting = memo(() => {
   return (
     <FormGroup
       collapsible={false}
-      desc={t('settingCommon.currentTime.desc', { timezone })}
-      title={t('settingCommon.currentTime.title')}
+      title={<label htmlFor={switchId}>{t('settingCommon.currentTime.title')}</label>}
       variant={'filled'}
       extra={
         <Switch
-          aria-label={t('settingCommon.currentTime.title')}
           checked={general.injectCurrentTime ?? false}
           disabled={!ready || saving}
+          id={switchId}
+          loading={saving}
+          title={t('settingCommon.currentTime.title')}
           onChange={async (checked) => {
             setSaving(true);
             setFailed(false);
@@ -45,7 +47,10 @@ export const CurrentTimeSetting = memo(() => {
         />
       }
     >
-      {failed ? <Alert title={t('settingCommon.currentTime.saveFailed')} type={'error'} /> : null}
+      <Flexbox gap={12} padding={16}>
+        <Text type={'secondary'}>{t('settingCommon.currentTime.desc', { timezone })}</Text>
+        {failed ? <Alert title={t('settingCommon.currentTime.saveFailed')} type={'error'} /> : null}
+      </Flexbox>
     </FormGroup>
   );
 });

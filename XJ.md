@@ -120,6 +120,9 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
+- bf95344500候选时间CI通过lint、37时钟/技能、61设置/聊天测试，唯一失败是旧instructions转system后仍残留原生字段；已定位payload合并并补`instructions: undefined`再叠加路由结果，不删除断言。
+- 首个生产UI验证发现Switch包装组件不转发aria-label，FormGroup手机布局丢弃desc；已读取精确UI5.40发布包源码，改显式label/id/title和正文说明，两端都能读到时区及开关含义，并增加真实保存失败/重试UI测试。
+- 备份本机/远端三项SHA256全部匹配：数据库e00a8b9e、配置da571d5c、旧镜像841888a3；独立备份完成，本轮尚未改线上应用。UI检查临时包在`ui-package-inspect`，结束后删除。
 - 当前修正：Alert改base-ui+title，技能包旧Text同步迁移；客户端时钟移到SDK初始化后实际chat调用前；直连回归使用真实ModelRuntime实例而不是部分对象强制类型转换；历史Anthropic instructions测试显式关闭Responses覆盖，与其测试目的对齐。
 - 已创建独立远端备份 `/mnt/sda1/lobehub-backups/20260920-current-time`：当前镜像4b2d、数据库、Compose/.env、其他7服务状态、回滚脚本；本机受限副本下载校验中。下一步推送修订、等待专项+镜像、同源UI、Release、单服务部署。
 - 本机最终时钟/技能37 tests和设置/过滤18 tests通过；新增服务端技能adapter时区透传且不创建沙箱测试、线上只读手机/电脑外观设置入口检查。准备推送只包含时间功能、测试/CI/记录，由Actions生成发布候选；尚未部署。

@@ -490,6 +490,7 @@ class ChatService {
     const routedPayload = payload.instructions
       ? {
           ...payload,
+          instructions: undefined,
           ...routeInstructions({
             apiMode,
             enabledSearch: payload.enabledSearch,

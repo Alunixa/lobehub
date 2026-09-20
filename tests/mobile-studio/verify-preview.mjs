@@ -530,6 +530,19 @@ try {
       const toggle = page.getByRole('switch', { name: '每次 AI 请求附带当前日期和时间' });
       await expect(toggle).toBeVisible();
       await expect(toggle).not.toBeChecked();
+      const settingsUrl = '**/trpc/lambda/user.updateSettings**';
+      await page.route(settingsUrl, (route) =>
+        route.fulfill({
+          body: '{"error":{"json":{"message":"Simulated offline save","code":-32603,"data":{"code":"INTERNAL_SERVER_ERROR","httpStatus":500}}}}',
+          contentType: 'application/json',
+          status: 500,
+        }),
+      );
+      await toggle.click();
+      await expect(page.getByText('保存失败，请再次点击开关重试。')).toBeVisible();
+      await expect(toggle).not.toBeChecked();
+      assert.equal(timePreference, false);
+      await page.unroute(settingsUrl);
       await toggle.click();
       await expect(toggle).toBeChecked();
       await expect.poll(() => timePreference).toBe(true);
@@ -545,7 +558,7 @@ try {
     }
     assert.equal(runtimeErrors.length, 0);
     assertions.push(
-      'Current-time switch defaults off, persists on/off after reload on mobile and desktop, and shows the timezone',
+      'Current-time switch defaults off, rolls back failed saves and allows retry, persists on/off after reload on mobile and desktop, and shows the timezone',
     );
   } else if (conversationFixture) {
     await open('/agent/agt_preview/tpc_preview_0');
