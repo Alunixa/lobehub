@@ -1,5 +1,7 @@
 import { Flexbox } from '@lobehub/ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { memo, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import MarkdownMessage from '@/features/Conversation/Markdown';
 import { cleanSpeakerTag } from '@/store/chat/utils/cleanSpeakerTag';
@@ -16,6 +18,7 @@ import VideoFileListViewer from './VideoFileListViewer';
 
 const UserMessageContent = memo<UIChatMessage>(
   ({ id, content, editorData, imageList, videoList, audioList, fileList, metadata }) => {
+    const { t } = useTranslation('chat');
     const markdownProps = useMarkdown(id);
     const pageSelections = metadata?.pageSelections;
     const displayContent = useMemo(() => (content ? cleanSpeakerTag(content) : content), [content]);
@@ -31,6 +34,7 @@ const UserMessageContent = memo<UIChatMessage>(
 
     return (
       <Flexbox gap={8} id={id}>
+        {metadata?.isCustomContext && <Text type={'secondary'}>{t('messageContent.contextLabel')}</Text>}
         {pageSelections && pageSelections.length > 0 && (
           <PageSelections selections={pageSelections} />
         )}

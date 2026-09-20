@@ -1,6 +1,7 @@
 import type { StateCreator } from 'zustand';
 
 import type { Store as ConversationStore } from '../../../action';
+import { type MessageContentAction, messageContentSlice } from './content';
 import { type MessageCRUDAction, messageCRUDSlice } from './crud';
 import { type MessageReactionAction, messageReactionSlice } from './reaction';
 import { sendMessage } from './sendMessage';
@@ -17,7 +18,7 @@ import { messageStateSlice } from './state';
  * - Sending messages
  */
 export interface MessageAction
-  extends MessageCRUDAction, MessageReactionAction, MessageStateAction {
+  extends MessageCRUDAction, MessageReactionAction, MessageStateAction, MessageContentAction {
   /**
    * Add an AI message (convenience method)
    */
@@ -40,6 +41,7 @@ export const messageSlice: StateCreator<
   [],
   MessageAction
 > = (set, get, ...rest) => ({
+  ...messageContentSlice(set, get, ...rest),
   // Spread CRUD actions
   ...messageCRUDSlice(set, get, ...rest),
 

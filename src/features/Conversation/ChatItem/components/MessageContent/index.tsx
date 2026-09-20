@@ -18,6 +18,10 @@ const EditorModal = dynamic(
   () => import('@/features/EditorModal').then((mode) => mode.EditorModal),
   { ssr: false },
 );
+const UserMessageEditor = dynamic(
+  () => import('@/features/MessageContentEditor/UserMessageEditor').then((module) => module.UserMessageEditor),
+  { ssr: false },
+);
 
 export const MSG_CONTENT_CLASSNAME = 'msg_content_flag';
 
@@ -75,6 +79,9 @@ const MessageContent = memo<MessageContentProps>(
     const editorData = useConversationStore(
       (s) => dataSelectors.getDisplayMessageById(id)(s)?.editorData,
     );
+    const isUserMessage = useConversationStore(
+      (s) => dataSelectors.getDbMessageById(id)(s)?.role === 'user',
+    );
 
     // Short-circuit on non-editing rows so streaming token updates stay O(1) per row
     // instead of each row running `findLast` on displayMessages (O(N²) per update).
@@ -118,7 +125,8 @@ const MessageContent = memo<MessageContentProps>(
           {messageExtra}
         </Flexbox>
         <Suspense fallback={null}>
-          {editing && (
+          {editing && isUserMessage && <UserMessageEditor id={id} />}
+          {editing && !isUserMessage && (
             <EditorModal
               editorData={editorData}
               okText={shouldSendOnConfirm ? t('send') : t('save')}

@@ -6,6 +6,7 @@ import { copyAction } from './actions/copy';
 import { delAction } from './actions/del';
 import { delAndRegenerateAction } from './actions/delAndRegenerate';
 import { editAction } from './actions/edit';
+import { insertContextAction } from './actions/insertContext';
 import { regenerateAction } from './actions/regenerate';
 import { restoreToInputAction } from './actions/restoreToInput';
 import { selectAction } from './actions/select';
@@ -33,6 +34,7 @@ export const useBuildActions = (
   del: delAction.useBuild(ctx),
   delAndRegenerate: delAndRegenerateAction.useBuild(ctx),
   edit: editAction.useBuild(ctx),
+  insertContext: insertContextAction.useBuild(ctx),
   regenerate: regenerateAction.useBuild(ctx),
   restoreToInput: restoreToInputAction.useBuild(ctx),
   select: selectAction.useBuild(ctx),

@@ -2,6 +2,7 @@ import { useEditor } from '@lobehub/editor/react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { message } from '@/components/AntdStaticMethods';
 import ImperativeModal, { type ImperativeModalProps } from '@/components/ImperativeModal';
 
 import EditorCanvas from './EditorCanvas';
@@ -37,8 +38,14 @@ export const EditorModal = memo<EditorModalProps>(
           setConfirmLoading(true);
           const finalValue = (editor?.getDocument('markdown') as unknown as string) || '';
           const editorData = editor?.getDocument('json');
-          await onConfirm?.(finalValue, editorData);
-          setConfirmLoading(false);
+          try {
+            await onConfirm?.(finalValue, editorData);
+          } catch (error) {
+            console.error('Failed to save edited message:', error);
+            message.error(t('messageContent.saveFailed', { ns: 'chat' }));
+          } finally {
+            setConfirmLoading(false);
+          }
         }}
         {...rest}
       >

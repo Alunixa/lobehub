@@ -5,6 +5,7 @@ import { Flexbox } from '@lobehub/ui';
 import { type FC, useMemo } from 'react';
 
 import { createChatInputRichPlugins } from '@/features/ChatInput/InputEditor/plugins';
+import { useIsMobile } from '@/hooks/useIsMobile';
 
 import TypoBar from './Typobar';
 
@@ -12,6 +13,8 @@ interface EditorCanvasProps {
   defaultValue?: string;
   editor?: IEditor;
   editorData?: unknown;
+  onChange?: () => void;
+  compact?: boolean;
 }
 
 const EDITOR_PLUGINS = [
@@ -19,7 +22,8 @@ const EDITOR_PLUGINS = [
   ReactTablePlugin,
 ];
 
-const EditorCanvas: FC<EditorCanvasProps> = ({ defaultValue, editor, editorData }) => {
+const EditorCanvas: FC<EditorCanvasProps> = ({ defaultValue, editor, editorData, onChange, compact }) => {
+  const mobile = useIsMobile();
   const { content, type } = useMemo(() => {
     const hasValidEditorData =
       editorData && typeof editorData === 'object' && Object.keys(editorData).length > 0;
@@ -36,17 +40,18 @@ const EditorCanvas: FC<EditorCanvasProps> = ({ defaultValue, editor, editorData 
       <TypoBar editor={editor} />
       <Flexbox
         padding={16}
-        style={{ cursor: 'text', maxHeight: '80vh', minHeight: '50vh', overflowY: 'auto' }}
+        style={{ cursor: 'text', maxHeight: compact ? '38dvh' : '80vh', minHeight: compact ? '20dvh' : '50vh', overflowY: 'auto' }}
       >
         <Editor
-          autoFocus
+          autoFocus={!mobile}
           content={content}
           editor={editor}
           plugins={EDITOR_PLUGINS}
           type={type}
           variant={'chat'}
+          onChange={onChange}
           style={{
-            paddingBottom: 120,
+            paddingBottom: compact ? 24 : 120,
           }}
         />
       </Flexbox>

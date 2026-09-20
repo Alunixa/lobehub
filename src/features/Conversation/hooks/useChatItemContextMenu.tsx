@@ -29,6 +29,7 @@ import {
   useConversationStoreApi,
 } from '../store';
 import { useChatListActionsBar } from './useChatListActionsBar';
+import { useInsertContext } from './useInsertContext';
 
 interface ActionMenuItem extends ActionIconGroupItemType {
   children?: { key: string; label: ReactNode }[];
@@ -77,6 +78,7 @@ export const useChatItemContextMenu = ({
   const isGroupSession = useSessionStore(sessionSelectors.isCurrentSessionGroupSession);
   const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
   const actionsBar = useChatListActionsBar({ hasThread, isRegenerating });
+  const { disabled: contextDisabled, open: openInsertContext } = useInsertContext(id);
   const inThread = isThreadMode || inPortalThread;
 
   const [
@@ -133,7 +135,11 @@ export const useChatItemContextMenu = ({
     const withPermission = (items: MenuItem[]) =>
       !canEdit
         ? items.filter((item) => 'key' in item && item.key === 'copy')
-        : items.map((item) => {
+        : [
+          ...items.slice(0, 1),
+          { disabled: contextDisabled, key: 'insertContext', label: t('messageContent.insertContext', { ns: 'chat' }) },
+          ...items.slice(1),
+        ].map((item) => {
             if ('type' in item && item.type === 'divider') return item;
             if (['edit', 'del'].includes(String(item.key))) return { ...item, disabled: !canEdit };
             if (
@@ -212,12 +218,14 @@ export const useChatItemContextMenu = ({
     actionsBar,
     canCreate,
     canEdit,
+    contextDisabled,
     error,
     inThread,
     isCollapsed,
     isDevMode,
     isGroupSession,
     role,
+    t,
   ]);
 
   const handleShare = useCallback(() => {
@@ -252,6 +260,10 @@ export const useChatItemContextMenu = ({
       if (!item) return;
 
       switch (action.key) {
+        case 'insertContext': {
+          await openInsertContext();
+          break;
+        }
         case 'edit': {
           if (!canEdit) break;
           toggleMessageEditing(id, true);
@@ -335,6 +347,7 @@ export const useChatItemContextMenu = ({
       inPortalThread,
       message,
       openThreadCreator,
+      openInsertContext,
       regenerateAssistantMessage,
       regenerateUserMessage,
       resendThreadMessage,
