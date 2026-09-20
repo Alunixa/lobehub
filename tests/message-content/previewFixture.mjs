@@ -218,7 +218,7 @@ export const verifyMessageContent = async ({
     await expect(
       page.getByText(desktop ? '前置自定义上下文' : '附带文件的自定义上下文', { exact: true }),
     ).toBeVisible();
-    const order = getFixture().messages.map((item) => item.content);
+    const order = getFixture().messages.map((item) => item.content.trim());
     const index = order.indexOf('保留这条已有回复');
     assert.equal(
       order[desktop ? index - 1 : index + 1],
