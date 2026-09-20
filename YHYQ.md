@@ -1498,3 +1498,6 @@
 - 最终同源UI72场景全部通过，runtime errors=0，目视核对手机上下文与附件显示正常；发布包297941504 bytes、SHA256 `d63b15652befd133d26e20e5c3617ee9995a80197fa837a12e7e89e9801c4431`，已生成详细说明、manifest和SHA256SUMS，准备发布v2.2.8-codex.20260920.1及单应用保护部署喵~
 - 20:55:58 UTC+8已发布v2.2.8-codex.20260920.1，GitHub API核验标签30c85bdfb5、3资产大小和digest；远端上传完毕且校验通过，准备实际部署喵~
 - 首次SHA256SUMS因Windows文本CRLF导致远端校验文件名错误，未执行部署；已改LF bytes、远端校验成功并替换Release清单，最终179 bytes、SHA256 `4402d112248194661c414c40f0b303c85ac5eac5978f19bc04a9be9619e3bc6b`，没有改镜像或manifest喵~
+- 20:57:57 UTC+8启动240秒回滚保护，仅重建LobeHub；初次启动探测短暂reset/超时后Ready，20:58:21内部与公开HTTPS版本接口正常，真实Next/SWC验证通过喵~
+- 新镜像`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，容器2321086197bb，running/restart=0/OOM=false；Host Executor health=200/success，无fatal/panic/unhandled/migration failed/缺模块日志喵~
+- 线上手机/电脑9入口全部通过，runtime errors=0，拦截9次生产写请求；21:00:12核对其他7容器和配置均未变后确认部署保护，不修改DNS/IPv6/Nginx，也未重启其他服务喵~
