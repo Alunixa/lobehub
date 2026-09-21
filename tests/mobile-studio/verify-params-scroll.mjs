@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { expect } from '@playwright/test';
 
-const scrollState = (page) =>
+export const scrollState = (page) =>
   page.evaluate(() =>
     Array.from(document.querySelectorAll('div'))
       .filter((node) => /auto|scroll/.test(getComputedStyle(node).overflowY))
@@ -18,7 +18,7 @@ const scrollState = (page) =>
 
 // Real trusted touch input, not element.scrollTop or scrollIntoView: nested
 // non-scrolling containers can swallow a swipe even when CSS overflow exists.
-const swipe = async (page, session, upward = true) => {
+export const swipe = async (page, session, upward = true) => {
   const { height } = page.viewportSize();
   const start = upward ? Math.min(height - 75, 600) : 170;
   const end = upward ? 170 : Math.min(height - 75, 600);

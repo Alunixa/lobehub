@@ -5,6 +5,8 @@ import path from 'node:path';
 
 import { chromium, devices, expect } from '@playwright/test';
 
+import { scrollState, swipe } from './verify-params-scroll.mjs';
+
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
 const { appUrl, chatPath, cookie, outputDir } = JSON.parse(input);
@@ -44,12 +46,31 @@ try {
       ? ['/image', '/tools', '/settings', '/settings/security', '/settings/appearance']
       : ['/image', '/settings/appearance'];
     if (chatPath) routes.push(chatPath);
+    const paramsPath = chatPath ? `${chatPath}/settings?section=params` : undefined;
+    if (mobile && paramsPath) routes.push(paramsPath);
     for (const route of routes) {
       const runtimeErrors = [];
       const onError = (error) => runtimeErrors.push(error.name);
       page.on('pageerror', onError);
+      if (route === paramsPath) await page.setViewportSize({ width: 390, height: 430 });
       await page.goto(origin + route, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      if (route === chatPath) {
+      if (route === paramsPath) {
+        await expect(page.locator('[data-variant="page"]').first()).toBeVisible({ timeout: 30000 });
+        await expect(page.getByRole('tab', { name: '高级参数', exact: true })).toBeVisible();
+        const before = await scrollState(page);
+        const session = await context.newCDPSession(page);
+        try {
+          await swipe(page, session);
+        } finally {
+          await session.detach();
+        }
+        const after = await scrollState(page);
+        assert(after.some((item, index) => item.scrollTop > (before[index]?.scrollTop ?? 0) + 20));
+        assert(!(await page.evaluate(() =>
+          document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
+        )));
+        await page.screenshot({ path: path.join(output, 'mobile-params-touch-scroll.png') });
+      } else if (route === chatPath) {
         await expect(page.locator('[contenteditable="true"]').first()).toBeVisible({
           timeout: 45000,
         });
