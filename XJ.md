@@ -155,6 +155,8 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
+- 续接检查点`1b4a2b4837`保留线上原生触摸回归；首候选213731dfff手机专项35586265812失败为Controls旧SliderWithInput/Switch导入，已对照固定UI5.40真实源码确认props兼容并迁移base-ui，不发布失败候选。消息专项35586265759成功；镜像35586265736仍在构建。
+- 本轮独立备份已完成：`/mnt/sda1/lobehub-backups/20260921-mobile-params`，本机同名production-backup；数据库/配置/旧ab97镜像三项SHA256一致，部署脚本与只读线上验证helper已准备，尚未部署。当前补兼容修订后重建，保留所有原有无关未跟踪文件。
 - 滚动修复本机46项轻量回归通过，定向lint/脚本语法/diff检查通过；新增4种手机尺寸（含横屏/短视口）原生触摸到底/返回顶部/输入/折叠/返回聊天验证，手机唯一滚动容器，电脑保持旧行为。17:58只读核验线上仍ab97、restart=0，准备推送Actions候选和新备份。
 - 上一版生产包真实触摸复现成功：外层页面scrollHeight1029/clientHeight712，内部参数body884/884无自身溢出但overscroll=contain，手指上滑后两者scrollTop均0。修复新增page布局让手机页面唯一负责纵向滚动，电脑sidebar/popover不变；尚未构建/部署。
 - 2026-09-21新任务：手机会话高级参数无法滑动。已完整读取本记忆/近期YHYQ，跟踪文件干净，编辑前检查点`f618c9ffee`；定位MobileAgentSettings页面嵌套ParamsSection(sidebar)和Controls内部overflow/overscroll，先用现有生产包复现触摸滚动，不改变线上服务。

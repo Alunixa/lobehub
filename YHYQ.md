@@ -1513,3 +1513,5 @@
 - 新增Controls page布局、ParamsSection variant透传，手机参数交由外层页面滚动，保留电脑sidebar/popover；补真实CDP触摸回归而非scrollTop赋值，尚未发布部署喵~
 - 本机46项手机逻辑回归、定向lint/脚本语法/diff检查通过；按UI5.40规范把同文件旧Select迁往base-ui，扩展手机专项lint范围；新增390x844/320x568/390x430/844x390触摸、最后一项、返回顶部和手点输入回归喵~
 - 17:58只读核验线上ab97镜像running/restart=0，磁盘80GB可用；本次推送包含手机滚动修复、浏览器回归/CI和前轮仅记录/测试提交，随后Actions构建、同源UI及独立备份后发布部署喵~
+- 续接完整读取XJ、近期YHYQ和相关规范，保留原有线上触摸验证脚本到检查点`1b4a2b4837`；首候选手机专项失败于Controls旧SliderWithInput/Switch导入，按固定UI5.40真实源码迁往base-ui，保留props和行为，准备重建不发布失败候选喵~
+- 复核本轮远端独立备份与本机受限副本：数据库、配置、旧ab97镜像三项SHA256全部匹配；部署脚本和只读验证helper已就绪，本轮线上尚未改动，不重复备份或重启其他服务喵~
