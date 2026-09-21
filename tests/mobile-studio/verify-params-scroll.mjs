@@ -142,11 +142,12 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await capture('params-desktop-initial');
     // The legacy header ActionIcon labels itself through a hover tooltip only.
     const toggle = page.getByRole('button').filter({
-      has: page.locator('svg.lucide-settings2'),
+      has: page.locator('svg.lucide-panel-right-open'),
     }).first();
     await toggle.hover();
-    await expect(page.getByRole('tooltip')).toContainText('聊天参数设置');
+    await expect(page.getByRole('tooltip')).toContainText('工作面板');
     await toggle.click();
+    await page.getByRole('button', { name: '参数', exact: true }).click();
     const sidebar = page.locator('[data-variant="sidebar"]').first();
     await expect(sidebar).toBeVisible();
     const sidebarBody = sidebar.locator('[data-variant="sidebar"]');
@@ -156,7 +157,9 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await expect.poll(() => sidebarBody.evaluate((node) => node.scrollTop)).toBeGreaterThan(sidebarBefore);
     await expect(sidebar.getByText('推理强度', { exact: true })).toBeInViewport();
     await capture('params-desktop-sidebar-bottom');
-    await toggle.click();
+    await page.getByRole('button').filter({
+      has: page.locator('svg.lucide-panel-right-close'),
+    }).click();
     await expect(sidebar).not.toBeVisible();
     assertions.push('Desktop parameter sidebar retains internal wheel scrolling, reaches the last control and closes normally');
   } finally {
