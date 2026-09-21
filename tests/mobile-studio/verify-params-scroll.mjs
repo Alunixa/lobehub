@@ -139,7 +139,14 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     setMobile(false);
     await page.setViewportSize({ width: 1440, height: 700 });
     await open('/agent/agt_preview');
-    await page.getByRole('button', { name: '聊天参数设置', exact: true }).click();
+    await capture('params-desktop-initial');
+    // The legacy header ActionIcon labels itself through a hover tooltip only.
+    const toggle = page.getByRole('button').filter({
+      has: page.locator('svg.lucide-settings2'),
+    }).first();
+    await toggle.hover();
+    await expect(page.getByRole('tooltip')).toContainText('聊天参数设置');
+    await toggle.click();
     const sidebar = page.locator('[data-variant="sidebar"]').first();
     await expect(sidebar).toBeVisible();
     const sidebarBody = sidebar.locator('[data-variant="sidebar"]');
@@ -149,7 +156,7 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await expect.poll(() => sidebarBody.evaluate((node) => node.scrollTop)).toBeGreaterThan(sidebarBefore);
     await expect(sidebar.getByText('推理强度', { exact: true })).toBeInViewport();
     await capture('params-desktop-sidebar-bottom');
-    await page.getByRole('button', { name: '聊天参数设置', exact: true }).click();
+    await toggle.click();
     await expect(sidebar).not.toBeVisible();
     assertions.push('Desktop parameter sidebar retains internal wheel scrolling, reaches the last control and closes normally');
   } finally {
