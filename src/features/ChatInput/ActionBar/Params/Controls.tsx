@@ -527,7 +527,7 @@ const SliderField = memo<SliderFieldProps>(
       value={value}
       styles={{
         input: {
-          maxWidth: inputWidth,
+          width: inputWidth,
         },
       }}
       onChange={onChange}
