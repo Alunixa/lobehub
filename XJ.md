@@ -12,6 +12,12 @@
 - 2026-09-19：修复复制对话/子话题图片丢失、子话题关闭/调整大小、Shift+Enter 等误跳转、手机搜索完整列表和所有输入框非主动唤起键盘；完成后自行部署。
 
 ## 3. Current Status
+- **当前已发布并部署：`v2.2.8-codex.20260921.1`**，运行源码`00df83a84f67e9f7e9fcccbc81fbf19d016f1ec5`；2026-09-21 18:40:41 UTC+8启动240秒保护部署，18:42:28线上验收通过后确认。
+- 当前镜像`sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，容器`bc55902ae235ff2e9caf8751d788b42a18f29dbafacedf3873c634c5af380982`；确认时running/restart=0/OOM=false，内部与公开HTTPS版本接口正常、Host Executor health=200/success/host、无致命启动日志。
+- 手机高级参数已改为外层页面原生纵向滚动，保留电脑sidebar/popover行为；修复CI要求的base-ui导入并明确数值框宽度。手机专项272次、正式SPA64场景通过；线上10入口（含手机高级参数触摸）通过、runtime errors=0，拦截10次写请求且没有修改用户设置或发送模型请求。
+- 其他7容器ID/状态/重启数及Compose/.env三项哈希不变；没有修改DNS/IPv6/Nginx或重启其他服务。当前收尾：等待保护窗口结束复查、更新发布说明与清理本轮冗余包。
+
+### 上一版本状态（9月20日，已由9月21日版本替代）
 - **当前已发布并部署：`v2.2.8-codex.20260920.1`**，运行源码`30c85bdfb5b47cc311f815788132bb719b95289b`，2026-09-20 20:57:57 UTC+8启动保护部署、21:00:12线上UI验证后确认成功。
 - 当前容器`2321086197bbb98cd497b59ad1426b3ea0df4561ba276029706be37227cbbf6c`，镜像`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，确认时running/restart=0/OOM=false。
 - 时间开关/秒级技能、旧消息附件编辑、指定位置自定义上下文（含附件）均已上线；同源生产UI72场景和线上9入口通过，runtime errors=0，线上验证拦截9次写请求，没有发送模型请求或修改用户设置。
@@ -73,6 +79,7 @@
 - 生产构建工作流 `.github/workflows/codex-build-server-image.yml`；输出镜像和静态 SPA preview。
 
 ## 9. Testing and Verification
+- 2026-09-21最终00df源码：镜像Actions35588419088、手机专项35588418965成功（46逻辑+188共享/store+38数据库=272次）；`ui-params-final`10、`ui-matrix-final`47、`ui-conversation-final`7场景全通过，runtime errors=0。真实线上`ui-live-final/live-report.json`10入口全通过（含原生触摸滚动），写请求全部拦截。
 - 本轮全仓`35511315013`：Packages、Server两分片、Desktop与Server Coverage成功；App失败为OIDC、Host Executor no-suite、ComfyUI、settings选择器；Database lint1600 errors/261 warnings。E2E`35511315041`81/82场景、490/491步骤通过，剩余既有关闭自动滚动距离断言。
 - 2026-09-20最终30c源码：镜像`35511314975`、消息专项`35511315005`（170次）、手机专项`35511315027`（272次）、时间专项`35511365633`（102次）全部成功；次数包含专项重复执行。
 - 同源生产UI72场景：`ui-message-release-validated`7、`ui-current-time-release`4、`ui-matrix-release`47、`ui-conversation-release`7、`ui-conversation-grouped-release`7；实际线上`ui-live-final/live-report.json`9入口，无runtime errors。
@@ -83,6 +90,8 @@
 - E2E `35453712748`：旧关闭自动滚动断言失败，81/82 场景、490/491 步骤通过；本机全仓类型检查旧 UI/双 React 依赖 213 诊断，不声称全仓全绿。
 
 ## 10. Deployment and Operations
+- 2026-09-21最新部署备份及日志：`/mnt/sda1/lobehub-backups/20260921-mobile-params`；本机受限副本`D:\Cursor\lobehub-backups\20260921-mobile-params\production-backup`。已确认部署，不要再次运行deploy.sh；当前镜像b3d69f，回滚镜像ab97f03。
+- 本轮远端暂存`/mnt/sda1/lobehub-release-20260921-mobile-params`，正式发布资产来自本机`release-final`；`release-published`内是未部署的ba65中间包。
 - 最新部署已确认；本轮备份与部署日志位于`/mnt/sda1/lobehub-backups/20260920-current-time`，本机受限副本`D:\Cursor\lobehub-backups\20260920-current-time\production-backup`。以下旧a9回滚说明属于9月19日部署；本轮回滚应使用4b2d，见第18节。
 - 部署前保存实际运行镜像、Compose/.env、数据库、其他容器 ID/状态与哈希，备份权限限制。
 - 镜像校验 SHA-256，真实加载 Next / SWC，240 秒回滚保护，仅 `docker compose up -d --no-deps --force-recreate lobehub`。
@@ -113,6 +122,7 @@
 - 新 thread 的 `replaceMessages` 必须写原始 `dbMessagesMap` 数据；assistantGroup 的来源规范化为末尾真实子消息。
 
 ## 13. Completed Work
+- 2026-09-21：手机会话高级参数触摸滚动、base-ui兼容及数值宽度修复；本机专项、GitHub Actions构建/272项回归、64场景生产SPA、Release、单服务保护部署与线上10入口验收完成。
 - 2026-09-20：时间开关/秒级技能、附件编辑/指定位置上下文完成实现、专项测试、生产UI、GitHub Actions/Release及单服务部署；同时修复真实UI发现的空白Lexical初始化异常。
 - 2026-09-06 手机全面改版与独立生图已发布并部署，详见历史日志。
 - 2026-09-19 已检查 Git、读取历史和相关规范，初始化本项目记忆。
@@ -146,6 +156,8 @@
 - 只包装 HTMLElement.focus 会遗漏 Lexical 原生 Selection 聚焦；加入 focusin 兜底后通过真实浏览器。直接 label 的原生默认动作晚于 click 微任务，需要单独延迟清理许可。
 
 ## 18. Rollback and Recovery
+- **最新9月21日部署回滚**：`sh /mnt/sda1/lobehub-backups/20260921-mobile-params/rollback.sh`，恢复`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，仅回滚应用。本轮未改数据库schema，勿默认回写数据库；旧镜像/配置/数据库远端与本机3项SHA256均已核验。
+- 以下9月20日及更早回滚记录仅历史，不能用于本次直接回滚。
 - **最新部署回滚**：远端运行`sh /mnt/sda1/lobehub-backups/20260920-current-time/rollback.sh`，恢复`sha256:4b2d6cb7823bb11ae9ebf9638c7214fe40d6aeefa23149d71c4512a17c6cfb59`；只回滚应用，不默认覆盖数据库。
 - 最新最终部署前数据库`database-final-predeploy.dump`本机/远端SHA256一致：`88a9aba33ffe8c3694096e0e8e7e6710eb322a3094d7d30437e3b24bf16c9a2d`；初始数据库、配置与旧镜像也完整保留。部署已确认，不要重新执行deploy.sh。
 - 以下为上一轮回滚历史，不能误用于本轮直接回滚。
@@ -155,6 +167,8 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
+- 手机高级参数修复已发布部署，18:42:28 UTC+8完成线上10入口/触摸验收并确认保护；代码、备份与其他服务检查均完成。下一步仅超过18:44:41保护窗口后稳定复查、发布说明更新/证据归档/冗余暂存清理；不得重复部署。
+### 本轮过程快照（以下待执行状态已由上方实际结果取代）
 - `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
 - 最终发布包`release-final/lobehub-server-image.tar`=298029568 bytes，SHA256 `c7049e6b0e4ef698acc9b3891ec43929c19e6b1923a2d42db49b962f6da4b024`；不要使用`release-published`中的ba65中间包。尚未Release/部署，仍须矩阵通过、发布资产核验及240秒保护窄部署。
@@ -218,13 +232,14 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-0. 优先完成9月21日手机高级参数滚动修复：复现→小范围布局修复与触摸回归→Actions→同源生产UI→Release和单应用保护部署；以下为上一任务收尾历史。
+0. 9月21日修复与部署已确认，仅超过18:44:41 UTC+8复查稳定性、补充Release最终状态、归档证据和清理本轮冗余包；以下为旧任务收尾历史。
 1. 功能、验证、发布部署和证据归档均已完成，不需要重新运行部署。临时清理工具拒绝，保持原状并告知用户；保留全部数据库/配置/旧镜像及UI/CI报告。
 2. 用户刷新现有页面使用新版；时间开关位于设置→外观，默认关闭；消息菜单有编辑与“在此处插入上下文”，可选择前/后位置和添加附件。
 3. 如3210间歇超时复发，记录准确时间/截图、客户端AAAA与外部IPv6探测；根因未确认，没有配置后台监测。本轮部署没有修改网络。
 4. 上一轮明确被工具拒绝的清理不绕过；全仓旧CI/本机依赖问题另行处理，不声称全仓全绿。
 
 ## 21. Change Log
+- 2026-09-21 18:42:28 UTC+8：v2.2.8-codex.20260921.1上线并确认240秒保护，镜像b3d69f/restart=0/OOM=false，内部与公开HTTPS及Host Executor正常；线上10入口无runtime errors，其他7服务及配置不变。
 - 2026-09-20 21:00:12 UTC+8：新版本实际部署与线上9入口验证通过，确认240秒回滚保护；新镜像ab97f03、restart=0、其他7服务及配置一致；最终发布资产与哈希已核验，收尾记录及清理中。
 - 2026-09-20：继续用户时间功能请求；完整读取XJ/YHYQ，核验草稿与规范，建立537e检查点，执行本机专项测试及lint，修复RangeError lint和设置刷新失败不应回滚持久化结果的边界。
 - 2026-09-20：补记用户确认故障及恢复前后均为手机流量；完整读取XJ和近期YHYQ，以干净跟踪状态的`4c73625e9f`为修改前检查点，仅更新两份项目记录，不重复当前健康探测、不修改线上配置。根因仍未确认。
