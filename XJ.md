@@ -155,6 +155,7 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
+- `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
 - 最终发布包`release-final/lobehub-server-image.tar`=298029568 bytes，SHA256 `c7049e6b0e4ef698acc9b3891ec43929c19e6b1923a2d42db49b962f6da4b024`；不要使用`release-published`中的ba65中间包。尚未Release/部署，仍须矩阵通过、发布资产核验及240秒保护窄部署。
 - 关闭侧栏也按真实展开入口恢复+内容不在视口断言，而不是要求DOM卸载；与DraggablePanel保留折叠DOM的设计一致。
