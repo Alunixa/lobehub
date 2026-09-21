@@ -37,7 +37,7 @@ export const swipe = async (page, session, upward = true) => {
   await page.waitForTimeout(300);
 };
 
-export const verifyParamsScroll = async ({ page, open, capture, assertions, requests }) => {
+export const verifyParamsScroll = async ({ page, open, capture, assertions, requests, setMobile }) => {
   const session = await page.context().newCDPSession(page);
   try {
     await page.addInitScript(() => {
@@ -73,6 +73,21 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
         'Swiping must not open a keyboard',
       );
       await capture(`params-${width}x${height}-bottom`);
+      if (width === 390 && height === 844) {
+        const reasoning = page.locator('.control-row').filter({
+          has: page.getByText('推理强度', { exact: true }),
+        });
+        await reasoning.getByRole('switch').tap();
+        await expect(reasoning.getByRole('switch')).toBeChecked();
+        await reasoning.getByRole('combobox').tap();
+        await page.getByRole('option', { name: '高', exact: true }).tap();
+        await expect.poll(() => requests.some(({ method, input }) =>
+          method === 'agent.updateAgentConfig' && input.value?.params?.reasoning_effort === 'high',
+        )).toBe(true);
+        assert(!(await page.evaluate(() =>
+          document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
+        )), 'Switches and parameter selects must not open a keyboard');
+      }
 
       for (let attempt = 0; attempt < 10; attempt++) {
         if ((await scrollState(page)).every((item) => item.scrollTop < 1)) break;
@@ -81,6 +96,17 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
       assert((await scrollState(page)).every((item) => item.scrollTop < 1), 'Can swipe back to top');
       await expect(page.getByText('聊天参数设置', { exact: true })).toBeInViewport();
       if (width === 390 && height === 844) {
+        const history = page.locator('.control-row').filter({
+          has: page.getByText('限制历史消息', { exact: true }),
+        });
+        const count = history.locator('input:not([type="hidden"]):not([type="checkbox"])');
+        await count.tap();
+        await expect(count).toBeFocused();
+        await count.fill('16');
+        await header.tap();
+        await expect.poll(() => requests.some(({ method, input }) =>
+          method === 'agent.updateAgentConfig' && input.value?.chatConfig?.historyCount === 16,
+        )).toBe(true);
         const textarea = page.locator('textarea');
         await expect(textarea).not.toBeFocused();
         await expect(textarea).toBeInViewport();
@@ -104,7 +130,24 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await page.getByRole('button', { name: '返回', exact: true }).tap();
     await expect(page.locator('[contenteditable="true"]').first()).toBeVisible();
     await expect(page.locator('[contenteditable="true"]').first()).not.toBeFocused();
-    assertions.push('Manual field input still works, saves, collapses/expands and returns to chat without autofocus');
+    assertions.push('Manual numeric/text input, switches and selects save; collapse/expand and return to chat preserve direct-input-only focus');
+
+    setMobile(false);
+    await page.setViewportSize({ width: 1440, height: 700 });
+    await open('/agent/agt_preview');
+    await page.getByRole('button', { name: '聊天参数设置', exact: true }).click();
+    const sidebar = page.locator('[data-variant="sidebar"]').first();
+    await expect(sidebar).toBeVisible();
+    const sidebarBody = sidebar.locator('[data-variant="sidebar"]');
+    const sidebarBefore = await sidebarBody.evaluate((node) => node.scrollTop);
+    await sidebarBody.hover();
+    await page.mouse.wheel(0, 1600);
+    await expect.poll(() => sidebarBody.evaluate((node) => node.scrollTop)).toBeGreaterThan(sidebarBefore);
+    await expect(sidebar.getByText('推理强度', { exact: true })).toBeInViewport();
+    await capture('params-desktop-sidebar-bottom');
+    await page.getByRole('button', { name: '聊天参数设置', exact: true }).click();
+    await expect(sidebar).not.toBeVisible();
+    assertions.push('Desktop parameter sidebar retains internal wheel scrolling, reaches the last control and closes normally');
   } finally {
     await session.detach();
   }

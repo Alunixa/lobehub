@@ -544,7 +544,10 @@ try {
     }
   };
   if (probePath === '--params-scroll') {
-    await verifyParamsScroll({ page, open, capture, assertions, requests });
+    await verifyParamsScroll({
+      page, open, capture, assertions, requests,
+      setMobile: (value) => { mobile = value; },
+    });
     assert.equal(runtimeErrors.length, 0);
   } else if (verifyMessageContent) {
     await verifyMessageContentUI({
