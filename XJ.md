@@ -15,7 +15,8 @@
 - **当前已发布并部署：`v2.2.8-codex.20260921.1`**，运行源码`00df83a84f67e9f7e9fcccbc81fbf19d016f1ec5`；2026-09-21 18:40:41 UTC+8启动240秒保护部署，18:42:28线上验收通过后确认。
 - 当前镜像`sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，容器`bc55902ae235ff2e9caf8751d788b42a18f29dbafacedf3873c634c5af380982`；确认时running/restart=0/OOM=false，内部与公开HTTPS版本接口正常、Host Executor health=200/success/host、无致命启动日志。
 - 手机高级参数已改为外层页面原生纵向滚动，保留电脑sidebar/popover行为；修复CI要求的base-ui导入并明确数值框宽度。手机专项272次、正式SPA64场景通过；线上10入口（含手机高级参数触摸）通过、runtime errors=0，拦截10次写请求且没有修改用户设置或发送模型请求。
-- 其他7容器ID/状态/重启数及Compose/.env三项哈希不变；没有修改DNS/IPv6/Nginx或重启其他服务。当前收尾：等待保护窗口结束复查、更新发布说明与清理本轮冗余包。
+- 其他7容器ID/状态/重启数及Compose/.env三项哈希不变；没有修改DNS/IPv6/Nginx或重启其他服务。18:44:59 UTC+8超过保护窗口后复查仍为新镜像running/restart=0/OOM=false、版本正常、无回滚；最终Release说明和本机受限部署证据归档完成。
+- 本轮本机冗余预览/镜像清理命令被执行工具拒绝，整条命令未执行，没有删除任何文件或改用其他方式绕过；本机/远端暂存保留待办，功能与上线无需重做。本地领先00df仅浏览器验证脚本和项目记录，不改变已部署运行源码。
 
 ### 上一版本状态（9月20日，已由9月21日版本替代）
 - **当前已发布并部署：`v2.2.8-codex.20260920.1`**，运行源码`30c85bdfb5b47cc311f815788132bb719b95289b`，2026-09-20 20:57:57 UTC+8启动保护部署、21:00:12线上UI验证后确认成功。
@@ -80,6 +81,7 @@
 
 ## 9. Testing and Verification
 - 2026-09-21最终00df源码：镜像Actions35588419088、手机专项35588418965成功（46逻辑+188共享/store+38数据库=272次）；`ui-params-final`10、`ui-matrix-final`47、`ui-conversation-final`7场景全通过，runtime errors=0。真实线上`ui-live-final/live-report.json`10入口全通过（含原生触摸滚动），写请求全部拦截。
+- 9月21日全仓35588418956：Packages、Server两分片、Desktop、Server Coverage成功；App仍为OIDC/Host Executor no-suite/ComfyUI/settings fixtures失败，Database lint1597 errors/261 warnings。E2E35588419025为81/82场景、490/491步骤，唯一失败原关闭流式自动滚动距离断言（期望>320，实际12）；不声称全仓全绿。
 - 本轮全仓`35511315013`：Packages、Server两分片、Desktop与Server Coverage成功；App失败为OIDC、Host Executor no-suite、ComfyUI、settings选择器；Database lint1600 errors/261 warnings。E2E`35511315041`81/82场景、490/491步骤通过，剩余既有关闭自动滚动距离断言。
 - 2026-09-20最终30c源码：镜像`35511314975`、消息专项`35511315005`（170次）、手机专项`35511315027`（272次）、时间专项`35511365633`（102次）全部成功；次数包含专项重复执行。
 - 同源生产UI72场景：`ui-message-release-validated`7、`ui-current-time-release`4、`ui-matrix-release`47、`ui-conversation-release`7、`ui-conversation-grouped-release`7；实际线上`ui-live-final/live-report.json`9入口，无runtime errors。
@@ -130,6 +132,7 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
+- 9月21日本机`D:\Cursor\lobehub-backups\20260921-mobile-params`下`preview-release`、`preview-final`、`release-published`（ba65中间包）及`release-final/lobehub-server-image.tar`清理命令被执行工具拒绝；远端`/mnt/sda1/lobehub-release-20260921-mobile-params`也保留。不要绕过限制；保留所有production-backup、UI/CI报告和Release校验/证据。修复与部署已经完成，不重复部署。
 - 本轮`D:\Cursor\lobehub-backups\20260920-current-time`中的`preview-first`、`preview-message-first`、`preview-final`、`preview-release`、`ui-package-inspect`、`release-final`和`release-published/lobehub-server-image.tar`清理命令被工具拒绝，全部仍保留；远端`/mnt/sda1/lobehub-release-20260920-current-time`也保留，不绕过限制。所有production-backup及UI/CI证据必须保留。
 - 新访问超时调查未闭环：用户已确认早上/中午3210不通、下午自行恢复；需要故障当时的错误类型、时间与实际解析/网络路径证据，不能用443探测或05:02启动窗口解释全天问题。
 - 独立启动配置风险：UCI nginx启动因conf.d/nginx.conf重复顶级worker_processes报错，现有rc.local在05:02:29手动启动实际配置成功；本轮未改动，若后续处理须单独备份并评估其他Nginx服务。
@@ -167,7 +170,7 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
-- 手机高级参数修复已发布部署，18:42:28 UTC+8完成线上10入口/触摸验收并确认保护；代码、备份与其他服务检查均完成。下一步仅超过18:44:41保护窗口后稳定复查、发布说明更新/证据归档/冗余暂存清理；不得重复部署。
+- 手机高级参数修复已发布部署，18:42:28 UTC+8完成线上10入口/触摸验收并确认保护，18:44:59稳定复查通过；最终发布说明（包括全仓限制）、独立备份和部署证据均归档。唯一遗留是清理执行被工具拒绝，已保留原状并记录，不绕过、不重复部署。
 ### 本轮过程快照（以下待执行状态已由上方实际结果取代）
 - `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
@@ -232,13 +235,14 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-0. 9月21日修复与部署已确认，仅超过18:44:41 UTC+8复查稳定性、补充Release最终状态、归档证据和清理本轮冗余包；以下为旧任务收尾历史。
+0. 9月21日功能、CI专项、正式UI、Release、部署与稳定复查已完成；用户刷新手机页面即可。清理被工具拒绝的暂存保持原状，后续只有获准可执行的环境才处理；不要再次运行deploy.sh。以下为旧任务收尾历史。
 1. 功能、验证、发布部署和证据归档均已完成，不需要重新运行部署。临时清理工具拒绝，保持原状并告知用户；保留全部数据库/配置/旧镜像及UI/CI报告。
 2. 用户刷新现有页面使用新版；时间开关位于设置→外观，默认关闭；消息菜单有编辑与“在此处插入上下文”，可选择前/后位置和添加附件。
 3. 如3210间歇超时复发，记录准确时间/截图、客户端AAAA与外部IPv6探测；根因未确认，没有配置后台监测。本轮部署没有修改网络。
 4. 上一轮明确被工具拒绝的清理不绕过；全仓旧CI/本机依赖问题另行处理，不声称全仓全绿。
 
 ## 21. Change Log
+- 2026-09-21 18:44:59 UTC+8：超过240秒窗口稳定复查通过、未回滚；最终Release说明与线上10入口/保护标记/配置和其他服务证据已归档。原生PowerShell清理命令先验证目标边界但仍被工具拒绝，未执行且未绕过，本机及远端暂存保留。
 - 2026-09-21 18:42:28 UTC+8：v2.2.8-codex.20260921.1上线并确认240秒保护，镜像b3d69f/restart=0/OOM=false，内部与公开HTTPS及Host Executor正常；线上10入口无runtime errors，其他7服务及配置不变。
 - 2026-09-20 21:00:12 UTC+8：新版本实际部署与线上9入口验证通过，确认240秒回滚保护；新镜像ab97f03、restart=0、其他7服务及配置一致；最终发布资产与哈希已核验，收尾记录及清理中。
 - 2026-09-20：继续用户时间功能请求；完整读取XJ/YHYQ，核验草稿与规范，建立537e检查点，执行本机专项测试及lint，修复RangeError lint和设置刷新失败不应回滚持久化结果的边界。

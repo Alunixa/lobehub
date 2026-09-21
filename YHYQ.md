@@ -1528,3 +1528,6 @@
 - 最终同源64场景全部通过，18:39:09 UTC+8发布v2.2.8-codex.20260921.1，标签00df83a84f与3资产大小/digest已由GitHub API核验；发布准备首次只读CI查询遇EOF，未发布半成品，随后发布成功；远端最终资产和脚本校验通过，准备单应用240秒保护部署喵~
 - 18:40:41 UTC+8启动保护部署，仅重建LobeHub；Next/SWC真实运行校验通过，18:41:08内部与公开HTTPS版本接口正常，镜像b3d69f、容器bc5590、running/restart=0/OOM=false，Host Executor health=200/success，致命日志0喵~
 - 线上10入口（新增手机高级参数真实触摸）全部通过，runtime errors=0，10次生产写请求被拦截，未发送模型请求或修改用户设置；18:42:28核对其他7容器及配置三项哈希一致后确认部署，不改网络/其他服务，等待保护窗口结束收尾喵~
+- 18:44:59 UTC+8超过240秒窗口复查：仍为b3d69f镜像running/restart=0/OOM=false、版本接口正常、未回滚，其他7服务和配置保持一致；部署/保护/确认/稳定标记及前后状态下载至受限备份目录，Release说明更新并读回归档喵~
+- 全仓最终结果已记录：Packages/Server两分片/Desktop/Server Coverage成功，App保留OIDC/Host Executor no-suite/ComfyUI/settings fixtures旧失败、Database lint1597 errors/261 warnings；E2E81/82场景通过，仅原关闭流式自动滚动距离断言失败，未把专项通过当全仓全绿喵~
+- 本轮清理先核验本机绝对路径均在专用备份工作目录且非重解析点，原生PowerShell删除命令仍被工具拒绝、整条未执行；未绕过或删任何文件，冗余本机/远端暂存保留待办，不影响已部署功能，所有回滚材料与验证证据保留喵~
