@@ -74,10 +74,22 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
       );
       await capture(`params-${width}x${height}-bottom`);
       if (width === 390 && height === 844) {
+        await page.evaluate(() => {
+          window.__paramsEvents = [];
+          for (const type of ['pointerdown', 'pointerup', 'click', 'change']) {
+            document.addEventListener(type, (event) => {
+              window.__paramsEvents.push({
+                type, target: event.target?.outerHTML?.slice(0, 500),
+              });
+            }, true);
+          }
+        });
         const reasoning = page.locator('.control-row').filter({
           has: page.getByText('推理强度', { exact: true }),
         });
         await reasoning.getByRole('switch').tap();
+        await page.waitForTimeout(700);
+        console.info('PARAMS_SWITCH_EVENTS', JSON.stringify(await page.evaluate(() => window.__paramsEvents)));
         await expect(reasoning.getByRole('switch')).toBeChecked();
         await reasoning.getByRole('combobox').tap();
         await page.getByRole('option', { name: '高', exact: true }).tap();
