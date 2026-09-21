@@ -155,6 +155,8 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
+- 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
+- 最终发布包`release-final/lobehub-server-image.tar`=298029568 bytes，SHA256 `c7049e6b0e4ef698acc9b3891ec43929c19e6b1923a2d42db49b962f6da4b024`；不要使用`release-published`中的ba65中间包。尚未Release/部署，仍须矩阵通过、发布资产核验及240秒保护窄部署。
 - 关闭侧栏也按真实展开入口恢复+内容不在视口断言，而不是要求DOM卸载；与DraggablePanel保留折叠DOM的设计一致。
 - 电脑测试进一步确认DraggablePanel折叠保留DOM，paramsTab.isVisible并不代表展开（被主内容遮挡）；改为按仅折叠时渲染的Header opener判定，打开后断言参数页签在视口中，不force点击、不改样式绕过真实交互。
 - 电脑DOM已确认工作面板“参数”按钮可用，Tooltip内容不是tooltip角色；测试直接点击实际“参数”按钮，面板未打开时先按真实右上图标打开，避免把无关tooltip角色当成功前提。运行源码未再修改，最终构建继续。
