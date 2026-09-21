@@ -1,5 +1,6 @@
 import { DEFAULT_AGENT_CONFIG } from '@lobechat/const';
-import { Flexbox, Icon, Select, SliderWithInput, TextArea } from '@lobehub/ui';
+import { Flexbox, Icon, SliderWithInput, TextArea } from '@lobehub/ui';
+import { Select } from '@lobehub/ui/base-ui';
 import { Form as AntdForm, Switch } from 'antd';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { debounce } from 'es-toolkit/compat';
@@ -27,7 +28,7 @@ import { useUpdateAgentConfig } from '../../hooks/useUpdateAgentConfig';
 interface ControlsProps {
   setUpdating: (updating: boolean) => void;
   updating: boolean;
-  variant?: 'popover' | 'sidebar';
+  variant?: 'page' | 'popover' | 'sidebar';
 }
 
 type ParamKey = 'temperature' | 'top_p' | 'presence_penalty' | 'frequency_penalty';
@@ -107,6 +108,12 @@ const styles = createStaticStyles(({ css }) => ({
     min-height: 0;
     padding-block-end: 4px;
     padding-inline: 12px;
+
+    &[data-variant='page'] {
+      overflow: visible;
+      overscroll-behavior: auto;
+      flex: none;
+    }
   `,
   commonSection: css`
     display: flex;
@@ -242,6 +249,18 @@ const styles = createStaticStyles(({ css }) => ({
 
     background: ${cssVar.colorBgElevated};
     box-shadow: ${cssVar.boxShadowSecondary};
+
+    /* Page layouts own scrolling. An unconstrained inner scroll container with
+       overscroll containment traps touch gestures instead of reaching the page. */
+    &[data-variant='page'] {
+      overflow: visible;
+      width: 100%;
+      max-height: none;
+      border: none;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
 
     .ant-switch {
       min-width: 28px;
@@ -729,7 +748,10 @@ const Controls = memo<ControlsProps>(({ setUpdating, updating, variant = 'popove
 
   return (
     <div className={cx(styles.form, variant === 'sidebar' && styles.formSidebar)}>
-      <div className={cx(styles.panel, variant === 'sidebar' && styles.sidebarPanel)}>
+      <div
+        className={cx(styles.panel, variant === 'sidebar' && styles.sidebarPanel)}
+        data-variant={variant}
+      >
         <div className={styles.header}>
           <span className={styles.headerTitle}>{panelTitle}</span>
           {updating && (
@@ -738,7 +760,7 @@ const Controls = memo<ControlsProps>(({ setUpdating, updating, variant = 'popove
             </div>
           )}
         </div>
-        <div className={styles.body}>
+        <div className={styles.body} data-variant={variant}>
           <div className={styles.commonSection}>
             <ControlRow
               tag="compression"

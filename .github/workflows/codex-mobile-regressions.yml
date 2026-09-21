@@ -38,6 +38,8 @@ jobs:
             src/features/ChatInput/Desktop/index.tsx \
             src/features/AgentTasks/AgentTaskList/CreateTaskInlineEntry.tsx \
             src/features/ChatInput/ActionBar/Plus/index.tsx \
+            src/features/ChatInput/ActionBar/Params/Controls.tsx \
+            'src/routes/(main)/agent/features/Conversation/WorkingSidebar/ParamsSection/index.tsx' \
             src/features/ChatInput/ActionBar/Upload/index.tsx \
             src/features/ChatInput/hooks/useChatInputEditor.ts \
             src/features/Conversation/ChatInput/index.tsx \

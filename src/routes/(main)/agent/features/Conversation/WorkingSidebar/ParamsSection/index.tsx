@@ -4,13 +4,13 @@ import Controls from '@/features/ChatInput/ActionBar/Params/Controls';
 import { createStore, Provider } from '@/features/ChatInput/store';
 import { useAgentStore } from '@/store/agent';
 
-const ParamsSection = memo(() => {
+const ParamsSection = memo(({ variant = 'sidebar' }: { variant?: 'page' | 'sidebar' }) => {
   const agentId = useAgentStore((s) => s.activeAgentId) || '';
   const [updating, setUpdating] = useState(false);
 
   return (
     <Provider createStore={() => createStore({ agentId })} key={agentId}>
-      <Controls setUpdating={setUpdating} updating={updating} variant="sidebar" />
+      <Controls setUpdating={setUpdating} updating={updating} variant={variant} />
     </Provider>
   );
 });

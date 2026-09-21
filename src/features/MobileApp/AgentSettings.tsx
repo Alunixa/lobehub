@@ -79,7 +79,7 @@ export const MobileAgentSettings = () => {
             />
           )}
           {error ? null : activeTab === 'params' ? (
-            <ParamsSection />
+            <ParamsSection variant={'page'} />
           ) : (
             <>
               <Text aria-live={'polite'} fontSize={12} type={'secondary'}>

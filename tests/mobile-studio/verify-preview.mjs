@@ -7,6 +7,7 @@ import path from 'node:path';
 
 import { chromium, expect } from '@playwright/test';
 import superjson from 'superjson';
+import { verifyParamsScroll } from './verify-params-scroll.mjs';
 import {
   createMessageContentFixture,
   verifyMessageContent as verifyMessageContentUI,
@@ -36,13 +37,19 @@ const user = {
   username: 'preview',
 };
 const agent = {
-  chatConfig: {},
+  chatConfig:
+    probePath === '--params-scroll'
+      ? { enableAgentMode: false, enableHistoryCount: true, enableMaxTokens: true, historyCount: 12 }
+      : {},
   createdAt: now,
   description: '用于验证手机页面的本地演示助手',
   id: 'agt_preview',
   meta: { avatar: '🤖', description: '本地演示助手', title: '创作助手' },
   model: 'gpt-4o',
-  params: {},
+  params:
+    probePath === '--params-scroll'
+      ? { frequency_penalty: 0.2, presence_penalty: 0.3, temperature: 0.7, top_p: 1 }
+      : {},
   plugins: [],
   provider: 'openai',
   systemRole: 'You are a helpful assistant.',
@@ -165,6 +172,11 @@ function rpc(method, input) {
   if (method === 'home.getDailyBrief') return { pairs: [] };
   if (method === 'agent.getBuiltinAgent') return { ...agent, id: `agt_builtin_${input.slug}` };
   if (method === 'agent.getAgentConfigById' || method === 'agent.getAgentById') return agent;
+  if (probePath === '--params-scroll' && method === 'agent.updateAgentConfig') {
+    agent.chatConfig = { ...agent.chatConfig, ...input.value?.chatConfig };
+    agent.params = { ...agent.params, ...input.value?.params };
+    return {};
+  }
   if (/^agent.count|^topic.count|^message.count/.test(method)) return 1;
   if (conversationFixture) {
     const chatTopics = Array.from({ length: 65 }, (_, index) => ({
@@ -531,7 +543,10 @@ try {
       assert(!editing, `${route}: navigation must not autofocus a mobile input`);
     }
   };
-  if (verifyMessageContent) {
+  if (probePath === '--params-scroll') {
+    await verifyParamsScroll({ page, open, capture, assertions, requests });
+    assert.equal(runtimeErrors.length, 0);
+  } else if (verifyMessageContent) {
     await verifyMessageContentUI({
       page,
       open,

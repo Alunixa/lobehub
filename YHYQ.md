@@ -1504,3 +1504,12 @@
 - 21:03:27 UTC+8超过保护窗口后复查仍为新镜像running/restart=0/OOM=false、版本接口正常且未回滚；部署日志/确认标记/健康与其他服务证据已归档到受限备份目录，Release说明和GitHub资产证据更新完成喵~
 - 本轮本机清理先验证目录限制后提交原生PowerShell命令，执行工具拒绝整条命令，未删除任何文件、未换工具绕过；本轮本机/远端暂存保留待办，不影响线上服务，全部回滚备份保持完整喵~
 - 最终全仓结果已记录：Packages/Server两分片/Desktop/Server Coverage成功，App仍有OIDC/Host Executor no-suite/ComfyUI/settings选择器失败、Database lint1600 errors/261 warnings；E2E81/82场景通过，剩余原关闭自动滚动断言；专项及生产UI均通过但不宣称全仓全绿喵~
+
+## 2026-09-21：手机会话高级参数无法滑动
+
+- 用户反馈手机会话高级参数无法滑动；完整读取XJ和近期YHYQ、核对Git并建立编辑前检查点`f618c9ffee`，保留原有无关未跟踪文件喵~
+- 定位手机AgentSettings页面中的ParamsSection复用桌面sidebar尺寸/内部overflow布局，准备使用上一版未修改生产包复现真实触摸滑动并修复，不改线上服务或网络配置喵~
+- 首次触摸夹具为内容未溢出的默认Agent模式，不作为复现证据；补充实际长内容/已展开高级项后，确认外层1029/712可滚、内层884/884无溢出但overscroll contain吞掉触摸，native swipe后所有scrollTop为0喵~
+- 新增Controls page布局、ParamsSection variant透传，手机参数交由外层页面滚动，保留电脑sidebar/popover；补真实CDP触摸回归而非scrollTop赋值，尚未发布部署喵~
+- 本机46项手机逻辑回归、定向lint/脚本语法/diff检查通过；按UI5.40规范把同文件旧Select迁往base-ui，扩展手机专项lint范围；新增390x844/320x568/390x430/844x390触摸、最后一项、返回顶部和手点输入回归喵~
+- 17:58只读核验线上ab97镜像running/restart=0，磁盘80GB可用；本次推送包含手机滚动修复、浏览器回归/CI和前轮仅记录/测试提交，随后Actions构建、同源UI及独立备份后发布部署喵~
