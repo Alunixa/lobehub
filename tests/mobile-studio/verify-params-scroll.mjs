@@ -141,11 +141,13 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await open('/agent/agt_preview');
     await capture('params-desktop-initial');
     const paramsTab = page.getByRole('button', { name: '参数', exact: true });
-    if (!(await paramsTab.isVisible())) {
-      await page.getByRole('button').filter({
-        has: page.locator('svg.lucide-panel-right-open'),
-      }).click();
-    }
+    const openPanel = page.getByRole('button').filter({
+      has: page.locator('svg.lucide-panel-right-open'),
+    });
+    // Collapsed panels keep their DOM mounted, so tab.isVisible() alone is not
+    // an open-state signal. The header opener is only rendered while collapsed.
+    if (await openPanel.isVisible()) await openPanel.click();
+    await expect(paramsTab).toBeInViewport();
     await paramsTab.click();
     const sidebar = page.locator('[data-variant="sidebar"]').first();
     await expect(sidebar).toBeVisible();
