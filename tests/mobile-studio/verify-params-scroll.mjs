@@ -161,7 +161,8 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await page.getByRole('button').filter({
       has: page.locator('svg.lucide-panel-right-close'),
     }).click();
-    await expect(sidebar).not.toBeVisible();
+    await expect(openPanel).toBeVisible();
+    await expect(sidebar).not.toBeInViewport();
     assertions.push('Desktop parameter sidebar retains internal wheel scrolling, reaches the last control and closes normally');
   } finally {
     await session.detach();
