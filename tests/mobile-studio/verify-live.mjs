@@ -5,7 +5,7 @@ import path from 'node:path';
 
 import { chromium, devices, expect } from '@playwright/test';
 
-import { scrollState, swipe } from './verify-params-scroll.mjs';
+import { keyboardInputFocused, scrollState, swipe } from './verify-params-scroll.mjs';
 
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
@@ -66,9 +66,7 @@ try {
         }
         const after = await scrollState(page);
         assert(after.some((item, index) => item.scrollTop > (before[index]?.scrollTop ?? 0) + 20));
-        assert(!(await page.evaluate(() =>
-          document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
-        )));
+        assert(!(await keyboardInputFocused(page)));
         await page.screenshot({ path: path.join(output, 'mobile-params-touch-scroll.png') });
       } else if (route === chatPath) {
         await expect(page.locator('[contenteditable="true"]').first()).toBeVisible({

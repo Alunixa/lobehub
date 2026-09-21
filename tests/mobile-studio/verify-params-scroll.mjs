@@ -2,6 +2,12 @@ import assert from 'node:assert/strict';
 
 import { expect } from '@playwright/test';
 
+// Native range/checkbox focus does not summon an on-screen keyboard.
+export const keyboardInputFocused = (page) =>
+  page.evaluate(() => document.activeElement?.matches(
+    'textarea,input:not([type="range"]):not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([aria-hidden="true"]),[contenteditable="true"]',
+  ));
+
 export const scrollState = (page) =>
   page.evaluate(() =>
     Array.from(document.querySelectorAll('div'))
@@ -69,9 +75,7 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
       await expect(bottom).toBeInViewport();
       assert.equal((await header.boundingBox()).y, headerBefore.y, 'Header stays fixed');
       assert(
-        !(await page.evaluate(() =>
-          document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
-        )),
+        !(await keyboardInputFocused(page)),
         'Swiping must not open a keyboard',
       );
       await capture(`params-${width}x${height}-bottom`);
@@ -86,9 +90,7 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
         await expect.poll(() => requests.some(({ method, input }) =>
           method === 'agent.updateAgentConfig' && input.value?.params?.reasoning_effort === 'high',
         )).toBe(true);
-        assert(!(await page.evaluate(() =>
-          document.activeElement?.matches('input,textarea,[contenteditable="true"]'),
-        )), 'Switches and parameter selects must not open a keyboard');
+        assert(!(await keyboardInputFocused(page)), 'Switches and parameter selects must not open a keyboard');
       }
 
       for (let attempt = 0; attempt < 10; attempt++) {
