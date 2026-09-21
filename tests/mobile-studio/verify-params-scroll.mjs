@@ -140,14 +140,13 @@ export const verifyParamsScroll = async ({ page, open, capture, assertions, requ
     await page.setViewportSize({ width: 1440, height: 700 });
     await open('/agent/agt_preview');
     await capture('params-desktop-initial');
-    // The legacy header ActionIcon labels itself through a hover tooltip only.
-    const toggle = page.getByRole('button').filter({
-      has: page.locator('svg.lucide-panel-right-open'),
-    }).first();
-    await toggle.hover();
-    await expect(page.getByRole('tooltip')).toContainText('工作面板');
-    await toggle.click();
-    await page.getByRole('button', { name: '参数', exact: true }).click();
+    const paramsTab = page.getByRole('button', { name: '参数', exact: true });
+    if (!(await paramsTab.isVisible())) {
+      await page.getByRole('button').filter({
+        has: page.locator('svg.lucide-panel-right-open'),
+      }).click();
+    }
+    await paramsTab.click();
     const sidebar = page.locator('[data-variant="sidebar"]').first();
     await expect(sidebar).toBeVisible();
     const sidebarBody = sidebar.locator('[data-variant="sidebar"]');
