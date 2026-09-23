@@ -12,13 +12,14 @@
 - 2026-09-19：修复复制对话/子话题图片丢失、子话题关闭/调整大小、Shift+Enter 等误跳转、手机搜索完整列表和所有输入框非主动唤起键盘；完成后自行部署。
 
 ## 3. Current Status
-- **当前已发布并部署：`v2.2.8-codex.20260921.1`**，运行源码`00df83a84f67e9f7e9fcccbc81fbf19d016f1ec5`；2026-09-21 18:40:41 UTC+8启动240秒保护部署，18:42:28线上验收通过后确认。
-- 当前镜像`sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，容器`bc55902ae235ff2e9caf8751d788b42a18f29dbafacedf3873c634c5af380982`；确认时running/restart=0/OOM=false，内部与公开HTTPS版本接口正常、Host Executor health=200/success/host、无致命启动日志。
-- 手机高级参数已改为外层页面原生纵向滚动，保留电脑sidebar/popover行为；修复CI要求的base-ui导入并明确数值框宽度。手机专项272次、正式SPA64场景通过；线上10入口（含手机高级参数触摸）通过、runtime errors=0，拦截10次写请求且没有修改用户设置或发送模型请求。
-- 其他7容器ID/状态/重启数及Compose/.env三项哈希不变；没有修改DNS/IPv6/Nginx或重启其他服务。18:44:59 UTC+8超过保护窗口后复查仍为新镜像running/restart=0/OOM=false、版本正常、无回滚；最终Release说明和本机受限部署证据归档完成。
-- 本轮本机冗余预览/镜像清理命令被执行工具拒绝，整条命令未执行，没有删除任何文件或改用其他方式绕过；本机/远端暂存保留待办，功能与上线无需重做。本地领先00df仅浏览器验证脚本和项目记录，不改变已部署运行源码。
+- **当前已发布并部署：`v2.2.8-codex.20260923.2`**，运行源码 `2ae3466070027bc5e9c3f5605915f7b29916f813`；GitHub Actions `35904190592` 成功，Release 三项资产 digest 与本地一致。
+- 当前镜像 `sha256:ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`，容器 `3d6ea49a564c8fb22225774e29e0888ee33d4f42389f0f9fe788171f7d8b4452`；远端 UTC+8 时间 2026-09-24 03:35:49 确认部署，03:38:38 超过原 240 秒窗口后仍 running/restart=0/OOM=false。
+- 首屏不再等待 IndexedDB 全量水合；缓存后台补齐且不覆盖新网络值。只读 tRPC query 优先同源 WebSocket，连接/响应故障约 900ms 回退 HTTP；mutation、上传与写请求继续 HTTP。
+- 真实远端和外部 IPv6 WSS query 返回标准 `UNAUTHORIZED` 业务错误且 `bridgeSource=null`，普通 HTTP query 返回 401；内部、公开 HTTPS、外部 IPv6 HTTPS 版本接口均正常。
+- Host Executor health=200/success/host，致命日志计数0；其他7容器和Compose/.env/override哈希不变，未修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6或Nginx。
+- `.1` 首轮与 `.2` 第二次尝试均因未及时确认由 guard 自动回滚，第三次已在窗口内确认并稳定。部署证据已归档；无用 artifact zip 清理被执行策略拒绝，未绕过。
 
-### 上一版本状态（9月20日，已由9月21日版本替代）
+### 历史已部署版本状态
 - **当前已发布并部署：`v2.2.8-codex.20260920.1`**，运行源码`30c85bdfb5b47cc311f815788132bb719b95289b`，2026-09-20 20:57:57 UTC+8启动保护部署、21:00:12线上UI验证后确认成功。
 - 当前容器`2321086197bbb98cd497b59ad1426b3ea0df4561ba276029706be37227cbbf6c`，镜像`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，确认时running/restart=0/OOM=false。
 - 时间开关/秒级技能、旧消息附件编辑、指定位置自定义上下文（含附件）均已上线；同源生产UI72场景和线上9入口通过，runtime errors=0，线上验证拦截9次写请求，没有发送模型请求或修改用户设置。
@@ -92,6 +93,9 @@
 - E2E `35453712748`：旧关闭自动滚动断言失败，81/82 场景、490/491 步骤通过；本机全仓类型检查旧 UI/双 React 依赖 213 诊断，不声称全仓全绿。
 
 ## 10. Deployment and Operations
+- 2026-09-24远端UTC+8最终部署备份：`/mnt/sda1/lobehub-backups/20260923-websocket`；最终第三次部署证据在其 `deploy-3` 子目录，本机副本为 `D:\Cursor\lobehub-backups\20260923-websocket\production-backup`。
+- 当前 `.2` 镜像与容器见第3节；直接应用回滚脚本为 `sh /mnt/sda1/lobehub-backups/20260923-websocket/rollback.sh`，恢复部署前稳定镜像 `sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`。
+- 本轮没有数据库schema变化，回滚默认只恢复应用镜像，不回写数据库；部署前数据库、配置归档和旧镜像均已保存并有SHA-256清单。
 - 2026-09-21最新部署备份及日志：`/mnt/sda1/lobehub-backups/20260921-mobile-params`；本机受限副本`D:\Cursor\lobehub-backups\20260921-mobile-params\production-backup`。已确认部署，不要再次运行deploy.sh；当前镜像b3d69f，回滚镜像ab97f03。
 - 本轮远端暂存`/mnt/sda1/lobehub-release-20260921-mobile-params`，正式发布资产来自本机`release-final`；`release-published`内是未部署的ba65中间包。
 - 最新部署已确认；本轮备份与部署日志位于`/mnt/sda1/lobehub-backups/20260920-current-time`，本机受限副本`D:\Cursor\lobehub-backups\20260920-current-time\production-backup`。以下旧a9回滚说明属于9月19日部署；本轮回滚应使用4b2d，见第18节。
@@ -124,6 +128,7 @@
 - 新 thread 的 `replaceMessages` 必须写原始 `dbMessagesMap` 数据；assistantGroup 的来源规范化为末尾真实子消息。
 
 ## 13. Completed Work
+- 2026-09-24远端UTC+8：会话首屏白屏优化、后台缓存水合、WebSocket-first query/HTTP fallback、只读 bridge 与错误 envelope 修正完成；12项定向测试、Actions镜像、Release、单服务保护部署、外部IPv6 HTTPS/WSS及稳定复查全部通过。
 - 2026-09-21：手机会话高级参数触摸滚动、base-ui兼容及数值宽度修复；本机专项、GitHub Actions构建/272项回归、64场景生产SPA、Release、单服务保护部署与线上10入口验收完成。
 - 2026-09-20：时间开关/秒级技能、附件编辑/指定位置上下文完成实现、专项测试、生产UI、GitHub Actions/Release及单服务部署；同时修复真实UI发现的空白Lexical初始化异常。
 - 2026-09-06 手机全面改版与独立生图已发布并部署，详见历史日志。
@@ -132,6 +137,8 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
+- 本轮 `D:\Cursor\lobehub-backups\20260923-websocket\revision-api-2ae\artifact.zip` 与空目录 `revision-image-2ae` 的精确删除仍被执行策略拒绝；未绕过。最终镜像tar、生产证据、数据库、配置和旧镜像回滚包必须保留。
+- 远端首轮与第二次部署的上传tar清理命令也被同一执行策略整体拒绝；保留不影响线上运行。不要删除父目录的 `old-server-image.tar`、`database-predeploy.dump`、配置归档或 `rollback.sh`。
 - 9月21日本机`D:\Cursor\lobehub-backups\20260921-mobile-params`下`preview-release`、`preview-final`、`release-published`（ba65中间包）及`release-final/lobehub-server-image.tar`清理命令被执行工具拒绝；远端`/mnt/sda1/lobehub-release-20260921-mobile-params`也保留。不要绕过限制；保留所有production-backup、UI/CI报告和Release校验/证据。修复与部署已经完成，不重复部署。
 - 本轮`D:\Cursor\lobehub-backups\20260920-current-time`中的`preview-first`、`preview-message-first`、`preview-final`、`preview-release`、`ui-package-inspect`、`release-final`和`release-published/lobehub-server-image.tar`清理命令被工具拒绝，全部仍保留；远端`/mnt/sda1/lobehub-release-20260920-current-time`也保留，不绕过限制。所有production-backup及UI/CI证据必须保留。
 - 新访问超时调查未闭环：用户已确认早上/中午3210不通、下午自行恢复；需要故障当时的错误类型、时间与实际解析/网络路径证据，不能用443探测或05:02启动窗口解释全天问题。
@@ -159,6 +166,8 @@
 - 只包装 HTMLElement.focus 会遗漏 Lexical 原生 Selection 聚焦；加入 focusin 兜底后通过真实浏览器。直接 label 的原生默认动作晚于 click 微任务，需要单独延迟清理许可。
 
 ## 18. Rollback and Recovery
+- **最新WebSocket优化部署回滚**：远端执行 `sh /mnt/sda1/lobehub-backups/20260923-websocket/rollback.sh`，恢复 `sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，仅重建LobeHub应用；本轮无schema变化，不默认恢复数据库dump。
+- 当前部署已确认，不要重新执行 `deploy-3`；若回滚，完成后重新检查内部/公开版本、日志、restart count和其他7服务不变。
 - **最新9月21日部署回滚**：`sh /mnt/sda1/lobehub-backups/20260921-mobile-params/rollback.sh`，恢复`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，仅回滚应用。本轮未改数据库schema，勿默认回写数据库；旧镜像/配置/数据库远端与本机3项SHA256均已核验。
 - 以下9月20日及更早回滚记录仅历史，不能用于本次直接回滚。
 - **最新部署回滚**：远端运行`sh /mnt/sda1/lobehub-backups/20260920-current-time/rollback.sh`，恢复`sha256:4b2d6cb7823bb11ae9ebf9638c7214fe40d6aeefa23149d71c4512a17c6cfb59`；只回滚应用，不默认覆盖数据库。
@@ -170,8 +179,8 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
-- 2026-09-23：用户反馈本地访问会话/加载页面白屏等待明显，认为现有HTTP获取效率不高，希望优先WebSocket、失败后fallback普通HTTP。本轮已建立修改前检查点`5bd3c51224`，尚未修改运行代码；下一步先测量SPA首屏、bootstrap/trpc批请求、会话列表和服务端TTFB，再决定采用WebSocket推送/请求复用或先优化HTTP并保留降级。
-- 手机高级参数修复已发布部署，18:42:28 UTC+8完成线上10入口/触摸验收并确认保护，18:44:59稳定复查通过；最终发布说明（包括全仓限制）、独立备份和部署证据均归档。唯一遗留是清理执行被工具拒绝，已保留原状并记录，不绕过、不重复部署。
+- 2026-09-23用户提出的会话加载慢、白屏和WebSocket优先/HTTP fallback任务已完成实现、定向回归、Actions构建、`.2` Release、保护部署和真实IPv6公网验收。
+- 当前无待执行的功能或部署操作；只剩执行策略拒绝的临时zip/tar清理待办，不绕过、不重复部署。
 ### 本轮过程快照（以下待执行状态已由上方实际结果取代）
 - `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
@@ -236,13 +245,18 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-0. 9月21日功能、CI专项、正式UI、Release、部署与稳定复查已完成；用户刷新手机页面即可。清理被工具拒绝的暂存保持原状，后续只有获准可执行的环境才处理；不要再次运行deploy.sh。以下为旧任务收尾历史。
-1. 功能、验证、发布部署和证据归档均已完成，不需要重新运行部署。临时清理工具拒绝，保持原状并告知用户；保留全部数据库/配置/旧镜像及UI/CI报告。
-2. 用户刷新现有页面使用新版；时间开关位于设置→外观，默认关闭；消息菜单有编辑与“在此处插入上下文”，可选择前/后位置和添加附件。
-3. 如3210间歇超时复发，记录准确时间/截图、客户端AAAA与外部IPv6探测；根因未确认，没有配置后台监测。本轮部署没有修改网络。
-4. 上一轮明确被工具拒绝的清理不绕过；全仓旧CI/本机依赖问题另行处理，不声称全仓全绿。
+0. 本轮会话加载与WebSocket-first修正版已上线；用户刷新页面后使用。不要再次运行deploy-3或重复部署。
+1. 若后续仍觉得某个具体会话慢，采集该会话的准确时间、会话ID、浏览器Network瀑布和WebSocket/HTTP实际选择，以区分数据库查询、附件、模型配置或网络链路瓶颈。
+2. 清理被执行策略拒绝的artifact zip和远端上传tar保持待办，不绕过；保留生产备份、最终镜像、Release校验与回滚证据。
+3. 如3210间歇超时复发，记录准确时间/截图、客户端AAAA与外部IPv6探测；本轮没有修改网络，旧间歇性故障根因仍未确认。
+4. 全仓旧CI/本机依赖问题另行处理；本轮只声明定向12项测试和权威镜像构建通过，不声称全仓全绿。
 
 ## 21. Change Log
+- 2026-09-24 UTC+8：上下文续接后复核 `.2` 仍为正式 Release、三项资产完整，`.1` 仍为 prerelease；确认最终部署记录已同步到本文件，本次仅完成文档归档，不重建、不重新发布、不重新部署。
+- 2026-09-24 03:38:38 UTC+8：`.2` 第三次部署超过原240秒窗口后稳定复查通过，外部IPv6 HTTPS/WSS、HTTP fallback、Host Executor、日志、配置与其他服务全部正常；Release说明更新，证据归档完成。
+- 2026-09-24 03:35:49 UTC+8：在保护窗口内确认修正版部署；新镜像ea7da67、容器3d6ea49、restart=0/OOM=false，业务error不再误标bridge source。
+- 2026-09-24 03:22:00 UTC+8：第二次尝试因确认过晚由guard自动回滚；代码/网络探针已通过，随后第三次按正确确认时序重新部署。
+- 2026-09-24 02:22:34 UTC+8：`.1` 首轮因未确认由guard自动回滚；发现并修正HTTP tRPC嵌套error envelope边界，发布`.2`取代。
 - 2026-09-21 18:44:59 UTC+8：超过240秒窗口稳定复查通过、未回滚；最终Release说明与线上10入口/保护标记/配置和其他服务证据已归档。原生PowerShell清理命令先验证目标边界但仍被工具拒绝，未执行且未绕过，本机及远端暂存保留。
 - 2026-09-21 18:42:28 UTC+8：v2.2.8-codex.20260921.1上线并确认240秒保护，镜像b3d69f/restart=0/OOM=false，内部与公开HTTPS及Host Executor正常；线上10入口无runtime errors，其他7服务及配置不变。
 - 2026-09-20 21:00:12 UTC+8：新版本实际部署与线上9入口验证通过，确认240秒回滚保护；新镜像ab97f03、restart=0、其他7服务及配置一致；最终发布资产与哈希已核验，收尾记录及清理中。
