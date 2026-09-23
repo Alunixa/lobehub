@@ -427,3 +427,16 @@
 - 本机 `docker version` 未返回可用 daemon 信息，不能以本机 Docker 构建作为交付证据；正式镜像交给 GitHub Actions 的 `codex-build-server-image.yml` 喵~
 - `bun run type-check` 启动 `tsgo --noEmit` 后超过历史约四分钟上限且无诊断，已停止；不把未完成的全仓类型检查宣称为通过喵~
 - 当前可复验证据保持为：WebSocket-first 6/6、bridge envelope 3/3、真实 HTTP/WS 集成 2/2、启动器 `node --check` 通过；定向 lint 仍受本机缺失 ESLint 阻塞喵~
+
+## 2026-09-23：WebSocket 优先查询 Release 与首轮部署
+
+- 已在 GitHub Actions 35895283592 成功产物基础上发布 v2.2.8-codex.20260923.1，标签指向源码提交 5bd938fbea5b008d9453a84f0249fb8e87c86600，镜像、manifest、SHA256SUMS 的 GitHub digest 与本地校验一致喵~
+- 远端部署前备份已完成：/mnt/sda1/lobehub-backups/20260923-websocket，保存旧镜像、数据库、Compose/.env 配置归档、容器状态、校验文件和回滚脚本，旧运行镜像 sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5 已固定喵~
+- 仅执行 docker compose up -d --no-deps --force-recreate lobehub，新镜像为 sha256:6276d599c7daf689b2147f76fd48d6c59b158e66dbb78b4ad81a8f3a7191e384，容器 5863a5375da99c92516b544e1e31ee2d3022c7b13fb391aa35b1d4f15f08fa9a，内部/应用公开版本接口均返回 2.2.8，running/restart=0/OOM=false喵~
+- 240秒保护脚本仍在运行，尚未写入最终确认标记；其他容器、数据库、DNS、IPv6、Nginx和Compose配置均未重启或修改喵~
+- 真实未登录探针已完成 WebSocket 握手并收到响应，普通 HTTP tRPC query 返回 UNAUTHORIZED/HTTP 401；发现上游 HTTP tRPC 错误 envelope {error:{json:...}} 尚未转换为标准 WebSocket error，当前会被标记为 source=realtime-bridge 并 fallback HTTP喵~
+
+## 2026-09-23：当前待修正边界
+
+- 在确认本轮部署前，需修正 scripts/serverLauncher/realtimeServer.js 对 tRPC HTTP 错误 envelope 的转换，并补 realtimeServer.test.mjs 回归，确保真实业务错误不会误标为 bridge 基础设施错误喵~
+- 修正后需要重新运行定向测试、推送并等待新的 GitHub Actions 镜像成功，再创建新的 Release、备份并窄部署；当前线上暂不视为最终完成喵~

@@ -1603,3 +1603,12 @@
 
 - 交付前检查：本机 Docker daemon 不可用，`bun run type-check` 的 `tsgo --noEmit` 超过约四分钟无输出后停止；不把二者记为通过喵~
 - 当前可靠验证为客户端 6/6、bridge 3/3、真实启动器集成 2/2 和 Node 语法检查通过；下一步推送 fork，由 GitHub Actions 负责正式镜像/预览构建喵~
+
+## 2026-09-23：会话加载优化 Release 与部署记录
+
+- 用户要求继续完成本地会话加载慢、白屏和 WebSocket-first/fallback HTTP；已创建 Release v2.2.8-codex.20260923.1，包含新镜像、release-manifest.json、LF SHA256SUMS，说明明确写出首屏缓存、query WebSocket、HTTP fallback、写请求保持 HTTP及验证限制喵~
+- Release 标签指向 5bd938fbea5b008d9453a84f0249fb8e87c86600，Actions 35895283592 成功，镜像 298149376 bytes，SHA-256 e1026edb090b70cf9ab51d2b47876ac8821af9cabc931578062e1d575f23eb76，GitHub digest 与本地一致喵~
+- 远端部署前已完成独立备份 /mnt/sda1/lobehub-backups/20260923-websocket，包含旧镜像 988.1M、数据库 43.6M、配置归档、容器状态、校验和及回滚脚本；未改其他服务喵~
+- 仅重建 LobeHub 服务后，新容器 5863a5375da99c92516b544e1e31ee2d3022c7b13fb391aa35b1d4f15f08fa9a 使用镜像 sha256:6276d599c7daf689b2147f76fd48d6c59b158e66dbb78b4ad81a8f3a7191e384，内部和 APP_URL 版本接口均为 2.2.8，running/restart=0/OOM=false，240秒保护尚未确认喵~
+- 首次远端 WS 探针因脚本目录不在 /app 导致 require('ws') 找不到，改为容器 /app 工作目录后已成功握手；未登录 query 返回 source=realtime-bridge 的内部错误，而 HTTP query 返回标准 UNAUTHORIZED/401喵~
+- 该结果暴露 tRPC HTTP error envelope 兼容边界，当前不立即确认部署，先修正 envelope 映射并重新 Actions/Release/部署喵~
