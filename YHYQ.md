@@ -1592,3 +1592,6 @@
 
 - 已修正真实 tRPC WebSocket envelope 与客户端错误分类：成功查询增加 esult.type=data，bridge 错误改为标准 error envelope并标记来源，业务错误不重复发送 HTTP 查询喵~
 - 源码修改后立即同步 XJ.md，下一步先补回归测试再继续构建与部署验证喵~
+
+- 修正启动器测试加载方式为 ESM，避免 Vitest 3 在 CommonJS equire('vitest') 下拒绝加载喵~
+- 定向回归结果：客户端 WebSocket-first 6/6、启动器 envelope 3/3、启动器语法检查通过；仅有既有 Vitest 配置弃用提示喵~

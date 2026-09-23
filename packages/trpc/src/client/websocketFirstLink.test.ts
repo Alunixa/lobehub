@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@trpc/client', () => ({
   createWSClient: mocks.createWSClient,
+  isTRPCClientError: (error: unknown) =>
+    Boolean(error && typeof error === 'object' && 'name' in error && error.name === 'TRPCClientError'),
   wsLink: mocks.wsLink,
 }));
 
@@ -84,6 +86,53 @@ describe('websocketFirstLink', () => {
     const link = makeLink(
       observable((observer) => {
         observer.error(new Error('socket closed'));
+      }),
+    );
+    const values: unknown[] = [];
+
+    link({ op: makeOperation(), next: fallback }).subscribe({
+      complete: () => values.push('complete'),
+      next: (value) => values.push(value.result.data),
+    });
+
+    expect(fallback).toHaveBeenCalledTimes(1);
+    expect(values).toEqual(['http', 'complete']);
+  });
+
+  it('propagates a tRPC application error without retrying the query over HTTP', () => {
+    const fallback = makeFallback();
+    const applicationError = Object.assign(new Error('Not authorized'), {
+      data: { code: 'UNAUTHORIZED', httpStatus: 401 },
+      name: 'TRPCClientError',
+    });
+    const link = makeLink(
+      observable((observer) => {
+        observer.error(applicationError);
+      }),
+    );
+    const errors: unknown[] = [];
+
+    link({ op: makeOperation(), next: fallback }).subscribe({
+      error: (error) => errors.push(error),
+    });
+
+    expect(fallback).not.toHaveBeenCalled();
+    expect(errors).toEqual([applicationError]);
+  });
+
+  it('falls back when the realtime bridge returns an infrastructure error', () => {
+    const fallback = makeFallback();
+    const bridgeError = Object.assign(new Error('Internal bridge failure'), {
+      data: {
+        code: 'INTERNAL_SERVER_ERROR',
+        httpStatus: 502,
+        source: 'realtime-bridge',
+      },
+      name: 'TRPCClientError',
+    });
+    const link = makeLink(
+      observable((observer) => {
+        observer.error(bridgeError);
       }),
     );
     const values: unknown[] = [];

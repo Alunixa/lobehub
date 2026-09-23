@@ -403,3 +403,10 @@
 - 已修正 scripts/serverLauncher/realtimeServer.js：内部 HTTP tRPC 成功包转换为标准 WebSocket esult.type=data，业务错误保持标准 rror envelope，bridge 自身错误带 source=realtime-bridge 喵~
 - 已修正 packages/trpc/src/client/websocketFirstLink.ts：tRPC 业务错误不再误触发 HTTP 重复查询，连接/格式/bridge 错误仍快速降级 HTTP 喵~
 - 当前待办：新增协议转换与错误分类回归，随后运行定向 lint、测试、构建和生产链路验证喵~
+
+## 2026-09-23：WebSocket协议回归通过
+
+- packages/trpc/src/client/websocketFirstLink.test.ts：6/6 通过，覆盖超时回退、传输错误回退、业务错误直传、bridge 错误回退、mutation HTTP 和 WS 成功喵~
+- scripts/serverLauncher/realtimeServer.test.mjs：3/3 通过，覆盖 HTTP 成功转 WebSocket data、上游 tRPC error 保留和非法 bridge 响应标记喵~
+- 
+ode --check scripts/serverLauncher/realtimeServer.js：通过；Vitest 仅报告仓库既有 nvironmentMatchGlobs 弃用提示，不影响测试结果喵~
