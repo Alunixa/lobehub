@@ -421,3 +421,9 @@
 - 新增 `scripts/serverLauncher/realtimeServer.integration.test.mjs`，使用临时内部 HTTP 服务和真实 `ws` socket 验证双层启动器喵~
 - 集成回归 2/2 通过：普通 POST 的 method/body/content-type 保留，WebSocket query 返回标准 data envelope 并转发 Cookie，mutation 在 bridge 层拒绝且不访问上游喵~
 - 首次运行被 happy-dom 的 CORS 模拟拦截，已明确使用 Node 测试环境并等待 socket/bridge 关闭；不是生产代码问题喵~
+
+## 2026-09-23：本机构建与类型检查边界
+
+- 本机 `docker version` 未返回可用 daemon 信息，不能以本机 Docker 构建作为交付证据；正式镜像交给 GitHub Actions 的 `codex-build-server-image.yml` 喵~
+- `bun run type-check` 启动 `tsgo --noEmit` 后超过历史约四分钟上限且无诊断，已停止；不把未完成的全仓类型检查宣称为通过喵~
+- 当前可复验证据保持为：WebSocket-first 6/6、bridge envelope 3/3、真实 HTTP/WS 集成 2/2、启动器 `node --check` 通过；定向 lint 仍受本机缺失 ESLint 阻塞喵~

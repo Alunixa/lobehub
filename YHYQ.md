@@ -1600,3 +1600,6 @@
 
 - 新增真实启动器集成回归：临时内部 HTTP + 公开 HTTP/WS bridge，验证 POST 头体、WS query/Cookie 和 mutation 禁止转发喵~
 - 集成测试 2/2 通过；首次 happy-dom CORS 测试夹具问题已改为 Node 环境并补充连接关闭等待喵~
+
+- 交付前检查：本机 Docker daemon 不可用，`bun run type-check` 的 `tsgo --noEmit` 超过约四分钟无输出后停止；不把二者记为通过喵~
+- 当前可靠验证为客户端 6/6、bridge 3/3、真实启动器集成 2/2 和 Node 语法检查通过；下一步推送 fork，由 GitHub Actions 负责正式镜像/预览构建喵~
