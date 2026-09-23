@@ -415,3 +415,9 @@
 - 两组定向 Vitest 重新执行仍为 6/6 与 3/3 通过喵~
 - `bun run check ... --lint` 未进入 ESLint，因为本机 `node_modules/.bin/eslint` 不存在；不把工具缺失当作代码通过喵~
 - `git diff --check` 的记录文件尾随空格和控制字符已清理，跟踪源码没有新增空白错误喵~
+
+## 2026-09-23：启动器真实集成回归
+
+- 新增 `scripts/serverLauncher/realtimeServer.integration.test.mjs`，使用临时内部 HTTP 服务和真实 `ws` socket 验证双层启动器喵~
+- 集成回归 2/2 通过：普通 POST 的 method/body/content-type 保留，WebSocket query 返回标准 data envelope 并转发 Cookie，mutation 在 bridge 层拒绝且不访问上游喵~
+- 首次运行被 happy-dom 的 CORS 模拟拦截，已明确使用 Node 测试环境并等待 socket/bridge 关闭；不是生产代码问题喵~

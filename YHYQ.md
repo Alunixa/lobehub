@@ -1597,3 +1597,6 @@
 - 定向回归结果：客户端 WebSocket-first 6/6、启动器 envelope 3/3、启动器语法检查通过；仅有既有 Vitest 配置弃用提示喵~
 
 - `bun run check ... --lint` 因本机缺少 `node_modules/.bin/eslint` 未进入 ESLint 阶段；两组定向 Vitest 仍全部通过，记录文件尾随空格和控制字符已修复喵~
+
+- 新增真实启动器集成回归：临时内部 HTTP + 公开 HTTP/WS bridge，验证 POST 头体、WS query/Cookie 和 mutation 禁止转发喵~
+- 集成测试 2/2 通过；首次 happy-dom CORS 测试夹具问题已改为 Node 环境并补充连接关闭等待喵~
