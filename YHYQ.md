@@ -1574,3 +1574,5 @@
 - 已让后台 IDB hydration 只补齐当前不存在的 key，避免慢数据库返回时覆盖已经到达的网络新数据喵~
 - 已让 `SWRMutateInitializer` 监听 hydration-ready，在缓存完成后对当前作用域触发全局 SWR 重验证；`QueryProvider` 不再重复触发第二次重验证喵~
 - 新增 late IndexedDB 不覆盖 network 的回归测试喵~
+
+- 定向 Vitest 通过：`CacheHydrationGate.test.tsx` 4项、`localStorageProvider.test.ts` 19项，共23项；完整命令耗时约61秒，未运行全仓测试喵~

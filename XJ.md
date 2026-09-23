@@ -367,3 +367,9 @@
 
 ## 21. Change Log
 - 2026-09-23：修改 `CacheHydrationGate.tsx`、`SWRMutateInitializer.tsx`、`Query.tsx`、`localStorageProvider.ts` 及对应缓存/门闩测试喵~
+
+## 9. Testing and Verification
+- 2026-09-23：定向 Vitest `CacheHydrationGate.test.tsx` 4/4、`localStorageProvider.test.ts` 19/19 通过，共 23 项；未运行全仓测试喵~
+
+## 21. Change Log
+- 2026-09-23：完成首屏/缓存定向回归，23 项通过喵~
