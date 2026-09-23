@@ -459,3 +459,8 @@
 
 - 在 `packages/trpc` 包目录按既有配置单独运行 `src/client/websocketFirstLink.test.ts`，6/6 通过喵~
 - 当前本地可靠验证为 bridge 4/4、启动器集成 2/2、客户端 WebSocket-first 6/6，尚未重新构建或部署修正后的镜像喵~
+
+## 2026-09-23：修正版 Actions 触发方式
+
+- 修正提交 `2ae3466070` 已推送，但工作流 push path filter 不包含 `scripts/serverLauncher`，因此没有自动产生新 run喵~
+- 将对同一提交手动 dispatch `Codex Build Server Image`，后续只接受该提交的成功镜像作为修正版部署产物喵~
