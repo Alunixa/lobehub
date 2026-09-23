@@ -1,4 +1,4 @@
-import { createWSClient, wsLink } from '@trpc/client';
+import { createWSClient, isTRPCClientError, wsLink } from '@trpc/client';
 import type { TRPCLink } from '@trpc/client';
 import { observable } from '@trpc/server/observable';
 import type { AnyRouter, DataTransformerOptions } from '@trpc/server/unstable-core-do-not-import';
@@ -6,6 +6,7 @@ import type { AnyRouter, DataTransformerOptions } from '@trpc/server/unstable-co
 const DEFAULT_CONNECTION_TIMEOUT_MS = 900;
 const DEFAULT_FAILURE_COOLDOWN_MS = 10_000;
 const DEFAULT_IDLE_CLOSE_MS = 30_000;
+const REALTIME_BRIDGE_ERROR_SOURCE = 'realtime-bridge';
 
 interface WebsocketFirstLinkOptions {
   enabled?: boolean;
@@ -21,6 +22,20 @@ const canUseBrowserWebSocket = (): boolean => {
 
   return window.location.protocol === 'http:' || window.location.protocol === 'https:';
 };
+
+const isRealtimeBridgeError = (error: unknown): boolean => {
+  if (!isTRPCClientError(error) || !error.data || typeof error.data !== 'object') {
+    return false;
+  }
+
+  return (
+    'source' in error.data &&
+    error.data.source === REALTIME_BRIDGE_ERROR_SOURCE
+  );
+};
+
+const isApplicationError = (error: unknown): boolean =>
+  isTRPCClientError(error) && error.data !== undefined && error.data !== null;
 
 /**
  * Use the native tRPC WebSocket protocol for idempotent query operations, but
@@ -126,7 +141,7 @@ export const websocketFirstLink = <TRouter extends AnyRouter>(
           },
           error: (error) => {
             if (!active || fallbackStarted) return;
-            if (responseReceived) {
+            if (responseReceived || (isApplicationError(error) && !isRealtimeBridgeError(error))) {
               clearTimeoutIfNeeded();
               observer.error(error);
             } else {

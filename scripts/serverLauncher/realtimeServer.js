@@ -7,6 +7,7 @@ const WEBSOCKET_PATH = '/api/trpc-ws';
 const INTERNAL_READY_PATH = '/api/version';
 const MAX_WEBSOCKET_PAYLOAD = 16 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 15_000;
+const REALTIME_BRIDGE_ERROR_SOURCE = 'realtime-bridge';
 const HOP_BY_HOP_HEADERS = new Set([
   'connection',
   'keep-alive',
@@ -109,17 +110,79 @@ const isAllowedProcedurePath = (path) =>
 const createBridgeError = (id, path, message, code = 'BAD_REQUEST', httpStatus = 400) => ({
   id: id ?? null,
   error: {
-    json: {
-      code: code === 'BAD_REQUEST' ? -32600 : -32603,
-      data: {
-        code,
-        httpStatus,
-        path,
-      },
-      message,
+    code: code === 'BAD_REQUEST' ? -32600 : -32603,
+    data: {
+      code,
+      httpStatus,
+      path,
+      source: REALTIME_BRIDGE_ERROR_SOURCE,
     },
+    message,
   },
 });
+
+const toWebSocketResponse = (id, parsed, statusCode) => {
+  if (
+    !parsed ||
+    typeof parsed !== 'object' ||
+    (!Object.prototype.hasOwnProperty.call(parsed, 'result') &&
+      !Object.prototype.hasOwnProperty.call(parsed, 'error'))
+  ) {
+    return createBridgeError(
+      id,
+      undefined,
+      `Internal tRPC response was invalid (${statusCode})`,
+      'INTERNAL_SERVER_ERROR',
+      502,
+    );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(parsed, 'error')) {
+    if (
+      !parsed.error ||
+      typeof parsed.error !== 'object' ||
+      typeof parsed.error.code !== 'number' ||
+      typeof parsed.error.message !== 'string'
+    ) {
+      return createBridgeError(
+        id,
+        undefined,
+        `Internal tRPC error response was invalid (${statusCode})`,
+        'INTERNAL_SERVER_ERROR',
+        502,
+      );
+    }
+
+    return {
+      error: parsed.error,
+      id,
+      ...(parsed.jsonrpc ? { jsonrpc: parsed.jsonrpc } : {}),
+    };
+  }
+
+  if (
+    !parsed.result ||
+    typeof parsed.result !== 'object' ||
+    !Object.prototype.hasOwnProperty.call(parsed.result, 'data')
+  ) {
+    return createBridgeError(
+      id,
+      undefined,
+      `Internal tRPC result response was invalid (${statusCode})`,
+      'INTERNAL_SERVER_ERROR',
+      502,
+    );
+  }
+
+  return {
+    id,
+    ...(parsed.jsonrpc ? { jsonrpc: parsed.jsonrpc } : {}),
+    result: {
+      data: parsed.result.data,
+      type: 'data',
+    },
+  };
+};
 
 const parseWebSocketMessage = (rawData) => {
   const text = Buffer.isBuffer(rawData) ? rawData.toString('utf8') : String(rawData);
@@ -236,22 +299,12 @@ const forwardQuery = async ({
       );
     }
 
-    if (
-      !parsed ||
-      typeof parsed !== 'object' ||
-      (!Object.prototype.hasOwnProperty.call(parsed, 'result') &&
-        !Object.prototype.hasOwnProperty.call(parsed, 'error'))
-    ) {
-      return createBridgeError(
-        id,
-        path,
-        `Internal tRPC response was invalid (${upstream.statusCode})`,
-        'INTERNAL_SERVER_ERROR',
-        502,
-      );
+    const response = toWebSocketResponse(id, parsed, upstream.statusCode);
+    if (response.error?.data && typeof response.error.data === 'object') {
+      response.error.data.path ??= path;
     }
 
-    return { ...parsed, id };
+    return response;
   } catch (error) {
     return createBridgeError(
       id,
@@ -570,4 +623,5 @@ module.exports = {
   isAllowedProcedurePath,
   isAllowedWebSocketOrigin,
   runRealtimeServer,
+  toWebSocketResponse,
 };

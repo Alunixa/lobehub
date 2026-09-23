@@ -1589,3 +1589,6 @@
 - 已读取并复核 XJ.md、YHYQ.md、AGENTS.md、项目架构/数据获取/React/TypeScript/测试/UX 规范以及上一轮源码提交喵~
 - 本轮先建立空提交检查点 7bc4abdff，保留历史未跟踪构建/发布目录，不修改线上服务喵~
 - 当前操作计划：审查现有客户端 query link、服务端 bridge、公开 HTTP 代理、Docker 启动链路和首屏 hydration 改动，补边界测试后执行构建与可部署产物验证喵~
+
+- 已修正真实 tRPC WebSocket envelope 与客户端错误分类：成功查询增加 esult.type=data，bridge 错误改为标准 error envelope并标记来源，业务错误不重复发送 HTTP 查询喵~
+- 源码修改后立即同步 XJ.md，下一步先补回归测试再继续构建与部署验证喵~
