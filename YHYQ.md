@@ -1554,3 +1554,9 @@
 - 已完成只读架构复核：Next standalone默认启动器没有原生网页tRPC WebSocket入口，现有WebSocket只覆盖Agent Gateway/设备网关；直接把客户端tRPC link替换为`wsLink`会得到无服务端协议的失败请求喵~
 - 采用可回滚实现：首屏只等待身份范围确定，IndexedDB水合后台完成；新增同源`/api/trpc-ws`只读GET代理，客户端复用WebSocket连接并在连接/响应失败时回退HTTP，POST和写操作保持HTTP喵~
 - 本次采取的每一步动作：读取XJ/YHYQ/AGENTS、读取数据获取/React/UX/测试/TypeScript规范、核对Git状态和进程、检查tRPC/Next/Docker启动链路、准备源码和定向测试实现；尚未修改运行时代码、线上配置或线上服务喵~
+
+## 2026-09-24：继续执行会话加载性能与实时传输优化
+
+- 用户继续要求处理本地会话加载慢、白屏等待，以及查询优先使用 WebSocket、失败后回退普通 HTTP 喵~
+- 已读取完整 `XJ.md`、`YHYQ.md`、当前分支与未跟踪文件状态；未跟踪历史构建/发布目录和 `问题.txt` 保持不动喵~
+- 已在修改前建立 Git 检查点 `7081603c31`，本轮开始实现客户端查询传输层、首屏缓存门闩调整和服务端同源只读 WebSocket bridge 喵~
