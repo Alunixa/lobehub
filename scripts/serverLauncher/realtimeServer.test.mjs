@@ -46,6 +46,23 @@ describe('realtime tRPC bridge envelopes', () => {
     });
   });
 
+  it('normalizes the HTTP tRPC error envelope used by unauthorized queries', () => {
+    const error = {
+      code: -32001,
+      data: {
+        code: 'UNAUTHORIZED',
+        httpStatus: 401,
+        path: 'user.getUserState',
+      },
+      message: 'UNAUTHORIZED',
+    };
+
+    expect(toWebSocketResponse('request-http-error', { error: { json: error } }, 401)).toEqual({
+      error,
+      id: 'request-http-error',
+    });
+  });
+
   it('returns a marked standard tRPC error for invalid bridge responses', () => {
     const response = toWebSocketResponse(3, { result: { unexpected: true } }, 502);
     const expected = createBridgeError(

@@ -138,11 +138,20 @@ const toWebSocketResponse = (id, parsed, statusCode) => {
   }
 
   if (Object.prototype.hasOwnProperty.call(parsed, 'error')) {
+    const upstreamError =
+      parsed.error &&
+      typeof parsed.error === 'object' &&
+      'json' in parsed.error &&
+      parsed.error.json &&
+      typeof parsed.error.json === 'object'
+        ? parsed.error.json
+        : parsed.error;
+
     if (
-      !parsed.error ||
-      typeof parsed.error !== 'object' ||
-      typeof parsed.error.code !== 'number' ||
-      typeof parsed.error.message !== 'string'
+      !upstreamError ||
+      typeof upstreamError !== 'object' ||
+      typeof upstreamError.code !== 'number' ||
+      typeof upstreamError.message !== 'string'
     ) {
       return createBridgeError(
         id,
@@ -154,7 +163,7 @@ const toWebSocketResponse = (id, parsed, statusCode) => {
     }
 
     return {
-      error: parsed.error,
+      error: upstreamError,
       id,
       ...(parsed.jsonrpc ? { jsonrpc: parsed.jsonrpc } : {}),
     };

@@ -1612,3 +1612,22 @@
 - 仅重建 LobeHub 服务后，新容器 5863a5375da99c92516b544e1e31ee2d3022c7b13fb391aa35b1d4f15f08fa9a 使用镜像 sha256:6276d599c7daf689b2147f76fd48d6c59b158e66dbb78b4ad81a8f3a7191e384，内部和 APP_URL 版本接口均为 2.2.8，running/restart=0/OOM=false，240秒保护尚未确认喵~
 - 首次远端 WS 探针因脚本目录不在 /app 导致 require('ws') 找不到，改为容器 /app 工作目录后已成功握手；未登录 query 返回 source=realtime-bridge 的内部错误，而 HTTP query 返回标准 UNAUTHORIZED/401喵~
 - 该结果暴露 tRPC HTTP error envelope 兼容边界，当前不立即确认部署，先修正 envelope 映射并重新 Actions/Release/部署喵~
+
+## 2026-09-23：修正未登录 WebSocket query 的错误 envelope
+
+- 首轮线上探针发现未登录 `user.getUserState` 的 HTTP tRPC 错误是 `{error:{json:...}}`，bridge 原逻辑把它当基础设施错误，已先修改 `realtimeServer.js` 将嵌套 `json` 转成标准 WebSocket error，待补测试喵~
+- 修正只针对错误格式兼容，不改变 query 优先、写请求 HTTP、失败 fallback、鉴权和 Origin 校验策略喵~
+
+## 2026-09-23：补充错误 envelope 回归测试
+
+- 已新增 `realtimeServer.test.mjs` 回归，覆盖未授权 HTTP tRPC 嵌套 `error.json` 被转换为 WebSocket 标准 error 且不带 bridge source，待运行定向测试喵~
+
+## 2026-09-23：错误 envelope 定向测试通过
+
+- bridge envelope 4/4、真实 HTTP/WS 启动器集成 2/2 通过，共 6 项；Vitest 仅有既有配置弃用提示喵~
+- 合并命令没有收集客户端 `websocketFirstLink.test.ts`，下一步按 packages/trpc 的既有配置单独复跑，避免误报客户端覆盖范围喵~
+
+## 2026-09-23：客户端回归复跑通过
+
+- 在 `packages/trpc` 包目录单独执行客户端 WebSocket-first 测试，6/6 通过；与 bridge 4/4、集成 2/2 合计 12 项定向测试通过喵~
+- 修正版尚未推送、构建、发布或替换线上容器喵~

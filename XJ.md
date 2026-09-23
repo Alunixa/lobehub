@@ -440,3 +440,22 @@
 
 - 在确认本轮部署前，需修正 scripts/serverLauncher/realtimeServer.js 对 tRPC HTTP 错误 envelope 的转换，并补 realtimeServer.test.mjs 回归，确保真实业务错误不会误标为 bridge 基础设施错误喵~
 - 修正后需要重新运行定向测试、推送并等待新的 GitHub Actions 镜像成功，再创建新的 Release、备份并窄部署；当前线上暂不视为最终完成喵~
+
+## 2026-09-23：修正 tRPC HTTP 错误到 WebSocket envelope 的转换
+
+- 已修改 `scripts/serverLauncher/realtimeServer.js`，当内部 HTTP tRPC 错误使用 `{error:{json:...}}` 结构时提取标准错误对象再返回 WebSocket，避免真实业务错误被误标为 `source=realtime-bridge` 喵~
+- 当前待补 `realtimeServer.test.mjs` 回归并重新执行定向验证，未把修正视为已发布或已部署喵~
+
+## 2026-09-23：补充 HTTP 错误 envelope 回归
+
+- 已在 `scripts/serverLauncher/realtimeServer.test.mjs` 增加未授权 HTTP tRPC `{error:{json:...}}` 转标准 WebSocket error 的行为测试，待定向 Vitest 执行喵~
+
+## 2026-09-23：错误 envelope 定向测试结果
+
+- `realtimeServer.test.mjs` 4/4、`realtimeServer.integration.test.mjs` 2/2 通过，共 6 项；Vitest 仅报告仓库既有 `environmentMatchGlobs` 弃用提示喵~
+- 本次命令未实际收集 `packages/trpc/src/client/websocketFirstLink.test.ts`，该客户端测试需按 package 既有方式单独执行，不能把本次 6 项当作客户端全套通过喵~
+
+## 2026-09-23：客户端 WebSocket-first 回归复跑
+
+- 在 `packages/trpc` 包目录按既有配置单独运行 `src/client/websocketFirstLink.test.ts`，6/6 通过喵~
+- 当前本地可靠验证为 bridge 4/4、启动器集成 2/2、客户端 WebSocket-first 6/6，尚未重新构建或部署修正后的镜像喵~
