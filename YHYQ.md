@@ -1579,3 +1579,6 @@
 
 - 新增 WebSocket-first link 4项测试，覆盖无响应超时 fallback、transport error fallback、mutation 直接 HTTP、WebSocket 成功路径；首次 mutation 测试使用空 observer 触发 tRPC observable 测试夹具错误，改为显式空 observer 后 4/4 通过喵~
 - package 级测试提示现有 `vite-tsconfig-paths` 无法解析 `D:/tsconfig.json`，但不影响本文件 4项执行结果喵~
+
+- 发现并修正普通 HTTP 反代初版只转发少量头部、会丢失 `content-type`/`content-length` 等写请求信息的问题；现在普通 HTTP 转发所有端到端头部，WebSocket bridge 仍使用受限头部白名单喵~
+- `node --check` 与临时本地集成夹具通过：HTTP health、POST body/header、WebSocket query Cookie 转发、Origin 403 均正常喵~

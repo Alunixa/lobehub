@@ -33,7 +33,11 @@ const asHeaderString = (value) => {
   return value;
 };
 
-const copyForwardedHeaders = (incomingHeaders, extraHeaders = {}) => {
+const copyForwardedHeaders = (
+  incomingHeaders,
+  extraHeaders = {},
+  includeAllEndToEndHeaders = false,
+) => {
   const headers = {};
 
   for (const [name, value] of Object.entries(incomingHeaders || {})) {
@@ -41,7 +45,11 @@ const copyForwardedHeaders = (incomingHeaders, extraHeaders = {}) => {
     const stringValue = asHeaderString(value);
     if (!stringValue || HOP_BY_HOP_HEADERS.has(lowerName)) continue;
 
-    if (lowerName.startsWith('x-') || FORWARDED_WEBSOCKET_HEADERS.has(lowerName)) {
+    if (
+      includeAllEndToEndHeaders ||
+      lowerName.startsWith('x-') ||
+      FORWARDED_WEBSOCKET_HEADERS.has(lowerName)
+    ) {
       headers[lowerName] = stringValue;
     }
   }
@@ -273,11 +281,15 @@ const proxyHttpRequest = ({ internalHost, internalPort, request, response }) => 
     return;
   }
 
-  const headers = copyForwardedHeaders(request.headers, {
-    host: getRequestHost(request),
-    'x-forwarded-proto': getForwardedProtocol(request),
-    'x-forwarded-host': getRequestHost(request),
-  });
+  const headers = copyForwardedHeaders(
+    request.headers,
+    {
+      host: getRequestHost(request),
+      'x-forwarded-proto': getForwardedProtocol(request),
+      'x-forwarded-host': getRequestHost(request),
+    },
+    true,
+  );
   const remoteAddress = request.socket.remoteAddress;
   const previousForwardedFor = asHeaderString(request.headers['x-forwarded-for']);
   headers['x-forwarded-for'] = [previousForwardedFor, remoteAddress].filter(Boolean).join(', ');

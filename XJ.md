@@ -382,3 +382,12 @@
 
 ## 21. Change Log
 - 2026-09-23：新增 `packages/trpc/src/client/websocketFirstLink.test.ts`，4项定向测试通过喵~
+
+## 12. APIs, Interfaces, and Data Formats
+- 外层普通 HTTP 代理保留端到端请求头及请求体，支持上传、mutation、SSE/流式响应；WebSocket bridge 仅接受标准 tRPC `query` 消息并返回同样的 SuperJSON envelope喵~
+
+## 9. Testing and Verification
+- 2026-09-23：实时启动器 `node --check` 通过；临时集成夹具验证 HTTP health、POST content-type/body、WS Cookie/query 和 Origin 拒绝喵~
+
+## 21. Change Log
+- 2026-09-23：修正 `realtimeServer.js` 普通 HTTP 头部转发，补齐写请求兼容性并完成本地集成验收喵~
