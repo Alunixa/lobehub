@@ -1531,3 +1531,9 @@
 - 18:44:59 UTC+8超过240秒窗口复查：仍为b3d69f镜像running/restart=0/OOM=false、版本接口正常、未回滚，其他7服务和配置保持一致；部署/保护/确认/稳定标记及前后状态下载至受限备份目录，Release说明更新并读回归档喵~
 - 全仓最终结果已记录：Packages/Server两分片/Desktop/Server Coverage成功，App保留OIDC/Host Executor no-suite/ComfyUI/settings fixtures旧失败、Database lint1597 errors/261 warnings；E2E81/82场景通过，仅原关闭流式自动滚动距离断言失败，未把专项通过当全仓全绿喵~
 - 本轮清理先核验本机绝对路径均在专用备份工作目录且非重解析点，原生PowerShell删除命令仍被工具拒绝、整条未执行；未绕过或删任何文件，冗余本机/远端暂存保留待办，不影响已部署功能，所有回滚材料与验证证据保留喵~
+
+## 2026-09-23：会话加载慢与WebSocket优先请求
+
+- 用户反馈本地访问会话/加载页面会白屏等待，怀疑HTTP获取效率不高，希望优先使用WebSocket、失败后fallback普通HTTP喵~
+- 已完整读取`XJ.md`、`YHYQ.md`、`AGENTS.md`和当前Git状态；现有跟踪文件无未提交改动，仅保留历史未跟踪构建/发布目录喵~
+- 已建立修改前空提交检查点`5bd3c51224`，本轮尚未修改运行代码、网络配置或线上服务；先做请求瀑布、首屏白屏、会话数据链路和WebSocket现状排查喵~
