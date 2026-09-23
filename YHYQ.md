@@ -1576,3 +1576,6 @@
 - 新增 late IndexedDB 不覆盖 network 的回归测试喵~
 
 - 定向 Vitest 通过：`CacheHydrationGate.test.tsx` 4项、`localStorageProvider.test.ts` 19项，共23项；完整命令耗时约61秒，未运行全仓测试喵~
+
+- 新增 WebSocket-first link 4项测试，覆盖无响应超时 fallback、transport error fallback、mutation 直接 HTTP、WebSocket 成功路径；首次 mutation 测试使用空 observer 触发 tRPC observable 测试夹具错误，改为显式空 observer 后 4/4 通过喵~
+- package 级测试提示现有 `vite-tsconfig-paths` 无法解析 `D:/tsconfig.json`，但不影响本文件 4项执行结果喵~

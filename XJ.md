@@ -373,3 +373,12 @@
 
 ## 21. Change Log
 - 2026-09-23：完成首屏/缓存定向回归，23 项通过喵~
+
+## 9. Testing and Verification
+- 2026-09-23：新增 `websocketFirstLink.test.ts` 4/4 通过，覆盖 timeout/error fallback、mutation HTTP、WS 成功；测试运行伴随既有 `D:/tsconfig.json` 路径解析提示喵~
+
+## 17. Failed Approaches
+- 2026-09-23：WebSocket link 首轮 mutation 测试使用无 observer 的 `.subscribe()`，触发 tRPC observable fixture 的 `observer.next` 异常；改为 `.subscribe({})` 后通过，非生产代码故障喵~
+
+## 21. Change Log
+- 2026-09-23：新增 `packages/trpc/src/client/websocketFirstLink.test.ts`，4项定向测试通过喵~
