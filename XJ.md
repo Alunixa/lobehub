@@ -395,18 +395,23 @@
 ## 2026-09-23：继续完成会话加载性能优化
 
 - 用户再次要求继续处理会话加载慢、白屏和 WebSocket 优先查询方案，并自行完成后续验证、发布和部署喵~
-- 本轮修改前检查点：7bc4abdff，当前已存在客户端 WebSocket-first、服务端只读 bridge、HTTP 反代和后台缓存水合实现，跟踪工作树干净喵~
+- 本轮修改前检查点：`a7bc4abdff`，当前已存在客户端 WebSocket-first、服务端只读 bridge、HTTP 反代和后台缓存水合实现，跟踪工作树干净喵~
 - 当前阶段：审查实现边界并补齐定向测试、Docker/生产构建、GitHub Actions、Release 和仅 LobeHub 服务的保护部署喵~
 
-## 2026-09-23：修正WebSocket tRPC协议边界
+## 2026-09-23：修正 WebSocket tRPC 协议边界
 
-- 已修正 scripts/serverLauncher/realtimeServer.js：内部 HTTP tRPC 成功包转换为标准 WebSocket esult.type=data，业务错误保持标准 rror envelope，bridge 自身错误带 source=realtime-bridge 喵~
-- 已修正 packages/trpc/src/client/websocketFirstLink.ts：tRPC 业务错误不再误触发 HTTP 重复查询，连接/格式/bridge 错误仍快速降级 HTTP 喵~
+- 已修正 `scripts/serverLauncher/realtimeServer.js`：内部 HTTP tRPC 成功包转换为标准 WebSocket `result.type=data`，业务错误保持标准 `error` envelope，bridge 自身错误带 `source=realtime-bridge` 喵~
+- 已修正 `packages/trpc/src/client/websocketFirstLink.ts`：tRPC 业务错误不再误触发 HTTP 重复查询，连接/格式/bridge 错误仍快速降级 HTTP 喵~
 - 当前待办：新增协议转换与错误分类回归，随后运行定向 lint、测试、构建和生产链路验证喵~
 
-## 2026-09-23：WebSocket协议回归通过
+## 2026-09-23：WebSocket 协议回归通过
 
-- packages/trpc/src/client/websocketFirstLink.test.ts：6/6 通过，覆盖超时回退、传输错误回退、业务错误直传、bridge 错误回退、mutation HTTP 和 WS 成功喵~
-- scripts/serverLauncher/realtimeServer.test.mjs：3/3 通过，覆盖 HTTP 成功转 WebSocket data、上游 tRPC error 保留和非法 bridge 响应标记喵~
-- 
-ode --check scripts/serverLauncher/realtimeServer.js：通过；Vitest 仅报告仓库既有 nvironmentMatchGlobs 弃用提示，不影响测试结果喵~
+- `packages/trpc/src/client/websocketFirstLink.test.ts`：6/6 通过，覆盖超时回退、传输错误回退、业务错误直传、bridge 错误回退、mutation HTTP 和 WS 成功喵~
+- `scripts/serverLauncher/realtimeServer.test.mjs`：3/3 通过，覆盖 HTTP 成功转 WebSocket data、上游 tRPC error 保留和非法 bridge 响应标记喵~
+- `node --check scripts/serverLauncher/realtimeServer.js`：通过；Vitest 仅报告仓库既有 `environmentMatchGlobs` 弃用提示，不影响测试结果喵~
+
+## 2026-09-23：定向质量检查结果
+
+- 两组定向 Vitest 重新执行仍为 6/6 与 3/3 通过喵~
+- `bun run check ... --lint` 未进入 ESLint，因为本机 `node_modules/.bin/eslint` 不存在；不把工具缺失当作代码通过喵~
+- `git diff --check` 的记录文件尾随空格和控制字符已清理，跟踪源码没有新增空白错误喵~

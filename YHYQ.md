@@ -1583,15 +1583,17 @@
 - 发现并修正普通 HTTP 反代初版只转发少量头部、会丢失 `content-type`/`content-length` 等写请求信息的问题；现在普通 HTTP 转发所有端到端头部，WebSocket bridge 仍使用受限头部白名单喵~
 - `node --check` 与临时本地集成夹具通过：HTTP health、POST body/header、WebSocket query Cookie 转发、Origin 403 均正常喵~
 
-## 2026-09-23：继续完成会话加载性能与WebSocket优先传输
+## 2026-09-23：继续完成会话加载性能与 WebSocket 优先传输
 
 - 用户再次发送“继续”，要求接着完成本地会话加载慢、白屏和查询优先 WebSocket 后 fallback HTTP 的实现，并自行处理验证、发布和部署喵~
-- 已读取并复核 XJ.md、YHYQ.md、AGENTS.md、项目架构/数据获取/React/TypeScript/测试/UX 规范以及上一轮源码提交喵~
-- 本轮先建立空提交检查点 7bc4abdff，保留历史未跟踪构建/发布目录，不修改线上服务喵~
+- 已读取并复核 `XJ.md`、`YHYQ.md`、`AGENTS.md`、项目架构/数据获取/React/TypeScript/测试/UX 规范以及上一轮源码提交喵~
+- 本轮先建立空提交检查点 `a7bc4abdff`，保留历史未跟踪构建/发布目录，不修改线上服务喵~
 - 当前操作计划：审查现有客户端 query link、服务端 bridge、公开 HTTP 代理、Docker 启动链路和首屏 hydration 改动，补边界测试后执行构建与可部署产物验证喵~
 
-- 已修正真实 tRPC WebSocket envelope 与客户端错误分类：成功查询增加 esult.type=data，bridge 错误改为标准 error envelope并标记来源，业务错误不重复发送 HTTP 查询喵~
-- 源码修改后立即同步 XJ.md，下一步先补回归测试再继续构建与部署验证喵~
+- 已修正真实 tRPC WebSocket envelope 与客户端错误分类：成功查询增加 `result.type=data`，bridge 错误改为标准 error envelope 并标记来源，业务错误不重复发送 HTTP 查询喵~
+- 源码修改后立即同步 `XJ.md`，下一步先补回归测试再继续构建与部署验证喵~
 
-- 修正启动器测试加载方式为 ESM，避免 Vitest 3 在 CommonJS equire('vitest') 下拒绝加载喵~
+- 修正启动器测试加载方式为 ESM，避免 Vitest 3 在 CommonJS `require('vitest')` 下拒绝加载喵~
 - 定向回归结果：客户端 WebSocket-first 6/6、启动器 envelope 3/3、启动器语法检查通过；仅有既有 Vitest 配置弃用提示喵~
+
+- `bun run check ... --lint` 因本机缺少 `node_modules/.bin/eslint` 未进入 ESLint 阶段；两组定向 Vitest 仍全部通过，记录文件尾随空格和控制字符已修复喵~
