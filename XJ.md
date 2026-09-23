@@ -546,3 +546,13 @@
 - .2 第二次部署已完成内部/公开版本、远端 WebSocket 标准业务 error、HTTP 401和本机外部 IPv6 HTTPS/WSS 全部验收，但等待 180 秒后才执行最终确认，超过 guard 截止时间喵~
 - deploy-2 guard 于远端 2026-09-24 03:22:00 +08:00 自动回滚到旧镜像，当前容器 9c37f0c7ecf8bb0d11a6224f34eeccaa69a171a480a5e26395b7c98a51c64807，旧镜像 running/restart=0/OOM=false，版本接口正常喵~
 - 该回滚是部署确认时序问题，不是 .2 代码或 WebSocket 验收失败；保留 deploy-2 日志，第三次部署将在探针连续通过后立即写确认标记喵~
+## 2026-09-24：会话首屏与 WebSocket-first 修正版最终部署完成
+
+- 最终部署版本为 v2.2.8-codex.20260923.2，运行源码 2ae3466070027bc5e9c3f5605915f7b29916f813，Actions 35904190592 成功喵~
+- 第三次保护部署于 2026-09-24 03:33:51 +08:00 开始，03:35:49 写入确认，03:35:57 写入稳定标记，03:38:38 超过原 240 秒窗口后最终复查通过喵~
+- 当前容器 3d6ea49a564c8fb22225774e29e0888ee33d4f42389f0f9fe788171f7d8b4452，镜像 sha256:ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d，running/restart=0/OOM=false喵~
+- 内部 127.0.0.1:13210/api/version、应用公开 HTTPS、外部 IPv6 HTTPS 均返回 2.2.8/HTTP 200喵~
+- 真实远端和外部 IPv6 wss query 均返回标准 UNAUTHORIZED 业务 error，bridgeSource=null；普通 HTTP query 返回 401，确认业务错误不触发 bridge fallback 误分类喵~
+- Host Executor health 返回 200、success=true、mode=host；启动与最终日志致命模式计数为 0喵~
+- 其他 7 个容器 ID/重启数/状态/镜像与部署前完全一致，Compose/.env/override 哈希一致；未修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6 或 Nginx喵~
+- 首轮 .1 和第二次 .2 尝试均由 guard 自动回滚并完整保留证据；第三次部署已确认，父备份 /mnt/sda1/lobehub-backups/20260923-websocket 继续作为直接回滚入口喵~

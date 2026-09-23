@@ -1708,3 +1708,10 @@
 
 - .2 已在第二次尝试完成全部业务/网络探针，但确认动作晚于 240 秒 guard，远端自动回滚成功喵~
 - 当前恢复旧镜像和服务，第三次使用同一已加载的新镜像与父备份，改为快速连续验收后立即确认，不再等待超过保护窗口喵~
+## 2026-09-24：会话加载与 WebSocket 优先查询最终上线
+
+- .2 第三次部署在保护窗口内完成所有探针并确认，03:38:38 +08:00 超过原 240 秒窗口后稳定复查通过喵~
+- 当前新容器 3d6ea49a564c、镜像 ea7da67e7e83，running/restart=0/OOM=false；内外版本、外部 IPv6 HTTPS/WSS、HTTP fallback 和 Host Executor 全部正常喵~
+- WebSocket 未登录 query 返回 UNAUTHORIZED 标准业务错误且 bridgeSource=null，HTTP query 返回 401；修正目标在真实公网入口生效喵~
+- 其他 7 服务和 Compose/.env/override 哈希保持不变，无数据库、网络或其他服务改动，fatal/panic/unhandled/migration failed 日志计数为 0喵~
+- 首轮和第二次尝试的自动回滚均证明保护链路生效，最终第三次部署已正式确认，不再运行自动回滚喵~
