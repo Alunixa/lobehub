@@ -90,7 +90,7 @@ RUN set -e && \
     mkdir -p /deps && \
     cd /deps && \
     echo '{"name":"deps","private":true}' > package.json && \
-    pnpm add @swc/helpers@0.5.23 pg drizzle-orm
+    pnpm add @swc/helpers@0.5.23 pg drizzle-orm ws@8.21.0
 
 COPY . .
 
@@ -128,9 +128,11 @@ COPY --from=builder /deps/node_modules/.pnpm /app/node_modules/.pnpm
 COPY --from=builder /deps/node_modules/@swc/helpers /app/node_modules/@swc/helpers
 COPY --from=builder /deps/node_modules/pg /app/node_modules/pg
 COPY --from=builder /deps/node_modules/drizzle-orm /app/node_modules/drizzle-orm
+COPY --from=builder /deps/node_modules/ws /app/node_modules/ws
 
 # Copy server launcher and shared scripts
 COPY --from=builder /app/scripts/serverLauncher/startServer.js /app/startServer.js
+COPY --from=builder /app/scripts/serverLauncher/realtimeServer.js /app/realtimeServer.js
 COPY --from=builder /app/scripts/_shared /app/scripts/_shared
 
 RUN set -e && \

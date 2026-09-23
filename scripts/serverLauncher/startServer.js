@@ -10,8 +10,14 @@ const { existsSync } = require('node:fs');
 const localPath = path.join(__dirname, '..', '_shared', 'checkDeprecatedAuth.js');
 const dockerPath = '/app/scripts/_shared/checkDeprecatedAuth.js';
 const sharedModulePath = existsSync(localPath) ? localPath : dockerPath;
+const localRealtimeServerPath = path.join(__dirname, 'realtimeServer.js');
+const dockerRealtimeServerPath = '/app/realtimeServer.js';
+const realtimeServerPath = existsSync(localRealtimeServerPath)
+  ? localRealtimeServerPath
+  : dockerRealtimeServerPath;
 
 const { checkDeprecatedAuth } = require(sharedModulePath);
+const { runRealtimeServer } = require(realtimeServerPath);
 
 // Set file paths
 const DB_MIGRATION_SCRIPT_PATH = '/app/docker.cjs';
@@ -210,9 +216,21 @@ const runServer = async () => {
 
   if (PROXY_URL) {
     await runProxyChainsConfGenerator(PROXY_URL);
-    return runScript(SERVER_SCRIPT_PATH, true);
   }
-  return runScript(SERVER_SCRIPT_PATH);
+
+  const publicPort = Number(process.env.PORT || 3210);
+  const internalPort = Number(process.env.INTERNAL_PORT || publicPort + 1);
+  if (publicPort === internalPort) {
+    throw new Error('🔴 INTERNAL_PORT must differ from PORT when the realtime proxy is enabled.');
+  }
+
+  return runRealtimeServer({
+    internalPort,
+    listenHost: process.env.SERVER_LISTEN_HOST || '0.0.0.0',
+    publicPort,
+    serverScriptPath: SERVER_SCRIPT_PATH,
+    useProxy: Boolean(PROXY_URL),
+  });
 };
 
 // Main execution block

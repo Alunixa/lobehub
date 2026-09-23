@@ -328,3 +328,19 @@
 
 ## 21. Change Log
 - 2026-09-23：新增 `packages/trpc/src/client/websocketFirstLink.ts` 并接入 `packages/trpc/src/client/lambda.ts`喵~
+
+## 5. Architecture
+- 生产容器启动器现在采用双层服务：公开 `PORT` 由 Node HTTP/WS 代理监听，Next standalone 仅监听 `127.0.0.1:INTERNAL_PORT`；普通 HTTP 原样流式转发，`/api/trpc-ws` 使用只读 tRPC query bridge喵~
+- WebSocket bridge 复用原 Next `/trpc/lambda/*` 处理认证、上下文、业务逻辑和 SuperJSON；bridge 不执行 mutation，客户端失败自动 fallback HTTP喵~
+
+## 7. Configuration and Environment
+- 新增可选 `INTERNAL_PORT`（默认公开 PORT + 1）与 `SERVER_LISTEN_HOST`（默认 `0.0.0.0`）；公开 `PORT` 接口保持不变喵~
+
+## 13. Completed Work
+- 2026-09-23：实现公开 HTTP 代理、同源 `/api/trpc-ws` 只读 bridge、内部 Next 回环监听及 Docker `ws` 运行依赖打包喵~
+
+## 19. Current Task
+- 客户端与服务端 WebSocket-first 主链路已落地，待首屏缓存门闩调整、测试修正和完整构建验证喵~
+
+## 21. Change Log
+- 2026-09-23：新增 `scripts/serverLauncher/realtimeServer.js`，修改 `startServer.js` 与 Dockerfile 接入双层 HTTP/WS 启动架构喵~
