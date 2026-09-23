@@ -529,3 +529,15 @@
 
 - `deploy-2` 镜像已成功 load，离线 Node 检查通过 `@swc/helpers`、Next server、`ws`、`realtimeServer.js` 和 `startServer.js` 喵~
 - 新镜像 ID 为 `sha256:ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`，当前线上仍是旧镜像，尚未开始第二次重建喵~
+
+## 2026-09-23：第二次部署命令模板转义失败
+
+- 第二次保护部署脚本首次未执行，原因是本地 JavaScript 模板字符串把远端 `${APP_URL%/}` 当作本地插值，工具在执行前报语法错误喵~
+- 线上仍保持旧镜像，后续仅转义远端 shell 表达式后重试，不改变部署逻辑喵~
+
+## 2026-09-23：修正版真实线上 WebSocket 与 IPv6 外部验收
+
+- 远端未登录 WebSocket query 返回标准 `UNAUTHORIZED` error，`errorCode=-32001`、`errorDataCode=UNAUTHORIZED`、`bridgeSource=null`，HTTP query 仍返回 401 喵~
+- 本机通过 IPv6 外部 HTTPS 访问 APP_URL `/api/version` 返回 HTTP 200 和版本 `2.2.8` 喵~
+- 本机真实 `wss://` 连接握手并收到标准业务 error，未带 `realtime-bridge` source，证明修正版经过公网 IPv6 WebSocket 入口喵~
+- 当前 deploy-2 guard 仍未确认，下一步核对其他服务/配置不变并等待保护窗口结束喵~

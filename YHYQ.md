@@ -1693,3 +1693,14 @@
 
 - 修正版镜像 runtime dependency probe 通过，确认 `ws` 和双层启动器实际存在；新镜像 ID `ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`喵~
 - 线上旧容器仍保持运行，下一步才启动第二次 240 秒保护替换喵~
+
+## 2026-09-23：记录 deploy-2 脚本模板错误
+
+- deploy-2 首次启动命令未到达 SSH，只有本地模板字符串解析失败；远端服务未受影响喵~
+- 修正 `${APP_URL%/}` 转义后重新执行保护部署喵~
+
+## 2026-09-23：deploy-2 外部 IPv6 验收通过
+
+- 外部 IPv6 HTTPS `/api/version` 返回 200，真实公网 `wss://` query 返回 `UNAUTHORIZED` 标准业务错误且 `bridgeSource=null`喵~
+- 普通 HTTP query 仍按预期返回 401，WebSocket-first 的业务错误分类修复已在公网入口验证喵~
+- 尚未写入 deployment.confirmed，仍保留 240 秒 guard 保护喵~
