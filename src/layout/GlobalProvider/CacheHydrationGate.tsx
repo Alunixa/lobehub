@@ -2,23 +2,21 @@
 
 import { isDesktop } from '@lobechat/const';
 import type { PropsWithChildren } from 'react';
-import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 
 import { bootTiming } from '@/libs/bootTiming';
-import { cacheHydration } from '@/libs/swr/cacheHydration';
-import { useCacheScope } from '@/libs/swr/useCacheScope';
 import { useUserStore } from '@/store/user';
 import { authSelectors } from '@/store/user/selectors';
 
 // first-write-wins: only the very first paint records the boot timing mark.
 let firstPaintMarked = false;
 
-const HYDRATION_TIMEOUT = 1500;
+const IDENTITY_TIMEOUT = 1500;
 
 /**
- * Blocks the first paint until the initial identity scope's IndexedDB cache has
- * hydrated, so the app never flashes empty on cold boot — the static
- * `loading-screen` overlay covers exactly this window.
+ * Blocks only until the initial identity is known. IndexedDB cache hydration
+ * continues in the background so a slow local cache cannot make the whole SPA
+ * look blank; SWR shows its normal cached/skeleton state while the cache loads.
  *
  * This is a one-way latch: once released it never blanks again. A later scope
  * change (anonymous → signed-in, or workspace switch) re-hydrates the SWR cache
@@ -35,15 +33,8 @@ const HYDRATION_TIMEOUT = 1500;
  * is a hard backstop so a hung round-trip never keeps the app blank.
  */
 const CacheHydrationGate = ({ children }: PropsWithChildren) => {
-  const scope = useCacheScope();
   const isAuthLoaded = Boolean(useUserStore(authSelectors.isLoaded));
   const isUserStateInit = useUserStore((s) => s.isUserStateInit);
-
-  const ready = useSyncExternalStore(
-    cacheHydration.subscribe,
-    () => cacheHydration.isReady(scope),
-    () => true,
-  );
 
   const [released, setReleased] = useState(false);
   const [timedOut, setTimedOut] = useState(false);
@@ -51,7 +42,7 @@ const CacheHydrationGate = ({ children }: PropsWithChildren) => {
   // Only the first hydration is time-boxed; after release the latch holds.
   useEffect(() => {
     if (released) return;
-    const timer = setTimeout(() => setTimedOut(true), HYDRATION_TIMEOUT);
+    const timer = setTimeout(() => setTimedOut(true), IDENTITY_TIMEOUT);
     return () => clearTimeout(timer);
   }, [released]);
 
@@ -65,10 +56,9 @@ const CacheHydrationGate = ({ children }: PropsWithChildren) => {
     if (!isAuthLoaded) return;
     // Desktop paints against the final identity scope, not the anonymous one.
     if (isDesktop && !isUserStateInit) return;
-    if (!ready) return;
 
     setReleased(true);
-  }, [isAuthLoaded, isUserStateInit, ready, released, timedOut]);
+  }, [isAuthLoaded, isUserStateInit, released, timedOut]);
 
   useLayoutEffect(() => {
     if (!released) return;

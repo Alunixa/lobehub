@@ -1569,3 +1569,8 @@
 - 已修改 `startServer.js` 让公开 HTTP/WS 代理与内部 Next 协同启动、信号退出，并修改 Dockerfile 显式打包 `ws@8.21.0` 和实时代理脚本喵~
 
 - 运行 `node --check`（两个启动器脚本）和 `git diff --check` 通过；`bun run check` 未进入 ESLint/类型阶段，因当前本机 `node_modules/.bin/eslint` 缺失，未把它记为代码通过喵~
+
+- 已取消首屏对 IndexedDB 全量水合的硬门闩，桌面仍等待身份初始化，Web/mobile 只等待身份加载，超时仍为 1500ms；新增测试覆盖不等待 IDB、桌面身份和超时喵~
+- 已让后台 IDB hydration 只补齐当前不存在的 key，避免慢数据库返回时覆盖已经到达的网络新数据喵~
+- 已让 `SWRMutateInitializer` 监听 hydration-ready，在缓存完成后对当前作用域触发全局 SWR 重验证；`QueryProvider` 不再重复触发第二次重验证喵~
+- 新增 late IndexedDB 不覆盖 network 的回归测试喵~

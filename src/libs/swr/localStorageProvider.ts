@@ -248,7 +248,10 @@ export function createCacheProvider(options: CacheProviderOptions = {}): ScopedS
       const valid = entries.filter((e) => e.version === version);
       // Map may have changed scope while we awaited; only apply if still current.
       if (cacheMapInstance && getScope() === scope && hydrationEpoch === epoch) {
-        cacheMapInstance.hydrate(valid.map((e) => [e.key, e.data]));
+        cacheMapInstance.hydrate(
+          valid.map((e) => [e.key, e.data]),
+          false,
+        );
         hydratedScope = scope;
       }
       succeeded = true;
@@ -310,9 +313,19 @@ export function createCacheProvider(options: CacheProviderOptions = {}): ScopedS
       return result;
     }
 
-    /** Bulk-load entries without persisting them back. */
-    hydrate(entries: readonly (readonly [string, unknown])[]): void {
-      for (const [key, value] of entries) super.set(key, value);
+    /**
+     * Bulk-load entries without persisting them back.
+     *
+     * Background IndexedDB hydration must not overwrite a value that arrived
+     * from the network while the database read was in flight.
+     */
+    hydrate(
+      entries: readonly (readonly [string, unknown])[],
+      overwrite = true,
+    ): void {
+      for (const [key, value] of entries) {
+        if (overwrite || !this.has(key)) super.set(key, value);
+      }
       this.live = true;
     }
 

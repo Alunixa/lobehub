@@ -130,6 +130,21 @@ describe('createCacheProvider — tiering', () => {
     expect(map2.get('MSGS:t1')).toEqual({ items: ['hello'] });
   });
 
+  it('does not let late IndexedDB hydration overwrite a fresher network value', async () => {
+    const scope = { value: 's1' };
+    const { provider: seed } = buildProvider(scope);
+    seed().set('MSGS:t1', { source: 'indexeddb' });
+    await until(async () => (await localDataCache.entriesByScope('s1')).length > 0);
+
+    const { hydrated, provider } = buildProvider(scope);
+    const map = provider();
+    map.set('MSGS:t1', { source: 'network' });
+
+    await hydrated;
+
+    expect(map.get('MSGS:t1')).toEqual({ source: 'network' });
+  });
+
   it('idb tier wins when a key matches both pattern sets', async () => {
     const scope = { value: 's1' };
     const { provider } = buildProvider(scope, {

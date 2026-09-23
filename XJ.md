@@ -350,3 +350,20 @@
 
 ## 21. Change Log
 - 2026-09-23：记录首轮脚本语法、diff 检查及本机 ESLint 缺失阻塞喵~
+
+## 5. Architecture
+- 首屏 CacheHydrationGate 只等待身份范围确定，IndexedDB 在 SWR provider 后台加载；`SWRMutateInitializer` 收到 scope hydration-ready 后触发一次当前作用域重验证喵~
+- IDB hydration 采用“只填充缺失 key”策略，网络已写入的同 key 优先，避免异步缓存回填覆盖 fresh data喵~
+
+## 9. Testing and Verification
+- 新增 `CacheHydrationGate` 回归：Web 不等待 IDB、桌面身份初始化、1500ms 身份超时喵~
+- 新增 `localStorageProvider` 回归：late IndexedDB hydration 不覆盖网络值喵~
+
+## 13. Completed Work
+- 2026-09-23：完成首屏缓存门闩拆分与后台 hydration 竞态保护喵~
+
+## 19. Current Task
+- 首屏门闩与后台缓存链路已完成，待补 WebSocket link/server bridge 测试并修正启动器边界，再做构建验证喵~
+
+## 21. Change Log
+- 2026-09-23：修改 `CacheHydrationGate.tsx`、`SWRMutateInitializer.tsx`、`Query.tsx`、`localStorageProvider.ts` 及对应缓存/门闩测试喵~
