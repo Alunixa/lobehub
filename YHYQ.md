@@ -1704,3 +1704,7 @@
 - 外部 IPv6 HTTPS `/api/version` 返回 200，真实公网 `wss://` query 返回 `UNAUTHORIZED` 标准业务错误且 `bridgeSource=null`喵~
 - 普通 HTTP query 仍按预期返回 401，WebSocket-first 的业务错误分类修复已在公网入口验证喵~
 - 尚未写入 deployment.confirmed，仍保留 240 秒 guard 保护喵~
+## 2026-09-23：.2 第二次部署保护回滚记录
+
+- .2 已在第二次尝试完成全部业务/网络探针，但确认动作晚于 240 秒 guard，远端自动回滚成功喵~
+- 当前恢复旧镜像和服务，第三次使用同一已加载的新镜像与父备份，改为快速连续验收后立即确认，不再等待超过保护窗口喵~

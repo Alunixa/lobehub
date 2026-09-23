@@ -541,3 +541,8 @@
 - 本机通过 IPv6 外部 HTTPS 访问 APP_URL `/api/version` 返回 HTTP 200 和版本 `2.2.8` 喵~
 - 本机真实 `wss://` 连接握手并收到标准业务 error，未带 `realtime-bridge` source，证明修正版经过公网 IPv6 WebSocket 入口喵~
 - 当前 deploy-2 guard 仍未确认，下一步核对其他服务/配置不变并等待保护窗口结束喵~
+## 2026-09-23：.2 第二次保护部署因确认过晚自动回滚
+
+- .2 第二次部署已完成内部/公开版本、远端 WebSocket 标准业务 error、HTTP 401和本机外部 IPv6 HTTPS/WSS 全部验收，但等待 180 秒后才执行最终确认，超过 guard 截止时间喵~
+- deploy-2 guard 于远端 2026-09-24 03:22:00 +08:00 自动回滚到旧镜像，当前容器 9c37f0c7ecf8bb0d11a6224f34eeccaa69a171a480a5e26395b7c98a51c64807，旧镜像 running/restart=0/OOM=false，版本接口正常喵~
+- 该回滚是部署确认时序问题，不是 .2 代码或 WebSocket 验收失败；保留 deploy-2 日志，第三次部署将在探针连续通过后立即写确认标记喵~
