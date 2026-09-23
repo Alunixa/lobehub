@@ -1560,3 +1560,6 @@
 - 用户继续要求处理本地会话加载慢、白屏等待，以及查询优先使用 WebSocket、失败后回退普通 HTTP 喵~
 - 已读取完整 `XJ.md`、`YHYQ.md`、当前分支与未跟踪文件状态；未跟踪历史构建/发布目录和 `问题.txt` 保持不动喵~
 - 已在修改前建立 Git 检查点 `7081603c31`，本轮开始实现客户端查询传输层、首屏缓存门闩调整和服务端同源只读 WebSocket bridge 喵~
+
+- 已新增 `packages/trpc/src/client/websocketFirstLink.ts`：仅对 query 使用同源 tRPC WebSocket，连接/响应超时、连接错误或关闭时在 900ms 内回退既有 HTTP link；失败冷却 10 秒，页面隐藏时关闭连接，mutation/upload/subscription 保持 HTTP 喵~
+- 已接入 `packages/trpc/src/client/lambda.ts`，保留现有 HTTP batching、鉴权 header、SuperJSON 和错误处理链路喵~

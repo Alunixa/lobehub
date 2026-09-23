@@ -319,3 +319,12 @@
 
 ## 21. Change Log
 - 2026-09-23：建立 `7081603c31` 修改前检查点，开始 WebSocket 优先查询与首屏白屏优化喵~
+
+## 13. Completed Work
+- 2026-09-23：新增客户端 `websocketFirstLink`，query 优先同源 `/api/trpc-ws`，连接/响应失败 900ms fallback HTTP；只读查询使用，写操作保持 HTTP，避免重复副作用喵~
+
+## 19. Current Task
+- 客户端 WebSocket-first link 已完成，待实现服务端 WebSocket bridge、启动器 HTTP 反代、首屏门闩调整及定向验证喵~
+
+## 21. Change Log
+- 2026-09-23：新增 `packages/trpc/src/client/websocketFirstLink.ts` 并接入 `packages/trpc/src/client/lambda.ts`喵~
