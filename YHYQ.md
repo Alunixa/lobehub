@@ -1567,3 +1567,5 @@
 - 已新增 `scripts/serverLauncher/realtimeServer.js`：内部 Next 改在回环端口运行，外层保持公开 PORT，普通 HTTP 流式反代到内部服务，同源 `/api/trpc-ws` 仅接受 tRPC query 并转发 Cookie/Authorization/x-* 等必要请求头喵~
 - WebSocket bridge 已加入同源 Origin 校验、procedure path 白名单、16MB payload 上限、15秒上游保护、连接关闭取消上游请求、PING/PONG 和错误响应喵~
 - 已修改 `startServer.js` 让公开 HTTP/WS 代理与内部 Next 协同启动、信号退出，并修改 Dockerfile 显式打包 `ws@8.21.0` 和实时代理脚本喵~
+
+- 运行 `node --check`（两个启动器脚本）和 `git diff --check` 通过；`bun run check` 未进入 ESLint/类型阶段，因当前本机 `node_modules/.bin/eslint` 缺失，未把它记为代码通过喵~

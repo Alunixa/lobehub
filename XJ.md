@@ -344,3 +344,9 @@
 
 ## 21. Change Log
 - 2026-09-23：新增 `scripts/serverLauncher/realtimeServer.js`，修改 `startServer.js` 与 Dockerfile 接入双层 HTTP/WS 启动架构喵~
+
+## 17. Failed Approaches
+- 2026-09-23：定向 `bun run check ... --lint --type` 因本机 `node_modules/.bin/eslint` 缺失而未执行检查；Node 启动器语法和 `git diff --check` 已通过，不把工具未运行当作代码通过喵~
+
+## 21. Change Log
+- 2026-09-23：记录首轮脚本语法、diff 检查及本机 ESLint 缺失阻塞喵~
