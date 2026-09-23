@@ -470,3 +470,52 @@
 - 首轮新镜像未在 240 秒保护窗口内写入确认标记，远端 guard 于 `2026-09-24 02:22:34 +08:00` 按设计执行回滚喵~
 - 当前已恢复旧镜像 `sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，容器 `4d21a5726510151d07574ed8ca6c9cee4af6cb2f08f7bfc025ed965f25ecd79a` running/restart=0/OOM=false，版本接口仍返回 `2.2.8`喵~
 - 该回滚只重建 LobeHub 服务，没有修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6、Nginx 或 Compose 配置；后续修正版部署继续使用本轮备份目录喵~
+
+## 2026-09-23：修正版 Actions 资产下载尝试
+
+- `gh run download` 的首个 PowerShell 包装命令因执行策略拒绝，整条命令未执行，没有删除或修改任何文件喵~
+- 后续使用新的专用目录直接下载成功 run `35904190592` 的镜像资产，不复用被拒绝的清理命令喵~
+
+## 2026-09-23：GitHub CLI 资产下载卡住
+
+- `gh run download` 对成功 run `35904190592` 建立 HTTPS 连接但超过两分钟仍未写入目标目录，已终止本轮启动的卡住进程；Actions 状态仍为 success，未影响远端服务喵~
+- 下一步使用 GitHub API artifact 下载地址直接保存到新的 revision 目录，并继续校验镜像 SHA-256 喵~
+
+## 2026-09-23：API 下载过滤器引号失败
+
+- GitHub API artifact 下载首次因 PowerShell 传递给 `gh --jq` 的单引号表达式不符合 jq 语法而失败，没有创建下载文件或改变线上状态喵~
+- 后续改为变量拼接双引号过滤表达式，继续使用同一成功 run 的 artifact ID 喵~
+
+## 2026-09-23：gh API 输出参数兼容性
+
+- 当前 GitHub CLI 版本的 `gh api` 不支持 `--output`，第二次下载尝试只解析出 artifact ID 后被 CLI 拒绝，未创建镜像文件喵~
+- 已确认 artifact ID `10771111644`，后续改用同一 URL 的 PowerShell `Invoke-WebRequest` 直接保存并校验喵~
+
+## 2026-09-23：修正版镜像 artifact 已下载
+
+- Actions `35904190592` 成功 artifact 已通过 API 下载并解压到 `D:\Cursor\lobehub-backups\20260923-websocket\revision-api-2ae` 喵~
+- 修正版镜像大小 `298148352` bytes，SHA-256 为 `3ca664242b6630a7d8d9efb6e15e76f40ec96f8fc0ef8343bb1ac607dda61d32`，对应源码提交 `2ae3466070` 喵~
+- 原始 artifact zip 保留作为下载证据；解压后的 tar 用于后续远端校验和部署喵~
+
+## 2026-09-23：创建 WebSocket 错误 envelope 修正版 Release 材料
+
+- 已生成 `v2.2.8-codex.20260923.2` 的 `release-manifest.json`、LF `SHA256SUMS` 和 Release Notes喵~
+- Release 目标提交为 `2ae3466070027bc5e9c3f5605915f7b29916f813`，镜像 `298148352` bytes，SHA-256 `3ca664242b6630a7d8d9efb6e15e76f40ec96f8fc0ef8343bb1ac607dda61d32`喵~
+- Notes 已记录 `.1` 保护自动回滚、`.2` 的嵌套 HTTP tRPC error 转换修复、12 项定向测试及仅 LobeHub 服务部署范围喵~
+
+## 2026-09-23：修正版 `.2` Release 已发布
+
+- `v2.2.8-codex.20260923.2` 已发布为正式 Release，标签指向 `2ae3466070027bc5e9c3f5605915f7b29916f813` 喵~
+- GitHub 资产已核验：镜像 `298148352` bytes、digest `sha256:3ca664242b6630a7d8d9efb6e15e76f40ec96f8fc0ef8343bb1ac607dda61d32`；manifest digest `sha256:ce020af3355ed509974061d7066685a939a715ccc9c62774755a529306aaf64a`；SHA256SUMS digest `sha256:5554395d9071cc40ea674eac7cab705c726250feca993327e4108e4e07019a5c` 喵~
+- 第二次部署将使用远端 `/mnt/sda1/lobehub-backups/20260923-websocket/deploy-2`，保留父目录 `.1` 备份与回滚证据喵~
+
+## 2026-09-23：第二次部署上传的远端变量引号问题
+
+- 首次向 `deploy-2` 上传修正版镜像时，PowerShell 提前展开了远端命令中的 `$B`，远端目录未创建，三个 scp 上传均失败且未落盘喵~
+- 后续用单引号保护远端 shell 变量并重新创建目录，保持本地与远端父备份不变喵~
+
+## 2026-09-23：修正版镜像已上传远端并校验
+
+- `deploy-2` 目录已创建，修正版镜像、manifest 和 SHA256SUMS 上传成功喵~
+- 远端哈希与本地/Release 一致：镜像 `3ca664242b6630a7d8d9efb6e15e76f40ec96f8fc0ef8343bb1ac607dda61d32`，manifest `ce020af3355ed509974061d7066685a939a715ccc9c62774755a529306aaf64a`，校验清单 `5554395d9071cc40ea674eac7cab705c726250feca993327e4108e4e07019a5c` 喵~
+- 下一步在远端离线 load/运行依赖检查后启动第二次 240 秒保护部署喵~
