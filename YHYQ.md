@@ -1537,3 +1537,12 @@
 - 用户反馈本地访问会话/加载页面会白屏等待，怀疑HTTP获取效率不高，希望优先使用WebSocket、失败后fallback普通HTTP喵~
 - 已完整读取`XJ.md`、`YHYQ.md`、`AGENTS.md`和当前Git状态；现有跟踪文件无未提交改动，仅保留历史未跟踪构建/发布目录喵~
 - 已建立修改前空提交检查点`5bd3c51224`，本轮尚未修改运行代码、网络配置或线上服务；先做请求瀑布、首屏白屏、会话数据链路和WebSocket现状排查喵~
+
+## 2026-09-23：会话加载性能排查阶段性结论
+
+- 已检查 `packages/trpc/src/client/lambda.ts`：浏览器通用 tRPC 只配置 `httpBatchLink`、`httpLink` 和条件分流，没有可直接复用的网页端 WebSocket RPC 服务端；当前 `/trpc/lambda` 是 Next.js Fetch Route，不能仅替换客户端 link 就升级为 WebSocket 喵~
+- 已检查 `src/layout/GlobalProvider/CacheHydrationGate.tsx`：首屏在身份状态和 SWR IndexedDB 缓存水合完成前返回 `null`，硬超时为 1500ms；这会直接表现为整页白屏，且不是会话 HTTP 请求本身造成喵~
+- 已检查 `src/features/Conversation/ChatList/index.tsx` 与 `src/features/Conversation/store/slices/data/action.ts`：已有缓存时可以先显示旧消息并后台刷新；没有缓存时会在消息请求完成前渲染 `SkeletonList`，同时会话页并行请求消息、助手配置、助手文档、Notebook 文档和 Topic Memory 喵~
+- 已检查 `src/libs/swr/index.ts` 与初始化 Provider：交互数据默认 `dedupingInterval=0`、聚焦刷新节流5分钟，SWR缓存通过 IndexedDB水合；需要基于真实性能瀑布决定是否调整缓存/首屏门闩，不能盲目把一次性查询迁移到新建 WebSocket 喵~
+- 已检查 tRPC 依赖与仓库 WebSocket 用途：现有 WebSocket 主要用于 Agent Gateway、设备网关和机器人连接；没有与会话列表/消息查询匹配的公共浏览器协议、认证和 Next.js 部署升级入口喵~
+- 当前下一步：启动隔离本地开发入口采集导航、首个可见内容、CacheHydrationGate释放、会话请求TTFB/大小和重复请求证据，再以数据选择最小的首屏/缓存修复，并仅在有完整服务端协议时增加短超时 WebSocket fallback 喵~
