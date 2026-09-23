@@ -1683,3 +1683,13 @@
 
 - 修正版镜像已上传 `/mnt/sda1/lobehub-backups/20260923-websocket/deploy-2`，三项 SHA-256 与本地 Release 一致喵~
 - 首轮 `.1` 备份和自动回滚材料未被覆盖，准备离线加载新镜像并开始第二次单服务保护部署喵~
+
+## 2026-09-23：记录修正版 runtime probe 引号失败
+
+- 新镜像已加载到远端 Docker，第一次运行时依赖探针仅因 SSH 引号丢失导致 Node SyntaxError，服务仍未重建喵~
+- 重新用 shell 单引号执行同一依赖检查喵~
+
+## 2026-09-23：deploy-2 离线依赖检查通过
+
+- 修正版镜像 runtime dependency probe 通过，确认 `ws` 和双层启动器实际存在；新镜像 ID `ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`喵~
+- 线上旧容器仍保持运行，下一步才启动第二次 240 秒保护替换喵~

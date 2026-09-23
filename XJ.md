@@ -519,3 +519,13 @@
 - `deploy-2` 目录已创建，修正版镜像、manifest 和 SHA256SUMS 上传成功喵~
 - 远端哈希与本地/Release 一致：镜像 `3ca664242b6630a7d8d9efb6e15e76f40ec96f8fc0ef8343bb1ac607dda61d32`，manifest `ce020af3355ed509974061d7066685a939a715ccc9c62774755a529306aaf64a`，校验清单 `5554395d9071cc40ea674eac7cab705c726250feca993327e4108e4e07019a5c` 喵~
 - 下一步在远端离线 load/运行依赖检查后启动第二次 240 秒保护部署喵~
+
+## 2026-09-23：修正版离线运行探针引号问题
+
+- `deploy-2` 新镜像已成功 load，但首次 `docker run -e` 探针因 Windows SSH 引号传递导致 Node 代码丢失字符串引号而语法失败，未重建线上容器喵~
+- 改用远端 shell 单引号包裹 Node 检查脚本重新执行，确认镜像本身未被判定为失败喵~
+
+## 2026-09-23：修正版镜像离线运行依赖验证通过
+
+- `deploy-2` 镜像已成功 load，离线 Node 检查通过 `@swc/helpers`、Next server、`ws`、`realtimeServer.js` 和 `startServer.js` 喵~
+- 新镜像 ID 为 `sha256:ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`，当前线上仍是旧镜像，尚未开始第二次重建喵~
