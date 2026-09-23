@@ -391,3 +391,9 @@
 
 ## 21. Change Log
 - 2026-09-23：修正 `realtimeServer.js` 普通 HTTP 头部转发，补齐写请求兼容性并完成本地集成验收喵~
+
+## 2026-09-23：继续完成会话加载性能优化
+
+- 用户再次要求继续处理会话加载慢、白屏和 WebSocket 优先查询方案，并自行完成后续验证、发布和部署喵~
+- 本轮修改前检查点：7bc4abdff，当前已存在客户端 WebSocket-first、服务端只读 bridge、HTTP 反代和后台缓存水合实现，跟踪工作树干净喵~
+- 当前阶段：审查实现边界并补齐定向测试、Docker/生产构建、GitHub Actions、Release 和仅 LobeHub 服务的保护部署喵~
