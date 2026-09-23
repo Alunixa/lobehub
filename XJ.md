@@ -296,3 +296,12 @@
 - 已检查 `src/libs/swr/index.ts` 与初始化 Provider：交互数据默认 `dedupingInterval=0`、聚焦刷新节流5分钟，SWR缓存通过 IndexedDB水合；需要基于真实性能瀑布决定是否调整缓存/首屏门闩，不能盲目把一次性查询迁移到新建 WebSocket 喵~
 - 已检查 tRPC 依赖与仓库 WebSocket 用途：现有 WebSocket 主要用于 Agent Gateway、设备网关和机器人连接；没有与会话列表/消息查询匹配的公共浏览器协议、认证和 Next.js 部署升级入口喵~
 - 当前下一步：启动隔离本地开发入口采集导航、首个可见内容、CacheHydrationGate释放、会话请求TTFB/大小和重复请求证据，再以数据选择最小的首屏/缓存修复，并仅在有完整服务端协议时增加短超时 WebSocket fallback 喵~
+
+## 2026-09-23：WebSocket优先传输实现阶段
+
+- 已确认上一轮隔离开发进程已停止，当前没有占用`3011`/`9886`的遗留Next/Vite进程；本机缺少`KEY_VAULTS_SECRET`、`AUTH_SECRET`和`DATABASE_URL`，因此不能用本机Next 500作为生产性能证据喵~
+- 性能方案调整为两部分：首屏身份范围确定后立即渲染，不再等待IndexedDB全量水合；水合继续后台进行并触发一次作用域内SWR重验证，避免白屏与匿名作用域污染同时存在喵~
+- 新增同源只读tRPC WebSocket传输协议：浏览器对GET型`/trpc/*`请求优先复用`/api/trpc-ws`长连接，WebSocket连接或响应异常时快速回退原生HTTP；POST/写请求继续走HTTP，避免连接中断造成写操作重复执行喵~
+- 生产启动器改为外层HTTP/WS复用代理，内部Next仍监听回环端口；代理只允许固定tRPC读取路径和GET方法，转发原始Cookie/鉴权/工作区请求头，不开放任意URL代理喵~
+- 本阶段已建立的安全边界：WebSocket连接超时、请求超时、失败冷却、页面隐藏关闭、同源校验、路径白名单、HTTP状态原样返回；服务端不记录请求体、Cookie或鉴权值喵~
+- 待完成：源码实现、客户端/启动器定向测试、Docker构建与运行验证、GitHub Actions同源镜像/SPA预览、Release说明、独立备份后的LobeHub单服务保护部署和公网/本地回归喵~

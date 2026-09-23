@@ -1546,3 +1546,11 @@
 - 已检查 `src/libs/swr/index.ts` 与初始化 Provider：交互数据默认 `dedupingInterval=0`、聚焦刷新节流5分钟，SWR缓存通过 IndexedDB水合；需要基于真实性能瀑布决定是否调整缓存/首屏门闩，不能盲目把一次性查询迁移到新建 WebSocket 喵~
 - 已检查 tRPC 依赖与仓库 WebSocket 用途：现有 WebSocket 主要用于 Agent Gateway、设备网关和机器人连接；没有与会话列表/消息查询匹配的公共浏览器协议、认证和 Next.js 部署升级入口喵~
 - 当前下一步：启动隔离本地开发入口采集导航、首个可见内容、CacheHydrationGate释放、会话请求TTFB/大小和重复请求证据，再以数据选择最小的首屏/缓存修复，并仅在有完整服务端协议时增加短超时 WebSocket fallback 喵~
+
+## 2026-09-23：继续实现性能与传输优化
+
+- 用户继续要求处理本地会话加载慢、白屏和HTTP效率问题，并希望WebSocket优先、失败后普通HTTP降级喵~
+- 已确认上一轮`PORT=3011`/`SPA_PORT=9886`隔离开发进程已停止；本机缺少必要服务端密钥和数据库连接配置，未把本地500当作线上故障喵~
+- 已完成只读架构复核：Next standalone默认启动器没有原生网页tRPC WebSocket入口，现有WebSocket只覆盖Agent Gateway/设备网关；直接把客户端tRPC link替换为`wsLink`会得到无服务端协议的失败请求喵~
+- 采用可回滚实现：首屏只等待身份范围确定，IndexedDB水合后台完成；新增同源`/api/trpc-ws`只读GET代理，客户端复用WebSocket连接并在连接/响应失败时回退HTTP，POST和写操作保持HTTP喵~
+- 本次采取的每一步动作：读取XJ/YHYQ/AGENTS、读取数据获取/React/UX/测试/TypeScript规范、核对Git状态和进程、检查tRPC/Next/Docker启动链路、准备源码和定向测试实现；尚未修改运行时代码、线上配置或线上服务喵~
