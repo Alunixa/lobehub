@@ -464,3 +464,9 @@
 
 - 修正提交 `2ae3466070` 已推送，但工作流 push path filter 不包含 `scripts/serverLauncher`，因此没有自动产生新 run喵~
 - 将对同一提交手动 dispatch `Codex Build Server Image`，后续只接受该提交的成功镜像作为修正版部署产物喵~
+
+## 2026-09-23：首轮部署保护自动回滚
+
+- 首轮新镜像未在 240 秒保护窗口内写入确认标记，远端 guard 于 `2026-09-24 02:22:34 +08:00` 按设计执行回滚喵~
+- 当前已恢复旧镜像 `sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，容器 `4d21a5726510151d07574ed8ca6c9cee4af6cb2f08f7bfc025ed965f25ecd79a` running/restart=0/OOM=false，版本接口仍返回 `2.2.8`喵~
+- 该回滚只重建 LobeHub 服务，没有修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6、Nginx 或 Compose 配置；后续修正版部署继续使用本轮备份目录喵~
