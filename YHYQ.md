@@ -1836,3 +1836,11 @@
 - GitHub API 核验镜像 `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，manifest `2112` bytes / `e3200b3ef432836230efe570b89e96e9516d1c32bcb028df5365871bd1786ff9`，SHA256SUMS `179` bytes / `3746ca9d0e23780d1d54b250ed38471af817bed6d9944ce9094b944c1c71e4ff` 喵~
 - Release Notes 已明确 `.1` 已回滚不可部署、`.2` 保留 pnpm 虚拟仓库依赖路径并使用增强运行探针，以及实时同步和加载优化的全部内容喵~
 - 下一步创建远端 `deploy-2` 独立快照与 guard，上传并离线验证 `.2` 后仅重建 LobeHub 服务喵~
+
+## 2026-09-24：deploy-2 快照与镜像离线验证通过
+
+- 已创建远端 `deploy-2` 目录，保存第二次部署前应用 inspect、全部容器基线、配置哈希和独立数据库快照喵~
+- 第二次数据库快照约 43.7 MB / SHA-256 `2dafb1d1448bff97067393e61bdb03a90048c8b6b7094a513c27cc12fcd2ab84`，父目录首次完整备份与回滚脚本未覆盖喵~
+- `.2` 三项资产上传成功，镜像与 manifest 远端 SHA-256 校验通过；新镜像 ID `8fb5d27bd5c3…` 喵~
+- 新镜像中 `ioredis` 已保持正确 pnpm symlink，真实加载 Next、ioredis、lazy client 和实时启动器通过，输出 `DEPLOY2_RUNTIME_PROBE_OK` 喵~
+- staging 后线上仍为旧稳定容器 `bbc91f4e2317`、restart=0、OOM=false；下一步启动 deploy-2 独立 240 秒 guard 并只替换 LobeHub 喵~

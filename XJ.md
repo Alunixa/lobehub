@@ -683,3 +683,10 @@
 - GitHub 资产已核验：镜像 `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，manifest `2112` bytes / `e3200b3ef432836230efe570b89e96e9516d1c32bcb028df5365871bd1786ff9`，SHA256SUMS `179` bytes / `3746ca9d0e23780d1d54b250ed38471af817bed6d9944ce9094b944c1c71e4ff` 喵~
 - Release Notes 已完整记录实时同步/会话单键缓存、`.1` 的 ioredis 故障与回滚、pnpm symlink 修复、增强 Actions 探针、113 项测试和仅 LobeHub 服务的部署范围喵~
 - 下一步在远端备份根目录创建 `deploy-2`，保存第二次部署前容器/配置/其他服务基线，上传 `.2` 资产并使用真实 `require('ioredis')` 离线探针后启动独立 240 秒 guard 喵~
+
+### Deploy-2 Staging
+- 远端 `/mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-2` 已创建，保存第二次部署前 LobeHub inspect、其他容器、配置哈希和独立数据库快照喵~
+- 第二次数据库快照约 43.7 MB / SHA-256 `2dafb1d1448bff97067393e61bdb03a90048c8b6b7094a513c27cc12fcd2ab84`；父目录旧镜像、首次数据库/配置备份和回滚脚本继续保留喵~
+- `.2` Release 镜像与 manifest 远端 `sha256sum -c` 通过；新镜像 ID `sha256:8fb5d27bd5c336f3677db02ea059a2fc7de25b06137b16f290669d85e26ea368` 喵~
+- 离线验证确认 `/app/node_modules/ioredis` 为 `.pnpm/ioredis@5.11.1/node_modules/ioredis` symlink，真实加载 Next、ioredis、lazy Redis client 与 `/app/realtimeServer.js` 成功，输出 `DEPLOY2_RUNTIME_PROBE_OK` 喵~
+- staging 完成后线上仍为旧容器 `bbc91f4e2317`、旧镜像 `ea7da67e7e83`、running/restart=0/OOM=false；下一步启动 deploy-2 独立 guard 并只重建 LobeHub 喵~
