@@ -48,16 +48,36 @@ describe('MessageRealtimeSync', () => {
     const view = render(<MessageRealtimeSync context={context} />);
 
     expect(mocks.subscribe).toHaveBeenCalledWith(context, expect.any(Object));
+    expect(mocks.subscribe).toHaveBeenCalledTimes(1);
     act(() => mocks.callbacks!.onUpdate());
     expect(mocks.mutate).toHaveBeenLastCalledWith(['message:list', context, 1]);
 
     mocks.streaming = true;
     view.rerender(<MessageRealtimeSync context={{ ...context }} />);
+    expect(mocks.dispose).not.toHaveBeenCalled();
+    expect(mocks.subscribe).toHaveBeenCalledTimes(1);
     act(() => mocks.callbacks!.onUpdate());
     expect(mocks.mutate).toHaveBeenCalledTimes(1);
 
     mocks.streaming = false;
     view.rerender(<MessageRealtimeSync context={{ ...context }} />);
+    expect(mocks.dispose).not.toHaveBeenCalled();
+    expect(mocks.subscribe).toHaveBeenCalledTimes(1);
     expect(mocks.mutate).toHaveBeenCalledTimes(2);
+  });
+
+  it('replaces the subscription when the conversation coordinates change', () => {
+    const view = render(
+      <MessageRealtimeSync context={{ agentId: 'agent-1', topicId: 'topic-1' }} />,
+    );
+
+    view.rerender(<MessageRealtimeSync context={{ agentId: 'agent-1', topicId: 'topic-2' }} />);
+
+    expect(mocks.dispose).toHaveBeenCalledTimes(1);
+    expect(mocks.subscribe).toHaveBeenCalledTimes(2);
+    expect(mocks.subscribe).toHaveBeenLastCalledWith(
+      { agentId: 'agent-1', topicId: 'topic-2' },
+      expect.any(Object),
+    );
   });
 });

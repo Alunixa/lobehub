@@ -16,8 +16,8 @@ const MESSAGE_SELECTOR = (id) => `[data-message-id="${id}"]`;
 let input = '';
 for await (const chunk of process.stdin) input += chunk;
 
-const { agentId, anchorId, appUrl, cookie, outputDir, topicId } = JSON.parse(input);
-for (const [key, value] of Object.entries({ agentId, anchorId, appUrl, cookie, outputDir, topicId })) {
+const { agentId, appUrl, cookie, outputDir, topicId } = JSON.parse(input);
+for (const [key, value] of Object.entries({ agentId, appUrl, cookie, outputDir, topicId })) {
   assert.equal(typeof value, 'string', `${key} must be a string`);
   assert(value.length > 0, `${key} must not be empty`);
 }
@@ -211,8 +211,8 @@ const loadConversation = async (harness, phase, expectedReadyCount) => {
     url: page.url(),
   };
 
-  const anchor = page.locator(MESSAGE_SELECTOR(anchorId));
-  await expect(anchor).toHaveCount(1, { timeout: 45_000 });
+  const visibleMessages = page.locator('[data-message-id]');
+  await expect(visibleMessages.first()).toBeVisible({ timeout: 45_000 });
   const anchorVisibleAt = performance.now();
   await tracker.waitForReady(expectedReadyCount);
   const subscriptionReadyAt = performance.now();
@@ -221,9 +221,17 @@ const loadConversation = async (harness, phase, expectedReadyCount) => {
   assert.equal(harness.runtimeErrors.length, 0, `${harness.label} raised a page error`);
 
   return {
-    anchorMs: Math.round(anchorVisibleAt - startedAt),
-    responseStatus: response?.status() ?? null,
-    subscriptionReadyMs: Math.round(subscriptionReadyAt - startedAt),
+    metrics: {
+      anchorMs: Math.round(anchorVisibleAt - startedAt),
+      responseStatus: response?.status() ?? null,
+      subscriptionReadyMs: Math.round(subscriptionReadyAt - startedAt),
+      visibleMessageCount: await visibleMessages.count(),
+    },
+    visibleMessageIds: await visibleMessages.evaluateAll((elements) =>
+      elements
+        .map((element) => element.getAttribute('data-message-id'))
+        .filter((id) => typeof id === 'string' && id.length > 0),
+    ),
   };
 };
 
@@ -265,22 +273,29 @@ try {
     loadConversation(mobile, 'warm', 2),
   ]);
 
+  const mobileVisibleIds = new Set(mobileWarm.visibleMessageIds);
+  const effectiveAnchorId = desktopWarm.visibleMessageIds.findLast((id) =>
+    mobileVisibleIds.has(id),
+  );
+  assert(effectiveAnchorId, 'Desktop and mobile did not expose a common visible message anchor');
+  report.anchorId = effectiveAnchorId;
+
   report.pages.desktop = {
     blockedModelRequests: desktop.blockedModelRequests,
-    cold: desktopCold,
+    cold: desktopCold.metrics,
     runtimeErrors: desktop.runtimeErrors,
-    warm: desktopWarm,
+    warm: desktopWarm.metrics,
   };
   report.pages.mobile = {
     blockedModelRequests: mobile.blockedModelRequests,
-    cold: mobileCold,
+    cold: mobileCold.metrics,
     runtimeErrors: mobile.runtimeErrors,
-    warm: mobileWarm,
+    warm: mobileWarm.metrics,
   };
 
   const insertStartedAt = performance.now();
   await trpc.message.insertContextMessage.mutate({
-    anchorId,
+    anchorId: effectiveAnchorId,
     content: insertedContent,
     editorData: null,
     fileIds: [],
