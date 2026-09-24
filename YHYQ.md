@@ -1907,3 +1907,22 @@
 - 当前真实双端结果：新增 mutation 236ms，桌面/手机 404/403ms 可见；编辑 mutation 127ms，两端 248ms 可见；删除 mutation 131ms，两端 259ms 消失；临时消息清理完成且数据库残留 0喵~
 - 当前加载结果仍为桌面冷/暖 14415/10965ms、手机冷/暖 11598/9604ms；订阅抖动和跨设备同步已修复，但会话首屏仍未达到“秒开”，下一阶段需只读拆解 Network、tRPC 与 React 挂载耗时喵~
 - 第一次同时修改 `XJ.md` 与空的 `YHYQ.md` patch hunk 因 apply_patch 校验失败而整体未执行；随后去掉无内容 hunk，成功更新 `XJ.md` 的当前状态、测试、部署、回滚、待办和变更日志喵~
+
+## 2026-09-24：继续定位会话进入慢的真实前端瓶颈
+
+- 用户继续指出即使已经使用 WebSocket，同一会话进入仍需要长时间加载；本轮继续完成性能修复、构建、发布与部署，不重复已经完成的跨设备增改删验收喵~
+- 已确认 `XJ.md` 存在并分段完整读取 739 行，同时读取近期 `YHYQ.md`、项目性能/测试/TypeScript规范、Git 状态与目标差异；当前 HEAD `f5e46e2923`，仅两个目标源码文件有未提交改动，历史未跟踪构建目录与 `问题.txt` 保持不动喵~
+- 原双端验收脚本使用 `page.route('**/*')` 对每个请求执行 `route.continue()`，会放大页面耗时；新增仓库外只读探针，不拦截所有请求、不写生产数据、不输出凭据喵~
+- 无拦截真实生产结果为冷加载首条消息 6253ms、暖加载 3798ms，WebSocket ready 分别为 4963/3288ms；旧桌面 14415/10965ms 与手机 11598/9604ms 只作为带全局拦截脚本结果保留喵~
+- `message.getMessages` 冷加载在导航后约 5384ms 才发起、约 362ms 完成；暖加载在约 3590ms 才发起、约 52ms 完成，证明数据库/tRPC不是主要慢点，主要延迟发生在请求发起前喵~
+- 冷加载请求 360 个脚本，主线程 26 个 long task 累计约 3115ms、最大约 720ms；暖加载仍有 12 个 long task 累计约 1719ms、最大约 498ms喵~
+- 当前 `.3` 生产 `desktop.html` 有 240 个 `modulepreload`、文件 41147 bytes，而 `mobile.html` 只有 36 个；证据目录为 `D:\Cursor\lobehub-backups\20260924-realtime-sync\load-profile-1` 与 `revision-5faeb576\spa-preview` 喵~
+- 根因位于 `plugins/vite/routeChunkPreload.ts`：`desktop-chat-launch` 同时递归静态和动态 imports，把设置、工作区、插件、统计、凭据及其他非首屏功能一起放进 HTML，基本破坏路由级代码分割喵~
+- 当前最小改动把 `desktop-chat-launch.includeDynamicImports` 改为 `false`、保留 `includeStaticImports: true`；测试改为断言嵌套 `MainChatInput` dynamic chunk 不进入首屏 preload，显式配置的其他动态预加载能力仍保留喵~
+- 性能探针首版因 CJS 顶层 `for await` 语法失败，包入 async main 后通过 `node --check` 并成功采集；此前一次同时补记代码与两份记录的 patch 因 `XJ.md` 上下文不匹配而整体拒绝，代码独立 patch 随后成功喵~
+- 下一步运行两个 Vite 定向测试、现有 ESLint 10.0.2 与差异检查，显式提交目标文件；随后通过 Actions 构建同源 artifact，比较 modulepreload、脚本、long task 与冷暖首条消息，再决定 `.20260924.4` 发布和独立保护部署喵~
+- 首轮定向 Vitest 共 23 项，22 项通过、1 项失败；失败项证明简单关闭动态 imports 同时移除了聊天路由原有 idle warmup，不能直接删除该断言喵~
+- 已把聊天首屏静态依赖与页面 load 后的 idle 动态预热拆成两个配置组，并让已识别的关键小 chunk 在 idle 阶段继续预热；低优先级小 chunk 仍保持排除，下一步统一复跑全部定向检查喵~
+- 统一复跑 `routeChunkPreload.test.ts` 18 项与 `sharedRendererConfig.test.ts` 5 项，共 23/23 通过；仅有仓库既有 `environmentMatchGlobs` 弃用提示喵~
+- 现有 ESLint 10.0.2 对 `routeChunkPreload.ts` 与对应测试检查退出码 0；首次 ESLint 在工具 30 秒窗口后继续运行，确认旧进程退出后使用可等待会话重新执行并取得权威退出码，没有并发保留重复检查进程喵~
+- `git diff --check` 通过，仅提示两份记录文件工作树 CRLF 将按 Git 配置转为 LF；未发现空白错误喵~

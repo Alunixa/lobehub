@@ -17,7 +17,8 @@
 - `deploy-3` 确认标记于 17:40:41 写入，guard 于 17:42:14 记录 `confirmed` 并退出；内部/公开版本、Redis、日志、配置和其他 7 个服务检查正常喵~
 - 跨设备实时同步已闭环：修复前同一次冷加载桌面创建 14 个 WebSocket 并关闭 13 个、手机创建 20 个并关闭 19 个；修复后每端冷加载加一次暖重载合计只创建 2 个连接并正常关闭 1 个旧连接喵~
 - 真实双端新增、编辑、删除在约 248–404ms 内自动同步，临时消息清理成功且数据库残留为 0；两端 runtime errors=0、模型请求=0喵~
-- 会话首屏性能尚未达到“秒开”：桌面冷/暖加载为 14415/10965ms，手机为 11598/9604ms；连接抖动已消除，但仍需继续定位 HTTP 查询、前端挂载或其他初始化瓶颈喵~
+- 无全局请求拦截的真实生产探针将冷/暖首条消息耗时校正为 6253/3798ms；`message.getMessages` 仅耗时约 362/52ms，主要延迟发生在请求发起前的前端资源加载、模块解析与路由挂载喵~
+- 当前 `.3` 的 `desktop.html` 含 240 个 `modulepreload`，冷加载请求 360 个脚本并产生 26 个 long task（累计约 3115ms、最大约 720ms）；暖加载仍有 12 个 long task（累计约 1719ms、最大约 498ms）喵~
 - 普通 tRPC query 已恢复 HTTP batching，WebSocket 专职认证后的 `messages.updated` 实时通知；首屏 IndexedDB 当前会话单键缓存先作为 `fallbackData`，再由唯一一次 HTTP revalidate 校验喵~
 - 全仓 Test CI `35980049666` 与 E2E `35980049652` 仍有非本轮目标失败，不声明全仓全绿；Packages、Server 两分片、Desktop、Server Coverage 成功，E2E 为 81/82 scenarios、490/491 steps喵~
 
@@ -83,6 +84,7 @@
 - 生产构建工作流 `.github/workflows/codex-build-server-image.yml`；输出镜像和静态 SPA preview。
 
 ## 9. Testing and Verification
+- 2026-09-24路由预加载优化：`routeChunkPreload.test.ts` 18 项与 `sharedRendererConfig.test.ts` 5 项统一复跑，共 23/23 通过；现有 ESLint 10.0.2 对两个目标文件检查退出码 0，`git diff --check` 通过喵~
 - 2026-09-24最终 `.3` 生产验收：桌面/手机各 2 个 WebSocket、关闭 1 个重载前旧连接、`subscription.ready=2`、`messages.updated=3`、runtime errors=0、blocked model requests=0喵~
 - 双端实时耗时：新增 mutation 236ms，桌面/手机可见 404/403ms；编辑 mutation 127ms，两端可见 248ms；删除 mutation 131ms，两端消失 259ms；临时消息数据库残留为 0喵~
 - 加载耗时：桌面冷/暖 14415/10965ms，手机冷/暖 11598/9604ms；这证明同步已修复，但首屏速度仍需继续优化喵~
@@ -121,6 +123,8 @@
 - `src/features/Conversation/MessageRealtimeSync.tsx`：使用稳定会话坐标维护单一实时订阅，并通过稳定事件回调读取最新完整 context喵~
 - `src/features/Conversation/MessageRealtimeSync.test.tsx`：覆盖相同语义 context 不重连、真实会话坐标变化才更换订阅喵~
 - `tests/mobile-studio/verify-live-realtime.mjs`：双 Playwright context 生产验收，动态选择共同可见锚点，测量冷/暖加载及新增/编辑/删除实时同步喵~
+- `plugins/vite/routeChunkPreload.ts`：控制桌面聊天首屏路由 chunk 与静态依赖的 HTML `modulepreload`，嵌套动态功能必须保持按需加载喵~
+- `plugins/vite/routeChunkPreload.test.ts`：覆盖聊天路由不递归预加载嵌套动态 imports，同时保留显式配置组的动态预加载能力喵~
 - `src/features/MessageContentEditor/`：用户旧消息与新上下文共享附件编辑、上传队列、草稿及位置选择。
 - `packages/database/src/models/messageContent.ts`：原子附件关联替换与有权限/分支约束的定位插入/幂等重试。
 - `packages/conversation-flow/src/orderMessagesWithContext.ts`：上下文按父链定位，保留普通消息和替代分支顺序。
@@ -152,7 +156,7 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
-- 会话进入速度仍未达到用户预期：当前真实冷加载约 11.6–14.4 秒，暖加载约 9.6–11.0 秒；下一轮应采集同一会话的 Network waterfall、主要 tRPC TTFB、React 挂载时序和重复请求，而不是继续改 WebSocket 订阅喵~
+- 会话进入速度仍未达到用户预期：无请求拦截的桌面真实冷/暖首条消息为 6253/3798ms；已定位 `desktop-chat-launch` 递归动态导入预加载导致 240 个 `modulepreload` 和 360 个冷加载脚本，当前最小修复尚未测试、构建、发布或部署喵~
 - 全仓 App、Database lint 和关闭流式自动滚动 E2E 的既有失败尚未处理；与本轮实时同步修复分开跟踪，不把它们误记为本轮回归喵~
 - 本轮 `D:\Cursor\lobehub-backups\20260923-websocket\revision-api-2ae\artifact.zip` 与空目录 `revision-image-2ae` 的精确删除仍被执行策略拒绝；未绕过。最终镜像tar、生产证据、数据库、配置和旧镜像回滚包必须保留。
 - 远端首轮与第二次部署的上传tar清理命令也被同一执行策略整体拒绝；保留不影响线上运行。不要删除父目录的 `old-server-image.tar`、`database-predeploy.dump`、配置归档或 `rollback.sh`。
@@ -164,15 +168,19 @@
 - 本机 `D:\Cursor\lobehub-backups\20260919-conversation-repair` 下 `preview-first/final/validated/release` 和 `release-final/validated/published` 保留；远端 `/mnt/sda1/lobehub-release-20260919-conversation-repair` 保留，不影响线上服务。
 
 ## 15. Known Bugs and Limitations
-- 跨设备新消息、编辑和删除已能亚秒级自动同步，但首次进入或重载真实会话仍需约 9.6–14.4 秒，加载性能问题只解决了连接抖动部分喵~
+- 跨设备新消息、编辑和删除已能亚秒级自动同步，但首次进入或重载真实会话仍需约 3.8–6.3 秒；当前已定位为聊天路由过度 `modulepreload`，修复尚未进入生产喵~
 - 本轮报告的交互问题已修复并上线；桌面/移动浏览器回归通过，未连接手机真机验证实体输入法。
 - 原有未跟踪 build/release 目录与 `问题.txt` 不提交、不删除。
 
 ## 16. Design Decisions
 - 优先修共享数据/事件边界，保留主对话、子话题和移动端已有功能，不用禁用功能掩盖问题。
 - 手机输入必须由直接点击输入区域启动，不因页面挂载、导航、弹层或其他按钮自动 focus。
+- 2026-09-24：聊天首屏只预加载路由 chunk 及其必需静态依赖，不递归追踪嵌套 dynamic imports；原有动态依赖改为页面 load 后的 idle 阶段渐进预热，避免首屏阻塞同时保留后续交互缓存覆盖喵~
 
 ## 17. Failed Approaches
+- 2026-09-24：首轮仅把 `desktop-chat-launch.includeDynamicImports` 设为 `false` 时，23 项定向测试中 1 项发现原有 idle warmup 也被一并移除；当前拆分为首屏静态依赖组与独立聊天 idle 动态预热组，不通过删除回归断言掩盖行为丢失喵~
+- 2026-09-24：原双端验收用 `page.route('**/*')` 对每个请求执行 `route.continue()`，放大了冷/暖加载耗时；性能基线改用无全局请求拦截的独立探针，旧 9.6–14.4 秒仅保留为带拦截脚本结果喵~
+- 2026-09-24：性能探针首版 CJS 使用顶层 `for await` 导致语法失败；包入 async main 后 `node --check` 与真实运行通过，未改生产代码喵~
 - 本轮发布SHA256SUMS最初由Windows Python文本模式写成CRLF，远端把CR视作文件名导致校验失败；部署未执行。改为LF bytes，远端两项重新校验成功并替换Release校验清单，最终清单179 bytes、SHA256 `4402d112248194661c414c40f0b303c85ac5eac5978f19bc04a9be9619e3bc6b`，镜像与manifest未改。
 - 本机chat单worker专项在收集`@lobehub/icons/es/icons.js`时超时（488秒、no tests）；全仓tsgo长时间无诊断而停止，均不能记为通过。定向lint0 errors/1旧unused warning；本机旧UI无法发现CI5.40的Alert/Text迁移规则。
 - 远端备份脚本经PowerShell文本管道末尾多出CR导致空命令错误，发生在BACKUP_COMPLETE和所有SHA256输出之后；备份已生成，后续校验已有文件，不重跑覆盖备份。
@@ -200,8 +208,9 @@
 
 ## 19. Current Task
 - 跨设备实时消息不同步已完成修复、发布、部署与真实双端验收，当前生产版本为 `v2.2.8-codex.20260924.3` 喵~
-- 当前剩余业务问题是进入会话仍慢：即使暖缓存仍约 9.6–11.0 秒，不能将本轮称为完整“秒开”修复喵~
-- 下一阶段只做只读性能分解与最小优化，不重复 deploy-3、不重复真实新增/编辑/删除验收，也不改动其他服务喵~
+- 当前剩余业务问题是进入会话仍慢：无请求拦截的桌面冷/暖首条消息为 6253/3798ms，消息 API 本身仅约 362/52ms，瓶颈位于请求发起前的 SPA 资源与主线程解析喵~
+- `desktop-chat-launch` 已改为首屏 `includeDynamicImports: false`，并新增独立 idle 动态预热组；首轮 22/23 暴露的边界已修正，统一复跑 23/23、ESLint 与差异检查通过，尚待提交、推送、构建、发布或部署喵~
+- 下一阶段先验证 modulepreload 数量、脚本数、long task 和首条消息改善，再决定是否发布 `.20260924.4`；不重复 deploy-3 或生产增改删验收，也不改动其他服务喵~
 ### 本轮过程快照（以下待执行状态已由上方实际结果取代）
 - `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
@@ -267,13 +276,15 @@
 
 ## 20. Next Steps
 0. 不重复部署 `.3` 或重复生产写入验收，保留 `release-published-3`、`revision-5faeb576`、`live-realtime-release-3` 和远端 `deploy-3` 证据喵~
-1. 对同一真实会话做只读性能分解，记录导航开始、SPA shell、认证、`message.getMessages`、Agent/Topic/Memory 并行请求、首个 `[data-message-id]` 和 React long task 时间喵~
-2. 优先消除可证明的重复请求、串行门闩或大范围 store 初始化；不要再把普通数据查询改回 WebSocket RPC喵~
-3. 优化后必须重新跑定向测试、同源生产 bundle 和只读冷/暖加载指标，再按 Actions、Release、独立备份与单服务保护部署流程上线喵~
-4. 清理被执行策略拒绝的 artifact zip 和远端上传 tar 保持待办，不绕过；保留生产备份、最终镜像、Release 校验与回滚证据喵~
-5. 如 3210 间歇超时复发，记录准确时间、截图、客户端 AAAA 与外部 IPv6 探测；本轮没有修改网络，旧间歇性故障根因仍未确认喵~
+1. 运行 `routeChunkPreload` 与 `sharedRendererConfig` 定向 Vitest、现有 ESLint 10.0.2 和 `git diff --check`，只显式提交两个源码文件及两份记录文件喵~
+2. 推送后由 GitHub Actions 构建同源服务器镜像和 SPA artifact，先检查新 `desktop.html` 的 `modulepreload` 数量显著低于 240，并确认手机入口没有回归喵~
+3. 使用无全局请求拦截的同一探针比较冷/暖脚本数、long task、消息请求开始时间和首条消息时间；只有性能明显改善且功能回归通过才发布 `.20260924.4` 喵~
+4. 新版本必须创建独立部署备份与回滚保护，只重建 LobeHub；部署后只读复测加载和实时订阅，不重复生产增改删写入验收喵~
+5. 清理被执行策略拒绝的 artifact zip 和远端上传 tar 保持待办，不绕过；保留生产备份、最终镜像、Release 校验与回滚证据喵~
+6. 如 3210 间歇超时复发，记录准确时间、截图、客户端 AAAA 与外部 IPv6 探测；本轮没有修改网络，旧间歇性故障根因仍未确认喵~
 
 ## 21. Change Log
+- 2026-09-24：无请求拦截性能探针确认冷/暖首条消息 6253/3798ms，消息 API 仅约 362/52ms；定位桌面聊天路由递归 dynamic imports 生成 240 个 `modulepreload`，当前拆分首屏静态依赖与 idle 动态预热，统一回归 23/23、ESLint 与差异检查通过，尚待 Actions 产物验证与发布喵~
 - 2026-09-24 17:42:14 UTC+8：deploy-3 guard 记录 confirmed 后退出；容器 `2d0b60553e37` 仍 running/restart=0/OOM=false，未触发回滚喵~
 - 2026-09-24：Release `v2.2.8-codex.20260924.3` 说明已从 pending 更新为 completed，补充部署、14/20 到 2/2 连接对比、冷暖加载、增改删同步、清理状态及全仓 CI 边界喵~
 - 2026-09-24：真实双端验收完成，新增/编辑/删除约 248–404ms 自动同步，临时消息残留为 0；同时确认冷/暖加载仍为 9.6–14.4 秒，继续列为性能待办喵~

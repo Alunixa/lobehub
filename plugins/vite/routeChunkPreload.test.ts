@@ -28,7 +28,7 @@ function createChunk(overrides: Partial<TestOutputChunk>): TestOutputChunk {
 }
 
 describe('routeChunkPreload', () => {
-  it('creates route preload entries from emitted route chunk filenames', () => {
+  it('keeps nested chat dynamic imports out of the initial route preload', () => {
     const bundle = {
       'assets/agent-CJm8x.js': createChunk({
         dynamicImports: ['assets/MainChatInput-BwuHC6qv.js', 'assets/typescript-D20RI-Hp.js'],
@@ -58,7 +58,6 @@ describe('routeChunkPreload', () => {
     expect(agentEntry?.preload).toEqual([
       'assets/agent-CJm8x.js',
       'vendor/vendor-icons-Bd7x.js',
-      'assets/MainChatInput-BwuHC6qv.js',
     ]);
   });
 

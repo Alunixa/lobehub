@@ -61,22 +61,40 @@ const isCriticalRouteSmallChunkFileName = (fileName: string) => {
   return criticalRouteSmallChunkFileNamePatterns.some((pattern) => pattern.test(basename));
 };
 
+const desktopChatLaunchModules = [
+  'src/routes/(main)/_layout',
+  'src/routes/(main)/agent/_layout',
+  'src/routes/(main)/agent/(chat)/_layout',
+  'src/routes/(main)/agent',
+];
+
+const desktopChatLaunchPatterns = ['^/agent(/|$)'];
+
 const defaultRoutePreloadGroups = [
   {
     id: 'desktop-chat-launch',
-    includeDynamicImports: true,
+    // Dynamic imports below the chat route include optional panels, settings,
+    // renderers, and other interaction-only features. Recursively preloading
+    // that graph turns a single conversation navigation into hundreds of
+    // scripts and delays the first message request behind module parsing.
+    // Keep only the route chunks and their required static dependencies on the
+    // critical path; nested dynamic imports remain available on demand and
+    // are only warmed after the page reaches its idle phase.
+    includeDynamicImports: false,
     includeStaticImports: true,
-    modules: [
-      'src/routes/(main)/_layout',
-      'src/routes/(main)/agent/_layout',
-      'src/routes/(main)/agent/(chat)/_layout',
-      'src/routes/(main)/agent',
-    ],
-    patterns: ['^/agent(/|$)'],
+    modules: desktopChatLaunchModules,
+    patterns: desktopChatLaunchPatterns,
   },
 ] as const satisfies RouteChunkPreloadRoute[];
 
 const defaultIdleRoutePreloadGroups = [
+  {
+    id: 'desktop-chat-launch-idle',
+    includeDynamicImports: true,
+    includeStaticImports: true,
+    modules: desktopChatLaunchModules,
+    patterns: desktopChatLaunchPatterns,
+  },
   {
     id: 'desktop-group-chat',
     includeDynamicImports: true,
@@ -603,13 +621,11 @@ export function routeChunkPreload(options: RouteChunkPreloadOptions = {}): Plugi
                       isCriticalRouteSmallChunkFileName(fileName)
                     );
                   }),
-                ...idleManifest
-                  .flatMap((entry) => entry.preload)
-                  .filter(
-                    (fileName) =>
-                      (chunkSizeByFileName.get(fileName) ?? minInitialRoutePreloadSize) >=
-                      minInitialRoutePreloadSize,
-                  ),
+                ...idleManifest.flatMap((entry) => entry.preload).filter((fileName) => {
+                  const size = chunkSizeByFileName.get(fileName) ?? minInitialRoutePreloadSize;
+
+                  return size >= minInitialRoutePreloadSize || isCriticalRouteSmallChunkFileName(fileName);
+                }),
               ]),
             ],
           },
