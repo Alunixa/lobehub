@@ -1829,3 +1829,10 @@
 - 新服务器 ZIP `298302114` bytes / SHA-256 `f1eadab57f4624187aa07ab89a9f1ca6034a23111145d1264d04830193f51ffa`，SPA ZIP `26233620` bytes / `ce2ec624acca246f161bbd598c96e97f6f40c1716b93508643cfd0f8ac36269c`，均匹配 GitHub digest 喵~
 - 新镜像 tar `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，标签绑定 `adb31345bb`，平台、用户与入口验证正确喵~
 - 下一步发布 `.20260924.2` 修正版，在现有独立备份下创建 deploy-2 快照和独立 guard 日志后再次仅替换 LobeHub 喵~
+
+## 2026-09-24：`.2` 修正版 Release 发布
+
+- `v2.2.8-codex.20260924.2` 已作为正式 Release 发布，标签精确绑定 `adb31345bb58d5d06aeedef318b2d204e2b9ad80` 喵~
+- GitHub API 核验镜像 `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，manifest `2112` bytes / `e3200b3ef432836230efe570b89e96e9516d1c32bcb028df5365871bd1786ff9`，SHA256SUMS `179` bytes / `3746ca9d0e23780d1d54b250ed38471af817bed6d9944ce9094b944c1c71e4ff` 喵~
+- Release Notes 已明确 `.1` 已回滚不可部署、`.2` 保留 pnpm 虚拟仓库依赖路径并使用增强运行探针，以及实时同步和加载优化的全部内容喵~
+- 下一步创建远端 `deploy-2` 独立快照与 guard，上传并离线验证 `.2` 后仅重建 LobeHub 服务喵~

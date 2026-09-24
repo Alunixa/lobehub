@@ -677,3 +677,9 @@
 - 队列清空后只触发权威 run `35973965711`；该 run 绑定修复提交并成功完成 OCI 构建、真正加载 ioredis 的运行依赖验证、生产 SPA 导出和两项 artifact 上传，耗时约 9 分 16 秒喵~
 - 修正版 artifact 目录为 `D:\Cursor\lobehub-backups\20260924-realtime-sync\revision-adb31345`；服务器 ZIP `298302114` bytes / SHA-256 `f1eadab57f4624187aa07ab89a9f1ca6034a23111145d1264d04830193f51ffa`，SPA ZIP `26233620` bytes / `ce2ec624acca246f161bbd598c96e97f6f40c1716b93508643cfd0f8ac36269c`，均匹配 GitHub digest 喵~
 - 修正版镜像 tar `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，标签 `lobehub/lobehub:codex-adb31345bb58d5d06aeedef318b2d204e2b9ad80`；下一步发布 `.20260924.2` 并执行 deploy-2 独立快照与保护部署喵~
+
+### Corrected Release
+- 正式 Release `v2.2.8-codex.20260924.2` 已发布，标签精确指向修复源码 `adb31345bb58d5d06aeedef318b2d204e2b9ad80`，不是后续仅记录提交喵~
+- GitHub 资产已核验：镜像 `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，manifest `2112` bytes / `e3200b3ef432836230efe570b89e96e9516d1c32bcb028df5365871bd1786ff9`，SHA256SUMS `179` bytes / `3746ca9d0e23780d1d54b250ed38471af817bed6d9944ce9094b944c1c71e4ff` 喵~
+- Release Notes 已完整记录实时同步/会话单键缓存、`.1` 的 ioredis 故障与回滚、pnpm symlink 修复、增强 Actions 探针、113 项测试和仅 LobeHub 服务的部署范围喵~
+- 下一步在远端备份根目录创建 `deploy-2`，保存第二次部署前容器/配置/其他服务基线，上传 `.2` 资产并使用真实 `require('ioredis')` 离线探针后启动独立 240 秒 guard 喵~
