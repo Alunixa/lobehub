@@ -707,3 +707,5 @@
 - 首次真实运行在浏览器启动前失败，因为 Playwright 1.61.1 对应浏览器 bundle 未安装；系统 Chrome 153 可用，因此不下载重复浏览器，后续通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 使用现有 Chrome 喵~
 - 第二次运行暴露失败报告初始化缺陷：页面阶段先失败时 `finally` 会访问尚未建立的 `report.pages.desktop`，遮蔽原始错误；数据库只读查询确认 `msg_realtime_verify_%` 残留为空喵~
 - 验收脚本已改为预初始化两端报告、在 catch 中保存无凭据原始错误，并在 finally 合并 runtime/WebSocket 状态；agent-testing 探针文档新增 Playwright 浏览器缺失的复用方案喵~
+- 使用系统 Chrome 的第三次运行在 45 秒内找不到数据库锚点消息，且桌面/手机均为 WebSocket sockets=0、ready=0，确认 Conversation 尚未挂载；测试未进入任何 mutation 喵~
+- 当前新增失败诊断：保存最终 URL、标题、readyState、root 子节点、消息节点、contenteditable/password 输入计数及失败截图，用于区分登录重定向、路由壳和真实白屏，避免仅延长超时喵~

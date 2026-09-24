@@ -176,6 +176,29 @@ const createPageHarness = async (browser, label, mobile) => {
   };
 };
 
+const collectPageDiagnostics = async (harness) => {
+  try {
+    const diagnostics = await harness.page.evaluate(() => ({
+      bodyTextLength: document.body?.innerText.length ?? 0,
+      contentEditableCount: document.querySelectorAll('[contenteditable="true"]').length,
+      messageCount: document.querySelectorAll('[data-message-id]').length,
+      passwordInputCount: document.querySelectorAll('input[type="password"]').length,
+      readyState: document.readyState,
+      rootChildCount: document.querySelector('#root')?.childElementCount ?? 0,
+      title: document.title,
+      url: window.location.href,
+    }));
+    const screenshot = `${harness.label}-failure.png`;
+    await harness.page.screenshot({ path: path.join(output, screenshot) });
+    return { ...diagnostics, screenshot };
+  } catch (error) {
+    return {
+      diagnosticError: error instanceof Error ? error.message : String(error),
+      url: harness.page.url(),
+    };
+  }
+};
+
 const loadConversation = async (harness, phase, expectedReadyCount) => {
   const { page, tracker } = harness;
   const startedAt = performance.now();
@@ -183,6 +206,10 @@ const loadConversation = async (harness, phase, expectedReadyCount) => {
     phase === 'cold'
       ? await page.goto(chatUrl, { timeout: 45_000, waitUntil: 'domcontentloaded' })
       : await page.reload({ timeout: 45_000, waitUntil: 'domcontentloaded' });
+  report.pages[harness.label][`${phase}Navigation`] = {
+    responseStatus: response?.status() ?? null,
+    url: page.url(),
+  };
 
   const anchor = page.locator(MESSAGE_SELECTOR(anchorId));
   await expect(anchor).toHaveCount(1, { timeout: 45_000 });
@@ -294,6 +321,13 @@ try {
 } catch (error) {
   primaryError = error;
   report.error = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+  report.diagnostics = Object.fromEntries(
+    await Promise.all(
+      [desktop, mobile]
+        .filter(Boolean)
+        .map(async (harness) => [harness.label, await collectPageDiagnostics(harness)]),
+    ),
+  );
 } finally {
   if (inserted) {
     report.cleanup.attempted = true;
