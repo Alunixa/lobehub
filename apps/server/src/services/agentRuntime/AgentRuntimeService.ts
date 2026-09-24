@@ -53,6 +53,7 @@ import { toAgentSignalTraceEvents } from '@/server/services/agentSignal/observab
 import { FileService } from '@/server/services/file';
 import { mcpService } from '@/server/services/mcp';
 import { MessageService } from '@/server/services/message';
+import { publishMessageRealtimeUpdate } from '@/server/services/message/realtime';
 import { QueueService } from '@/server/services/queue';
 import { LocalQueueServiceImpl } from '@/server/services/queue/impls';
 import { ToolExecutionService } from '@/server/services/toolExecution';
@@ -309,7 +310,20 @@ export class AgentRuntimeService {
       // Provide the canonical UIChatMessage[] for terminal-state events so
       // the client can use the pushed payload directly instead of refetching
       // from DB. Falls back gracefully when topicId isn't set.
-      uiMessagesResolver: (state) => this.queryUiMessages(state),
+      uiMessagesResolver: async (state) => {
+        const messages = await this.queryUiMessages(state);
+        await publishMessageRealtimeUpdate(
+          { userId: this.userId, workspaceId: this.workspaceId },
+          {
+            agentId: state.metadata?.agentId,
+            groupId: state.metadata?.groupId,
+            threadId: state.metadata?.threadId,
+            topicId: state.metadata?.topicId,
+          },
+          'agent_runtime_end',
+        );
+        return messages;
+      },
     });
     this.queueService =
       options?.queueService === null ? null : (options?.queueService ?? new QueueService());
@@ -633,10 +647,11 @@ export class AgentRuntimeService {
     // standard branch (`groupId IS NULL`) and returns ZERO group messages, so
     // the step_start uiMessages snapshot would be empty and clobber the client.
     const groupId: string | undefined = agentState?.metadata?.groupId;
+    const threadId: string | undefined = agentState?.metadata?.threadId;
     if (!agentId || !topicId) return undefined;
 
     try {
-      return await this.messageService.queryMessages({ agentId, groupId, topicId });
+      return await this.messageService.queryMessages({ agentId, groupId, threadId, topicId });
     } catch (error) {
       // Stream events must never fail the step. If the DB hiccups, fall back
       // to letting the client refresh as before.

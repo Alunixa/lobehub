@@ -22,6 +22,11 @@ import { publicProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { FileService } from '@/server/services/file';
 import { MessageService } from '@/server/services/message';
+import {
+  getMessageRealtimeSubscriptionChannels,
+  publishMessageRealtimeGlobalUpdate,
+  publishMessageRealtimeUpdate,
+} from '@/server/services/message/realtime';
 
 import { resolveAgentIdFromSession, resolveContext } from './_helpers/resolveContext';
 import { basicContextSchema } from './_schema/context';
@@ -41,6 +46,11 @@ const messageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) 
     },
   });
 });
+
+// Realtime subscription authorization only needs identity/workspace context and
+// the database resolver. Avoid constructing FileService/MessageService for the
+// one lightweight handshake query.
+const messageSubscriptionProcedure = wsCompatProcedure.use(serverDatabase);
 
 /**
  * Shared input for the ownership-scoped message analytics queries
@@ -283,6 +293,31 @@ export const messageRouter = router({
       });
     }),
 
+  getRealtimeSubscription: messageSubscriptionProcedure
+    .input(basicContextSchema.extend({ topicId: z.string().min(1) }))
+    .query(async ({ input, ctx }) => {
+      if (!input.agentId && !input.groupId && !input.sessionId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'A conversation owner is required',
+        });
+      }
+
+      const resolved = await resolveContext(
+        input,
+        ctx.serverDB,
+        ctx.userId,
+        ctx.workspaceId ?? undefined,
+      );
+
+      return {
+        channels: getMessageRealtimeSubscriptionChannels(
+          { userId: ctx.userId, workspaceId: ctx.workspaceId },
+          resolved,
+        ),
+      };
+    }),
+
   rankModels: messageProcedure.query(async ({ ctx }) => {
     return ctx.messageModel.rankModels();
   }),
@@ -301,7 +336,12 @@ export const messageRouter = router({
   removeAllMessages: messageProcedure
     .use(withScopedPermission('message:delete'))
     .mutation(async ({ ctx }) => {
-      return ctx.messageModel.deleteAllMessages();
+      const result = await ctx.messageModel.deleteAllMessages();
+      await publishMessageRealtimeGlobalUpdate(
+        { userId: ctx.userId, workspaceId: ctx.workspaceId },
+        'delete',
+      );
+      return result;
     }),
 
   removeMessage: messageProcedure
@@ -371,11 +411,17 @@ export const messageRouter = router({
         ctx.workspaceId ?? undefined,
       );
 
-      return ctx.messageModel.deleteMessagesBySession(
+      const result = await ctx.messageModel.deleteMessagesBySession(
         resolved.sessionId,
         resolved.topicId,
         input.groupId,
       );
+      await publishMessageRealtimeUpdate(
+        { userId: ctx.userId, workspaceId: ctx.workspaceId },
+        { ...resolved, groupId: input.groupId },
+        'delete',
+      );
+      return result;
     }),
 
   removeMessagesByGroup: messageProcedure
@@ -387,7 +433,17 @@ export const messageRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return ctx.messageModel.deleteMessagesBySession(null, input.topicId, input.groupId);
+      const result = await ctx.messageModel.deleteMessagesBySession(
+        null,
+        input.topicId,
+        input.groupId,
+      );
+      await publishMessageRealtimeUpdate(
+        { userId: ctx.userId, workspaceId: ctx.workspaceId },
+        input,
+        'delete',
+      );
+      return result;
     }),
 
   searchMessages: messageProcedure
@@ -588,11 +644,24 @@ export const messageRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      const message = await ctx.messageModel.findById(input.id);
       if (input.value === false) {
-        return ctx.messageModel.deleteMessageTTS(input.id);
+        const result = await ctx.messageModel.deleteMessageTTS(input.id);
+        await publishMessageRealtimeUpdate(
+          { userId: ctx.userId, workspaceId: ctx.workspaceId },
+          message ?? {},
+          'update',
+        );
+        return result;
       }
 
-      return ctx.messageModel.updateTTS(input.id, input.value);
+      const result = await ctx.messageModel.updateTTS(input.id, input.value);
+      await publishMessageRealtimeUpdate(
+        { userId: ctx.userId, workspaceId: ctx.workspaceId },
+        message ?? {},
+        'update',
+      );
+      return result;
     }),
 
   updateToolArguments: messageProcedure
@@ -662,10 +731,23 @@ export const messageRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
+      const message = await ctx.messageModel.findById(input.id);
       if (input.value === false) {
-        return ctx.messageModel.deleteMessageTranslate(input.id);
+        const result = await ctx.messageModel.deleteMessageTranslate(input.id);
+        await publishMessageRealtimeUpdate(
+          { userId: ctx.userId, workspaceId: ctx.workspaceId },
+          message ?? {},
+          'update',
+        );
+        return result;
       }
 
-      return ctx.messageModel.updateTranslate(input.id, input.value);
+      const result = await ctx.messageModel.updateTranslate(input.id, input.value);
+      await publishMessageRealtimeUpdate(
+        { userId: ctx.userId, workspaceId: ctx.workspaceId },
+        message ?? {},
+        'update',
+      );
+      return result;
     }),
 });

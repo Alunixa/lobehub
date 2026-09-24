@@ -213,6 +213,7 @@ export const dataSlice: StateCreator<
 
       () => messageService.getMessages(context),
       {
+        hydrateFromIndexedDB: true,
         ...(revalidateOnFocus !== undefined && { revalidateOnFocus }),
         onData: (data) => {
           if (!data) return;

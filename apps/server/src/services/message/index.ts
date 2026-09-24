@@ -15,6 +15,11 @@ import { MessageModel } from '@/database/models/message';
 import { MessageContentModel } from '@/database/models/messageContent';
 
 import { FileService } from '../file';
+import {
+  type MessageRealtimeContext,
+  type MessageRealtimeReason,
+  publishMessageRealtimeUpdate,
+} from './realtime';
 
 interface QueryOptions {
   agentId?: string | null;
@@ -57,8 +62,12 @@ export class MessageService {
   private fileService: FileService;
   private compressionRepository: CompressionRepository;
   private messageContentModel: MessageContentModel;
+  private userId: string;
+  private workspaceId?: string;
 
   constructor(db: LobeChatDatabase, userId: string, workspaceId?: string) {
+    this.userId = userId;
+    this.workspaceId = workspaceId;
     this.messageModel = new MessageModel(db, userId, workspaceId);
     this.fileService = new FileService(db, userId, workspaceId);
     this.compressionRepository = new CompressionRepository(db, userId, workspaceId);
@@ -89,6 +98,7 @@ export class MessageService {
    */
   private async queryWithSuccess(
     options?: QueryOptions,
+    reason: MessageRealtimeReason = 'update',
   ): Promise<{ messages?: UIChatMessage[]; success: boolean }> {
     if (
       !options ||
@@ -97,6 +107,7 @@ export class MessageService {
         options.topicId === undefined)
     ) {
       logMessageTiming(options, 'lambda.message.update.queryMessages:skipped');
+      await this.publishUpdate(options, reason);
       return { success: true };
     }
 
@@ -116,7 +127,19 @@ export class MessageService {
       stageMs: getDurationMs(queryStartedAt),
     });
 
+    await this.publishUpdate(options, reason);
+
     return { messages, success: true };
+  }
+
+  private publishUpdate(context: MessageRealtimeContext | undefined, reason: MessageRealtimeReason) {
+    if (!context) return Promise.resolve();
+
+    return publishMessageRealtimeUpdate(
+      { userId: this.userId, workspaceId: this.workspaceId },
+      context,
+      reason,
+    );
   }
 
   /**
@@ -133,7 +156,7 @@ export class MessageService {
 
   async editMessageContent(params: EditMessageContentParams) {
     const item = await this.messageContentModel.edit(params);
-    return this.queryWithSuccess(item);
+    return this.queryWithSuccess(item, 'edit');
   }
 
   async insertContextMessage(params: InsertContextMessageParams) {
@@ -171,7 +194,10 @@ export class MessageService {
       }
     }
     const item = await this.messageContentModel.insert({ ...params, anchorId, position });
-    const result = await this.queryWithSuccess({ ...item, threadId: params.threadId });
+    const result = await this.queryWithSuccess(
+      { ...item, threadId: params.threadId },
+      'insert_context',
+    );
     return { ...result, id: item.id };
   }
 
@@ -205,6 +231,8 @@ export class MessageService {
       },
     );
 
+    await this.publishUpdate(params, 'create');
+
     // 3. Return the result
     return {
       id: item.id,
@@ -218,7 +246,7 @@ export class MessageService {
    */
   async removeMessages(ids: string[], options?: QueryOptions) {
     await this.messageModel.deleteMessages(ids);
-    return this.queryWithSuccess(options);
+    return this.queryWithSuccess(options, 'delete');
   }
 
   /**
@@ -227,7 +255,7 @@ export class MessageService {
    */
   async removeMessage(id: string, options?: QueryOptions) {
     await this.messageModel.deleteMessage(id);
-    return this.queryWithSuccess(options);
+    return this.queryWithSuccess(options, 'delete');
   }
 
   /**
@@ -412,6 +440,8 @@ export class MessageService {
     // 3. Query updated messages (compressed messages will be grouped)
     const messages = await this.messageModel.query({ topicId, ...options }, this.getQueryOptions());
 
+    await this.publishUpdate({ topicId, ...options }, 'compression');
+
     return {
       messageGroupId,
       messages,
@@ -446,6 +476,8 @@ export class MessageService {
     const queryOptions = { agentId, groupId, threadId, topicId };
     const finalMessages = await this.messageModel.query(queryOptions, this.getQueryOptions());
 
+    await this.publishUpdate(queryOptions, 'compression');
+
     return {
       messages: finalMessages,
       success: true,
@@ -463,6 +495,8 @@ export class MessageService {
     await this.compressionRepository.updateMetadata(messageGroupId, metadata);
 
     const messages = await this.messageModel.query(context, this.getQueryOptions());
+
+    await this.publishUpdate(context, 'compression');
 
     return { messages };
   }
@@ -482,6 +516,8 @@ export class MessageService {
 
     // Query updated messages
     const messages = await this.messageModel.query(context, this.getQueryOptions());
+
+    await this.publishUpdate(context, 'compression');
 
     return { messages, success: true };
   }

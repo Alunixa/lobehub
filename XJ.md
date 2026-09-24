@@ -596,3 +596,13 @@
 4. 实现当前会话 IndexedDB 单键快速恢复与生产挂载顺序回归喵~
 5. 运行定向 Vitest、Node 语法、差异检查和 Actions 镜像构建，发布新 Release 后按既有单服务保护流程部署喵~
 6. 最终使用两个独立客户端验证新消息、编辑和删除自动同步，并记录会话首个可见内容的性能结果喵~
+
+### Implementation Status
+- 已从 `packages/trpc/src/client/lambda.ts` 移除普通 query 的 WebSocket-first link，恢复 `httpBatchLink`/`httpLink` 原有分流；旧 link 与测试文件已删除，外层 bridge 暂时保留旧客户端兼容喵~
+- 新增 `apps/server/src/services/message/realtime.ts`，按用户或 workspace 主体及会话上下文生成不可猜测 Redis channel，并以 best-effort 方式发布 `messages.updated`喵~
+- 消息服务的创建、编辑、插入上下文、更新、删除和压缩成功路径已接入会话广播；全量删除使用主体级全局 channel，Agent Runtime 终态在稳定快照解析后广播喵~
+- 新增受认证的 `message.getRealtimeSubscription`，只向外层启动器返回服务端生成的 channel；浏览器不能指定 Redis channel喵~
+- `realtimeServer.js` 新增共享 Redis subscriber、channel 引用计数、subscribe/unsubscribe、断线清理、同源认证转发和 keep-alive 内部 HTTP agent；Docker 运行依赖增加 `ioredis@5.11.1`喵~
+- 新增浏览器消息订阅单例与 `MessageRealtimeSync`，当前会话收到通知后精确 revalidate；流式期间延迟刷新，重连成功后补一次校验喵~
+- IndexedDB 增加版本化单键读取，`useClientDataSWRWithSync` 可在全 scope hydration 前把当前消息键直接注入 SWR；网络已返回时不会被旧缓存覆盖喵~
+- 当前仅完成源码初稿和 `node --check`/`git diff --check`，尚未完成 TypeScript、Vitest、真实 Redis fan-out、生产构建或部署验证喵~

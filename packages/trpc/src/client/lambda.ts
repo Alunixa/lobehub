@@ -9,8 +9,6 @@ import superjson from 'superjson';
 import { isDesktop } from '@/const/version';
 import { type LambdaRouter } from '@/server/routers/lambda';
 
-import { websocketFirstLink } from './websocketFirstLink';
-
 const log = debug('lobe-image:lambda-client');
 
 // 401 error debouncing: prevent showing multiple login notifications in short time
@@ -151,23 +149,11 @@ const customSplitLink = splitLink({
   true: httpLink(linkOptions),
 });
 
-const getWebSocketUrl = () => {
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}/api/trpc-ws`;
-};
-
-// 4. Queries use the same-origin WebSocket bridge first. Mutations, uploads,
-// subscriptions and all failed upgrades continue through the existing HTTP
-// links without changing their serialization or authentication behavior.
-const websocketFirst = websocketFirstLink<LambdaRouter>({
-  enabled: !isDesktop,
-  responseTimeoutMs: 900,
-  transformer: superjson,
-  url: getWebSocketUrl,
-});
-
-// 5. assembly links
-const links = [errorHandlingLink, websocketFirst, customSplitLink];
+// 4. Assembly links. Initial data reads stay on HTTP so `httpBatchLink` can
+// coalesce the many queries mounted by a conversation page. WebSocket is used
+// separately for lightweight invalidation subscriptions, never as a per-query
+// HTTP proxy.
+const links = [errorHandlingLink, customSplitLink];
 
 export const lambdaClient = createTRPCClient<LambdaRouter>({
   links,

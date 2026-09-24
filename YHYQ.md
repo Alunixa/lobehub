@@ -1740,3 +1740,13 @@
 - 根因三：IndexedDB 在 Provider 挂载后全 scope 异步扫描，当前会话可能先空缓存发网请求；hydration 后全局重验证不能保证缓存先进入 Conversation store喵~
 - 已决定恢复 HTTP batch 负责普通读取，WebSocket 改为认证后的会话级通知；消息写入通过 Redis fan-out，客户端只失效对应会话；当前会话缓存按 SWR 单键直接读取并立即显示喵~
 - 下一步先提交本轮记录，再修改运行代码并补定向测试、Actions、Release、保护部署和双客户端真实同步验收喵~
+
+## 2026-09-24：真实消息订阅与会话单键缓存初稿
+
+- 已恢复普通 tRPC query 的 HTTP batch 路径，删除客户端 `websocketFirstLink` 及其旧测试；外层 WebSocket bridge 保留旧客户端兼容，不再参与新包首屏读取喵~
+- 已新增服务端消息实时 channel/publisher，channel 由服务端按用户或 workspace 与会话上下文哈希生成；浏览器只提交会话参数，不能指定 Redis channel喵~
+- 已将消息创建、编辑、上下文插入、更新、删除、压缩和 Agent Runtime 终态接入 Redis `messages.updated` 广播；全量删除通过主体级全局 channel 通知所有已打开会话喵~
+- 已扩展 `realtimeServer.js`，使用共享 `ioredis` subscriber 管理 channel 订阅引用、断线清理和事件转发，并为外层到内部 Next 的 HTTP 代理启用 keep-alive喵~
+- 已新增浏览器 WebSocket 订阅单例与 Conversation Provider 同步组件，收到事件只刷新对应 `message:list` key；本地流式运行时暂存刷新，终态后再执行，重连后补校验喵~
+- 已新增 IndexedDB 版本化单键读取；当前会话 hook 可在全 scope 扫描结束前把精确消息缓存放入 SWR/Conversation store，若网络新值先到则不会覆盖喵~
+- Docker 最小运行依赖已增加 `ioredis@5.11.1`；目前 `node --check scripts/serverLauncher/realtimeServer.js` 与 `git diff --check` 通过，尚未补完或执行本轮定向测试喵~

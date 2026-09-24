@@ -221,6 +221,7 @@ export class MessageQueryActionImpl {
         // is kept current by mutation write-through, so a remount hydrates from
         // a fresh cache instead of forcing a network revalidate every switch.
         dedupingInterval: MESSAGE_LIST_DEDUPING_INTERVAL,
+        hydrateFromIndexedDB: true,
         onData: (data) => {
           if (!data || !context.topicId) return;
 

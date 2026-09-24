@@ -19,8 +19,8 @@
  */
 import type { Table } from 'dexie';
 
-interface CacheRow {
-  data: unknown;
+export interface CacheRow<T = unknown> {
+  data: T;
   /** Composite key: `${scope}::${serializedSWRKey}` */
   key: string;
   updatedAt: number;
@@ -117,6 +117,16 @@ export const localDataCache = {
       if (!table) return undefined;
       const row = await table.get(key);
       return row?.data as T | undefined;
+    } catch {
+      return undefined;
+    }
+  },
+
+  getEntry: async <T>(key: string): Promise<CacheRow<T> | undefined> => {
+    try {
+      const table = await getTable();
+      if (!table) return undefined;
+      return (await table.get(key)) as CacheRow<T> | undefined;
     } catch {
       return undefined;
     }

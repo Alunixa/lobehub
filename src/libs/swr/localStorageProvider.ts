@@ -27,6 +27,8 @@ import { bootTiming } from '@/libs/bootTiming';
 
 import { buildLocalDataKey, localDataCache } from './localDataCache';
 
+export const SWR_CACHE_VERSION = '1.0.0';
+
 interface CacheEntry<T = unknown> {
   /** Cached data */
   data: T;
@@ -118,7 +120,7 @@ export function createCacheProvider(options: CacheProviderOptions = {}): ScopedS
     localPatterns = [],
     ttl = 7 * 24 * 60 * 60 * 1000, // 7 days
     maxLocalEntries = 50,
-    version = '1.0.0',
+    version = SWR_CACHE_VERSION,
     onError = (error) => console.error('[SWR Cache]', error),
     onScopeHydrated,
   } = options;

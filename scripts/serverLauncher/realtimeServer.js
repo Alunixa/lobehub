@@ -5,6 +5,7 @@ const { WebSocket, WebSocketServer } = require('ws');
 
 const WEBSOCKET_PATH = '/api/trpc-ws';
 const INTERNAL_READY_PATH = '/api/version';
+const MESSAGE_SUBSCRIPTION_QUERY_PATH = 'message.getRealtimeSubscription';
 const MAX_WEBSOCKET_PAYLOAD = 16 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 15_000;
 const REALTIME_BRIDGE_ERROR_SOURCE = 'realtime-bridge';
@@ -28,6 +29,81 @@ const FORWARDED_WEBSOCKET_HEADERS = new Set([
   'trpc-accept',
   'user-agent',
 ]);
+
+const createRedisMessageBroker = ({ RedisClass, redisUrl = process.env.REDIS_URL } = {}) => {
+  if (!redisUrl) {
+    return {
+      available: false,
+      close: async () => {},
+      subscribe: async () => {
+        throw new Error('Realtime message subscriptions require REDIS_URL');
+      },
+    };
+  }
+
+  const Redis = RedisClass || require('ioredis');
+  const subscriber = new Redis(redisUrl, {
+    lazyConnect: true,
+    maxRetriesPerRequest: null,
+  });
+  const listeners = new Map();
+
+  subscriber.on('message', (channel, payload) => {
+    const channelListeners = listeners.get(channel);
+    if (!channelListeners) return;
+    for (const listener of channelListeners) listener(payload);
+  });
+  subscriber.on('error', (error) => {
+    console.error('[Realtime messages] Redis subscriber error:', error.message);
+  });
+
+  const ensureConnected = async () => {
+    if (subscriber.status === 'wait') await subscriber.connect();
+  };
+
+  return {
+    available: true,
+    close: async () => {
+      listeners.clear();
+      if (subscriber.status === 'end') return;
+      await subscriber.quit().catch(() => subscriber.disconnect());
+    },
+    subscribe: async (channel, listener) => {
+      let channelListeners = listeners.get(channel);
+      const isFirstListener = !channelListeners;
+      if (!channelListeners) {
+        channelListeners = new Set();
+        listeners.set(channel, channelListeners);
+      }
+      channelListeners.add(listener);
+
+      try {
+        if (isFirstListener) {
+          await ensureConnected();
+          await subscriber.subscribe(channel);
+        }
+      } catch (error) {
+        channelListeners.delete(listener);
+        if (channelListeners.size === 0) listeners.delete(channel);
+        throw error;
+      }
+
+      let active = true;
+      return async () => {
+        if (!active) return;
+        active = false;
+
+        const currentListeners = listeners.get(channel);
+        if (!currentListeners) return;
+        currentListeners.delete(listener);
+        if (currentListeners.size > 0) return;
+
+        listeners.delete(channel);
+        await subscriber.unsubscribe(channel).catch(() => {});
+      };
+    },
+  };
+};
 
 const asHeaderString = (value) => {
   if (Array.isArray(value)) return value.join(', ');
@@ -207,6 +283,7 @@ const getConnectionHeaders = (data) => {
 };
 
 const requestInternalQuery = ({
+  agent,
   connectionHeaders,
   internalHost,
   internalPort,
@@ -229,6 +306,7 @@ const requestInternalQuery = ({
     const headers = copyForwardedHeaders(requestHeaders, connectionHeaders);
     const upstreamRequest = http.request(
       {
+        agent,
         hostname: internalHost,
         path: `${upstreamUrl.pathname}${upstreamUrl.search}`,
         port: internalPort,
@@ -264,6 +342,7 @@ const requestInternalQuery = ({
   });
 
 const forwardQuery = async ({
+  agent,
   connectionHeaders,
   internalHost,
   internalPort,
@@ -288,6 +367,7 @@ const forwardQuery = async ({
   try {
     const upstream = await requestInternalQuery({
       activeRequests,
+      agent,
       connectionHeaders,
       internalHost,
       internalPort,
@@ -325,6 +405,79 @@ const forwardQuery = async ({
   }
 };
 
+const getTrpcResultData = (response) => {
+  const data = response?.result?.data;
+  if (!data || typeof data !== 'object') return data;
+  return Object.prototype.hasOwnProperty.call(data, 'json') ? data.json : data;
+};
+
+const requestMessageSubscriptionChannels = async ({
+  activeRequests,
+  agent,
+  connectionHeaders,
+  context,
+  internalHost,
+  internalPort,
+  requestHeaders,
+  subscriptionId,
+}) => {
+  const upstream = await requestInternalQuery({
+    activeRequests,
+    agent,
+    connectionHeaders,
+    internalHost,
+    internalPort,
+    path: MESSAGE_SUBSCRIPTION_QUERY_PATH,
+    request: { params: { input: { json: context } } },
+    requestHeaders,
+  });
+
+  let parsed;
+  try {
+    parsed = JSON.parse(upstream.body);
+  } catch {
+    return {
+      error: createBridgeError(
+        subscriptionId,
+        MESSAGE_SUBSCRIPTION_QUERY_PATH,
+        `Internal subscription response was not JSON (${upstream.statusCode})`,
+        'INTERNAL_SERVER_ERROR',
+        502,
+      ).error,
+    };
+  }
+
+  const response = toWebSocketResponse(subscriptionId, parsed, upstream.statusCode);
+  if (response.error) return { error: response.error };
+
+  const result = getTrpcResultData(response);
+  const channels = result?.channels;
+  if (
+    !Array.isArray(channels) ||
+    channels.length === 0 ||
+    channels.some(
+      (channel) => typeof channel !== 'string' || !/^[A-Za-z0-9:_-]{1,256}$/.test(channel),
+    )
+  ) {
+    return {
+      error: createBridgeError(
+        subscriptionId,
+        MESSAGE_SUBSCRIPTION_QUERY_PATH,
+        'Internal subscription response did not contain valid channels',
+        'INTERNAL_SERVER_ERROR',
+        502,
+      ).error,
+    };
+  }
+
+  return { channels };
+};
+
+const safeSendJson = (client, payload) => {
+  if (client.readyState !== WebSocket.OPEN) return;
+  client.send(JSON.stringify(payload));
+};
+
 const rejectUpgrade = (socket, statusCode, message) => {
   if (!socket.writable) return;
   socket.write(
@@ -333,7 +486,7 @@ const rejectUpgrade = (socket, statusCode, message) => {
   socket.destroy();
 };
 
-const proxyHttpRequest = ({ internalHost, internalPort, request, response }) => {
+const proxyHttpRequest = ({ agent, internalHost, internalPort, request, response }) => {
   if (new URL(request.url || '/', `http://${getRequestHost(request)}`).pathname === WEBSOCKET_PATH) {
     response.writeHead(426, {
       'cache-control': 'no-store',
@@ -358,6 +511,7 @@ const proxyHttpRequest = ({ internalHost, internalPort, request, response }) => 
 
   const upstreamRequest = http.request(
     {
+      agent,
       hostname: internalHost,
       path: request.url,
       port: internalPort,
@@ -398,10 +552,22 @@ const createRealtimeServer = ({
   internalHost = '127.0.0.1',
   internalPort,
   listenHost = '0.0.0.0',
+  messageBroker = createRedisMessageBroker(),
   publicPort,
 }) => {
+  const upstreamAgent = new http.Agent({
+    keepAlive: true,
+    maxFreeSockets: 32,
+    maxSockets: 128,
+  });
   const server = http.createServer((request, response) => {
-    proxyHttpRequest({ internalHost, internalPort, request, response });
+    proxyHttpRequest({
+      agent: upstreamAgent,
+      internalHost,
+      internalPort,
+      request,
+      response,
+    });
   });
   const websocketServer = new WebSocketServer({
     maxPayload: MAX_WEBSOCKET_PAYLOAD,
@@ -433,11 +599,134 @@ const createRealtimeServer = ({
 
   websocketServer.on('connection', (client, request) => {
     const activeRequests = new Set();
+    const messageSubscriptions = new Map();
+    const pendingMessageSubscriptions = new Set();
     let connectionHeaders = copyForwardedHeaders(request.headers);
 
     const closeActiveRequests = () => {
       for (const activeRequest of activeRequests) activeRequest.destroy();
       activeRequests.clear();
+    };
+
+    const closeMessageSubscription = async (subscriptionId) => {
+      pendingMessageSubscriptions.delete(subscriptionId);
+      const disposers = messageSubscriptions.get(subscriptionId);
+      if (!disposers) return;
+      messageSubscriptions.delete(subscriptionId);
+      await Promise.all(disposers.map((dispose) => dispose().catch(() => {})));
+    };
+
+    const closeMessageSubscriptions = async () => {
+      pendingMessageSubscriptions.clear();
+      await Promise.all([...messageSubscriptions.keys()].map(closeMessageSubscription));
+    };
+
+    const handleMessageSubscription = async (message) => {
+      const subscriptionId = message?.subscriptionId;
+      if (
+        typeof subscriptionId !== 'string' ||
+        subscriptionId.length === 0 ||
+        subscriptionId.length > 128 ||
+        !message.context ||
+        typeof message.context !== 'object'
+      ) {
+        safeSendJson(client, {
+          error: createBridgeError(
+            subscriptionId,
+            MESSAGE_SUBSCRIPTION_QUERY_PATH,
+            'Invalid message subscription request',
+          ).error,
+          subscriptionId: subscriptionId ?? null,
+          type: 'subscription.error',
+        });
+        return;
+      }
+
+      if (!messageBroker.available) {
+        safeSendJson(client, {
+          error: createBridgeError(
+            subscriptionId,
+            MESSAGE_SUBSCRIPTION_QUERY_PATH,
+            'Realtime message subscriptions are unavailable',
+            'INTERNAL_SERVER_ERROR',
+            503,
+          ).error,
+          subscriptionId,
+          type: 'subscription.error',
+        });
+        return;
+      }
+
+      await closeMessageSubscription(subscriptionId);
+      pendingMessageSubscriptions.add(subscriptionId);
+
+      try {
+        const result = await requestMessageSubscriptionChannels({
+          activeRequests,
+          agent: upstreamAgent,
+          connectionHeaders,
+          context: message.context,
+          internalHost,
+          internalPort,
+          requestHeaders: request.headers,
+          subscriptionId,
+        });
+
+        if (!pendingMessageSubscriptions.has(subscriptionId) || client.readyState !== WebSocket.OPEN)
+          return;
+
+        if (result.error) {
+          pendingMessageSubscriptions.delete(subscriptionId);
+          safeSendJson(client, {
+            error: result.error,
+            subscriptionId,
+            type: 'subscription.error',
+          });
+          return;
+        }
+
+        const disposers = [];
+        for (const channel of result.channels) {
+          const dispose = await messageBroker.subscribe(channel, (payload) => {
+            let event;
+            try {
+              event = JSON.parse(payload);
+            } catch {
+              return;
+            }
+            if (event?.type !== 'messages.updated') return;
+
+            safeSendJson(client, {
+              reason: event.reason,
+              subscriptionId,
+              timestamp: event.timestamp,
+              type: 'messages.updated',
+            });
+          });
+          disposers.push(dispose);
+        }
+
+        if (pendingMessageSubscriptions.has(subscriptionId) && client.readyState === WebSocket.OPEN) {
+          pendingMessageSubscriptions.delete(subscriptionId);
+          messageSubscriptions.set(subscriptionId, disposers);
+          safeSendJson(client, { subscriptionId, type: 'subscription.ready' });
+        } else {
+          await Promise.all(disposers.map((dispose) => dispose().catch(() => {})));
+        }
+      } catch (error) {
+        pendingMessageSubscriptions.delete(subscriptionId);
+        safeSendJson(client, {
+          error: createBridgeError(
+            subscriptionId,
+            MESSAGE_SUBSCRIPTION_QUERY_PATH,
+            error instanceof Error ? error.message : 'Failed to subscribe to message updates',
+            'INTERNAL_SERVER_ERROR',
+            502,
+          ).error,
+          subscriptionId,
+          type: 'subscription.error',
+        });
+      }
     };
 
     client.on('message', async (rawData, isBinary) => {
@@ -466,11 +755,24 @@ const createRealtimeServer = ({
         return;
       }
 
+      if (message?.type === 'subscribeMessages') {
+        await handleMessageSubscription(message);
+        return;
+      }
+
+      if (message?.type === 'unsubscribeMessages') {
+        if (typeof message.subscriptionId === 'string') {
+          await closeMessageSubscription(message.subscriptionId);
+        }
+        return;
+      }
+
       const requests = Array.isArray(message) ? message : [message];
       const responses = await Promise.all(
         requests.map((requestMessage) =>
           forwardQuery({
             activeRequests,
+            agent: upstreamAgent,
             connectionHeaders,
             internalHost,
             internalPort,
@@ -484,8 +786,12 @@ const createRealtimeServer = ({
         client.send(JSON.stringify(Array.isArray(message) ? responses : responses[0]));
       }
     });
-    client.once('close', closeActiveRequests);
-    client.once('error', closeActiveRequests);
+    const closeConnectionResources = () => {
+      closeActiveRequests();
+      void closeMessageSubscriptions();
+    };
+    client.once('close', closeConnectionResources);
+    client.once('error', closeConnectionResources);
   });
 
   const close = async () => {
@@ -493,6 +799,8 @@ const createRealtimeServer = ({
     await new Promise((resolve) => {
       server.close(() => resolve());
     });
+    upstreamAgent.destroy();
+    await messageBroker.close().catch(() => {});
   };
 
   const listen = () =>
@@ -628,6 +936,7 @@ module.exports = {
   WEBSOCKET_PATH,
   copyForwardedHeaders,
   createBridgeError,
+  createRedisMessageBroker,
   createRealtimeServer,
   isAllowedProcedurePath,
   isAllowedWebSocketOrigin,
