@@ -1938,3 +1938,9 @@
 - document-only候选冷/暖4385/3050ms，紧随其后的无拦截旧版4896/3282ms；测量模式存在差异，不夸大为秒开，部署后须同一无拦截模式复测喵~
 - 两组runtime errors=0、冷暖WebSocket ready均成功，候选截图目视确认正文/输入区正常；原脚本durationMs误用绝对startTime已在独立探针修正喵~
 - 准备Release v2.2.8-codex.20260924.4，镜像SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c；只创建独立deploy-4备份并替换LobeHub喵~
+
+### 2026-09-24：.4保护部署启动
+- 正式Release .20260924.4及三资产digest与本地一致，权威构建35985648092；完整备份deploy-4完成，数据库SHA25684d094795c71a1bf58018ff661e377ec8e253bb55e6b433d19c2c81d2b63e0bd喵~
+- 18:34:59 UTC+8启动240秒guard，18:35:12内部健康通过；新容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
+- 当前正在无请求拦截的桌面/手机线上冷暖加载与订阅验收；尚未确认guard，回滚入口为 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh喵~
+- 全仓35985593040仍App/Database失败，Packages/Desktop/Server两分片成功；E2E35985593136失败，不声称全仓通过喵~
