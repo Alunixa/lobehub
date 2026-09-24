@@ -1761,3 +1761,11 @@
 - 已有合并运行通过 8 个文件、111 项测试，新增 Redis 并发订阅引用计数和流式期间延迟刷新两项测试分别通过，当前有效覆盖合计 113 项；提交前将统一复跑，避免只依赖分散结果喵~
 - 直接使用本机现有 ESLint 10.0.2 对本轮文件检查为 0 error；仓库 `bun run check --lint` 因缺失 `node_modules/.bin/eslint` 未运行，全仓 `tsgo --noEmit` 约五分钟无输出后停止，均未误报为通过喵~
 - 下一步先显式提交后续测试与竞态修正，再统一验证、推送、GitHub Actions 构建、Release、独立保护部署和双客户端真实同步/加载耗时验收喵~
+
+## 2026-09-24：真实同步最终本地回归通过
+
+- 后续测试与修正已显式提交为 `f0033422de`，提交仅包含本轮 10 个目标文件，未包含历史构建目录或 `问题.txt` 喵~
+- 最终统一 Vitest 运行完成，9 个测试文件、113 项全部通过；最后完成的是 Conversation 数据层 37 项，整个进程退出码为 0 喵~
+- 覆盖明细为消息实时 helper 3、MessageService 26、Agent Runtime Coordinator 35、启动器 envelope/Redis broker 5、真实 HTTP/WS 与订阅集成 3、Conversation 数据层 37、缓存生产挂载顺序 2、浏览器订阅 1、流式保护 1 喵~
+- 使用现有 ESLint 10.0.2 检查 `c138599aca..HEAD` 范围内 20 个 JavaScript/TypeScript 文件，结果 0 error；启动器 `node --check` 和提交范围 `git diff --check` 同时通过喵~
+- 当前工作区除任务开始前的历史未跟踪目录和 `问题.txt` 外无源码改动；下一步提交记录、推送最终提交并触发 GitHub Actions 镜像构建喵~
