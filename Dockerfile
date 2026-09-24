@@ -128,8 +128,14 @@ COPY --from=builder /deps/node_modules/.pnpm /app/node_modules/.pnpm
 COPY --from=builder /deps/node_modules/@swc/helpers /app/node_modules/@swc/helpers
 COPY --from=builder /deps/node_modules/pg /app/node_modules/pg
 COPY --from=builder /deps/node_modules/drizzle-orm /app/node_modules/drizzle-orm
-COPY --from=builder /deps/node_modules/ioredis /app/node_modules/ioredis
 COPY --from=builder /deps/node_modules/ws /app/node_modules/ws
+
+# Keep ioredis inside pnpm's virtual store so its transitive dependencies
+# resolve through the sibling node_modules links instead of flattening only
+# the package directory into /app/node_modules.
+RUN rm -rf /app/node_modules/ioredis && \
+    ln -s .pnpm/ioredis@5.11.1/node_modules/ioredis /app/node_modules/ioredis && \
+    test -f /app/node_modules/ioredis/built/index.js
 
 # Copy server launcher and shared scripts
 COPY --from=builder /app/scripts/serverLauncher/startServer.js /app/startServer.js

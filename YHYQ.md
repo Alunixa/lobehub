@@ -1813,3 +1813,10 @@
 - 首次手动回滚命令被本地 PowerShell 解释远端命令替换而未执行；随后改用单引号保护，16:05:38 开始、16:06:30 完成旧镜像恢复，并停止 guard PID 喵~
 - 当前线上容器 `bbc91f4e2317` 使用旧稳定镜像 `ea7da67e7e83`，running/restart=0/OOM=false，内外版本接口正常；PostgreSQL、Redis、RustFS、SearXNG、设备网关、Onlyboxes 与 `linuxytd` 均未重建喵~
 - `v2.2.8-codex.20260924.1` 标记为不可部署候选；下一步完整核对 `ioredis` 依赖闭包，修 Dockerfile 与 Actions/离线运行探针后发布新修正版喵~
+
+## 2026-09-24：修复 ioredis 最小镜像依赖闭包
+
+- 检查失败镜像确认 `.pnpm/ioredis@5.11.1` 内实际包含所有传递依赖链接，但原 Dockerfile 单独复制根 `ioredis` symlink 时被解引用成普通目录，破坏 pnpm 的依赖解析上下文喵~
+- Dockerfile 已改为删除普通目录并创建 `/app/node_modules/ioredis -> .pnpm/ioredis@5.11.1/node_modules/ioredis`，同时在构建阶段断言入口存在喵~
+- GitHub Actions 运行依赖探针不再只做 `require.resolve`，现在会真正加载 `ioredis`、创建和关闭 lazy Redis client、加载实时启动器并检查 `createRedisMessageBroker` 导出喵~
+- 该修复不改业务协议、数据库或前端 bundle；下一步检查并提交，重新 Actions 构建 `.2` 修正版，`.1` 保留为已知不可部署候选喵~

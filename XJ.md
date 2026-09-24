@@ -664,3 +664,9 @@
 - 首次手动回滚命令被本地 PowerShell 提前解释远端 `$(cat ...)`，未执行远端操作；改用单引号保护后于 16:05:38 开始回滚，16:06:30 完成喵~
 - 当前已恢复旧镜像 `sha256:ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`，容器 `bbc91f4e2317` running/restart=0/OOM=false，内外 `/api/version` 正常，其他 7 容器保持原 ID，guard PID 已停止喵~
 - 问题 Release `v2.2.8-codex.20260924.1` 不得部署；下一步完整补齐 `ioredis` 运行依赖闭包，并把 Actions/离线探针改为真正 `require('ioredis')` 和创建/关闭客户端，重新构建修正版喵~
+
+### Runtime Dependency Fix
+- 失败镜像中 `/app/node_modules/.pnpm/ioredis@5.11.1` 的完整依赖闭包存在，但单独 `COPY /deps/node_modules/ioredis` 会把根 symlink 解引用为普通目录，使模块加载时无法回到 pnpm 虚拟仓库解析 `@ioredis/commands` 等依赖喵~
+- Dockerfile 已移除解引用复制，改为让 `/app/node_modules/ioredis` 指向 `.pnpm/ioredis@5.11.1/node_modules/ioredis`，并在镜像构建中断言入口文件存在喵~
+- Actions 运行依赖检查已从仅 `require.resolve` 升级为真正加载 `ioredis`、创建并关闭 lazy client、加载 `/app/realtimeServer.js` 并确认 broker 导出，能在发布前捕获传递依赖缺失喵~
+- 下一步运行 YAML/差异检查并提交修复，推送后只接受新提交的成功 Actions 镜像，发布 `.2` 修正版并复用现有独立备份进行第二次保护部署喵~

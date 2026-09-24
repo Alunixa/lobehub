@@ -52,7 +52,7 @@ jobs:
           docker load --input /tmp/lobehub-server-image.tar
           docker run --rm --entrypoint /bin/node --workdir /app \
             lobehub/lobehub:codex-${{ github.sha }} \
-            -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require('next/dist/server/next-server.js')"
+            -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require('next/dist/server/next-server.js'); const Redis = require('ioredis'); const redis = new Redis('redis://127.0.0.1:1', { lazyConnect: true }); redis.disconnect(); const realtime = require('/app/realtimeServer.js'); if (typeof realtime.createRedisMessageBroker !== 'function') throw new Error('realtime broker export missing')"
 
       - name: Export static production UI for browser validation
         uses: docker/build-push-action@v6
