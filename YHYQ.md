@@ -1854,3 +1854,12 @@
 - deploy-2 guard PID `7395` 已退出，日志记录 `2026-09-24 16:36:28 +08:00` 已确认；当前容器 `065ac2a81e4a` 使用新镜像 `8fb5d27bd5c3…`，running/restart=0/OOM=false，内外版本接口正常喵~
 - 配置哈希与部署前一致，其他 7 个服务容器 ID/镜像未变，最近 15 分钟致命日志计数为 0，Redis 返回 `PONG` 喵~
 - 下一步编写一次性 Playwright 双 context 验证脚本，凭据只经内存传入，测试新增/编辑/删除自动同步并测量首次与缓存加载耗时，临时消息在 `finally` 删除喵~
+
+## 2026-09-24：双客户端生产验收脚本完成
+
+- 只读数据库查询选择了个人空间中有效登录会话下最近、仅 8 条消息的普通会话作为低干扰测试对象，没有读取或输出 session token 喵~
+- 新增 `tests/mobile-studio/verify-live-realtime.mjs`，凭据只从 stdin 进入内存；桌面与 iPhone 13 使用独立 browser context，模拟两个真实设备喵~
+- 脚本测量冷启动、IndexedDB 暖缓存重载、WebSocket `subscription.ready`，并通过临时上下文消息验证新增、编辑和删除三次 `messages.updated` 在两端自动生效喵~
+- 所有模型生成接口在浏览器侧拦截；临时消息在 `finally` 删除，报告和局部截图不包含会话令牌或原会话正文喵~
+- `node --check` 与 `git diff --check` 通过；ESLint 首次只报 import 排序，手工调整后使用现有 ESLint 10.0.2 检查为 0 error喵~
+- 下一步提交该验收工具，然后从远端数据库把有效 token 仅保存在 PowerShell 内存变量中并通过 stdin 运行真实生产测试喵~

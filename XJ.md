@@ -697,3 +697,10 @@
 - Compose、`.env`、override 三项 SHA-256 与部署前完全一致；其他 7 个服务容器 ID 和镜像与部署前完全一致，最近 15 分钟致命日志计数为 0，Redis `PING=PONG` 喵~
 - 两次只读快照包装命令分别因本地 PowerShell 重定向误解析和执行策略拒绝而未执行远端主体；后续改用 Base64 编码脚本成功，首次成功脚本尾部因顶层基线通配未命中返回 1，但已取得的 guard、容器、版本与配置结果有效喵~
 - 修改前检查点为 `de893bc942`；下一步使用两个独立 Playwright context 对同一真实会话执行临时上下文消息新增、编辑、删除自动同步，并记录首次与 IndexedDB 缓存后的消息可见耗时，凭据仅走内存且临时消息必须在 `finally` 清理喵~
+
+### Live Realtime Verification Harness
+- 新增 `tests/mobile-studio/verify-live-realtime.mjs`，从 stdin 接收生产 URL、会话 cookie 和会话上下文，凭据不写文件、不进入报告或日志喵~
+- 脚本使用独立桌面与 iPhone 13 Playwright context，分别记录冷启动、同 context IndexedDB 暖缓存重载至锚点消息可见及 `subscription.ready` 的耗时喵~
+- 写入路径只使用 `message.insertContextMessage`、`message.editMessageContent` 和 `message.removeMessage`；测试期间拦截模型生成接口，临时消息在 `finally` 删除，并要求两端都自动显示新增、编辑和删除结果喵~
+- 脚本还要求两个客户端各收到至少两次订阅就绪和三次 `messages.updated`，保存仅包含临时消息的桌面/手机局部截图及无凭据 JSON 报告喵~
+- `node --check`、ESLint 10.0.2 与 `git diff --check` 均通过；首轮 ESLint 仅发现 import 排序，手工修正后 0 error，尚未执行生产写入验收喵~
