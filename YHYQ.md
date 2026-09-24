@@ -1820,3 +1820,12 @@
 - Dockerfile 已改为删除普通目录并创建 `/app/node_modules/ioredis -> .pnpm/ioredis@5.11.1/node_modules/ioredis`，同时在构建阶段断言入口存在喵~
 - GitHub Actions 运行依赖探针不再只做 `require.resolve`，现在会真正加载 `ioredis`、创建和关闭 lazy Redis client、加载实时启动器并检查 `createRedisMessageBroker` 导出喵~
 - 该修复不改业务协议、数据库或前端 bundle；下一步检查并提交，重新 Actions 构建 `.2` 修正版，`.1` 保留为已知不可部署候选喵~
+
+## 2026-09-24：ioredis 修正版 Actions 与 artifact 通过
+
+- 修复提交 `adb31345bb58d5d06aeedef318b2d204e2b9ad80` 已推送，YAML、静态断言和差异检查通过喵~
+- 一次错误 SHA 筛选导致在自动 run 已启动后又创建手动 run；手动 run `35973780030` 被立即取消，但 GitHub concurrency 随后取消自动 run `35973730654`，未使用两者任何产物喵~
+- 队列清空后只保留权威手动 run `35973965711`，其 OCI 构建、真正加载 ioredis 的运行依赖检查、SPA 导出与 artifact 上传全部成功喵~
+- 新服务器 ZIP `298302114` bytes / SHA-256 `f1eadab57f4624187aa07ab89a9f1ca6034a23111145d1264d04830193f51ffa`，SPA ZIP `26233620` bytes / `ce2ec624acca246f161bbd598c96e97f6f40c1716b93508643cfd0f8ac36269c`，均匹配 GitHub digest 喵~
+- 新镜像 tar `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，标签绑定 `adb31345bb`，平台、用户与入口验证正确喵~
+- 下一步发布 `.20260924.2` 修正版，在现有独立备份下创建 deploy-2 快照和独立 guard 日志后再次仅替换 LobeHub 喵~
