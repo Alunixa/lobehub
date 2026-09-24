@@ -1804,3 +1804,12 @@
 - 首次离线依赖探针误查 `/app/scripts/serverLauncher/realtimeServer.js` 而失败；Dockerfile 实际路径是 `/app/realtimeServer.js`，只影响临时探针容器，没有重建线上服务喵~
 - 第一次更正命令又在本地 PowerShell 多层引号解析阶段失败，远端未执行；改为上传 LF 脚本后 `next`、`ws`、`ioredis` 与两个启动器文件全部验证通过，输出 `RUNTIME_PROBE_OK` 喵~
 - 验证后线上仍为旧容器 `3d6ea49a564c`、restart=0、OOM=false；下一步启动 240 秒回滚 guard 并只替换 LobeHub 服务喵~
+
+## 2026-09-24：`.1` 保护部署失败并完整回滚
+
+- 16:03:52 +08:00 启动 240 秒保护部署并只重建 LobeHub，新容器内部端口始终未就绪且持续重启喵~
+- 容器日志明确为 `Cannot find module '@ioredis/commands'`，调用链为 `ioredis -> realtimeServer.js -> startServer.js`；Dockerfile 只复制了 `ioredis` 主包，遗漏运行时传递依赖喵~
+- Actions 原“运行依赖验证”只做 `require.resolve('ioredis')`，因此只验证包入口存在，没有真正执行 `ioredis` 模块加载，未发现该问题喵~
+- 首次手动回滚命令被本地 PowerShell 解释远端命令替换而未执行；随后改用单引号保护，16:05:38 开始、16:06:30 完成旧镜像恢复，并停止 guard PID 喵~
+- 当前线上容器 `bbc91f4e2317` 使用旧稳定镜像 `ea7da67e7e83`，running/restart=0/OOM=false，内外版本接口正常；PostgreSQL、Redis、RustFS、SearXNG、设备网关、Onlyboxes 与 `linuxytd` 均未重建喵~
+- `v2.2.8-codex.20260924.1` 标记为不可部署候选；下一步完整核对 `ioredis` 依赖闭包，修 Dockerfile 与 Actions/离线运行探针后发布新修正版喵~

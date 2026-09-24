@@ -657,3 +657,10 @@
 - 首次离线探针错误检查 `/app/scripts/serverLauncher/realtimeServer.js`，而 Dockerfile 实际复制到 `/app/realtimeServer.js`；该失败只发生在临时 `docker run --rm`，运行服务未变化喵~
 - 随后的内联更正命令在本地 PowerShell 解析 Node `for` 语句时失败，未执行远端命令；改用 LF 脚本后确认 `/app/realtimeServer.js`、`/app/startServer.js` 存在，`next`、`ws`、`ioredis` 可解析，`RUNTIME_PROBE_OK` 喵~
 - 镜像导入和探针完成后旧线上容器仍为 `3d6ea49a564c`、旧镜像 `ea7da67e7e83`、running/restart=0/OOM=false；下一步启动 guard 并仅重建 LobeHub 喵~
+
+### Failed Deployment and Rollback
+- 2026-09-24 16:03:52 +08:00 启动首轮保护部署，只执行 `docker compose up -d --no-deps --force-recreate lobehub`；新容器持续重启，日志明确为 `Cannot find module '@ioredis/commands'` 喵~
+- 根因是 Dockerfile 最小运行镜像只复制了 `ioredis` 主包，Actions 的旧运行依赖检查仅使用 `require.resolve('ioredis')`，没有真正加载模块，因此未发现传递依赖缺失喵~
+- 首次手动回滚命令被本地 PowerShell 提前解释远端 `$(cat ...)`，未执行远端操作；改用单引号保护后于 16:05:38 开始回滚，16:06:30 完成喵~
+- 当前已恢复旧镜像 `sha256:ea7da67e7e837b16d66f6b984602e09a30491a530b13ed30f65bf7d84c6b1d6d`，容器 `bbc91f4e2317` running/restart=0/OOM=false，内外 `/api/version` 正常，其他 7 容器保持原 ID，guard PID 已停止喵~
+- 问题 Release `v2.2.8-codex.20260924.1` 不得部署；下一步完整补齐 `ioredis` 运行依赖闭包，并把 Actions/离线探针改为真正 `require('ioredis')` 和创建/关闭客户端，重新构建修正版喵~
