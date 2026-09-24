@@ -1932,3 +1932,9 @@
 - SPA 产物首屏 modulepreload：桌面240→103、HTML41147→29402 bytes；手机36→37；原动态依赖保留 idle 预热喵~
 - 产物目录 D:\Cursor\lobehub-backups\20260924-realtime-sync\revision-e807f67；镜像298277376 bytes，SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c喵~
 - 计划用同源 document-only 响应替换做必要A/B，不新搭代理；完成后独立 deploy-4 备份、Release、单应用部署和无拦截线上复验，当前线上仍为.3喵~
+
+### 2026-09-24：候选加载验证通过，准备保护部署
+- Actions35985648092与下载digest一致，e807候选桌面首屏103个预加载；与.3全部静态资源内容相同喵~
+- document-only候选冷/暖4385/3050ms，紧随其后的无拦截旧版4896/3282ms；测量模式存在差异，不夸大为秒开，部署后须同一无拦截模式复测喵~
+- 两组runtime errors=0、冷暖WebSocket ready均成功，候选截图目视确认正文/输入区正常；原脚本durationMs误用绝对startTime已在独立探针修正喵~
+- 准备Release v2.2.8-codex.20260924.4，镜像SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c；只创建独立deploy-4备份并替换LobeHub喵~
