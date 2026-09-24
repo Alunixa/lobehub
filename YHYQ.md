@@ -1778,3 +1778,12 @@
 - 服务器镜像 tar 为 `298424320` bytes / SHA-256 `e2c22c5901dd50f6a0ae99e1573409091ddd0575cc60832851abc853f723f74d`，标签绑定最终提交，架构 `linux/amd64`、用户 `nextjs`、入口 `/bin/node /app/startServer.js` 喵~
 - 生产 SPA 解包后共 1745 个文件，已查到新订阅协议四项标记且找不到旧 `websocketFirstLink`，证明普通读取恢复 HTTP batching、WebSocket 专职实时通知的代码真实进入产物喵~
 - 下一步只读核对当前生产容器、镜像、配置和其他服务基线，再创建详细 GitHub Release 并执行新的独立 240 秒保护部署喵~
+
+## 2026-09-24：正式 Release 与部署前生产基线
+
+- 正式 Release `v2.2.8-codex.20260924.1` 已发布，标题为“跨设备实时同步与会话秒开”，标签精确绑定 Actions 已构建的 `f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1` 喵~
+- GitHub Release 三项资产已通过 API 核验：镜像 `298424320` bytes / SHA-256 `e2c22c5901dd50f6a0ae99e1573409091ddd0575cc60832851abc853f723f74d`，manifest `1943` bytes / `31ac50b89ff330a1f66d494a4bec9a4657de7a86c483dde3f2aac5698608d17c`，SHA256SUMS `179` bytes / `f2fb2119b933cfd92bcdb82ae2e974e4bc218ec58c6c056659cd20d518579abe` 喵~
+- 部署前只读基线确认线上仍为旧容器 `3d6ea49a564c`、旧镜像 `ea7da67e7e83`，running/restart=0/OOM=false，端口映射、内外版本接口与其他 7 个容器均正常喵~
+- 三项配置哈希未变，近 30 分钟致命日志计数为 0；Host Executor 使用容器实际 Base URL 复测返回 `success=true, mode=host` 喵~
+- 第一次 Host Executor 固定访问 `127.0.0.1:3211` 未命中，后续读取实际地址后通过；两次远端 shell 的 CRLF/变量表达式提示只影响探针脚本结尾，未改配置或服务喵~
+- 下一步在新的 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 保存旧镜像、数据库、配置和容器基线，创建回滚脚本与 240 秒 guard 后仅替换 LobeHub 服务喵~

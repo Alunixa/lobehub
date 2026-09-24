@@ -635,3 +635,11 @@
 - 新证据目录为 `D:\Cursor\lobehub-backups\20260924-realtime-sync`；服务器 artifact ZIP `298424482` bytes / SHA-256 `0c0acbe9416460837882045af580f11a72d968f90531e803d96eb2bc5f33ba03`，SPA ZIP `26233620` bytes / SHA-256 `b6a4f2a5607867ad1c64bb6177bed95730c36bc587c16e084670b215dd112b54`，均与 GitHub API digest 一致喵~
 - 解包服务器镜像 tar 为 `298424320` bytes / SHA-256 `e2c22c5901dd50f6a0ae99e1573409091ddd0575cc60832851abc853f723f74d`；镜像标签 `lobehub/lobehub:codex-f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`，平台 `linux/amd64`，运行用户 `nextjs`，入口 `/bin/node /app/startServer.js` 喵~
 - 生产 SPA 共 1745 个文件，包含 `subscribeMessages`、`unsubscribeMessages`、`messages.updated` 与 `/api/trpc-ws`，未包含已删除的 `websocketFirstLink` 标记；下一步进行只读生产基线、Release 和独立保护部署喵~
+
+### Release and Pre-deployment Baseline
+- 正式 Release `v2.2.8-codex.20260924.1` 已发布，标签指向 Actions 构建源码 `f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`；GitHub 上镜像、manifest、SHA256SUMS 的大小与 digest 均匹配本地喵~
+- Release 资产 digest：镜像 `e2c22c5901dd50f6a0ae99e1573409091ddd0575cc60832851abc853f723f74d`，manifest `31ac50b89ff330a1f66d494a4bec9a4657de7a86c483dde3f2aac5698608d17c`，SHA256SUMS `f2fb2119b933cfd92bcdb82ae2e974e4bc218ec58c6c056659cd20d518579abe` 喵~
+- 2026-09-24 15:53 +08:00 只读生产基线：旧容器 `3d6ea49a564c` / 镜像 `ea7da67e7e83`，running、restart=0、OOM=false；端口仍为 `127.0.0.1:13210 -> 3210`，内外 `/api/version` 正常，近 30 分钟致命日志计数 0 喵~
+- PostgreSQL、Redis、RustFS、SearXNG、设备网关、Onlyboxes 与 `linuxytd` 容器均保持原 ID；Compose、`.env`、override SHA-256 分别为 `fdaca5c7...378e`、`fe096d3b...9f8c`、`e6786a2f...f047f` 喵~
+- Host Executor 按实际 `HOST_EXECUTOR_BASE_URL` 只读复测返回 `success=true, mode=host`；最初固定探测 `127.0.0.1:3211` 未命中及两次远端 shell 引号/换行提示均未修改任何服务喵~
+- 下一步在 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 建立新独立备份、回滚脚本与 240 秒 guard，只重建 LobeHub 服务喵~
