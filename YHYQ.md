@@ -1769,3 +1769,12 @@
 - 覆盖明细为消息实时 helper 3、MessageService 26、Agent Runtime Coordinator 35、启动器 envelope/Redis broker 5、真实 HTTP/WS 与订阅集成 3、Conversation 数据层 37、缓存生产挂载顺序 2、浏览器订阅 1、流式保护 1 喵~
 - 使用现有 ESLint 10.0.2 检查 `c138599aca..HEAD` 范围内 20 个 JavaScript/TypeScript 文件，结果 0 error；启动器 `node --check` 和提交范围 `git diff --check` 同时通过喵~
 - 当前工作区除任务开始前的历史未跟踪目录和 `问题.txt` 外无源码改动；下一步提交记录、推送最终提交并触发 GitHub Actions 镜像构建喵~
+
+## 2026-09-24：最终 Actions 与生产产物核验
+
+- 当前分支已推送到 fork，远端提交精确为 `f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`；推送自动触发服务器镜像 Actions `35971082150`，没有重复手动 dispatch 喵~
+- Actions 成功完成 OCI 镜像构建、运行依赖验证、生产 SPA 导出和两项 artifact 上传，作业耗时约 6 分 39 秒喵~
+- 两项 artifact 已下载到新的 `D:\Cursor\lobehub-backups\20260924-realtime-sync` 目录；服务器 ZIP `298424482` bytes / SHA-256 `0c0acbe9416460837882045af580f11a72d968f90531e803d96eb2bc5f33ba03`，SPA ZIP `26233620` bytes / SHA-256 `b6a4f2a5607867ad1c64bb6177bed95730c36bc587c16e084670b215dd112b54`，均匹配 GitHub API digest 喵~
+- 服务器镜像 tar 为 `298424320` bytes / SHA-256 `e2c22c5901dd50f6a0ae99e1573409091ddd0575cc60832851abc853f723f74d`，标签绑定最终提交，架构 `linux/amd64`、用户 `nextjs`、入口 `/bin/node /app/startServer.js` 喵~
+- 生产 SPA 解包后共 1745 个文件，已查到新订阅协议四项标记且找不到旧 `websocketFirstLink`，证明普通读取恢复 HTTP batching、WebSocket 专职实时通知的代码真实进入产物喵~
+- 下一步只读核对当前生产容器、镜像、配置和其他服务基线，再创建详细 GitHub Release 并执行新的独立 240 秒保护部署喵~
