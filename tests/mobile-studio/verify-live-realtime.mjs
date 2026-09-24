@@ -35,7 +35,7 @@ const report = {
   chatPath: new URL(chatUrl).pathname,
   cleanup: { attempted: false, completed: false },
   messageId,
-  pages: {},
+  pages: { desktop: {}, mobile: {} },
   runId,
   sync: {},
 };
@@ -293,6 +293,7 @@ try {
   ]);
 } catch (error) {
   primaryError = error;
+  report.error = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 } finally {
   if (inserted) {
     report.cleanup.attempted = true;
@@ -321,8 +322,22 @@ try {
     }
   }
 
-  if (desktop) report.pages.desktop.realtime = desktop.tracker.state;
-  if (mobile) report.pages.mobile.realtime = mobile.tracker.state;
+  if (desktop) {
+    report.pages.desktop = {
+      ...report.pages.desktop,
+      blockedModelRequests: desktop.blockedModelRequests,
+      realtime: desktop.tracker.state,
+      runtimeErrors: desktop.runtimeErrors,
+    };
+  }
+  if (mobile) {
+    report.pages.mobile = {
+      ...report.pages.mobile,
+      blockedModelRequests: mobile.blockedModelRequests,
+      realtime: mobile.tracker.state,
+      runtimeErrors: mobile.runtimeErrors,
+    };
+  }
 
   await Promise.allSettled([desktop?.context.close(), mobile?.context.close()]);
   await browser?.close();

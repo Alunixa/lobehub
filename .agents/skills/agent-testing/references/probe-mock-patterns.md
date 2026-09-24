@@ -488,3 +488,19 @@
   decisive interactive element (for example the labeled chat textbox) to be visible.
   This gates on the application state needed by the test instead of an impossible idle
   network state.
+
+### E7. Playwright package is installed but its matching browser binary is missing
+
+- **Situation**: a Node Playwright harness starts on Windows and fails before navigation
+  with `browserType.launch: Executable doesn't exist` for the versioned
+  `chromium_headless_shell-*` directory.
+- **Doesn't work**: treating the installed `@playwright/test` package as proof that its
+  browser bundle is present, or immediately downloading another Chromium when a current
+  system browser is already installed.
+- **Works**: locate the installed Chrome or Edge executable, record its file version, and
+  pass the absolute path through `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Keep the harness's
+  `executablePath` optional so CI can still use the bundled Playwright browser when it is
+  available.
+- **Failure-path rule**: initialize report sections before launch and persist the original
+  exception in the report. A reporting error in `finally` must never replace the actual
+  browser, navigation, authentication, or subscription failure.

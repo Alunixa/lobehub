@@ -704,3 +704,6 @@
 - 写入路径只使用 `message.insertContextMessage`、`message.editMessageContent` 和 `message.removeMessage`；测试期间拦截模型生成接口，临时消息在 `finally` 删除，并要求两端都自动显示新增、编辑和删除结果喵~
 - 脚本还要求两个客户端各收到至少两次订阅就绪和三次 `messages.updated`，保存仅包含临时消息的桌面/手机局部截图及无凭据 JSON 报告喵~
 - `node --check`、ESLint 10.0.2 与 `git diff --check` 均通过；首轮 ESLint 仅发现 import 排序，手工修正后 0 error，尚未执行生产写入验收喵~
+- 首次真实运行在浏览器启动前失败，因为 Playwright 1.61.1 对应浏览器 bundle 未安装；系统 Chrome 153 可用，因此不下载重复浏览器，后续通过 `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` 使用现有 Chrome 喵~
+- 第二次运行暴露失败报告初始化缺陷：页面阶段先失败时 `finally` 会访问尚未建立的 `report.pages.desktop`，遮蔽原始错误；数据库只读查询确认 `msg_realtime_verify_%` 残留为空喵~
+- 验收脚本已改为预初始化两端报告、在 catch 中保存无凭据原始错误，并在 finally 合并 runtime/WebSocket 状态；agent-testing 探针文档新增 Playwright 浏览器缺失的复用方案喵~
