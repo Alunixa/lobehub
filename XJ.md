@@ -748,3 +748,9 @@
 - 验收脚本已改为预初始化两端报告、在 catch 中保存无凭据原始错误，并在 finally 合并 runtime/WebSocket 状态；agent-testing 探针文档新增 Playwright 浏览器缺失的复用方案喵~
 - 使用系统 Chrome 的第三次运行在 45 秒内找不到数据库锚点消息，且桌面/手机均为 WebSocket sockets=0、ready=0，确认 Conversation 尚未挂载；测试未进入任何 mutation 喵~
 - 当前新增失败诊断：保存最终 URL、标题、readyState、root 子节点、消息节点、contenteditable/password 输入计数及失败截图，用于区分登录重定向、路由壳和真实白屏，避免仅延长超时喵~
+
+### 2026-09-24：加速续接发布收尾
+- 用户要求“继续，快一点”；复核工作树无目标源码未提交改动，复用 e807f67f62298be73dc92918247de69f4f0d5f69 与已成功 Actions 35985648092，不重建喵~
+- SPA 产物首屏 modulepreload：桌面240→103、HTML41147→29402 bytes；手机36→37；原动态依赖保留 idle 预热喵~
+- 产物目录 D:\Cursor\lobehub-backups\20260924-realtime-sync\revision-e807f67；镜像298277376 bytes，SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c喵~
+- 计划用同源 document-only 响应替换做必要A/B，不新搭代理；完成后独立 deploy-4 备份、Release、单应用部署和无拦截线上复验，当前线上仍为.3喵~

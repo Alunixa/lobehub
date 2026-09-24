@@ -1926,3 +1926,9 @@
 - 统一复跑 `routeChunkPreload.test.ts` 18 项与 `sharedRendererConfig.test.ts` 5 项，共 23/23 通过；仅有仓库既有 `environmentMatchGlobs` 弃用提示喵~
 - 现有 ESLint 10.0.2 对 `routeChunkPreload.ts` 与对应测试检查退出码 0；首次 ESLint 在工具 30 秒窗口后继续运行，确认旧进程退出后使用可等待会话重新执行并取得权威退出码，没有并发保留重复检查进程喵~
 - `git diff --check` 通过，仅提示两份记录文件工作树 CRLF 将按 Git 配置转为 LF；未发现空白错误喵~
+
+### 2026-09-24：加速续接发布收尾
+- 用户要求“继续，快一点”；复核工作树无目标源码未提交改动，复用 e807f67f62298be73dc92918247de69f4f0d5f69 与已成功 Actions 35985648092，不重建喵~
+- SPA 产物首屏 modulepreload：桌面240→103、HTML41147→29402 bytes；手机36→37；原动态依赖保留 idle 预热喵~
+- 产物目录 D:\Cursor\lobehub-backups\20260924-realtime-sync\revision-e807f67；镜像298277376 bytes，SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c喵~
+- 计划用同源 document-only 响应替换做必要A/B，不新搭代理；完成后独立 deploy-4 备份、Release、单应用部署和无拦截线上复验，当前线上仍为.3喵~
