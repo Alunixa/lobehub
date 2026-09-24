@@ -570,3 +570,29 @@
 - Host Executor health 返回 200、success=true、mode=host；启动与最终日志致命模式计数为 0喵~
 - 其他 7 个容器 ID/重启数/状态/镜像与部署前完全一致，Compose/.env/override 哈希一致；未修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6 或 Nginx喵~
 - 首轮 .1 和第二次 .2 尝试均由 guard 自动回滚并完整保留证据；第三次部署已确认，父备份 /mnt/sda1/lobehub-backups/20260923-websocket 继续作为直接回滚入口喵~
+
+## 2026-09-24：真实跨设备消息同步与会话秒开修复
+
+### Current Task
+- 用户确认 `.20260923.2` 仍存在同一会话手机与电脑最新消息不同步，以及本地进入会话长时间等待的问题喵~
+- 本轮修改前检查点为 `c1d37ced5d`；当前只更新项目记录，运行时代码、线上容器与其他服务尚未改变喵~
+
+### Root Cause
+- 当前 `websocketFirstLink` 只把普通 query 经 WebSocket 发送到外层启动器，启动器仍为每条 query 单独请求内部 HTTP tRPC；没有会话订阅、数据库变更广播或跨设备缓存失效事件，因此不能产生实时同步喵~
+- WebSocket-first 截断了原 `httpBatchLink` 的批量读取能力，并增加外层 WebSocket、内部单条 HTTP 与 900ms fallback 路径；本地初始查询也可能比直接 HTTP batch 更慢喵~
+- 当前 IndexedDB provider 在 React 挂载后异步扫描整个 scope；会话 hook 可能先以空内存缓存发起网络请求，现有 hydration 后全局重验证不能保证当前会话缓存优先进入 Conversation store喵~
+
+### Design Decisions
+- 普通 tRPC query 恢复 HTTP batch，WebSocket 只负责持久订阅和轻量 `messages.updated` 通知，不再代理首屏数据读取喵~
+- 消息写入成功后按用户或 workspace 会话作用域发布 Redis 事件，WebSocket 服务端只接受经现有认证解析得到的可信订阅目标，不允许客户端指定任意 Redis channel喵~
+- 客户端收到事件后只刷新当前会话精确 SWR key；本机正在流式生成时避免远端失效刷新覆盖流式内存，终态后再校验喵~
+- 首屏按当前会话 SWR 序列化 key 直接读取 IndexedDB 单键缓存，命中后立即填充 Conversation store，再由 HTTP batch 后台校验；不等待全 scope 扫描喵~
+- 广播节奏为用户消息稳定落库一次、助手终态稳定一次，不按 token/chunk 广播，避免另一设备频繁全量拉取喵~
+
+### Next Steps
+1. 先提交本轮根因与设计记录，再恢复普通 query 的 HTTP batching喵~
+2. 实现认证后的会话订阅、Redis fan-out、断线清理和客户端精确失效喵~
+3. 覆盖普通消息 mutation、编辑、删除、自定义上下文及 Agent Runtime 终态广播喵~
+4. 实现当前会话 IndexedDB 单键快速恢复与生产挂载顺序回归喵~
+5. 运行定向 Vitest、Node 语法、差异检查和 Actions 镜像构建，发布新 Release 后按既有单服务保护流程部署喵~
+6. 最终使用两个独立客户端验证新消息、编辑和删除自动同步，并记录会话首个可见内容的性能结果喵~

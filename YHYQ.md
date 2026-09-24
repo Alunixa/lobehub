@@ -1723,3 +1723,20 @@
 - 已执行 `git diff -- XJ.md`，确认上一轮同步补丁已经真实落盘：顶部 Current Status 已更新为 `.2`，镜像 `ea7da67...`、容器 `3d6ea49...`、回滚入口、Pending Work、Current Task、Next Steps 和 Change Log 均与最终线上状态一致喵~
 - 已通过 GitHub CLI 重新核验：`v2.2.8-codex.20260923.2` 为正式 Release，绑定运行源码 `2ae3466070`，镜像、manifest 和 SHA256SUMS 三项资产仍完整；`.1` 为 prerelease，符合已回滚并由 `.2` 取代的归档状态喵~
 - 已确认远端同名分支仍指向上一记录提交 `55439b1bd0`，本次只提交并推送 `XJ.md` 与 `YHYQ.md` 的最终归档更新，不重新运行测试、构建、发布或部署，也不执行此前被策略拒绝的清理喵~
+
+## 2026-09-24：用户反馈 WebSocket 后仍不同步且会话加载慢
+
+- 用户指出手机和电脑处于同一会话时最新消息不同步，并质疑本地连接进入会话仍需要长时间加载；本轮目标是修复真实的跨设备消息同步、缩短会话进入首屏时间并找出慢点喵~
+- 当前已确认上一版本只把只读 tRPC query 改为 WebSocket 优先、失败回退 HTTP，并没有实现消息变更的服务端主动广播，因此不能满足跨设备同步喵~
+- 本轮先追踪消息 mutation、SWR/Zustand 缓存失效、跨标签页广播、会话详情加载和 WebSocket bridge 边界，建立证据后再修改代码；保留现有未跟踪历史目录和 `问题.txt`，不使用 WSL喵~
+
+## 2026-09-24：上下文续接后的根因确认与实施方案
+
+- 用户要求继续修复跨设备最新消息不同步和本地进入会话仍慢的问题，并提供上一模型的完整上下文交接摘要喵~
+- 已完整读取 `XJ.md`、近期 `YHYQ.md`、Git 状态与相关数据获取、React、Zustand、TypeScript、测试、UX 和性能规范；确认 `XJ.md` 已存在，未创建重复文件喵~
+- 已确认当前分支 `codex/deploy-server-image-20260720`，HEAD 为修改前检查点 `c1d37ced5d`；仅 `YHYQ.md` 有本轮记录变更，历史未跟踪构建/发布目录和 `问题.txt` 保持不动喵~
+- 根因一：现有 WebSocket 只完成 query 传输，服务端没有消息订阅或变更广播，因此手机和电脑不会自动得知同一会话已变化喵~
+- 根因二：WebSocket-first 绕过原 `httpBatchLink`，服务端再把每条 query 单独转为内部 HTTP，且可能等待 900ms 后重复 fallback，首屏读取链路反而更长喵~
+- 根因三：IndexedDB 在 Provider 挂载后全 scope 异步扫描，当前会话可能先空缓存发网请求；hydration 后全局重验证不能保证缓存先进入 Conversation store喵~
+- 已决定恢复 HTTP batch 负责普通读取，WebSocket 改为认证后的会话级通知；消息写入通过 Redis fan-out，客户端只失效对应会话；当前会话缓存按 SWR 单键直接读取并立即显示喵~
+- 下一步先提交本轮记录，再修改运行代码并补定向测试、Actions、Release、保护部署和双客户端真实同步验收喵~
