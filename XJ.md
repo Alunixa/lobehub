@@ -690,3 +690,10 @@
 - `.2` Release 镜像与 manifest 远端 `sha256sum -c` 通过；新镜像 ID `sha256:8fb5d27bd5c336f3677db02ea059a2fc7de25b06137b16f290669d85e26ea368` 喵~
 - 离线验证确认 `/app/node_modules/ioredis` 为 `.pnpm/ioredis@5.11.1/node_modules/ioredis` symlink，真实加载 Next、ioredis、lazy Redis client 与 `/app/realtimeServer.js` 成功，输出 `DEPLOY2_RUNTIME_PROBE_OK` 喵~
 - staging 完成后线上仍为旧容器 `bbc91f4e2317`、旧镜像 `ea7da67e7e83`、running/restart=0/OOM=false；下一步启动 deploy-2 独立 guard 并只重建 LobeHub 喵~
+
+### Deploy-2 Final Confirmation
+- 2026-09-24 16:41 +08:00 只读最终快照确认 `deploy-2` guard PID `7395` 已退出，`guard.log` 记录 `confirmed=2026-09-24 16:36:28 +0800`，确认与稳定标记均存在喵~
+- 当前容器仍为 `065ac2a81e4a3459fbe598d88e83332884f5d1b28571c4a87ec250f5c752c1bb`，镜像 `sha256:8fb5d27bd5c336f3677db02ea059a2fc7de25b06137b16f290669d85e26ea368`，running/restart=0/OOM=false，内部与公开 `/api/version` 均返回 `2.2.8` 喵~
+- Compose、`.env`、override 三项 SHA-256 与部署前完全一致；其他 7 个服务容器 ID 和镜像与部署前完全一致，最近 15 分钟致命日志计数为 0，Redis `PING=PONG` 喵~
+- 两次只读快照包装命令分别因本地 PowerShell 重定向误解析和执行策略拒绝而未执行远端主体；后续改用 Base64 编码脚本成功，首次成功脚本尾部因顶层基线通配未命中返回 1，但已取得的 guard、容器、版本与配置结果有效喵~
+- 修改前检查点为 `de893bc942`；下一步使用两个独立 Playwright context 对同一真实会话执行临时上下文消息新增、编辑、删除自动同步，并记录首次与 IndexedDB 缓存后的消息可见耗时，凭据仅走内存且临时消息必须在 `finally` 清理喵~
