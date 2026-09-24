@@ -1893,3 +1893,17 @@
 - 首轮仍在 mutation 前停止，因为选作锚点的数据库历史消息不在虚拟列表当前挂载范围；桌面实际显示3个消息节点、手机显示1个，截图目视确认会话正文和输入区已正常显示喵~
 - 更重要的实测异常是同一冷加载桌面创建14个实时WebSocket并关闭13个，手机创建20个并关闭19个；源码定位为 `MessageRealtimeSync` effect依赖整个context对象，父组件因消息载入重渲染时相同会话也会反复退订、关闭和重建连接喵~
 - 已建立修复前检查点 `9a1d5e1136`；正在把订阅依赖改为稳定会话坐标，并补相同语义context不重连、坐标改变才换订阅的回归；验收脚本改为从两端当前共同可见消息动态选锚点喵~
+
+## 2026-09-24：实时同步 `.3` 部署与验收收尾
+
+- 用户本轮要求继续解决同一会话手机与电脑最新消息不同步，以及本地进入会话仍长时间等待的问题，并授权自行排查、修复和部署喵~
+- 续接后完整读取 `XJ.md`、近期 `YHYQ.md`、Git 状态与项目记忆；确认 HEAD 为 `5faeb5764b`，工作区只保留任务开始前已有的未跟踪构建目录和 `问题.txt`，未删除或暂存这些文件喵~
+- 只读检查远端 `/mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3`：guard PID `3118` 已退出，`guard.log` 记录 `confirmed=2026-09-24 17:42:14 +0800`，当前容器 `2d0b60553e37` 使用镜像 `6527f1f9a003`，running/restart=0/OOM=false喵~
+- 核对 GitHub Actions 最终状态：镜像 `35980049734`、消息专项 `35980049662`、手机专项 `35980049655` 成功；Test CI `35980049666` 与 E2E `35980049652` 最终为 failure，不宣称全仓全绿喵~
+- Test CI 成功项为 Packages、Server 两分片、Desktop 和 Server Coverage；失败边界为 App 两分片中的 OIDC、用户初始化、Agent selector、Host Executor 无测试套件、ComfyUI、settings selector，以及 Database lint 的 1597 errors / 261 warnings喵~
+- E2E 最终为 82 scenarios 中 81 通过、491 steps 中 490 通过，唯一失败是关闭流式自动滚动后视口距离断言，期望大于 320、实际为 0喵~
+- 更新 GitHub Release `v2.2.8-codex.20260924.3` 说明，将部署状态从 pending 改为 completed，补充新容器、guard 退出、14/20 到每端 2 个 WebSocket 的对比、冷暖加载、增改删同步、数据库残留 0、资产校验与全仓 CI 边界喵~
+- 最终 Release 说明保存于 `D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-3\release-notes-final.md`；远端 Release 复核为正式发布、标签指向 `5faeb5764b`、正文包含完成标记且不再包含 pending喵~
+- 当前真实双端结果：新增 mutation 236ms，桌面/手机 404/403ms 可见；编辑 mutation 127ms，两端 248ms 可见；删除 mutation 131ms，两端 259ms 消失；临时消息清理完成且数据库残留 0喵~
+- 当前加载结果仍为桌面冷/暖 14415/10965ms、手机冷/暖 11598/9604ms；订阅抖动和跨设备同步已修复，但会话首屏仍未达到“秒开”，下一阶段需只读拆解 Network、tRPC 与 React 挂载耗时喵~
+- 第一次同时修改 `XJ.md` 与空的 `YHYQ.md` patch hunk 因 apply_patch 校验失败而整体未执行；随后去掉无内容 hunk，成功更新 `XJ.md` 的当前状态、测试、部署、回滚、待办和变更日志喵~
