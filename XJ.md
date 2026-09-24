@@ -12,6 +12,13 @@
 - 2026-09-19：修复复制对话/子话题图片丢失、子话题关闭/调整大小、Shift+Enter 等误跳转、手机搜索完整列表和所有输入框非主动唤起键盘；完成后自行部署。
 
 ## 3. Current Status
+- **当前生产为v2.2.8-codex.20260924.4**：运行源码e807f67f62298be73dc92918247de69f4f0d5f69，Actions35985648092成功，18:36:30 UTC+8确认deploy-4保护部署喵~
+- 当前容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
+- 最新无拦截线上电脑冷/暖4904/2788ms、手机模拟浏览器3293/2078ms，两端runtime errors=0、冷暖实时订阅ready正常；桌面首屏预加载240→103，正文与输入区截图已目视验证喵~
+- 同轮旧版桌面4896/3282ms；冷加载基本持平，暖加载改善约15%，主线程长任务冷/暖1958/1656→1536/1082ms；总脚本仍360，性能部分改善但不能称秒开喵~
+- 内部/公开版本、Host Executor、Redis、订阅认证拒绝、日志通过，其他七服务ID/镜像及配置哈希不变；回滚入口 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh 喵~
+- 正式Release三资产来自同源Actions，最终说明/manifest位于 D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-4，真实浏览器报告位于load-profile-4/live与live-mobile喵~
+- **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
 - **当前已发布并部署：`v2.2.8-codex.20260924.3`**，运行源码 `5faeb5764b4ae0f307e7636cc52a5e1855842182`；权威镜像 Actions `35980049734`、消息专项 `35980049662`、手机专项 `35980049655` 均成功，Release 三项资产 digest 与本地一致喵~
 - 当前镜像 `sha256:6527f1f9a00343cd3d74b0b1b35c0e57b58e2a6aa76197e20546f5d23b786088`，容器 `2d0b60553e37e85dad50387fb7ba0332da651ef50ae2a61554524e7f7e73bc64`；2026-09-24 17:38:18（UTC+8）启动，running/restart=0/OOM=false喵~
 - `deploy-3` 确认标记于 17:40:41 写入，guard 于 17:42:14 记录 `confirmed` 并退出；内部/公开版本、Redis、日志、配置和其他 7 个服务检查正常喵~
@@ -156,6 +163,7 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
+- 最新状态覆盖下列旧待办：e807性能修复已完成Actions、Release、deploy-4与双端只读上线验收；加载仍需进一步优化（电脑冷4.9s/暖2.8s），不重复构建发布本候选喵~
 - 会话进入速度仍未达到用户预期：无请求拦截的桌面真实冷/暖首条消息为 6253/3798ms；已定位 `desktop-chat-launch` 递归动态导入预加载导致 240 个 `modulepreload` 和 360 个冷加载脚本，当前最小修复尚未测试、构建、发布或部署喵~
 - 全仓 App、Database lint 和关闭流式自动滚动 E2E 的既有失败尚未处理；与本轮实时同步修复分开跟踪，不把它们误记为本轮回归喵~
 - 本轮 `D:\Cursor\lobehub-backups\20260923-websocket\revision-api-2ae\artifact.zip` 与空目录 `revision-image-2ae` 的精确删除仍被执行策略拒绝；未绕过。最终镜像tar、生产证据、数据库、配置和旧镜像回滚包必须保留。
@@ -192,6 +200,7 @@
 - 只包装 HTMLElement.focus 会遗漏 Lexical 原生 Selection 聚焦；加入 focusin 兜底后通过真实浏览器。直接 label 的原生默认动作晚于 click 微任务，需要单独延迟清理许可。
 
 ## 18. Rollback and Recovery
+- **最新.4回滚**：sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh，恢复.3镜像6527f1f9a003，只回滚应用不覆盖数据库；deploy-4不可重复执行喵~
 - **最新 `.20260924.3` 回滚**：远端执行 `sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3/rollback.sh`，恢复 deploy-3 前稳定镜像并只重建 LobeHub 应用；数据库快照与旧镜像均保留喵~
 - `.3` 部署已确认且 guard 已退出，不要重新执行 deploy-3；回滚后需检查内部/公开版本、日志、restart count、Redis 和其他 7 服务不变喵~
 - **最新WebSocket优化部署回滚**：远端执行 `sh /mnt/sda1/lobehub-backups/20260923-websocket/rollback.sh`，恢复 `sha256:b3d69ff6973abe571002259dd210b95b10af599d2bebb18b33c2d22dc5d3e4f5`，仅重建LobeHub应用；本轮无schema变化，不默认恢复数据库dump。
@@ -207,6 +216,7 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
+- 最新任务结果：.4已实际部署并确认，正在完成Release最终说明/校验资产与项目记录收尾；下列未提交/待构建状态均为历史过程喵~
 - 跨设备实时消息不同步已完成修复、发布、部署与真实双端验收，当前生产版本为 `v2.2.8-codex.20260924.3` 喵~
 - 当前剩余业务问题是进入会话仍慢：无请求拦截的桌面冷/暖首条消息为 6253/3798ms，消息 API 本身仅约 362/52ms，瓶颈位于请求发起前的 SPA 资源与主线程解析喵~
 - `desktop-chat-launch` 已改为首屏 `includeDynamicImports: false`，并新增独立 idle 动态预热组；首轮 22/23 暴露的边界已修正，统一复跑 23/23、ESLint 与差异检查通过，尚待提交、推送、构建、发布或部署喵~
@@ -275,6 +285,7 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
+- 最新下一步：核对deploy-4 guard确认退出并归档；如继续性能优化，应研究初始依赖/初始化串行与空闲预热总量，而非重复改WS；下列步骤为已完成历史计划喵~
 0. 不重复部署 `.3` 或重复生产写入验收，保留 `release-published-3`、`revision-5faeb576`、`live-realtime-release-3` 和远端 `deploy-3` 证据喵~
 1. 运行 `routeChunkPreload` 与 `sharedRendererConfig` 定向 Vitest、现有 ESLint 10.0.2 和 `git diff --check`，只显式提交两个源码文件及两份记录文件喵~
 2. 推送后由 GitHub Actions 构建同源服务器镜像和 SPA artifact，先检查新 `desktop.html` 的 `modulepreload` 数量显著低于 240，并确认手机入口没有回归喵~
@@ -766,3 +777,12 @@
 - 18:34:59 UTC+8启动240秒guard，18:35:12内部健康通过；新容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
 - 当前正在无请求拦截的桌面/手机线上冷暖加载与订阅验收；尚未确认guard，回滚入口为 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh喵~
 - 全仓35985593040仍App/Database失败，Packages/Desktop/Server两分片成功；E2E35985593136失败，不声称全仓通过喵~
+
+### 2026-09-24：.4部署确认与真实双端加载完成
+- **当前生产为v2.2.8-codex.20260924.4**：运行源码e807f67f62298be73dc92918247de69f4f0d5f69，Actions35985648092成功，18:36:30 UTC+8确认deploy-4保护部署喵~
+- 当前容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
+- 最新无拦截线上电脑冷/暖4904/2788ms、手机模拟浏览器3293/2078ms，两端runtime errors=0、冷暖实时订阅ready正常；桌面首屏预加载240→103，正文与输入区截图已目视验证喵~
+- 同轮旧版桌面4896/3282ms；冷加载基本持平，暖加载改善约15%，主线程长任务冷/暖1958/1656→1536/1082ms；总脚本仍360，性能部分改善但不能称秒开喵~
+- 内部/公开版本、Host Executor、Redis、订阅认证拒绝、日志通过，其他七服务ID/镜像及配置哈希不变；回滚入口 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh 喵~
+- 正式Release三资产来自同源Actions，最终说明/manifest位于 D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-4，真实浏览器报告位于load-profile-4/live与live-mobile喵~
+- **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~

@@ -1944,3 +1944,12 @@
 - 18:34:59 UTC+8启动240秒guard，18:35:12内部健康通过；新容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
 - 当前正在无请求拦截的桌面/手机线上冷暖加载与订阅验收；尚未确认guard，回滚入口为 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh喵~
 - 全仓35985593040仍App/Database失败，Packages/Desktop/Server两分片成功；E2E35985593136失败，不声称全仓通过喵~
+
+## 2026-09-24：.4部署确认与收尾
+- **当前生产为v2.2.8-codex.20260924.4**：运行源码e807f67f62298be73dc92918247de69f4f0d5f69，Actions35985648092成功，18:36:30 UTC+8确认deploy-4保护部署喵~
+- 当前容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
+- 最新无拦截线上电脑冷/暖4904/2788ms、手机模拟浏览器3293/2078ms，两端runtime errors=0、冷暖实时订阅ready正常；桌面首屏预加载240→103，正文与输入区截图已目视验证喵~
+- 同轮旧版桌面4896/3282ms；冷加载基本持平，暖加载改善约15%，主线程长任务冷/暖1958/1656→1536/1082ms；总脚本仍360，性能部分改善但不能称秒开喵~
+- 内部/公开版本、Host Executor、Redis、订阅认证拒绝、日志通过，其他七服务ID/镜像及配置哈希不变；回滚入口 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh 喵~
+- 正式Release三资产来自同源Actions，最终说明/manifest位于 D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-4，真实浏览器报告位于load-profile-4/live与live-mobile喵~
+- **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
