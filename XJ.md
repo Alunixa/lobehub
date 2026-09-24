@@ -651,3 +651,9 @@
 - 首次 `pg_dump` 因 PostgreSQL 容器没有预期的 `POSTGRES_USER/POSTGRES_DB` 而尝试不存在的 root 角色；随后只从 LobeHub 的 `DATABASE_URL` 解析用户名和库名、不输出密码，备份成功喵~
 - 续跑脚本末尾的只读 `docker inspect` 因 PowerShell stdin 追加回车而把容器名识别为 `lobehub\r`；独立命令随后确认旧容器仍为 `3d6ea49a564c`、running/restart=0/OOM=false，版本接口正常，服务从未重建喵~
 - 下一步上传 Release 三项资产、远端校验并离线加载/探测新镜像；服务替换只在 guard 启动后执行喵~
+
+### Image Staging
+- Release 三项资产已上传远端 `release` 目录，`SHA256SUMS` 对镜像和 manifest 校验通过；新镜像已导入为 `lobehub/lobehub:codex-f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`，镜像 ID `sha256:2e84ffa13a8d86712d9ba227199e2a6ab28d64775a8d0fe2bb0e53a54798e7a2` 喵~
+- 首次离线探针错误检查 `/app/scripts/serverLauncher/realtimeServer.js`，而 Dockerfile 实际复制到 `/app/realtimeServer.js`；该失败只发生在临时 `docker run --rm`，运行服务未变化喵~
+- 随后的内联更正命令在本地 PowerShell 解析 Node `for` 语句时失败，未执行远端命令；改用 LF 脚本后确认 `/app/realtimeServer.js`、`/app/startServer.js` 存在，`next`、`ws`、`ioredis` 可解析，`RUNTIME_PROBE_OK` 喵~
+- 镜像导入和探针完成后旧线上容器仍为 `3d6ea49a564c`、旧镜像 `ea7da67e7e83`、running/restart=0/OOM=false；下一步启动 guard 并仅重建 LobeHub 喵~

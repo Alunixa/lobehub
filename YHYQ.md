@@ -1796,3 +1796,11 @@
 - 首次数据库导出因容器未提供预期 `POSTGRES_USER/POSTGRES_DB` 而默认使用不存在的 root 角色失败；改为从应用已有 `DATABASE_URL` 只解析用户名与库名后成功，没有输出密码喵~
 - 续跑脚本最后的只读 `docker inspect` 因 stdin 尾部回车把容器名识别为 `lobehub\r`；随后独立命令确认线上仍为旧容器 `3d6ea49a564c`、restart=0、OOM=false、版本接口正常，没有重启或替换服务喵~
 - 下一步上传并远端校验正式 Release 资产，离线加载和验证新镜像后再启动保护部署喵~
+
+## 2026-09-24：Release 资产上传与新镜像离线验证
+
+- Release 镜像、manifest 和 SHA256SUMS 已上传远端独立备份目录，远端 `sha256sum -c` 全部通过喵~
+- 新镜像已导入，标签为 `lobehub/lobehub:codex-f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`，镜像 ID `2e84ffa13a8d…`，架构 `amd64`、系统 `linux`、用户 `nextjs`、入口 `/bin/node /app/startServer.js` 喵~
+- 首次离线依赖探针误查 `/app/scripts/serverLauncher/realtimeServer.js` 而失败；Dockerfile 实际路径是 `/app/realtimeServer.js`，只影响临时探针容器，没有重建线上服务喵~
+- 第一次更正命令又在本地 PowerShell 多层引号解析阶段失败，远端未执行；改为上传 LF 脚本后 `next`、`ws`、`ioredis` 与两个启动器文件全部验证通过，输出 `RUNTIME_PROBE_OK` 喵~
+- 验证后线上仍为旧容器 `3d6ea49a564c`、restart=0、OOM=false；下一步启动 240 秒回滚 guard 并只替换 LobeHub 服务喵~
