@@ -216,7 +216,7 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
-- 最新任务结果：.4已实际部署并确认，正在完成Release最终说明/校验资产与项目记录收尾；下列未提交/待构建状态均为历史过程喵~
+- 最新任务结果：.4已实际部署并确认，Release最终说明/校验资产与项目记录已完成归档；下列未提交/待构建状态均为历史过程喵~
 - 跨设备实时消息不同步已完成修复、发布、部署与真实双端验收，当前生产版本为 `v2.2.8-codex.20260924.3` 喵~
 - 当前剩余业务问题是进入会话仍慢：无请求拦截的桌面冷/暖首条消息为 6253/3798ms，消息 API 本身仅约 362/52ms，瓶颈位于请求发起前的 SPA 资源与主线程解析喵~
 - `desktop-chat-launch` 已改为首屏 `includeDynamicImports: false`，并新增独立 idle 动态预热组；首轮 22/23 暴露的边界已修正，统一复跑 23/23、ESLint 与差异检查通过，尚待提交、推送、构建、发布或部署喵~
@@ -285,7 +285,7 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-- 最新下一步：核对deploy-4 guard确认退出并归档；如继续性能优化，应研究初始依赖/初始化串行与空闲预热总量，而非重复改WS；下列步骤为已完成历史计划喵~
+- 最新下一步：deploy-4 guard已记录confirmed并归档；如继续性能优化，应研究初始依赖/初始化串行与空闲预热总量，而非重复改WS；下列步骤为已完成历史计划喵~
 0. 不重复部署 `.3` 或重复生产写入验收，保留 `release-published-3`、`revision-5faeb576`、`live-realtime-release-3` 和远端 `deploy-3` 证据喵~
 1. 运行 `routeChunkPreload` 与 `sharedRendererConfig` 定向 Vitest、现有 ESLint 10.0.2 和 `git diff --check`，只显式提交两个源码文件及两份记录文件喵~
 2. 推送后由 GitHub Actions 构建同源服务器镜像和 SPA artifact，先检查新 `desktop.html` 的 `modulepreload` 数量显著低于 240，并确认手机入口没有回归喵~
@@ -786,3 +786,9 @@
 - 内部/公开版本、Host Executor、Redis、订阅认证拒绝、日志通过，其他七服务ID/镜像及配置哈希不变；回滚入口 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh 喵~
 - 正式Release三资产来自同源Actions，最终说明/manifest位于 D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-4，真实浏览器报告位于load-profile-4/live与live-mobile喵~
 - **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
+
+### 2026-09-24：.4最终归档完成
+- 18:38:59 UTC+8 guard记录confirmed，超过240秒窗口后应用仍running/restart=0/OOM=false，未回滚喵~
+- Release最终说明、manifest和SHA256SUMS已更新并远端复核一致；manifest SHA25638e4edbd9299af9aafb0c2b5aed383ef43a80d6b97477420f8fe7c832e07da79，清单SHA2562e802293d97269fae0b6daa510b101d03a562696ecf9d2cf4c15e323afcb7d2e喵~
+- 已用原生PowerShell在绝对路径边界检查后删除revision-e807f67内两个冗余下载ZIP；最终镜像、SPA、测试报告、所有远端备份和回滚文件保留，历史目录未动喵~
+- 本轮发布部署交付结束；性能仅部分改善，桌面冷4.90s/暖2.79s、手机冷3.29s/暖2.08s，不能宣称秒开；运行源码仍e807，后续本地提交仅记录不需重建喵~

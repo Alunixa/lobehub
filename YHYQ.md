@@ -1953,3 +1953,9 @@
 - 内部/公开版本、Host Executor、Redis、订阅认证拒绝、日志通过，其他七服务ID/镜像及配置哈希不变；回滚入口 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh 喵~
 - 正式Release三资产来自同源Actions，最终说明/manifest位于 D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-4，真实浏览器报告位于load-profile-4/live与live-mobile喵~
 - **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
+
+### 2026-09-24：.4最终归档完成
+- 18:38:59 UTC+8 guard记录confirmed，超过240秒窗口后应用仍running/restart=0/OOM=false，未回滚喵~
+- Release最终说明、manifest和SHA256SUMS已更新并远端复核一致；manifest SHA25638e4edbd9299af9aafb0c2b5aed383ef43a80d6b97477420f8fe7c832e07da79，清单SHA2562e802293d97269fae0b6daa510b101d03a562696ecf9d2cf4c15e323afcb7d2e喵~
+- 已用原生PowerShell在绝对路径边界检查后删除revision-e807f67内两个冗余下载ZIP；最终镜像、SPA、测试报告、所有远端备份和回滚文件保留，历史目录未动喵~
+- 本轮发布部署交付结束；性能仅部分改善，桌面冷4.90s/暖2.79s、手机冷3.29s/暖2.08s，不能宣称秒开；运行源码仍e807，后续本地提交仅记录不需重建喵~
