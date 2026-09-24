@@ -643,3 +643,11 @@
 - PostgreSQL、Redis、RustFS、SearXNG、设备网关、Onlyboxes 与 `linuxytd` 容器均保持原 ID；Compose、`.env`、override SHA-256 分别为 `fdaca5c7...378e`、`fe096d3b...9f8c`、`e6786a2f...f047f` 喵~
 - Host Executor 按实际 `HOST_EXECUTOR_BASE_URL` 只读复测返回 `success=true, mode=host`；最初固定探测 `127.0.0.1:3211` 未命中及两次远端 shell 引号/换行提示均未修改任何服务喵~
 - 下一步在 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 建立新独立备份、回滚脚本与 240 秒 guard，只重建 LobeHub 服务喵~
+
+### Deployment Backup
+- 新独立备份目录 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 已创建，旧镜像 tar 约 988.6 MB / SHA-256 `b72e9694d36060a5bece763c6a5bc43734c143b944362bd04944349725777902` 喵~
+- 数据库备份约 43.7 MB / SHA-256 `b5302bb9eb87f33ac710bf44859cd0e4ed9578cd64ca41da635d940c03f087f9`，配置归档 SHA-256 `b882f6278ac6751d7d98ca626a950c01f885bda99674e55f85ab2d75d9d04f7c` 喵~
+- 已创建 `rollback.sh` 和等待 240 秒的 `guard.sh`，回滚只将旧镜像恢复为 `lobehub/lobehub:latest` 并使用 `docker compose up -d --no-deps --force-recreate lobehub` 重建应用喵~
+- 首次 `pg_dump` 因 PostgreSQL 容器没有预期的 `POSTGRES_USER/POSTGRES_DB` 而尝试不存在的 root 角色；随后只从 LobeHub 的 `DATABASE_URL` 解析用户名和库名、不输出密码，备份成功喵~
+- 续跑脚本末尾的只读 `docker inspect` 因 PowerShell stdin 追加回车而把容器名识别为 `lobehub\r`；独立命令随后确认旧容器仍为 `3d6ea49a564c`、running/restart=0/OOM=false，版本接口正常，服务从未重建喵~
+- 下一步上传 Release 三项资产、远端校验并离线加载/探测新镜像；服务替换只在 guard 启动后执行喵~

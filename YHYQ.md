@@ -1787,3 +1787,12 @@
 - 三项配置哈希未变，近 30 分钟致命日志计数为 0；Host Executor 使用容器实际 Base URL 复测返回 `success=true, mode=host` 喵~
 - 第一次 Host Executor 固定访问 `127.0.0.1:3211` 未命中，后续读取实际地址后通过；两次远端 shell 的 CRLF/变量表达式提示只影响探针脚本结尾，未改配置或服务喵~
 - 下一步在新的 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 保存旧镜像、数据库、配置和容器基线，创建回滚脚本与 240 秒 guard 后仅替换 LobeHub 服务喵~
+
+## 2026-09-24：独立生产备份完成
+
+- 已创建 `/mnt/sda1/lobehub-backups/20260924-realtime-sync`，保存旧镜像、数据库、Compose/`.env`/override 配置归档、容器基线和配置哈希喵~
+- 旧镜像 tar 约 988.6 MB / SHA-256 `b72e9694d36060a5bece763c6a5bc43734c143b944362bd04944349725777902`，数据库约 43.7 MB / `b5302bb9eb87f33ac710bf44859cd0e4ed9578cd64ca41da635d940c03f087f9`，配置归档 `b882f6278ac6751d7d98ca626a950c01f885bda99674e55f85ab2d75d9d04f7c` 喵~
+- 已生成只重建 LobeHub 的 `rollback.sh` 和 240 秒未确认自动回滚的 `guard.sh`，备份文件权限已收紧喵~
+- 首次数据库导出因容器未提供预期 `POSTGRES_USER/POSTGRES_DB` 而默认使用不存在的 root 角色失败；改为从应用已有 `DATABASE_URL` 只解析用户名与库名后成功，没有输出密码喵~
+- 续跑脚本最后的只读 `docker inspect` 因 stdin 尾部回车把容器名识别为 `lobehub\r`；随后独立命令确认线上仍为旧容器 `3d6ea49a564c`、restart=0、OOM=false、版本接口正常，没有重启或替换服务喵~
+- 下一步上传并远端校验正式 Release 资产，离线加载和验证新镜像后再启动保护部署喵~
