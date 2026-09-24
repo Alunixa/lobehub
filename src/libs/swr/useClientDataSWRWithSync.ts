@@ -9,16 +9,16 @@
  * SWR key — consumers never need to opt in per call.
  */
 
-import { useEffect, useMemo, useRef } from 'react';
-import { type SWRConfiguration, type SWRResponse, unstable_serialize, useSWRConfig } from 'swr';
+import { useEffect, useRef, useState } from 'react';
+import { type SWRConfiguration, type SWRResponse, unstable_serialize } from 'swr';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 
 import { augmentKey } from './augmentKey';
+import { useClientDataSWR } from './index';
 import { buildLocalDataKey, localDataCache } from './localDataCache';
 import { SWR_CACHE_VERSION } from './localStorageProvider';
 import { useCacheScope } from './useCacheScope';
-import { useClientDataSWR } from './index';
 
 type Key = string | readonly unknown[] | null | undefined;
 
@@ -67,13 +67,26 @@ export function useClientDataSWRWithSync<T>(
   const hasSyncedRef = useRef(false);
   const workspaceId = useActiveWorkspaceId();
   const scope = useCacheScope();
-  const { cache, mutate: scopedMutate } = useSWRConfig();
   const augmentedKey = augmentKey(key, workspaceId);
   const serializedKey = key ? unstable_serialize(augmentedKey as any) : '';
-  const stableAugmentedKey = useMemo(() => augmentedKey, [serializedKey]);
+  const [localHydration, setLocalHydration] = useState<{
+    data?: T;
+    key: string;
+    ready: boolean;
+  }>(() => ({ key: serializedKey, ready: !hydrateFromIndexedDB }));
+  const isLocalHydrationReady =
+    !hydrateFromIndexedDB ||
+    !serializedKey ||
+    (localHydration.key === serializedKey && localHydration.ready);
+  const hydratedData =
+    localHydration.key === serializedKey ? localHydration.data : undefined;
+  const effectiveKey = isLocalHydrationReady ? key : null;
 
-  const response = useClientDataSWR<T>(key, fetcher, {
+  const response = useClientDataSWR<T>(effectiveKey, isLocalHydrationReady ? fetcher : null, {
     ...swrOptions,
+    ...(hydratedData !== undefined && swrOptions.fallbackData === undefined
+      ? { fallbackData: hydratedData }
+      : {}),
     onSuccess: (data, key, config) => {
       // Call original onSuccess
       onSuccess?.(data, key, config);
@@ -85,41 +98,33 @@ export function useClientDataSWRWithSync<T>(
     },
   });
 
-  const { data } = response;
-
   useEffect(() => {
-    if (!hydrateFromIndexedDB || !serializedKey || data !== undefined) return;
+    if (!hydrateFromIndexedDB || !serializedKey) return;
 
     let cancelled = false;
     void (async () => {
-      const memoryState = cache.get(serializedKey) as { data?: T } | undefined;
-      if (memoryState?.data !== undefined) return;
-
       const row = await localDataCache.getEntry<{ data?: T }>(
         buildLocalDataKey(scope, serializedKey),
       );
-      if (cancelled || row?.version !== SWR_CACHE_VERSION || row.data?.data === undefined) return;
+      if (cancelled) return;
 
-      // A network response may have populated the cache while IndexedDB was
-      // being read. Never let the stale local snapshot overwrite it.
-      const latestMemoryState = cache.get(serializedKey) as { data?: T } | undefined;
-      if (latestMemoryState?.data !== undefined) return;
-
-      await scopedMutate(stableAugmentedKey as any, row.data.data, { revalidate: false });
+      setLocalHydration({
+        data: row?.version === SWR_CACHE_VERSION ? row.data?.data : undefined,
+        key: serializedKey,
+        ready: true,
+      });
     })();
 
     return () => {
       cancelled = true;
     };
   }, [
-    cache,
-    data,
     hydrateFromIndexedDB,
     scope,
-    scopedMutate,
     serializedKey,
-    stableAugmentedKey,
   ]);
+
+  const { data } = response;
 
   // When cached data is available, sync to store immediately
   useEffect(() => {

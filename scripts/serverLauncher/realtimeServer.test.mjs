@@ -1,9 +1,11 @@
+import { EventEmitter } from 'node:events';
 import { createRequire } from 'node:module';
 
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { createBridgeError, toWebSocketResponse } = require('./realtimeServer.js');
+const { createBridgeError, createRedisMessageBroker, toWebSocketResponse } =
+  require('./realtimeServer.js');
 
 describe('realtime tRPC bridge envelopes', () => {
   it('converts an HTTP success envelope into a WebSocket data envelope', () => {
@@ -84,5 +86,52 @@ describe('realtime tRPC bridge envelopes', () => {
       }),
     );
     expect(response.error.json).toBeUndefined();
+  });
+});
+
+describe('Redis message broker', () => {
+  it('shares one Redis subscription and releases it after the last listener', async () => {
+    class FakeRedis extends EventEmitter {
+      status = 'wait';
+      connect = vi.fn(async () => {
+        this.status = 'ready';
+      });
+      disconnect = vi.fn(() => {
+        this.status = 'end';
+      });
+      quit = vi.fn(async () => {
+        this.status = 'end';
+      });
+      subscribe = vi.fn(async () => {});
+      unsubscribe = vi.fn(async () => {});
+    }
+
+    const instances = [];
+    const RedisClass = class extends FakeRedis {
+      constructor() {
+        super();
+        instances.push(this);
+      }
+    };
+    const broker = createRedisMessageBroker({ RedisClass, redisUrl: 'redis://test' });
+    const first = vi.fn();
+    const second = vi.fn();
+    const [disposeFirst, disposeSecond] = await Promise.all([
+      broker.subscribe('channel-1', first),
+      broker.subscribe('channel-1', second),
+    ]);
+    const redis = instances[0];
+
+    expect(redis.connect).toHaveBeenCalledTimes(1);
+    expect(redis.subscribe).toHaveBeenCalledTimes(1);
+    redis.emit('message', 'channel-1', 'payload');
+    expect(first).toHaveBeenCalledWith('payload');
+    expect(second).toHaveBeenCalledWith('payload');
+
+    await disposeFirst();
+    expect(redis.unsubscribe).not.toHaveBeenCalled();
+    await disposeSecond();
+    expect(redis.unsubscribe).toHaveBeenCalledWith('channel-1');
+    await broker.close();
   });
 });

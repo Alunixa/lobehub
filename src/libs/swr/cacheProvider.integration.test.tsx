@@ -8,11 +8,12 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import type { PropsWithChildren } from 'react';
 import { createElement } from 'react';
-import useSWR, { type Cache, SWRConfig } from 'swr';
-import { afterEach, describe, expect, it } from 'vitest';
+import useSWR, { type Cache, SWRConfig, unstable_serialize } from 'swr';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { localDataCache } from './localDataCache';
-import { createCacheProvider } from './localStorageProvider';
+import { buildLocalDataKey, localDataCache } from './localDataCache';
+import { createCacheProvider, SWR_CACHE_VERSION } from './localStorageProvider';
+import { useClientDataSWRWithSync } from './useClientDataSWRWithSync';
 
 const SCOPE = 'integration-scope';
 
@@ -42,7 +43,9 @@ const wrapper =
 
 describe('local-first cache chain (SWR + tiered provider + IndexedDB)', () => {
   afterEach(async () => {
+    vi.restoreAllMocks();
     await localDataCache.clearScope(SCOPE);
+    await localDataCache.clearScope('anon:personal');
   });
 
   it('persists fetched data to IndexedDB and serves it locally on reload', async () => {
@@ -84,5 +87,52 @@ describe('local-first cache chain (SWR + tiered provider + IndexedDB)', () => {
     const serverV2 = [{ id: 'm1', text: 'revalidated' }];
     resolveSlow!(serverV2);
     await waitFor(() => expect(r2.result.current.data).toEqual(serverV2));
+  });
+
+  it('hydrates the active message key before full-scope IndexedDB scanning finishes', async () => {
+    const scope = 'anon:personal';
+    const key = ['message:list', { agentId: 'agent-1', topicId: 'topic-1' }, 1] as const;
+    const serializedKey = unstable_serialize(key);
+    const cachedMessages = [{ id: 'cached-message', text: 'cached' }];
+    await localDataCache.set(
+      buildLocalDataKey(scope, serializedKey),
+      { data: cachedMessages },
+      SWR_CACHE_VERSION,
+    );
+
+    let releaseFullHydration: (value: []) => void;
+    const blockedFullHydration = new Promise<[]>((resolve) => {
+      releaseFullHydration = resolve;
+    });
+    vi.spyOn(localDataCache, 'entriesByScope').mockReturnValue(blockedFullHydration);
+
+    const provider = createCacheProvider({
+      getScope: () => scope,
+      idbPatterns: ['message:'],
+      localPatterns: [],
+    });
+    let resolveNetwork: (value: unknown) => void;
+    const network = new Promise((resolve) => {
+      resolveNetwork = resolve;
+    });
+    const onData = vi.fn();
+    const result = renderHook(
+      () =>
+        useClientDataSWRWithSync(key, () => network as Promise<any>, {
+          hydrateFromIndexedDB: true,
+          onData,
+        }),
+      { wrapper: wrapper(provider) },
+    );
+
+    await waitFor(() => expect(result.result.current.data).toEqual(cachedMessages));
+    expect(onData).toHaveBeenCalledWith(cachedMessages);
+
+    const networkMessages = [{ id: 'network-message', text: 'fresh' }];
+    resolveNetwork!(networkMessages);
+    await waitFor(() => expect(result.result.current.data).toEqual(networkMessages));
+
+    releaseFullHydration!([]);
+    result.unmount();
   });
 });

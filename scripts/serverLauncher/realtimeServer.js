@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const http = require('node:http');
 const { spawn } = require('node:child_process');
 const { URL } = require('node:url');
@@ -46,12 +47,12 @@ const createRedisMessageBroker = ({ RedisClass, redisUrl = process.env.REDIS_URL
     lazyConnect: true,
     maxRetriesPerRequest: null,
   });
-  const listeners = new Map();
+  const subscriptions = new Map();
 
   subscriber.on('message', (channel, payload) => {
-    const channelListeners = listeners.get(channel);
-    if (!channelListeners) return;
-    for (const listener of channelListeners) listener(payload);
+    const subscription = subscriptions.get(channel);
+    if (!subscription) return;
+    for (const listener of subscription.listeners) listener(payload);
   });
   subscriber.on('error', (error) => {
     console.error('[Realtime messages] Redis subscriber error:', error.message);
@@ -64,27 +65,33 @@ const createRedisMessageBroker = ({ RedisClass, redisUrl = process.env.REDIS_URL
   return {
     available: true,
     close: async () => {
-      listeners.clear();
+      subscriptions.clear();
       if (subscriber.status === 'end') return;
+      if (subscriber.status === 'wait') {
+        subscriber.disconnect();
+        return;
+      }
       await subscriber.quit().catch(() => subscriber.disconnect());
     },
     subscribe: async (channel, listener) => {
-      let channelListeners = listeners.get(channel);
-      const isFirstListener = !channelListeners;
-      if (!channelListeners) {
-        channelListeners = new Set();
-        listeners.set(channel, channelListeners);
+      let subscription = subscriptions.get(channel);
+      if (!subscription) {
+        subscription = {
+          listeners: new Set(),
+          ready: (async () => {
+            await ensureConnected();
+            await subscriber.subscribe(channel);
+          })(),
+        };
+        subscriptions.set(channel, subscription);
       }
-      channelListeners.add(listener);
+      subscription.listeners.add(listener);
 
       try {
-        if (isFirstListener) {
-          await ensureConnected();
-          await subscriber.subscribe(channel);
-        }
+        await subscription.ready;
       } catch (error) {
-        channelListeners.delete(listener);
-        if (channelListeners.size === 0) listeners.delete(channel);
+        subscription.listeners.delete(listener);
+        if (subscription.listeners.size === 0) subscriptions.delete(channel);
         throw error;
       }
 
@@ -93,12 +100,13 @@ const createRedisMessageBroker = ({ RedisClass, redisUrl = process.env.REDIS_URL
         if (!active) return;
         active = false;
 
-        const currentListeners = listeners.get(channel);
-        if (!currentListeners) return;
-        currentListeners.delete(listener);
-        if (currentListeners.size > 0) return;
+        const currentSubscription = subscriptions.get(channel);
+        if (!currentSubscription) return;
+        currentSubscription.listeners.delete(listener);
+        if (currentSubscription.listeners.size > 0) return;
 
-        listeners.delete(channel);
+        subscriptions.delete(channel);
+        await currentSubscription.ready.catch(() => {});
         await subscriber.unsubscribe(channel).catch(() => {});
       };
     },
@@ -181,7 +189,7 @@ const isAllowedWebSocketOrigin = (request) => {
 };
 
 const isAllowedProcedurePath = (path) =>
-  typeof path === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,255}$/.test(path);
+  typeof path === 'string' && /^[a-z\d][\w.-]{0,255}$/i.test(path);
 
 const createBridgeError = (id, path, message, code = 'BAD_REQUEST', httpStatus = 400) => ({
   id: id ?? null,
@@ -456,7 +464,7 @@ const requestMessageSubscriptionChannels = async ({
     !Array.isArray(channels) ||
     channels.length === 0 ||
     channels.some(
-      (channel) => typeof channel !== 'string' || !/^[A-Za-z0-9:_-]{1,256}$/.test(channel),
+      (channel) => typeof channel !== 'string' || !/^[\w:-]{1,256}$/.test(channel),
     )
   ) {
     return {
@@ -573,6 +581,17 @@ const createRealtimeServer = ({
     maxPayload: MAX_WEBSOCKET_PAYLOAD,
     noServer: true,
   });
+  const heartbeatTimer = setInterval(() => {
+    for (const client of websocketServer.clients) {
+      if (client.isAlive === false) {
+        client.terminate();
+        continue;
+      }
+      client.isAlive = false;
+      client.ping();
+    }
+  }, 30_000);
+  heartbeatTimer.unref?.();
 
   server.on('upgrade', (request, socket, head) => {
     let pathname;
@@ -598,6 +617,10 @@ const createRealtimeServer = ({
   });
 
   websocketServer.on('connection', (client, request) => {
+    client.isAlive = true;
+    client.on('pong', () => {
+      client.isAlive = true;
+    });
     const activeRequests = new Set();
     const messageSubscriptions = new Map();
     const pendingMessageSubscriptions = new Set();
@@ -660,6 +683,7 @@ const createRealtimeServer = ({
       await closeMessageSubscription(subscriptionId);
       pendingMessageSubscriptions.add(subscriptionId);
 
+      const disposers = [];
       try {
         const result = await requestMessageSubscriptionChannels({
           activeRequests,
@@ -685,7 +709,6 @@ const createRealtimeServer = ({
           return;
         }
 
-        const disposers = [];
         for (const channel of result.channels) {
           const dispose = await messageBroker.subscribe(channel, (payload) => {
             let event;
@@ -715,6 +738,7 @@ const createRealtimeServer = ({
         }
       } catch (error) {
         pendingMessageSubscriptions.delete(subscriptionId);
+        await Promise.all(disposers.map((dispose) => dispose().catch(() => {})));
         safeSendJson(client, {
           error: createBridgeError(
             subscriptionId,
@@ -795,6 +819,7 @@ const createRealtimeServer = ({
   });
 
   const close = async () => {
+    clearInterval(heartbeatTimer);
     for (const client of websocketServer.clients) client.close(1001, 'Server shutting down');
     await new Promise((resolve) => {
       server.close(() => resolve());

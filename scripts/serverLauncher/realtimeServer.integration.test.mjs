@@ -1,9 +1,9 @@
 // @vitest-environment node
 
-import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
+import { createRequire } from 'node:module';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const { WebSocket } = require('ws');
@@ -229,6 +229,109 @@ describe('realtime server integration', () => {
     );
     expect(upstreamCalls).toBe(0);
 
+    await closeSocket(socket);
+  });
+
+  it('authenticates message subscriptions and forwards broker invalidations', async () => {
+    const listeners = new Map();
+    const subscribedChannels = [];
+    const messageBroker = {
+      available: true,
+      close: vi.fn(async () => {}),
+      subscribe: vi.fn(async (channel, listener) => {
+        subscribedChannels.push(channel);
+        listeners.set(channel, listener);
+        return async () => listeners.delete(channel);
+      }),
+    };
+    const observed = [];
+
+    internalServer = createServer((request, response) => {
+      if (request.url === '/api/version') {
+        response.writeHead(200);
+        response.end('ok');
+        return;
+      }
+
+      if (request.url?.startsWith('/trpc/lambda/message.getRealtimeSubscription')) {
+        observed.push({ cookie: request.headers.cookie, url: request.url });
+        response.writeHead(200, { 'content-type': 'application/json' });
+        response.end(
+          JSON.stringify({
+            result: {
+              data: {
+                json: {
+                  channels: ['lobe:messages:v1:conversation:test', 'lobe:messages:v1:global:test'],
+                },
+              },
+            },
+          }),
+        );
+        return;
+      }
+
+      response.writeHead(404);
+      response.end();
+    });
+
+    const internalPort = await listen(internalServer);
+    realtimeServer = createRealtimeServer({
+      internalPort,
+      listenHost: '127.0.0.1',
+      messageBroker,
+      publicPort: 0,
+    });
+    const publicPort = await realtimeServer.listen().then(() => realtimeServer.server.address().port);
+    const origin = `http://127.0.0.1:${publicPort}`;
+    const socket = new WebSocket(`ws://127.0.0.1:${publicPort}/api/trpc-ws`, {
+      headers: { cookie: 'session=test-session', origin },
+    });
+    await new Promise((resolve, reject) => {
+      socket.once('open', resolve);
+      socket.once('error', reject);
+    });
+
+    const readyPromise = readWebSocketMessage(socket);
+    socket.send(
+      JSON.stringify({
+        context: { agentId: 'agent-1', topicId: 'topic-1' },
+        subscriptionId: 'subscription-1',
+        type: 'subscribeMessages',
+      }),
+    );
+
+    await expect(readyPromise).resolves.toEqual({
+      subscriptionId: 'subscription-1',
+      type: 'subscription.ready',
+    });
+    expect(subscribedChannels).toEqual([
+      'lobe:messages:v1:conversation:test',
+      'lobe:messages:v1:global:test',
+    ]);
+    expect(observed[0]).toEqual(
+      expect.objectContaining({
+        cookie: 'session=test-session',
+      }),
+    );
+    expect(decodeURIComponent(observed[0].url)).toContain(
+      '"json":{"agentId":"agent-1","topicId":"topic-1"}',
+    );
+
+    const updatePromise = readWebSocketMessage(socket);
+    listeners.get('lobe:messages:v1:conversation:test')(
+      JSON.stringify({ reason: 'edit', timestamp: 123, type: 'messages.updated' }),
+    );
+    await expect(updatePromise).resolves.toEqual({
+      reason: 'edit',
+      subscriptionId: 'subscription-1',
+      timestamp: 123,
+      type: 'messages.updated',
+    });
+
+    socket.send(
+      JSON.stringify({ subscriptionId: 'subscription-1', type: 'unsubscribeMessages' }),
+    );
+    await vi.waitFor(() => expect(listeners.size).toBe(0));
     await closeSocket(socket);
   });
 });

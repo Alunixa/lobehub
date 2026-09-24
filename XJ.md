@@ -606,3 +606,19 @@
 - 新增浏览器消息订阅单例与 `MessageRealtimeSync`，当前会话收到通知后精确 revalidate；流式期间延迟刷新，重连成功后补一次校验喵~
 - IndexedDB 增加版本化单键读取，`useClientDataSWRWithSync` 可在全 scope hydration 前把当前消息键直接注入 SWR；网络已返回时不会被旧缓存覆盖喵~
 - 当前仅完成源码初稿和 `node --check`/`git diff --check`，尚未完成 TypeScript、Vitest、真实 Redis fan-out、生产构建或部署验证喵~
+
+## 2026-09-24：上下文压缩续接与测试修正状态
+
+### Current Status
+- 已从上下文压缩摘要续接，确认核心运行代码已提交到 `3054e7ab47`，线上仍为 `v2.2.8-codex.20260923.2` / 源码 `2ae3466070`，本轮真实订阅与会话单键缓存尚未推送、构建、发布或部署喵~
+- 当前未提交内容只包含启动器并发订阅/心跳修正、缓存竞态修正及对应测试；历史未跟踪构建目录和 `问题.txt` 保持不动，禁止使用 `git add -A` 喵~
+
+### Testing and Verification
+- 缓存首轮测试发现 `mutate(..., { revalidate: false })` 会让 SWR 丢弃已经启动的旧网络响应；实现已改为先读取 IndexedDB 精确单键，再以 `fallbackData` 启动唯一一次 HTTP revalidate，回归随后通过喵~
+- 已有一次合并定向运行通过 8 个文件、111 项测试；后续新增 Redis 同 channel 并发订阅引用计数与流式期间延迟刷新两项测试并分别通过，当前有效覆盖合计 113 项，提交前仍需统一复跑喵~
+- 本轮源码使用现有 `node_modules/.bun/eslint@10.0.2.../eslint/bin/eslint.js` 定向检查为 0 error；`bun run check ... --lint` 因 `node_modules/.bin/eslint` 缺失未执行喵~
+- `bun run check ... --type` 会忽略显式文件并执行全仓 `tsgo --noEmit`，运行约五分钟无输出后已停止，类型检查尚未验证，必须由干净 GitHub Actions 构建继续兜底喵~
+
+### Current Task
+- 下一步只显式暂存本轮测试、竞态修正与两份记录文件并提交检查点，然后统一复跑 113 项定向测试、直接 ESLint、`node --check` 和 `git diff --check` 喵~
+- 验证通过后推送当前分支并触发 `.github/workflows/codex-build-server-image.yml`，仅接受绑定最终源码提交的成功镜像，再进行 Release、独立备份、240 秒保护部署和双客户端真实同步/首屏耗时验收喵~
