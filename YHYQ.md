@@ -2058,3 +2058,10 @@
 - 只读复核线上仍为旧容器 d96f4957b63c…、旧镜像 588aa8cf03d…、running、restart=0、OOM=false，内部 /api/version 返回 2.2.8 喵~
 - deploy-6 的 deployment.started、deployment.confirmed、guard_rollback.started、ollback.completed 均不存在；已检查 guard/rollback 脚本和新镜像引用，准备启动保护部署喵~
 - 下一步：启动 240 秒 guard，只重建 LobeHub；保护窗口内完成版本、容器、Redis、Host Executor、日志、配置和其他服务基线验证后立即写入确认标记喵~
+
+## 2026-09-25T20:04:56.6927385+08:00：deploy-6 保护回滚与 deploy-7 计划
+
+- deploy-6 于新加坡时间 2026-09-25 19:58:53 启动，容器曾切换为新镜像 sha256:9e91be2…、新容器 3a610998…，内部版本探测在启动后恢复正常喵~
+- 健康检查因 .env 的 APP_URL 末尾回车未被清理，curl 拒绝 URL，未写入确认标记；不是应用代码运行探针失败喵~
+- deploy-6 guard 于 20:02:53 启动回滚，20:03:12 完成，当前恢复旧容器  aed2b142b33…、旧镜像 588aa8cf03d…、running/restart=0/OOM=false，版本接口正常喵~
+- 不复用已触发回滚的 deploy-6 guard；下一步建立独立 deploy-7 备份，保留 deploy-6 全部回滚证据，修正 URL CRLF 清理并重新执行单服务保护部署喵~

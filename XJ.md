@@ -1045,3 +1045,10 @@
 - 线上只读基线确认仍为 deploy-5 容器 d96f4957b63c…、旧镜像 588aa8cf03d…、running/restart=0/OOM=false，内部版本接口返回 2.2.8 喵~
 - deploy-6 四个运行标记均不存在，保护脚本确认等待 240 秒后无确认会执行单服务回滚；新镜像引用为 lobehub/lobehub:codex-f198fccf94e2e9475bf04b86a7a82c0eab609251 喵~
 - 当前动作：记录完成后启动 guard 并只重建 LobeHub，数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6、Nginx 和其他容器保持不变喵~
+
+## 2026-09-25：deploy-6 自动回滚及修正方案
+
+- deploy-6 在 19:58:53 启动，完成新镜像切换并启动新容器 3a610998…；容器镜像、平台、用户和入口均与离线探针一致喵~
+- 保护检查脚本因 .env 的 APP_URL 行带有结尾 CR，解析后 URL 被 curl 拒绝；因此未写 deployment.confirmed，guard 按设计于 20:02:53 启动回滚并于 20:03:12 完成喵~
+- 回滚后线上旧容器  aed2b142b33…、旧镜像 588aa8cf03d…、running/restart=0/OOM=false，内部版本接口正常；未修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6、Nginx 或其他服务喵~
+- deploy-6 作为失败尝试保留；下一步创建独立 deploy-7 备份和 guard，所有 URL 变量统一清理 CRLF，先完成健康检查再立即确认保护窗口喵~
