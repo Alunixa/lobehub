@@ -865,3 +865,18 @@
 
 ### Change Log
 - 2026-09-25：完成同源 Actions 构建、产物校验和 `v2.2.8-codex.20260925.1` Release 发布，准备 deploy-5 保护部署喵~
+
+## 2026-09-25：deploy-5 独立生产备份完成
+
+### Current Status
+- 已创建 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5`，保存部署前 LobeHub inspect、全部容器基线、三项配置哈希、配置归档、旧镜像和数据库快照喵~
+- 旧镜像 tar 约 989.7 MB / SHA-256 `9eeaeb54aeb62f43144af4e4b6b4c8d9eb2ba82a14e6b5814cacd17496a48e15`；数据库约 44.2 MB / `0f2592a287dbc188f90f4aac9a27b5aa6ca12fc3adbe8a72676bdcc2a286bd5b`；配置归档 / `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
+- 已生成只恢复旧应用镜像的 `rollback.sh` 与等待 240 秒未确认自动回滚的 `guard.sh`，权限已收紧；guard 尚未启动，当前线上容器仍为 `.20260924.4`，restart=0、OOM=false喵~
+
+### Next Steps
+1. 上传 Release 三资产到 deploy-5 并远端执行 `sha256sum -c` 喵~
+2. 离线加载新镜像，验证标签、平台、用户、入口、Next/ioredis/实时启动器依赖喵~
+3. 启动 guard，仅重建 LobeHub 并完成线上功能验证后写入确认标记喵~
+
+### Change Log
+- 2026-09-25：完成 deploy-5 部署前独立备份，生产尚未切换喵~

@@ -1994,3 +1994,10 @@
 - 移动专项 `36121690184` 成功；Test CI App shard 1 中 `topic/action.test.ts` 52 项与 `thread/action.test.ts` 33 项通过，证明本轮两条标题链路回归正常喵~
 - 全仓失败边界仍是历史 Database lint、OIDC、Agent selector、用户初始化和关闭自动滚动 E2E；E2E 为 81/82 场景、490/491 步骤通过，不把全仓描述为全绿喵~
 - 已发布 `v2.2.8-codex.20260925.1`，标签指向 `215ef9414b`，三项资产来自同源 Actions；下一步 deploy-5 独立备份和保护部署，仅替换 LobeHub 喵~
+
+## 2026-09-25：deploy-5 备份完成
+
+- 只读确认生产仍为 `.20260924.4`，当前容器 running/restart=0/OOM=false，其他七项服务正常，磁盘剩余约 65.5 GB 喵~
+- 新建 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5`，保存旧镜像、数据库、配置归档、应用 inspect、容器与配置基线喵~
+- 旧镜像约 989.7 MB、数据库约 44.2 MB；三项 SHA-256 已记录，并生成独立 `rollback.sh` 与 240 秒 `guard.sh` 喵~
+- guard 尚未启动、线上尚未切换；下一步上传 Release、校验、离线运行探针后才部署喵~
