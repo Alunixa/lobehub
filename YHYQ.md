@@ -2040,3 +2040,9 @@
 - 用户在上下文压缩后要求继续；已重新完整读取 `XJ.md`、近期 `YHYQ.md`、当前四文件差异和 Zustand/TypeScript/测试规范，确认普通话题修复已上线，当前只需完成子话题模型重试与 thread-scoped 消息补丁的提交、Actions、Release、deploy-6 和真实生产验收喵~
 - 复核补丁后增加测试模型 selector 的 `beforeEach` 默认值恢复，避免 401 重试用例的自定义 thread/topic 配置泄漏到后续用例；未改运行逻辑，历史未跟踪目录保持不动喵~
 - 再次对两个目标 TypeScript 文件执行 Prettier，均无需变化；TypeScript 纯语法检查输出 `TYPESCRIPT_SYNTAX_OK`，ESLint 10.0.2 为 0 error，`git diff --check` 通过喵~
+- 修复提交 `f198fccf94e2e9475bf04b86a7a82c0eab609251` 已推送；服务器镜像 Actions `36129420012` 和 Mobile Regression `36129420013` 成功，Test CI App shard 1 中 `thread/action.test.ts` 35/35 通过喵~
+- 全仓 Test CI 仍由既有 Database lint、OIDC、Agent selector、用户初始化、ComfyUI/settings fixture 失败；E2E 仍是既有关闭流式自动滚动断言失败，81/82 场景、490/491 步骤通过，不宣称全仓全绿喵~
+- 同源服务器 artifact ZIP `298292386` bytes / SHA-256 `872db55fb047bf7dd1ffd0d6779cacaf83f448b42a59ed8b44a357e7bfa1ba38`，SPA ZIP `26235593` bytes / `a6bebabf616f93b3d1152895598a3a4bc3d6c09cf729149bf74be87ae3a346c6`，均与 GitHub API digest 一致喵~
+- 解包镜像 tar 为 `298292224` bytes / SHA-256 `dcaa9b0278a930b144ab824296d945474998b83837f2ad25f1ac6e19fd609d25`；生产 SPA 已确认包含 thread 模型失败后重试 topic 模型的标记喵~
+- `v2.2.8-codex.20260925.2` 已发布，标签精确指向 `f198fccf94e2e9475bf04b86a7a82c0eab609251`，Release 说明明确记录 `.1` 修复普通话题、`.2` 修复子话题 401 回退与 thread-scoped 消息喵~
+- 首次只读 SSH 查看 deploy-5 的命令因本地 PowerShell 提前展开远端 `$B` 且 BusyBox `find` 无 `-printf` 而失败，未执行修改；改为 Base64 LF 脚本后确认 deploy-5 guard 已退出、确认标记存在且无回滚喵~
