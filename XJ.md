@@ -12,13 +12,14 @@
 - 2026-09-19：修复复制对话/子话题图片丢失、子话题关闭/调整大小、Shift+Enter 等误跳转、手机搜索完整列表和所有输入框非主动唤起键盘；完成后自行部署。
 
 ## 3. Current Status
-- **当前生产为v2.2.8-codex.20260924.4**：运行源码e807f67f62298be73dc92918247de69f4f0d5f69，Actions35985648092成功，18:36:30 UTC+8确认deploy-4保护部署喵~
-- 当前容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
-- 最新无拦截线上电脑冷/暖4904/2788ms、手机模拟浏览器3293/2078ms，两端runtime errors=0、冷暖实时订阅ready正常；桌面首屏预加载240→103，正文与输入区截图已目视验证喵~
-- 同轮旧版桌面4896/3282ms；冷加载基本持平，暖加载改善约15%，主线程长任务冷/暖1958/1656→1536/1082ms；总脚本仍360，性能部分改善但不能称秒开喵~
-- 内部/公开版本、Host Executor、Redis、订阅认证拒绝、日志通过，其他七服务ID/镜像及配置哈希不变；回滚入口 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh 喵~
-- 正式Release三资产来自同源Actions，最终说明/manifest位于 D:\Cursor\lobehub-backups\20260924-realtime-sync\release-published-4，真实浏览器报告位于load-profile-4/live与live-mobile喵~
-- **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
+- **当前生产为 `v2.2.8-codex.20260925.1`**：运行源码 `215ef9414b5f7c8659f378a05196303baf1f454d`，Actions `36121690343` 成功，deploy-5 于 2026-09-25 18:27:39（UTC+8）写入确认标记喵~
+- 当前容器 `d96f4957b63c2c9691e9547d4829af10b46b70d0cc238b68af1c76c1e4232592`，镜像 `sha256:588aa8cf03d5c8c10c0a8fca23eabd5e77e875f1011d3546cddce4ffb8dfcc8f`，running/restart=0/OOM=false，内部版本为 `2.2.8` 喵~
+- deploy-5 guard PID `1218` 已退出，`guard.log` 于 18:29:52 记录 confirmed；`guard_rollback.started` 与 `rollback.completed` 均不存在，确认未触发回滚喵~
+- 自动命名修复已上线：话题与子话题使用结构化 `{ title }` 生成，空白/异常响应不会再写入空标题，并有首条用户消息与默认标题回退喵~
+- 普通话题真实生产 UI 已观测到 `aiChat.outputJSON` HTTP 200，标题从即时非空回退更新为“自动命名生产验收”并在刷新后持久化；旧脚本仅因错误要求即时回退标题与最终 AI 标题相同而报失败，断言已修正，仍须重跑完整普通话题与子话题闭环喵~
+- 正式 Release 三资产来自同源 Actions；发布归档位于 `D:\Cursor\lobehub-backups\20260925-topic-title\release-published`，当前部署备份与回滚入口位于 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5` 喵~
+- **以下 `.20260924.4` 与 `.3` 条目为历史基线，已由 `.20260925.1` 取代，不再重复部署**喵~
+- 历史 `.20260924.4` 无拦截线上电脑冷/暖为 4904/2788ms、手机模拟浏览器为 3293/2078ms；性能仍仅部分改善，不能称秒开喵~
 - **当前已发布并部署：`v2.2.8-codex.20260924.3`**，运行源码 `5faeb5764b4ae0f307e7636cc52a5e1855842182`；权威镜像 Actions `35980049734`、消息专项 `35980049662`、手机专项 `35980049655` 均成功，Release 三项资产 digest 与本地一致喵~
 - 当前镜像 `sha256:6527f1f9a00343cd3d74b0b1b35c0e57b58e2a6aa76197e20546f5d23b786088`，容器 `2d0b60553e37e85dad50387fb7ba0332da651ef50ae2a61554524e7f7e73bc64`；2026-09-24 17:38:18（UTC+8）启动，running/restart=0/OOM=false喵~
 - `deploy-3` 确认标记于 17:40:41 写入，guard 于 17:42:14 记录 `confirmed` 并退出；内部/公开版本、Redis、日志、配置和其他 7 个服务检查正常喵~
@@ -110,6 +111,8 @@
 - E2E `35453712748`：旧关闭自动滚动断言失败，81/82 场景、490/491 步骤通过；本机全仓类型检查旧 UI/双 React 依赖 213 诊断，不声称全仓全绿。
 
 ## 10. Deployment and Operations
+- 2026-09-25 deploy-5 已仅重建 LobeHub 服务并确认：新容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0、OOM=false；guard 已确认退出且没有回滚标记喵~
+- deploy-5 直接回滚入口为 `sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`；本轮无数据库 schema 变化，不默认回写数据库喵~
 - 2026-09-24 `.3` 最终独立部署目录为 `/mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3`，包含部署前 inspect、容器基线、配置哈希、数据库快照、旧镜像、Release 资产、独立 `rollback.sh` 与 `guard.sh` 喵~
 - `.3` 仅通过 `docker compose up -d --no-deps --force-recreate lobehub` 替换 LobeHub；当前容器 `2d0b60553e37`、镜像 `6527f1f9a003`、restart=0、OOM=false，guard 已确认退出喵~
 - `.3` 直接回滚入口为 `sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3/rollback.sh`；本轮无数据库 schema 变化，不默认回写数据库喵~
@@ -127,6 +130,7 @@
 - 公网入口是HTTPS域名加`:3210`；Nginx的443仅作重定向，但当前外部IPv6到443无法建连，不能依赖该重定向。尚无抓包证据确定是运营商还是其他上游环节阻断。
 
 ## 11. Important Files
+- `.records/reports/20260925-topic-title-production/verify-topic-title.mjs`：真实生产普通话题与子话题自动命名、`outputJSON`、刷新持久化和清理验证脚本喵~
 - `src/features/Conversation/MessageRealtimeSync.tsx`：使用稳定会话坐标维护单一实时订阅，并通过稳定事件回调读取最新完整 context喵~
 - `src/features/Conversation/MessageRealtimeSync.test.tsx`：覆盖相同语义 context 不重连、真实会话坐标变化才更换订阅喵~
 - `tests/mobile-studio/verify-live-realtime.mjs`：双 Playwright context 生产验收，动态选择共同可见锚点，测量冷/暖加载及新增/编辑/删除实时同步喵~
@@ -153,6 +157,7 @@
 - 新 thread 的 `replaceMessages` 必须写原始 `dbMessagesMap` 数据；assistantGroup 的来源规范化为末尾真实子消息。
 
 ## 13. Completed Work
+- 2026-09-25：结构化话题/子话题自动命名、非空回退、定向回归、GitHub Actions、`v2.2.8-codex.20260925.1` Release 与 deploy-5 单服务保护部署已完成喵~
 - 2026-09-24：稳定 `MessageRealtimeSync` 订阅生命周期、完善真实双端验收工具、Actions 构建、`.20260924.3` Release、单服务保护部署及电脑/手机新增编辑删除自动同步验证全部完成喵~
 - 2026-09-24远端UTC+8：会话首屏白屏优化、后台缓存水合、WebSocket-first query/HTTP fallback、只读 bridge 与错误 envelope 修正完成；12项定向测试、Actions镜像、Release、单服务保护部署、外部IPv6 HTTPS/WSS及稳定复查全部通过。
 - 2026-09-21：手机会话高级参数触摸滚动、base-ui兼容及数值宽度修复；本机专项、GitHub Actions构建/272项回归、64场景生产SPA、Release、单服务保护部署与线上10入口验收完成。
@@ -163,6 +168,7 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
+- 自动命名任务只剩收尾验收：重跑修正后的真实生产脚本，完成普通话题与子话题 `outputJSON` 200、非空标题及刷新持久化；目视两张截图，清理所有测试 run 残留，复查生产稳定性并更新 Release Notes/manifest/SHA256SUMS 喵~
 - 最新状态覆盖下列旧待办：e807性能修复已完成Actions、Release、deploy-4与双端只读上线验收；加载仍需进一步优化（电脑冷4.9s/暖2.8s），不重复构建发布本候选喵~
 - 会话进入速度仍未达到用户预期：无请求拦截的桌面真实冷/暖首条消息为 6253/3798ms；已定位 `desktop-chat-launch` 递归动态导入预加载导致 240 个 `modulepreload` 和 360 个冷加载脚本，当前最小修复尚未测试、构建、发布或部署喵~
 - 全仓 App、Database lint 和关闭流式自动滚动 E2E 的既有失败尚未处理；与本轮实时同步修复分开跟踪，不把它们误记为本轮回归喵~
@@ -200,6 +206,7 @@
 - 只包装 HTMLElement.focus 会遗漏 Lexical 原生 Selection 聚焦；加入 focusin 兜底后通过真实浏览器。直接 label 的原生默认动作晚于 click 微任务，需要单独延迟清理许可。
 
 ## 18. Rollback and Recovery
+- **最新 deploy-5 回滚**：`sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`，只恢复 deploy-5 前 `.20260924.4` 应用镜像，不覆盖数据库；当前部署已确认，除非真实验收发现生产回归，否则不要执行喵~
 - **最新.4回滚**：sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh，恢复.3镜像6527f1f9a003，只回滚应用不覆盖数据库；deploy-4不可重复执行喵~
 - **最新 `.20260924.3` 回滚**：远端执行 `sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3/rollback.sh`，恢复 deploy-3 前稳定镜像并只重建 LobeHub 应用；数据库快照与旧镜像均保留喵~
 - `.3` 部署已确认且 guard 已退出，不要重新执行 deploy-3；回滚后需检查内部/公开版本、日志、restart count、Redis 和其他 7 服务不变喵~
@@ -216,11 +223,11 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
-- 最新任务结果：.4已实际部署并确认，Release最终说明/校验资产与项目记录已完成归档；下列未提交/待构建状态均为历史过程喵~
-- 跨设备实时消息不同步已完成修复、发布、部署与真实双端验收，当前生产版本为 `v2.2.8-codex.20260924.3` 喵~
-- 当前剩余业务问题是进入会话仍慢：无请求拦截的桌面冷/暖首条消息为 6253/3798ms，消息 API 本身仅约 362/52ms，瓶颈位于请求发起前的 SPA 资源与主线程解析喵~
-- `desktop-chat-launch` 已改为首屏 `includeDynamicImports: false`，并新增独立 idle 动态预热组；首轮 22/23 暴露的边界已修正，统一复跑 23/23、ESLint 与差异检查通过，尚待提交、推送、构建、发布或部署喵~
-- 下一阶段先验证 modulepreload 数量、脚本数、long task 和首条消息改善，再决定是否发布 `.20260924.4`；不重复 deploy-3 或生产增改删验收，也不改动其他服务喵~
+- 当前任务是完成 `v2.2.8-codex.20260925.1` 自动命名修复的真实生产收尾，不再修改或重新部署已经上线的运行代码喵~
+- deploy-5 当前容器、镜像、版本和 guard 状态已只读复核正常；下一步只重跑已修正验收脚本，验证普通话题与子话题最终非空标题及刷新持久化喵~
+- 验收通过后必须清理所有本轮临时话题/消息/子话题，目视检查 `topic-title.png` 与 `thread-title.png`，再复查其他服务、配置、Redis、Host Executor 和日志不变喵~
+- 最后更新 GitHub Release Notes、`release-manifest.json` 与 `SHA256SUMS`，覆盖上传并核验 digest，然后同步 `XJ.md`、`YHYQ.md` 和最终记录提交喵~
+- 下列性能与 `.20260924.4` 计划均为已完成历史过程，不是本轮当前任务喵~
 ### 本轮过程快照（以下待执行状态已由上方实际结果取代）
 - `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
@@ -285,7 +292,9 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-- 最新下一步：deploy-4 guard已记录confirmed并归档；如继续性能优化，应研究初始依赖/初始化串行与空闲预热总量，而非重复改WS；下列步骤为已完成历史计划喵~
+- 最新下一步：重跑 `.records/reports/20260925-topic-title-production/verify-topic-title.mjs`，要求普通话题与子话题各自出现成功 `aiChat.outputJSON`、最终标题非空且刷新后保持一致喵~
+- 验收后目视截图、查询数据库确认所有测试 run 残留为 0、做一次只读生产稳定性复查，并完成 Release 说明与校验资产归档喵~
+- 自动命名收尾完成后，如继续性能优化，应研究初始依赖/初始化串行与空闲预热总量，而非重复改 WebSocket；下列步骤为历史计划喵~
 0. 不重复部署 `.3` 或重复生产写入验收，保留 `release-published-3`、`revision-5faeb576`、`live-realtime-release-3` 和远端 `deploy-3` 证据喵~
 1. 运行 `routeChunkPreload` 与 `sharedRendererConfig` 定向 Vitest、现有 ESLint 10.0.2 和 `git diff --check`，只显式提交两个源码文件及两份记录文件喵~
 2. 推送后由 GitHub Actions 构建同源服务器镜像和 SPA artifact，先检查新 `desktop.html` 的 `modulepreload` 数量显著低于 240，并确认手机入口没有回归喵~
@@ -295,6 +304,7 @@
 6. 如 3210 间歇超时复发，记录准确时间、截图、客户端 AAAA 与外部 IPv6 探测；本轮没有修改网络，旧间歇性故障根因仍未确认喵~
 
 ## 21. Change Log
+- 2026-09-25 18:57 +08:00：上下文续接后完整读取 899 行 `XJ.md`、近期 `YHYQ.md`、验收脚本与相关技能；只读复核 deploy-5 容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0/OOM=false、内部版本 `2.2.8`，guard 已确认退出且没有回滚标记喵~
 - 2026-09-24：无请求拦截性能探针确认冷/暖首条消息 6253/3798ms，消息 API 仅约 362/52ms；定位桌面聊天路由递归 dynamic imports 生成 240 个 `modulepreload`，当前拆分首屏静态依赖与 idle 动态预热，统一回归 23/23、ESLint 与差异检查通过，尚待 Actions 产物验证与发布喵~
 - 2026-09-24 17:42:14 UTC+8：deploy-3 guard 记录 confirmed 后退出；容器 `2d0b60553e37` 仍 running/restart=0/OOM=false，未触发回滚喵~
 - 2026-09-24：Release `v2.2.8-codex.20260924.3` 说明已从 pending 更新为 completed，补充部署、14/20 到 2/2 连接对比、冷暖加载、增改删同步、清理状态及全仓 CI 边界喵~
