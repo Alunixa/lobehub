@@ -2050,3 +2050,11 @@
 - deploy-6 备份哈希：旧镜像 `aef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172`，数据库 `96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8`，配置归档 `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
 - `.2` Release 三资产已上传 deploy-6，远端镜像与 manifest 校验通过；新镜像 ID 为 `sha256:9e91be2e1251f314f5bd4767a0e91e033fe6f145e5689ab0aead6eb1300e0b1a`，平台 `linux/amd64`、用户 `nextjs`、入口 `/bin/node /app/startServer.js` 喵~
 - 离线容器真实加载 Next、ioredis lazy client 和 `/app/realtimeServer.js`，输出 `DEPLOY6_RUNTIME_PROBE_OK`；staging 后线上仍为原 deploy-5 容器，restart=0、OOM=false，尚未启动 guard 或重建服务喵~
+
+## 2026-09-25T19:57:58.0656913+08:00：继续接管 deploy-6 上线
+
+- 用户继续要求快速完成任务；已重新读取 XJ.md 全文分段、近期 YHYQ.md 和当前 Git 状态喵~
+- 接管检查点提交为 7079068e23，仅包含 XJ.md 与 YHYQ.md，历史未跟踪目录和 问题.txt 未暂存喵~
+- 只读复核线上仍为旧容器 d96f4957b63c…、旧镜像 588aa8cf03d…、running、restart=0、OOM=false，内部 /api/version 返回 2.2.8 喵~
+- deploy-6 的 deployment.started、deployment.confirmed、guard_rollback.started、ollback.completed 均不存在；已检查 guard/rollback 脚本和新镜像引用，准备启动保护部署喵~
+- 下一步：启动 240 秒 guard，只重建 LobeHub；保护窗口内完成版本、容器、Redis、Host Executor、日志、配置和其他服务基线验证后立即写入确认标记喵~

@@ -1038,3 +1038,10 @@
 ### Change Log
 
 - 2026-09-25：同源 Release 镜像已通过远端最终运行探针，进入保护部署阶段喵~
+
+## 2026-09-25：deploy-6 启动前接管复核
+
+- 用户继续要求快速处理；本轮已完整读取项目记忆和近期操作记录，并提交接管检查点 7079068e23，仅记录文件变更被提交喵~
+- 线上只读基线确认仍为 deploy-5 容器 d96f4957b63c…、旧镜像 588aa8cf03d…、running/restart=0/OOM=false，内部版本接口返回 2.2.8 喵~
+- deploy-6 四个运行标记均不存在，保护脚本确认等待 240 秒后无确认会执行单服务回滚；新镜像引用为 lobehub/lobehub:codex-f198fccf94e2e9475bf04b86a7a82c0eab609251 喵~
+- 当前动作：记录完成后启动 guard 并只重建 LobeHub，数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6、Nginx 和其他容器保持不变喵~
