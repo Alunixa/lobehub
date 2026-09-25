@@ -15,7 +15,7 @@
 
 ## 3. Current Status
 
-- **子话题修正版已发布、尚未部署**：`v2.2.8-codex.20260925.2` 指向源码 `f198fccf94e2e9475bf04b86a7a82c0eab609251`；服务器镜像 Actions `36129420012` 与 Mobile Regression `36129420013` 均成功喵~
+- **子话题修正版已发布并部署**：`v2.2.8-codex.20260925.2` 已通过 deploy-8 保护上线和真实生产普通/子话题命名验收喵~
 - 新镜像 tar 为 `298292224` bytes，SHA-256 `dcaa9b0278a930b144ab824296d945474998b83837f2ad25f1ac6e19fd609d25`；Actions artifact ZIP 与 SPA ZIP digest 分别为 `872db55fb047bf7dd1ffd0d6779cacaf83f448b42a59ed8b44a357e7bfa1ba38`、`a6bebabf616f93b3d1152895598a3a4bc3d6c09cf729149bf74be87ae3a346c6` 喵~
 - Test CI App shard 1 中 `src/store/chat/slices/thread/action.test.ts` 35/35 通过；全仓仍是既有 Database lint、OIDC、Agent selector、用户初始化、ComfyUI/settings fixture 失败，E2E 仍为 81/82 场景、490/491 步骤，不声明全仓全绿喵~
 - 当前生产仍为 `.20260925.1` / 镜像 `588aa8cf03d…`，deploy-5 已确认且未回滚；下一步创建独立 deploy-6 备份和 240 秒 guard，仅替换 LobeHub 后重跑真实普通话题与子话题验收喵~
@@ -131,7 +131,7 @@
 ## 10. Deployment and Operations
 
 - deploy-6 Release 三资产远端校验通过；新镜像已离线加载为 `lobehub/lobehub:codex-f198fccf94e2e9475bf04b86a7a82c0eab609251`，镜像 ID `sha256:9e91be2e1251f314f5bd4767a0e91e033fe6f145e5689ab0aead6eb1300e0b1a`，真实 Next/ioredis/实时启动器探针输出 `DEPLOY6_RUNTIME_PROBE_OK` 喵~
-- staging 后线上仍为 deploy-5 容器 `d96f4957b63c…` / 镜像 `588aa8cf03d…`，running/restart=0/OOM=false；deploy-6 guard 尚未启动喵~
+- deploy-8 已完成保护部署；内部/公开版本、Redis、Host Executor、配置哈希和其他 7 个服务稳定，deploy-6/7 失败探针回滚证据保留喵~
 - 2026-09-25 deploy-6 独立部署前备份已完成：当前 `.1` 容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、running/restart=0/OOM=false；旧镜像、数据库、配置归档和回滚/guard 均已保存，线上尚未重建喵~
 - deploy-6 备份 SHA-256：旧镜像 `aef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172`、数据库 `96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8`、配置归档 `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
 - 2026-09-25 deploy-5 已仅重建 LobeHub 服务并确认：新容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0、OOM=false；guard 已确认退出且没有回滚标记喵~
@@ -1055,13 +1055,15 @@
 
 ## 2026-09-25：deploy-7 备份校验脚本修正
 
-- deploy-7 初始化复制了旧镜像、数据库、配置和 Release 文件；首次校验因 SHA256SUMS 使用相对文件名而未在 elease 目录执行，命令退出但没有触碰容器或线上服务喵~
+- deploy-7 初始化复制了旧镜像、数据库、配置和 Release 文件；首次校验因 SHA256SUMS 使用相对文件名而未在 
+elease 目录执行，命令退出但没有触碰容器或线上服务喵~
 - 当前保留 deploy-7 部分备份，修正为在资产目录内运行 sha256sum -c 后继续保存当前旧容器基线、回滚脚本和 guard，之后再启动保护部署喵~
 
 ## 2026-09-25：deploy-7 独立备份完成
 
 - deploy-7 已保存旧镜像、数据库快照、当前配置归档、完整容器基线、Release 三资产、回滚脚本和 240 秒 guard，deploy-6 的自动回滚证据继续保留喵~
-- deploy-7 资产校验在 elease 目录内通过；旧镜像 SHA-256 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172，数据库 96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8，配置归档 771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
+- deploy-7 资产校验在 
+elease 目录内通过；旧镜像 SHA-256 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172，数据库 96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8，配置归档 771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
 - 线上旧容器、内部/公开版本在备份结束时正常；下一步启动 deploy-7 guard，只重建 LobeHub，并在健康检查完成后立即写入确认标记喵~
 
 ## 2026-09-25：deploy-7 回滚及 Host Executor 诊断
@@ -1088,3 +1090,10 @@
 - 真实生产 run 1790339290043 完成普通话题与子话题闭环：普通命名请求 200；子话题第一次请求 401 后自动重试 topic 命名模型并 200；两个标题都非空且刷新后完全一致，runtime errors=0 喵~
 - 	opic-title.png 与 	hread-title.png 已目视确认标题显示正确；数据库中当前临时 topic/thread ID 计数为 0，验收 run 文本残留计数为 0，清理完成喵~
 - .20260925.2 现已完成发布、deploy-8 保护上线和真实验收；待更新 GitHub Release 说明及发布归档后收尾喵~
+
+## 2026-09-25：Release 与部署最终收尾
+
+- GitHub Release 2.2.8-codex.20260925.2 已更新为部署完成说明，manifest 与 SHA256SUMS 已覆盖上传并核验远端 digest；本地归档位于 D:\Cursor\lobehub-backups\20260925-topic-title\release-published-2 喵~
+- deploy-8 最终稳定复查通过：容器 539b611ddf8…、镜像 sha256:9e91be2…、内部/公开版本 2.2.8、running/restart=0/OOM=false，guard confirmed 且未回滚喵~
+- 真实验收报告位于 D:\Cursor\lobehub\.records\reports\20260925-topic-title-production\assets-live-deploy8；普通话题与子话题命名、刷新持久化、截图和数据库清理全部通过喵~
+- 本轮运行时代码未再修改；仅更新项目记忆和 Release 归档记录，历史未跟踪目录及 问题.txt 保持不动喵~

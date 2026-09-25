@@ -2101,3 +2101,9 @@
 - 真实生产 run 1790339290043 通过：普通话题 iChat.outputJSON HTTP 200、标题非空、刷新保持一致；子话题第一次命名请求 401 后按新逻辑重试 topic 命名模型并 HTTP 200，标题非空、刷新保持一致，runtime errors=0 喵~
 - 生产截图 ssets-live-deploy8/topic-title.png 与 	hread-title.png 已目视确认标题显示正确；临时话题、子话题、消息均清理成功，数据库当前测试 ID 计数为 0，run 文本残留计数为 0 喵~
 - 下一步更新 GitHub Release 2.2.8-codex.20260925.2 的部署说明和本地发布归档，随后完成最终 Git 记录提交喵~
+
+## 2026-09-25T20:36:59.5016547+08:00：Release 与部署最终收尾
+
+- GitHub Release 2.2.8-codex.20260925.2 已更新为 completed 部署说明，manifest 与 SHA256SUMS 已重新上传，远端资产 digest 已核验一致喵~
+- 最终线上复查通过：容器 539b611ddf8…、镜像 sha256:9e91be2…、内部/公开版本 2.2.8、running/restart=0/OOM=false，guard confirmed 且无回滚标记喵~
+- 真实生产报告位于 ssets-live-deploy8，普通话题和子话题均通过命名/刷新/截图/清理验收；本轮任务完成喵~
