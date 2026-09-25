@@ -1,6 +1,10 @@
 // Disable the auto sort key eslint rule to make the code more logic and readable
-import { LOADING_FLAT } from '@lobechat/const';
-import { chainSummaryTitle } from '@lobechat/prompts';
+import { LOADING_FLAT, TRACING_SCENARIOS } from '@lobechat/const';
+import {
+  chainSummaryTitle,
+  TOPIC_TITLE_JSON_SCHEMA,
+  TOPIC_TITLE_PROMPT_VERSION,
+} from '@lobechat/prompts';
 import {
   type CreateMessageParams,
   type IThreadType,
@@ -8,11 +12,12 @@ import {
   type UIChatMessage,
 } from '@lobechat/types';
 import isEqual from 'fast-deep-equal';
+import { t } from 'i18next';
 import { type SWRResponse } from 'swr';
 
 import { mutate, useClientDataSWR } from '@/libs/swr';
 import { threadKeys } from '@/libs/swr/keys';
-import { chatService } from '@/services/chat';
+import { aiChatService } from '@/services/aiChat';
 import { threadService } from '@/services/thread';
 import { threadSelectors } from '@/store/chat/selectors';
 import { type ChatStore } from '@/store/chat/store';
@@ -20,7 +25,7 @@ import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 import { type StoreSetter } from '@/store/types';
 import { useUserStore } from '@/store/user';
 import { systemAgentSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
-import { merge } from '@/utils/merge';
+import { markdownToTxt } from '@/utils/markdownToTxt';
 import { setNamespace } from '@/utils/storeDebug';
 
 import { PortalViewType } from '../portal/initialState';
@@ -209,38 +214,68 @@ export class ChatThreadActionImpl {
     const portalThread = threadSelectors.currentPortalThread(this.#get());
     if (!portalThread) return;
 
-    internal_updateThreadTitleInSummary(threadId, LOADING_FLAT);
+    const previousTitle = portalThread.title?.trim() || '';
+    const shouldShowPlaceholder = !previousTitle || previousTitle === LOADING_FLAT;
+    if (shouldShowPlaceholder) internal_updateThreadTitleInSummary(threadId, LOADING_FLAT);
 
-    let output = '';
-    const threadConfig = systemAgentSelectors.thread(useUserStore.getState());
+    const firstUserMessage = messages.find((message) => message.role === 'user');
+    const fallbackTitle =
+      markdownToTxt(String(firstUserMessage?.content ?? ''))
+        .trim()
+        .slice(0, 80) ||
+      (previousTitle && previousTitle !== LOADING_FLAT
+        ? previousTitle
+        : t('defaultTitle', { ns: 'topic' }));
 
-    await chatService.fetchPresetTaskResult({
-      onError: () => {
-        internal_updateThreadTitleInSummary(threadId, portalThread.title);
-      },
-      onFinish: async (text) => {
-        await this.#get().internal_updateThread(threadId, { title: text });
-      },
-      onLoadingChange: (loading) => {
-        internal_updateThreadLoading(threadId, loading);
-      },
-      onMessageHandle: (chunk) => {
-        switch (chunk.type) {
-          case 'text': {
-            output += chunk.text;
-          }
-        }
+    const restoreFallbackTitle = async () => {
+      if (!shouldShowPlaceholder) return;
 
-        internal_updateThreadTitleInSummary(threadId, output);
-      },
-      params: merge(
-        threadConfig,
-        chainSummaryTitle(
-          messages,
-          userGeneralSettingsSelectors.currentResponseLanguage(useUserStore.getState()),
-        ),
-      ),
-    });
+      internal_updateThreadTitleInSummary(threadId, fallbackTitle);
+      if (fallbackTitle === previousTitle) return;
+
+      try {
+        await this.#get().internal_updateThread(threadId, { title: fallbackTitle });
+      } catch (error) {
+        console.error('[summaryThreadTitle] failed to persist fallback title:', error);
+      }
+    };
+
+    const { model, provider } = systemAgentSelectors.thread(useUserStore.getState());
+
+    internal_updateThreadLoading(threadId, true);
+    try {
+      const { data } = await aiChatService.generateJSON(
+        {
+          ...chainSummaryTitle(
+            messages,
+            userGeneralSettingsSelectors.currentResponseLanguage(useUserStore.getState()),
+          ),
+          model,
+          provider,
+          schema: TOPIC_TITLE_JSON_SCHEMA,
+          tracing: {
+            promptVersion: TOPIC_TITLE_PROMPT_VERSION,
+            scenario: TRACING_SCENARIOS.TopicTitle,
+            schemaName: TOPIC_TITLE_JSON_SCHEMA.name,
+            threadId,
+          },
+        },
+        new AbortController(),
+      );
+
+      const title = (data as { title?: string } | undefined)?.title?.trim();
+      if (!title) {
+        await restoreFallbackTitle();
+        return;
+      }
+
+      await this.#get().internal_updateThread(threadId, { title });
+    } catch (error) {
+      console.error('[summaryThreadTitle] failed to generate a title:', error);
+      await restoreFallbackTitle();
+    } finally {
+      internal_updateThreadLoading(threadId, false);
+    }
   };
 
   internal_updateThreadTitleInSummary = (id: string, title: string): void => {

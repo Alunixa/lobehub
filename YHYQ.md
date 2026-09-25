@@ -1974,3 +1974,14 @@
 - `packages/prompts/src/chains/summaryTitle.ts` 要求模型返回纯文本，而服务端 `SystemAgentService.generateTopicTitle` 已使用结构化对象 `{ title }`；客户端标题链路缺少结构化解析、空结果保护和稳定回退喵~
 - 现有生命周期测试只验证 `summaryTopicTitle` 被调用，没有覆盖模型返回空字符串/空对象时标题必须保留或回退的可见行为喵~
 - 结论：优先把话题和子话题命名统一到结构化 JSON 生成，读取并校验 `title`，空结果恢复原标题或首条用户内容，补回归测试，避免自动命名失败留下空标题喵~
+
+## 2026-09-25：自动命名修复实现与接管验证
+
+- 用户继续要求解决话题名称为空、自动命名不再正常的问题，并要求完成后自行部署喵~
+- 接管后完整读取 `XJ.md`、近期 `YHYQ.md`、项目记忆、TypeScript/Testing/Zustand 规范和当前六文件差异，确认生产仍为 `.20260924.4`，历史未跟踪证据保持不动喵~
+- 接管前启动的 Topic 专项 Vitest 长期停在收集阶段；再次等待 15 秒仍无输出后终止该单一旧进程，没有重复启动相同测试，也没有把它误记为失败或通过喵~
+- 已复核 `aiChatService.generateJSON` 与 `StructureOutputParams` 契约、共享 prompt 导出、默认标题翻译和纯文本回退工具；当前实现参数与现有 outputJSON 边界一致喵~
+- 话题和子话题测试新增结构化 schema/tracing、非空回退、异常保留原标题和 loading 必须释放的断言；下一步统一格式化、定向验证、提交、Actions、Release 和 deploy-5 保护部署喵~
+- Prettier 已完成；Prompt 测试 1 文件 1 项通过，目标 ESLint 为 0 error，仅有 `topic/action.ts` 原有的一条逻辑运算符 warning，`git diff --check` 通过喵~
+- App 三文件标题专项等待约 90 秒仍仅显示 Vitest 启动，单独 lifecycle 标题专项再等待约 60 秒也未进入测试结果；两个进程均已停止，不重复继续等待，后续由 Actions 做权威专项验证喵~
+- 使用仓库现有 TypeScript 编译器对五个目标文件执行纯语法诊断，结果 `TYPESCRIPT_SYNTAX_OK`；一次额外 `esbuild` 命令因 PowerShell `--outfile` 参数拆分失败，未改项目，临时缓存清理被执行策略拒绝后没有绕过喵~
