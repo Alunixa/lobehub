@@ -807,3 +807,24 @@
 
 ### Change Log
 - 2026-09-25：记录用户“话题命名为空、自动命名不再触发”反馈，建立修改前检查点 `c1f69838b8`，准备开始代码链路调查喵~
+
+## 2026-09-25：话题自动命名根因定位
+
+### Current Status
+- 自动命名触发入口存在，`buildRunLifecycle.afterUserMessagePersisted` 会在新话题持久化后调用 `summaryTopicTitle`；问题不在入口完全缺失喵~
+- 现有 `summaryTopicTitle`/`summaryThreadTitle` 使用流式文本 completion，并在 `onFinish` 无条件保存原始文本；空响应或结构化响应不匹配时会写入空标题，错误路径也没有持久化的非空回退喵~
+- 当前代码还没有覆盖空响应、空白响应和响应对象解析失败的回归测试喵~
+
+### Design Decision
+- 使用现有 `aiChatService.generateJSON` 与 `outputJSON` tRPC 边界，新增共享 `TOPIC_TITLE_JSON_SCHEMA` 与提示版本常量，话题和子话题都读取 `{ title }` 并 `trim` 校验喵~
+- 生成失败或返回空标题时保留此前可见标题；若此前是占位符，则回退到首条用户消息的纯文本（最多80字符）或本地化默认标题，确保列表不会再次为空喵~
+- 不修改数据库 schema、不修改网络/IPv6/Nginx、不影响其他容器；仅更新 LobeHub 前端/共享 prompt 代码及相关测试喵~
+
+### Next Steps
+1. 修改共享标题 schema/prompt、话题与子话题命名实现喵~
+2. 补空响应/结构化标题/失败回退测试，并更新已有 mock 喵~
+3. 运行定向 Vitest、ESLint、`node --check`（如适用）和 `git diff --check`，提交源码与记录喵~
+4. 通过 GitHub Actions 构建同源镜像和 SPA，发布新 Release，创建独立 deploy-5 备份并仅保护替换 LobeHub，线上验证新建话题标题出现且跨设备列表同步喵~
+
+### Change Log
+- 2026-09-25：完成自动命名链路只读调查，确认空标题写入缺少非空保护和结构化解析，准备实施修复喵~

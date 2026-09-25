@@ -1966,3 +1966,11 @@
 - 本轮开始前已读取 `XJ.md` 全部项目记忆与近期 `YHYQ.md`，确认仓库为 `D:\Cursor\lobehub`，生产仍为 `v2.2.8-codex.20260924.4`，工作区仅保留历史未跟踪证据目录与 `问题.txt`，未修改或暂存它们喵~
 - 已建立修改前 Git 空提交检查点 `c1f69838b8`，当前尚未修改运行时代码喵~
 - 下一步：追踪 Topic 创建、首条用户消息发送、自动命名 mutation/任务、标题持久化与列表刷新链路，先补失败回归再修复喵~
+
+## 2026-09-25：自动命名链路定位结果
+
+- 当前首条消息后的自动命名入口是 `src/store/chat/slices/agentRun/actions/lifecycle/buildRunLifecycle.ts` 的 `afterUserMessagePersisted`，客户端/网关/异构运行时都会进入 `summaryTopicTitle`，调用链路本身存在喵~
+- `src/store/chat/slices/topic/action.ts` 当前使用 `chatService.fetchPresetTaskResult` 流式读取原始 completion，并在 `onFinish` 无条件把返回文本写入 `topic.title`；返回空文本时会把标题写成空值，且发生错误时只恢复内存占位符喵~
+- `packages/prompts/src/chains/summaryTitle.ts` 要求模型返回纯文本，而服务端 `SystemAgentService.generateTopicTitle` 已使用结构化对象 `{ title }`；客户端标题链路缺少结构化解析、空结果保护和稳定回退喵~
+- 现有生命周期测试只验证 `summaryTopicTitle` 被调用，没有覆盖模型返回空字符串/空对象时标题必须保留或回退的可见行为喵~
+- 结论：优先把话题和子话题命名统一到结构化 JSON 生成，读取并校验 `title`，空结果恢复原标题或首条用户内容，补回归测试，避免自动命名失败留下空标题喵~
