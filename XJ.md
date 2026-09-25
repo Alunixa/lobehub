@@ -1081,3 +1081,10 @@
 - deploy-8 于 20:22:26 启动，20:23:51 在保护窗口内确认；当前容器 539b611ddf8…、镜像 sha256:9e91be2e1251…，running/restart=0/OOM=false 喵~
 - 内部/公开 /api/version 均为 2.2.8；容器内 Node runtime 的 Host Executor /health 返回 mode=host, success=true，Redis 返回 PONG，配置哈希和其他 7 个服务基线未变喵~
 - deploy-8 guard 仍将等待窗口结束，当前下一步是运行真实普通话题/子话题命名验收，完成截图、刷新持久化、临时数据清理和稳定性复查喵~
+
+## 2026-09-25：deploy-8 稳定复查与真实标题验收完成
+
+- deploy-8 guard 于 20:26:26 记录 confirmed 并正常退出，未触发回滚；当前生产容器 539b611ddf8…、镜像 sha256:9e91be2e1251…，running/restart=0/OOM=false 喵~
+- 真实生产 run 1790339290043 完成普通话题与子话题闭环：普通命名请求 200；子话题第一次请求 401 后自动重试 topic 命名模型并 200；两个标题都非空且刷新后完全一致，runtime errors=0 喵~
+- 	opic-title.png 与 	hread-title.png 已目视确认标题显示正确；数据库中当前临时 topic/thread ID 计数为 0，验收 run 文本残留计数为 0，清理完成喵~
+- .20260925.2 现已完成发布、deploy-8 保护上线和真实验收；待更新 GitHub Release 说明及发布归档后收尾喵~

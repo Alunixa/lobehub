@@ -2094,3 +2094,10 @@
 - deploy-8 于新加坡时间 2026-09-25 20:22:26 启动，20:23:51 在 240 秒 guard 窗口内写入 deployment.confirmed 喵~
 - 新容器 539b611ddf8… 使用镜像 sha256:9e91be2e1251…，running/restart=0/OOM=false；内部/公开版本为 2.2.8，Redis=PONG，Host Executor 由容器内 Node runtime 返回 mode=host, success=true 喵~
 - 其他 7 个服务完整 ID、状态/重启计数和 Compose/.env/override 哈希保持不变，未触碰数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6 或 Nginx；下一步执行真实普通话题与子话题自动命名验收喵~
+
+## 2026-09-25T20:30:51.6326720+08:00：话题自动命名部署与真实生产验收完成
+
+- deploy-8 guard 于 20:26:26 记录 confirmed，未生成 guard_rollback.started 或 ollback.completed；容器 539b611… 继续 running/restart=0/OOM=false 喵~
+- 真实生产 run 1790339290043 通过：普通话题 iChat.outputJSON HTTP 200、标题非空、刷新保持一致；子话题第一次命名请求 401 后按新逻辑重试 topic 命名模型并 HTTP 200，标题非空、刷新保持一致，runtime errors=0 喵~
+- 生产截图 ssets-live-deploy8/topic-title.png 与 	hread-title.png 已目视确认标题显示正确；临时话题、子话题、消息均清理成功，数据库当前测试 ID 计数为 0，run 文本残留计数为 0 喵~
+- 下一步更新 GitHub Release 2.2.8-codex.20260925.2 的部署说明和本地发布归档，随后完成最终 Git 记录提交喵~
