@@ -2070,3 +2070,9 @@
 
 - deploy-7 目录已创建并复制旧镜像、数据库快照、配置归档和 Release 三资产，但 Release sha256sum -c 首次未切换到资产目录，因相对文件名找不到而退出喵~
 - 该失败发生在远端备份校验阶段，未执行 docker compose、未重建任何容器、未修改线上服务；已保留部分备份文件并准备在正确目录重跑校验和补齐脚本喵~
+
+## 2026-09-25T20:09:33.9597164+08:00：deploy-7 独立备份完成
+
+- deploy-7 已独立保存旧镜像、数据库、当前 Compose/.env/override 配置、全部容器基线、Release 三资产、回滚脚本和 guard 喵~
+- Release 校验已在正确目录通过；deploy-7 旧镜像 SHA-256 为 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172，数据库快照为 96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8，配置归档为 771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
+- 备份完成时线上旧容器仍 running/restart=0/OOM=false，内部和公开版本均为 2.2.8；即将启动 deploy-7 保护部署，APP_URL 解析会去除 CRLF 喵~
