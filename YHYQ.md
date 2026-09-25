@@ -2001,3 +2001,10 @@
 - 新建 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5`，保存旧镜像、数据库、配置归档、应用 inspect、容器与配置基线喵~
 - 旧镜像约 989.7 MB、数据库约 44.2 MB；三项 SHA-256 已记录，并生成独立 `rollback.sh` 与 240 秒 `guard.sh` 喵~
 - guard 尚未启动、线上尚未切换；下一步上传 Release、校验、离线运行探针后才部署喵~
+
+## 2026-09-25：deploy-5 镜像离线验证通过
+
+- Release 镜像和 manifest 在远端 `sha256sum -c` 通过，新镜像成功加载，镜像 ID、平台、用户、入口与 Actions 产物一致喵~
+- 第一次运行探针的 JavaScript 引号被多层 shell 剥离，第二次因宿主探针 `600` 权限导致容器 `nextjs` 用户 EACCES；均未触碰线上容器喵~
+- 最终探针改为无敏感信息只读文件并保留 docker 退出码，成功输出 `DEPLOY5_RUNTIME_PROBE_OK`，证明 Next、ioredis 和实时启动器可真实加载喵~
+- 当前线上仍为旧容器 running/restart=0/OOM=false；下一步启动 guard 后仅替换 LobeHub 喵~

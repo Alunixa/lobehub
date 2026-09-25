@@ -880,3 +880,20 @@
 
 ### Change Log
 - 2026-09-25：完成 deploy-5 部署前独立备份，生产尚未切换喵~
+
+## 2026-09-25：deploy-5 Release 资产与镜像离线验证
+
+### Current Status
+- Release 三资产已上传 deploy-5，远端 `sha256sum -c` 对镜像和 manifest 全部通过喵~
+- 新镜像已离线加载为 `lobehub/lobehub:codex-215ef9414b5f7c8659f378a05196303baf1f454d`，镜像 ID `588aa8cf03d…`，平台 `linux/amd64`、用户 `nextjs`、入口 `/bin/node`、命令 `/app/startServer.js` 喵~
+- 第一次探针因多层 shell 引号剥离导致 JavaScript 语法错误；第二次挂载探针因文件 `600` 而被容器内非 root 用户拒绝读取；两次均只影响临时探针且线上未切换喵~
+- 最终将无敏感信息的探针设为只读 `644` 并保留 docker 退出码，真实加载 Next、`ioredis`、lazy Redis client 和 `/app/realtimeServer.js`，输出 `DEPLOY5_RUNTIME_PROBE_OK` 喵~
+- 当前线上仍为旧容器 `3f95340ef63d…`、旧镜像 `274e7fff…`、running/restart=0/OOM=false；guard 尚未启动喵~
+
+### Next Steps
+1. 启动 deploy-5 240 秒 guard，标签切换并仅强制重建 LobeHub 喵~
+2. 在保护窗口内完成健康、日志、Redis、Host Executor、配置与其他服务不变检查喵~
+3. 执行真实话题和子话题非空命名验证，通过后写入 `deployment.confirmed` 喵~
+
+### Change Log
+- 2026-09-25：同源 Release 镜像已通过远端最终运行探针，进入保护部署阶段喵~
