@@ -2046,3 +2046,5 @@
 - 解包镜像 tar 为 `298292224` bytes / SHA-256 `dcaa9b0278a930b144ab824296d945474998b83837f2ad25f1ac6e19fd609d25`；生产 SPA 已确认包含 thread 模型失败后重试 topic 模型的标记喵~
 - `v2.2.8-codex.20260925.2` 已发布，标签精确指向 `f198fccf94e2e9475bf04b86a7a82c0eab609251`，Release 说明明确记录 `.1` 修复普通话题、`.2` 修复子话题 401 回退与 thread-scoped 消息喵~
 - 首次只读 SSH 查看 deploy-5 的命令因本地 PowerShell 提前展开远端 `$B` 且 BusyBox `find` 无 `-printf` 而失败，未执行修改；改为 Base64 LF 脚本后确认 deploy-5 guard 已退出、确认标记存在且无回滚喵~
+- 已创建独立 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-6`，保存当前 `.1` LobeHub inspect、全部容器/其他服务/配置哈希基线、旧镜像、数据库快照、配置归档、回滚脚本和 240 秒 guard；备份期间没有重建服务喵~
+- deploy-6 备份哈希：旧镜像 `aef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172`，数据库 `96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8`，配置归档 `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~

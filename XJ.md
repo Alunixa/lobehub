@@ -130,6 +130,8 @@
 
 ## 10. Deployment and Operations
 
+- 2026-09-25 deploy-6 独立部署前备份已完成：当前 `.1` 容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、running/restart=0/OOM=false；旧镜像、数据库、配置归档和回滚/guard 均已保存，线上尚未重建喵~
+- deploy-6 备份 SHA-256：旧镜像 `aef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172`、数据库 `96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8`、配置归档 `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
 - 2026-09-25 deploy-5 已仅重建 LobeHub 服务并确认：新容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0、OOM=false；guard 已确认退出且没有回滚标记喵~
 - deploy-5 直接回滚入口为 `sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`；本轮无数据库 schema 变化，不默认回写数据库喵~
 - 2026-09-24 `.3` 最终独立部署目录为 `/mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3`，包含部署前 inspect、容器基线、配置哈希、数据库快照、旧镜像、Release 资产、独立 `rollback.sh` 与 `guard.sh` 喵~
@@ -234,7 +236,7 @@
 
 ## 18. Rollback and Recovery
 
-- **待创建 deploy-6 回滚**：部署 `.20260925.2` 前必须建立 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-6/rollback.sh`，固定当前 `.1` 镜像并只重建 LobeHub，不覆盖数据库喵~
+- **deploy-6 回滚已准备**：`sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-6/rollback.sh`，固定当前 `.1` 镜像 `588aa8cf03d…` 并只重建 LobeHub，不覆盖数据库；guard 尚未启动喵~
 - **最新 deploy-5 回滚**：`sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`，只恢复 deploy-5 前 `.20260924.4` 应用镜像，不覆盖数据库；当前部署已确认，除非真实验收发现生产回归，否则不要执行喵~
 - **最新.4回滚**：sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh，恢复.3镜像6527f1f9a003，只回滚应用不覆盖数据库；deploy-4不可重复执行喵~
 - **最新 `.20260924.3` 回滚**：远端执行 `sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3/rollback.sh`，恢复 deploy-3 前稳定镜像并只重建 LobeHub 应用；数据库快照与旧镜像均保留喵~
@@ -341,6 +343,8 @@
 6. 如 3210 间歇超时复发，记录准确时间、截图、客户端 AAAA 与外部 IPv6 探测；本轮没有修改网络，旧间歇性故障根因仍未确认喵~
 
 ## 21. Change Log
+- 2026-09-25：完成 deploy-6 独立备份，保存 `.1` 容器/配置/其他服务基线、旧镜像、数据库快照、配置归档、`rollback.sh` 与增强的 240 秒 `guard.sh`；备份完成后线上仍为原容器且未重建喵~
+
 - 2026-09-25：源码 `f198fccf94` 已推送；服务器镜像 Actions `36129420012`、Mobile Regression `36129420013` 成功，thread action 35/35 通过；下载 artifact 并校验 ZIP/镜像 digest、确认 SPA 包含新重试逻辑，发布 `v2.2.8-codex.20260925.2` 喵~
 - 2026-09-25：首次只读 SSH 查看 deploy-5 时本地 PowerShell 提前展开远端 `$B` 且 BusyBox `find` 不支持 `-printf`，命令在读取脚本前失败、未修改远端；改用 Base64 LF 脚本后成功核验 deploy-5 已确认且未回滚喵~
 
