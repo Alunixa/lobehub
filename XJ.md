@@ -130,6 +130,8 @@
 
 ## 10. Deployment and Operations
 
+- deploy-6 Release 三资产远端校验通过；新镜像已离线加载为 `lobehub/lobehub:codex-f198fccf94e2e9475bf04b86a7a82c0eab609251`，镜像 ID `sha256:9e91be2e1251f314f5bd4767a0e91e033fe6f145e5689ab0aead6eb1300e0b1a`，真实 Next/ioredis/实时启动器探针输出 `DEPLOY6_RUNTIME_PROBE_OK` 喵~
+- staging 后线上仍为 deploy-5 容器 `d96f4957b63c…` / 镜像 `588aa8cf03d…`，running/restart=0/OOM=false；deploy-6 guard 尚未启动喵~
 - 2026-09-25 deploy-6 独立部署前备份已完成：当前 `.1` 容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、running/restart=0/OOM=false；旧镜像、数据库、配置归档和回滚/guard 均已保存，线上尚未重建喵~
 - deploy-6 备份 SHA-256：旧镜像 `aef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172`、数据库 `96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8`、配置归档 `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
 - 2026-09-25 deploy-5 已仅重建 LobeHub 服务并确认：新容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0、OOM=false；guard 已确认退出且没有回滚标记喵~
@@ -343,6 +345,8 @@
 6. 如 3210 间歇超时复发，记录准确时间、截图、客户端 AAAA 与外部 IPv6 探测；本轮没有修改网络，旧间歇性故障根因仍未确认喵~
 
 ## 21. Change Log
+- 2026-09-25：deploy-6 Release 镜像与 manifest 的远端 `sha256sum -c` 通过，新镜像离线加载并通过真实运行依赖探针；线上当前容器/镜像仍未切换喵~
+
 - 2026-09-25：完成 deploy-6 独立备份，保存 `.1` 容器/配置/其他服务基线、旧镜像、数据库快照、配置归档、`rollback.sh` 与增强的 240 秒 `guard.sh`；备份完成后线上仍为原容器且未重建喵~
 
 - 2026-09-25：源码 `f198fccf94` 已推送；服务器镜像 Actions `36129420012`、Mobile Regression `36129420013` 成功，thread action 35/35 通过；下载 artifact 并校验 ZIP/镜像 digest、确认 SPA 包含新重试逻辑，发布 `v2.2.8-codex.20260925.2` 喵~

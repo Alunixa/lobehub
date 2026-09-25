@@ -2048,3 +2048,5 @@
 - 首次只读 SSH 查看 deploy-5 的命令因本地 PowerShell 提前展开远端 `$B` 且 BusyBox `find` 无 `-printf` 而失败，未执行修改；改为 Base64 LF 脚本后确认 deploy-5 guard 已退出、确认标记存在且无回滚喵~
 - 已创建独立 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-6`，保存当前 `.1` LobeHub inspect、全部容器/其他服务/配置哈希基线、旧镜像、数据库快照、配置归档、回滚脚本和 240 秒 guard；备份期间没有重建服务喵~
 - deploy-6 备份哈希：旧镜像 `aef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172`，数据库 `96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8`，配置归档 `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
+- `.2` Release 三资产已上传 deploy-6，远端镜像与 manifest 校验通过；新镜像 ID 为 `sha256:9e91be2e1251f314f5bd4767a0e91e033fe6f145e5689ab0aead6eb1300e0b1a`，平台 `linux/amd64`、用户 `nextjs`、入口 `/bin/node /app/startServer.js` 喵~
+- 离线容器真实加载 Next、ioredis lazy client 和 `/app/realtimeServer.js`，输出 `DEPLOY6_RUNTIME_PROBE_OK`；staging 后线上仍为原 deploy-5 容器，restart=0、OOM=false，尚未启动 guard 或重建服务喵~
