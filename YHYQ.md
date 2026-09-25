@@ -2017,3 +2017,5 @@
 - 2026-09-25 18:57:43 +08:00 只读复核 deploy-5：容器 `d96f4957b63c2c9691e9547d4829af10b46b70d0cc238b68af1c76c1e4232592`、镜像 `sha256:588aa8cf03d5c8c10c0a8fca23eabd5e77e875f1011d3546cddce4ffb8dfcc8f`、running/restart=0/OOM=false，内部版本接口返回 `2.2.8` 喵~
 - `deployment.confirmed` 为 18:27:39，guard PID `1218` 已退出，18:29:52 记录 confirmed；没有 `guard_rollback.started` 或 `rollback.completed`，确认未触发回滚喵~
 - 下一步直接重跑已修正的真实生产脚本，完成普通话题、子话题、`aiChat.outputJSON` 200、非空标题、刷新持久化、截图目视、临时数据清理和 Release 归档喵~
+- 复核脚本发现普通话题刷新断言仍将最终 AI 标题与最初即时回退标题比较，导致真实更新被误判；已改为与 `finalTopic.title` 比较，并把子话题刷新断言收紧为与 `finalThread.title` 完全一致喵~
+- 项目内忽略的验收脚本与 `D:\Cursor\lobehub-backups\20260925-topic-title\live-verification\verify-topic-title.mjs` 已同步，`node --check` 通过；运行时代码和生产服务未改变喵~
