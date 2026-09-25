@@ -7,6 +7,7 @@ import { LOADING_FLAT } from '@/const/message';
 import { mutate } from '@/libs/swr';
 import { aiChatService } from '@/services/aiChat';
 import { threadService } from '@/services/thread';
+import { systemAgentSelectors } from '@/store/user/selectors';
 import { type ThreadItem } from '@/types/topic';
 import { ThreadStatus, ThreadType } from '@/types/topic';
 
@@ -78,7 +79,8 @@ vi.mock('@/store/user', () => ({
 
 vi.mock('@/store/user/selectors', () => ({
   systemAgentSelectors: {
-    thread: vi.fn(() => ({})),
+    thread: vi.fn(() => ({ model: 'thread-model', provider: 'test-provider' })),
+    topic: vi.fn(() => ({ model: 'thread-model', provider: 'test-provider' })),
   },
   userGeneralSettingsSelectors: {
     currentResponseLanguage: vi.fn(() => 'en-US'),
@@ -90,6 +92,14 @@ vi.mock('@/store/user/selectors', () => ({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(systemAgentSelectors.thread).mockReturnValue({
+    model: 'thread-model',
+    provider: 'test-provider',
+  });
+  vi.mocked(systemAgentSelectors.topic).mockReturnValue({
+    model: 'thread-model',
+    provider: 'test-provider',
+  });
   useChatStore.setState(
     {
       activeAgentId: 'test-session-id',
@@ -707,6 +717,89 @@ describe('thread action', () => {
       });
     });
 
+    it('should retry the topic title model with thread-scoped messages', async () => {
+      const { result } = renderHook(() => useChatStore());
+      const mockThread: ThreadItem = {
+        createdAt: new Date(),
+        id: 'thread-id',
+        lastActiveAt: new Date(),
+        sourceMessageId: 'parent-user',
+        status: ThreadStatus.Active,
+        title: '',
+        topicId: 'test-topic-id',
+        type: ThreadType.Continuation,
+        updatedAt: new Date(),
+        userId: 'user-1',
+      };
+      const messages = [
+        { id: 'parent-user', content: 'Parent topic request', role: 'user' } as UIChatMessage,
+        {
+          id: 'thread-user',
+          content: 'Investigate thread title authentication',
+          role: 'user',
+          threadId: 'thread-id',
+        } as UIChatMessage,
+      ];
+
+      act(() => {
+        useChatStore.setState({
+          portalThreadId: 'thread-id',
+          threadMaps: { 'test-topic-id': [mockThread] },
+        });
+      });
+      vi.mocked(systemAgentSelectors.thread).mockReturnValue({
+        model: 'unavailable-thread-model',
+        provider: 'unavailable-provider',
+      });
+      vi.mocked(systemAgentSelectors.topic).mockReturnValue({
+        model: 'working-topic-model',
+        provider: 'working-provider',
+      });
+      (aiChatService.generateJSON as Mock)
+        .mockRejectedValueOnce(new Error('InvalidProviderAPIKey'))
+        .mockResolvedValueOnce({ data: { title: 'Thread authentication repair' } });
+      vi.spyOn(console, 'error').mockImplementation(() => {});
+      const updateThreadSpy = vi
+        .spyOn(result.current, 'internal_updateThread')
+        .mockResolvedValue(undefined);
+
+      await act(async () => {
+        await result.current.summaryThreadTitle('thread-id', messages);
+      });
+
+      expect(aiChatService.generateJSON).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              content: expect.stringContaining('thread title authentication'),
+            }),
+          ]),
+          model: 'unavailable-thread-model',
+          provider: 'unavailable-provider',
+        }),
+        expect.any(AbortController),
+      );
+      expect(aiChatService.generateJSON).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          messages: expect.arrayContaining([
+            expect.objectContaining({
+              content: expect.stringContaining('thread title authentication'),
+            }),
+          ]),
+          model: 'working-topic-model',
+          provider: 'working-provider',
+        }),
+        expect.any(AbortController),
+      );
+      const requestedMessages = (aiChatService.generateJSON as Mock).mock.calls[0][0].messages;
+      expect(JSON.stringify(requestedMessages)).not.toContain('Parent topic request');
+      expect(updateThreadSpy).toHaveBeenCalledWith('thread-id', {
+        title: 'Thread authentication repair',
+      });
+    });
+
     it('should show loading indicator during generation', async () => {
       const { result } = renderHook(() => useChatStore());
 
@@ -838,6 +931,48 @@ describe('thread action', () => {
       });
       expect(updateThreadSpy).not.toHaveBeenCalledWith('thread-id', { title: '' });
       expect(loadingSpy).toHaveBeenLastCalledWith('thread-id', false);
+    });
+
+    it('should use the first thread-scoped user message for the local fallback', async () => {
+      const { result } = renderHook(() => useChatStore());
+      const mockThread: ThreadItem = {
+        createdAt: new Date(),
+        id: 'thread-id',
+        lastActiveAt: new Date(),
+        sourceMessageId: 'parent-user',
+        status: ThreadStatus.Active,
+        title: '',
+        topicId: 'test-topic-id',
+        type: ThreadType.Continuation,
+        updatedAt: new Date(),
+        userId: 'user-1',
+      };
+      const messages = [
+        { id: 'parent-user', content: 'Parent topic request', role: 'user' } as UIChatMessage,
+        {
+          id: 'thread-user',
+          content: 'Child thread request',
+          role: 'user',
+          threadId: 'thread-id',
+        } as UIChatMessage,
+      ];
+
+      act(() => {
+        useChatStore.setState({
+          portalThreadId: 'thread-id',
+          threadMaps: { 'test-topic-id': [mockThread] },
+        });
+      });
+      (aiChatService.generateJSON as Mock).mockResolvedValue({ data: { title: '  ' } });
+      const updateThreadSpy = vi
+        .spyOn(result.current, 'internal_updateThread')
+        .mockResolvedValue(undefined);
+
+      await act(async () => {
+        await result.current.summaryThreadTitle('thread-id', messages);
+      });
+
+      expect(updateThreadSpy).toHaveBeenCalledWith('thread-id', { title: 'Child thread request' });
     });
 
     it('should not run if no portal thread found', async () => {

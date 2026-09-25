@@ -1,9 +1,11 @@
 # Project Memory
 
 ## 1. Project Overview
+
 - LobeHub 自部署 AI 工作区，仓库根为 `D:\Cursor\lobehub`；电脑与手机 SPA、Electron、服务端和共享包构成单仓库。
 
 ## 2. Goals and Requirements
+
 - 2026-09-21：用户反馈手机会话高级参数无法滑动，需修复触摸滚动并验证小屏/横屏/展开高级项及正常输入行为，按既有流程发布部署。
 - 2026-09-20追加：编辑已发送消息时能添加附件；在会话指定位置新增自定义上下文（文字及附件）；与时间功能合并验证、发布和部署。
 - 中文回复，句尾“喵~”；禁止 WSL；保留用户无关文件与现有服务。
@@ -12,11 +14,12 @@
 - 2026-09-19：修复复制对话/子话题图片丢失、子话题关闭/调整大小、Shift+Enter 等误跳转、手机搜索完整列表和所有输入框非主动唤起键盘；完成后自行部署。
 
 ## 3. Current Status
+
 - **当前生产为 `v2.2.8-codex.20260925.1`**：运行源码 `215ef9414b5f7c8659f378a05196303baf1f454d`，Actions `36121690343` 成功，deploy-5 于 2026-09-25 18:27:39（UTC+8）写入确认标记喵~
 - 当前容器 `d96f4957b63c2c9691e9547d4829af10b46b70d0cc238b68af1c76c1e4232592`，镜像 `sha256:588aa8cf03d5c8c10c0a8fca23eabd5e77e875f1011d3546cddce4ffb8dfcc8f`，running/restart=0/OOM=false，内部版本为 `2.2.8` 喵~
 - deploy-5 guard PID `1218` 已退出，`guard.log` 于 18:29:52 记录 confirmed；`guard_rollback.started` 与 `rollback.completed` 均不存在，确认未触发回滚喵~
 - 自动命名修复已上线：话题与子话题使用结构化 `{ title }` 生成，空白/异常响应不会再写入空标题，并有首条用户消息与默认标题回退喵~
-- 普通话题真实生产 UI 已观测到 `aiChat.outputJSON` HTTP 200，标题从即时非空回退更新为“自动命名生产验收”并在刷新后持久化；旧脚本仅因错误要求即时回退标题与最终 AI 标题相同而报失败，断言已修正，仍须重跑完整普通话题与子话题闭环喵~
+- 普通话题真实生产 UI 已完整通过；子话题真实发送暴露独立根因：账号只配置了可用的 topic Gemini 模型，thread 未配置而回落到内置 DeepSeek，生产无对应凭据导致 `aiChat.outputJSON` 401，且旧回退错误使用父话题第一条用户消息喵~
 - 正式 Release 三资产来自同源 Actions；发布归档位于 `D:\Cursor\lobehub-backups\20260925-topic-title\release-published`，当前部署备份与回滚入口位于 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5` 喵~
 - **以下 `.20260924.4` 与 `.3` 条目为历史基线，已由 `.20260925.1` 取代，不再重复部署**喵~
 - 历史 `.20260924.4` 无拦截线上电脑冷/暖为 4904/2788ms、手机模拟浏览器为 3293/2078ms；性能仍仅部分改善，不能称秒开喵~
@@ -31,6 +34,7 @@
 - 全仓 Test CI `35980049666` 与 E2E `35980049652` 仍有非本轮目标失败，不声明全仓全绿；Packages、Server 两分片、Desktop、Server Coverage 成功，E2E 为 81/82 scenarios、490/491 steps喵~
 
 ### 历史已部署版本状态
+
 - **当前已发布并部署：`v2.2.8-codex.20260920.1`**，运行源码`30c85bdfb5b47cc311f815788132bb719b95289b`，2026-09-20 20:57:57 UTC+8启动保护部署、21:00:12线上UI验证后确认成功。
 - 当前容器`2321086197bbb98cd497b59ad1426b3ea0df4561ba276029706be37227cbbf6c`，镜像`sha256:ab97f03e2b3b6d9ef34cf0b0202d176f6abff80208a7cdabdca5db86187aea07`，确认时running/restart=0/OOM=false。
 - 时间开关/秒级技能、旧消息附件编辑、指定位置自定义上下文（含附件）均已上线；同源生产UI72场景和线上9入口通过，runtime errors=0，线上验证拦截9次写请求，没有发送模型请求或修改用户设置。
@@ -38,6 +42,7 @@
 - 21:03:27 UTC+8超过240秒保护窗口后复查仍running/restart=0/OOM=false、版本接口正常、未回滚；发布说明及上线证据已归档。临时文件清理被执行工具拒绝，未绕过、未删除任何目录，功能/部署无需重做。本地领先提交仅项目记录与浏览器Markdown尾换行断言，不改变已部署运行代码。
 
 ### 历史阶段快照（以下“当前/待执行”仅描述当时状态）
+
 - Release `v2.2.8-codex.20260920.1`于20:55:58 UTC+8发布，标签指向30c85bdfb5；GitHub API核验3资产已上传且digest一致。远端暂存镜像/manifest校验通过、deploy.sh语法通过；尚未启动部署。
 - 待发布部署最终版`v2.2.8-codex.20260920.1`：运行源码`30c85bdfb5b47cc311f815788132bb719b95289b`，镜像/三专项全部通过，最终同源生产UI72场景全通过、runtime errors=0。资产`release-published/lobehub-server-image.tar`为297941504 bytes、SHA256 `d63b15652befd133d26e20e5c3617ee9995a80197fa837a12e7e89e9801c4431`；请勿使用`release-final`内a23候选。
 - 候选a23镜像构建成功，但真实生产UI发现新增空白上下文弹窗触发Lexical #38（空markdown生成无子节点root）；不发布或部署该候选。手机附件完整增删/保稿/重试已通过，时间开关手机/电脑4场景通过。当前修复共享EditorCanvas空白初始化为text reader，并补3项真实编辑器回归。
@@ -63,28 +68,33 @@
 - 本文件此前不存在，2026-09-19 根据仓库日志初始化；旧记录仍完整保留于 `YHYQ.md`。
 
 ## 4. Repository Structure
+
 - `src/features` 业务 UI，`src/routes` 薄路由，`src/spa` SPA 入口/路由。
 - `src/store` Zustand，`src/services` 客户端服务，`apps/server/src` 后端。
 - `packages/database/src` 数据模型/schema；`packages/locales/src/default` 英文源，`locales/en-US` / `locales/zh-CN` 手工维护。
 - `tests/mobile-studio` 轻量测试与生产 bundle 浏览器验证。
 
 ## 5. Architecture
+
 - Next.js 提供后端/认证/SPA 模板，Vite 编译 SPA，React Router 管理业务页面。
 - React → Zustand/SWR → client services → tRPC → services/models → PostgreSQL。
 - 上传附件存储于对象存储，消息文件关联和展示投影需同步维护。
 
 ## 6. Technologies and Dependencies
+
 - Next.js 16、React 19、TypeScript、pnpm、Bun scripts、Vitest、Playwright。
 - `@lobehub/ui` 固定 5.40.0，优先 base-ui，静态样式 `createStaticStyles`。
 - 本机旧依赖曾与 CI 不同，修改后需检查实际版本，不盲目全量重装。
 
 ## 7. Configuration and Environment
+
 - Windows PowerShell；可用 SSH 密钥连接 `root@192.168.100.1`，使用前只读核验。
 - 线上 Compose `/mnt/sda1/lobehub`，LobeHub 宿主 `127.0.0.1:13210` → 容器 `3210`。
 - 相关变量：`DATABASE_URL`、`APP_URL`、`AUTH_SECRET`、`HOST_EXECUTOR_BASE_URL`、`HOST_EXECUTOR_TOKEN`；只记录名称，不保存值。
 - Git remote `fork` 为 Alunixa/lobehub；`origin` 上游不推送。
 
 ## 8. Development Commands
+
 - `bun run check [explicit files]`；禁止 `bun run test` 全套。
 - 目标 Vitest：`node node_modules/vitest/vitest.mjs run --silent=passed-only <paths>`。
 - 轻量测试：`node node_modules/vitest/vitest.mjs run --config tests/mobile-studio/vitest.logic.config.mts`。
@@ -92,6 +102,8 @@
 - 生产构建工作流 `.github/workflows/codex-build-server-image.yml`；输出镜像和静态 SPA preview。
 
 ## 9. Testing and Verification
+- 2026-09-25 thread 补丁：补充 selector 测试隔离后再次确认两个目标文件 Prettier 无变化、TypeScript 纯语法通过、ESLint 10.0.2 为 0 error、`git diff --check` 通过；本机单文件 Vitest 等待约 90 秒仍停在启动/收集阶段，已终止且无残留进程，不记为通过或失败，后续由 GitHub Actions App 分片做权威验证喵~
+
 - 2026-09-24路由预加载优化：`routeChunkPreload.test.ts` 18 项与 `sharedRendererConfig.test.ts` 5 项统一复跑，共 23/23 通过；现有 ESLint 10.0.2 对两个目标文件检查退出码 0，`git diff --check` 通过喵~
 - 2026-09-24最终 `.3` 生产验收：桌面/手机各 2 个 WebSocket、关闭 1 个重载前旧连接、`subscription.ready=2`、`messages.updated=3`、runtime errors=0、blocked model requests=0喵~
 - 双端实时耗时：新增 mutation 236ms，桌面/手机可见 404/403ms；编辑 mutation 127ms，两端可见 248ms；删除 mutation 131ms，两端消失 259ms；临时消息数据库残留为 0喵~
@@ -111,6 +123,7 @@
 - E2E `35453712748`：旧关闭自动滚动断言失败，81/82 场景、490/491 步骤通过；本机全仓类型检查旧 UI/双 React 依赖 213 诊断，不声称全仓全绿。
 
 ## 10. Deployment and Operations
+
 - 2026-09-25 deploy-5 已仅重建 LobeHub 服务并确认：新容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0、OOM=false；guard 已确认退出且没有回滚标记喵~
 - deploy-5 直接回滚入口为 `sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`；本轮无数据库 schema 变化，不默认回写数据库喵~
 - 2026-09-24 `.3` 最终独立部署目录为 `/mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3`，包含部署前 inspect、容器基线、配置哈希、数据库快照、旧镜像、Release 资产、独立 `rollback.sh` 与 `guard.sh` 喵~
@@ -130,6 +143,7 @@
 - 公网入口是HTTPS域名加`:3210`；Nginx的443仅作重定向，但当前外部IPv6到443无法建连，不能依赖该重定向。尚无抓包证据确定是运营商还是其他上游环节阻断。
 
 ## 11. Important Files
+
 - `.records/reports/20260925-topic-title-production/verify-topic-title.mjs`：真实生产普通话题与子话题自动命名、`outputJSON`、刷新持久化和清理验证脚本喵~
 - `src/features/Conversation/MessageRealtimeSync.tsx`：使用稳定会话坐标维护单一实时订阅，并通过稳定事件回调读取最新完整 context喵~
 - `src/features/Conversation/MessageRealtimeSync.test.tsx`：覆盖相同语义 context 不重连、真实会话坐标变化才更换订阅喵~
@@ -148,6 +162,7 @@
 - `tests/mobile-studio/verify-live.mjs`：只读线上检查，凭据从 stdin 输入，禁止生产写。
 
 ## 12. APIs, Interfaces, and Data Formats
+
 - `message.editMessageContent({ id, content, editorData?, fileIds })`：保存本人user消息文字及完整附件集合，成功返回`{ success, messages }`；不自动重新生成回答。
 - `message.insertContextMessage({ id, anchorId, position: 'before'|'after', threadId?, content, editorData?, fileIds })`：同事务定位上下文，`metadata.isCustomContext=true`且role=user，幂等ID重试保存最新内容；服务层归一化工具分组边界。
 - 新上下文无schema迁移，真实createdAt保留；清理旧RAG关联但不删除原文件对象。手机输入框只能直接点击聚焦。
@@ -157,6 +172,7 @@
 - 新 thread 的 `replaceMessages` 必须写原始 `dbMessagesMap` 数据；assistantGroup 的来源规范化为末尾真实子消息。
 
 ## 13. Completed Work
+
 - 2026-09-25：结构化话题/子话题自动命名、非空回退、定向回归、GitHub Actions、`v2.2.8-codex.20260925.1` Release 与 deploy-5 单服务保护部署已完成喵~
 - 2026-09-24：稳定 `MessageRealtimeSync` 订阅生命周期、完善真实双端验收工具、Actions 构建、`.20260924.3` Release、单服务保护部署及电脑/手机新增编辑删除自动同步验证全部完成喵~
 - 2026-09-24远端UTC+8：会话首屏白屏优化、后台缓存水合、WebSocket-first query/HTTP fallback、只读 bridge 与错误 envelope 修正完成；12项定向测试、Actions镜像、Release、单服务保护部署、外部IPv6 HTTPS/WSS及稳定复查全部通过。
@@ -168,6 +184,7 @@
 - 最终镜像与校验清单在 GitHub Releases `.20260919.2`，资产大小/digest/标签提交均通过 GitHub API 核验，说明已追加部署和全仓检查结果。
 
 ## 14. Pending Work
+
 - 自动命名任务只剩收尾验收：重跑修正后的真实生产脚本，完成普通话题与子话题 `outputJSON` 200、非空标题及刷新持久化；目视两张截图，清理所有测试 run 残留，复查生产稳定性并更新 Release Notes/manifest/SHA256SUMS 喵~
 - 最新状态覆盖下列旧待办：e807性能修复已完成Actions、Release、deploy-4与双端只读上线验收；加载仍需进一步优化（电脑冷4.9s/暖2.8s），不重复构建发布本候选喵~
 - 会话进入速度仍未达到用户预期：无请求拦截的桌面真实冷/暖首条消息为 6253/3798ms；已定位 `desktop-chat-launch` 递归动态导入预加载导致 240 个 `modulepreload` 和 360 个冷加载脚本，当前最小修复尚未测试、构建、发布或部署喵~
@@ -182,16 +199,19 @@
 - 本机 `D:\Cursor\lobehub-backups\20260919-conversation-repair` 下 `preview-first/final/validated/release` 和 `release-final/validated/published` 保留；远端 `/mnt/sda1/lobehub-release-20260919-conversation-repair` 保留，不影响线上服务。
 
 ## 15. Known Bugs and Limitations
+
 - 跨设备新消息、编辑和删除已能亚秒级自动同步，但首次进入或重载真实会话仍需约 3.8–6.3 秒；当前已定位为聊天路由过度 `modulepreload`，修复尚未进入生产喵~
 - 本轮报告的交互问题已修复并上线；桌面/移动浏览器回归通过，未连接手机真机验证实体输入法。
 - 原有未跟踪 build/release 目录与 `问题.txt` 不提交、不删除。
 
 ## 16. Design Decisions
+
 - 优先修共享数据/事件边界，保留主对话、子话题和移动端已有功能，不用禁用功能掩盖问题。
 - 手机输入必须由直接点击输入区域启动，不因页面挂载、导航、弹层或其他按钮自动 focus。
 - 2026-09-24：聊天首屏只预加载路由 chunk 及其必需静态依赖，不递归追踪嵌套 dynamic imports；原有动态依赖改为页面 load 后的 idle 阶段渐进预热，避免首屏阻塞同时保留后续交互缓存覆盖喵~
 
 ## 17. Failed Approaches
+
 - 2026-09-24：首轮仅把 `desktop-chat-launch.includeDynamicImports` 设为 `false` 时，23 项定向测试中 1 项发现原有 idle warmup 也被一并移除；当前拆分为首屏静态依赖组与独立聊天 idle 动态预热组，不通过删除回归断言掩盖行为丢失喵~
 - 2026-09-24：原双端验收用 `page.route('**/*')` 对每个请求执行 `route.continue()`，放大了冷/暖加载耗时；性能基线改用无全局请求拦截的独立探针，旧 9.6–14.4 秒仅保留为带拦截脚本结果喵~
 - 2026-09-24：性能探针首版 CJS 使用顶层 `for await` 导致语法失败；包入 async main 后 `node --check` 与真实运行通过，未改生产代码喵~
@@ -206,6 +226,7 @@
 - 只包装 HTMLElement.focus 会遗漏 Lexical 原生 Selection 聚焦；加入 focusin 兜底后通过真实浏览器。直接 label 的原生默认动作晚于 click 微任务，需要单独延迟清理许可。
 
 ## 18. Rollback and Recovery
+
 - **最新 deploy-5 回滚**：`sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`，只恢复 deploy-5 前 `.20260924.4` 应用镜像，不覆盖数据库；当前部署已确认，除非真实验收发现生产回归，否则不要执行喵~
 - **最新.4回滚**：sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh，恢复.3镜像6527f1f9a003，只回滚应用不覆盖数据库；deploy-4不可重复执行喵~
 - **最新 `.20260924.3` 回滚**：远端执行 `sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-3/rollback.sh`，恢复 deploy-3 前稳定镜像并只重建 LobeHub 应用；数据库快照与旧镜像均保留喵~
@@ -223,12 +244,15 @@
 - 回滚只恢复旧应用镜像；不默认恢复数据库覆盖更新后内容。
 
 ## 19. Current Task
-- 当前任务是完成 `v2.2.8-codex.20260925.1` 自动命名修复的真实生产收尾，不再修改或重新部署已经上线的运行代码喵~
-- deploy-5 当前容器、镜像、版本和 guard 状态已只读复核正常；下一步只重跑已修正验收脚本，验证普通话题与子话题最终非空标题及刷新持久化喵~
+
+- 当前任务扩展为修复真实验收发现的子话题专用模型 401 与父消息误回退；修改前检查点为 `1d1b9da045` 喵~
+- 最小方案是保留用户的 thread 专用模型优先级，失败或空结果时重试已可用的 topic 命名模型；提示与本地回退只使用当前 thread 的消息，避免父话题污染喵~
 - 验收通过后必须清理所有本轮临时话题/消息/子话题，目视检查 `topic-title.png` 与 `thread-title.png`，再复查其他服务、配置、Redis、Host Executor 和日志不变喵~
 - 最后更新 GitHub Release Notes、`release-manifest.json` 与 `SHA256SUMS`，覆盖上传并核验 digest，然后同步 `XJ.md`、`YHYQ.md` 和最终记录提交喵~
 - 下列性能与 `.20260924.4` 计划均为已完成历史过程，不是本轮当前任务喵~
+
 ### 本轮过程快照（以下待执行状态已由上方实际结果取代）
+
 - `v2.2.8-codex.20260921.1`已于2026-09-21 18:39:09 UTC+8发布，标签指向00df83a84f，GitHub API核验3项资产大小/digest全部一致；同源生产UI64场景（10参数+47矩阵+7分组会话）全通过、runtime errors=0。远端最终镜像/manifest SHA256与deploy.sh语法校验通过，尚未执行部署，下一步仅LobeHub保护替换与线上只读验收。
 - 最终00df镜像35588419088与手机专项35588418965均成功；同源`ui-params-final`四手机尺寸、数值/文字保存、推理开关/下拉、折叠/返回聊天、电脑侧栏滚轮/关闭全部通过，10张截图、runtime errors=0。目视4,096完整显示；`ui-matrix-final`运行中。当前验证脚本HEAD120dae仅额外修正实际电脑入口/折叠DOM断言，与00df运行源码一致。
 - 最终发布包`release-final/lobehub-server-image.tar`=298029568 bytes，SHA256 `c7049e6b0e4ef698acc9b3891ec43929c19e6b1923a2d42db49b962f6da4b024`；不要使用`release-published`中的ba65中间包。尚未Release/部署，仍须矩阵通过、发布资产核验及240秒保护窄部署。
@@ -249,6 +273,7 @@
 - 用户本轮功能已发布上线并验证，最终Release说明和部署证据已归档，21:03:27稳定复查通过；临时清理因执行工具拒绝留下明确待办，不再修改代码或重复部署。
 
 ### 实施过程记录（下列待办已由上方最终状态取代）
+
 - 最终报告`ui-message-release-validated`、`ui-current-time-release`、`ui-matrix-release`、`ui-conversation-release`、`ui-conversation-grouped-release`全部通过；已生成发布说明、manifest和SHA256SUMS，准备上传Release和远端暂存，然后执行已验证的240秒回滚保护部署。仅验证脚本尾换行和记忆提交领先30源码，运行文件未变。
 - 修复版30c85bdfb5镜像与全部专项成功（消息170、手机272、时间102次测试）。同源UI空白上下文已可正常打开、上传文档、保存及刷新；排序断言需忽略编辑器标准Markdown尾换行（正文与指定位置均正确），仅修验证脚本trim，不改生产包。
 - 修复已提交推送`30c85bdfb5b47cc311f815788132bb719b95289b`；本机真实EditorCanvas 5项测试通过（包含空白/空root3项），定向lint通过。新镜像`35511314975`构建中，消息专项`35511315005`、手机`35511315027`、同源时间`35511365633`待最终确认。
@@ -292,9 +317,12 @@
 - 原交互修复阶段：修复、发布、部署和上线验证已完成，仅暂存清理受执行工具限制保留；新超时调查仍未闭环。
 
 ## 20. Next Steps
-- 最新下一步：重跑 `.records/reports/20260925-topic-title-production/verify-topic-title.mjs`，要求普通话题与子话题各自出现成功 `aiChat.outputJSON`、最终标题非空且刷新后保持一致喵~
+
+- 最新下一步：完成 thread 模型重试与 thread-scoped 消息修复，运行定向测试/ESLint/差异检查并通过 Actions 构建新的同源镜像；发布后使用独立 deploy-6 备份与 guard，仅替换 LobeHub 喵~
+- deploy-6 后重跑 `.records/reports/20260925-topic-title-production/verify-topic-title.mjs`，要求普通话题与子话题各自至少出现一个成功 `aiChat.outputJSON`、最终标题非空且刷新后保持一致喵~
 - 验收后目视截图、查询数据库确认所有测试 run 残留为 0、做一次只读生产稳定性复查，并完成 Release 说明与校验资产归档喵~
 - 自动命名收尾完成后，如继续性能优化，应研究初始依赖/初始化串行与空闲预热总量，而非重复改 WebSocket；下列步骤为历史计划喵~
+
 0. 不重复部署 `.3` 或重复生产写入验收，保留 `release-published-3`、`revision-5faeb576`、`live-realtime-release-3` 和远端 `deploy-3` 证据喵~
 1. 运行 `routeChunkPreload` 与 `sharedRendererConfig` 定向 Vitest、现有 ESLint 10.0.2 和 `git diff --check`，只显式提交两个源码文件及两份记录文件喵~
 2. 推送后由 GitHub Actions 构建同源服务器镜像和 SPA artifact，先检查新 `desktop.html` 的 `modulepreload` 数量显著低于 240，并确认手机入口没有回归喵~
@@ -304,6 +332,11 @@
 6. 如 3210 间歇超时复发，记录准确时间、截图、客户端 AAAA 与外部 IPv6 探测；本轮没有修改网络，旧间歇性故障根因仍未确认喵~
 
 ## 21. Change Log
+- 2026-09-25：上下文压缩后按用户“继续”恢复任务，完整读取 1018 行 `XJ.md`、近期 `YHYQ.md`、当前差异及 Zustand/TypeScript/测试规范；复核 thread 模型重试和 thread-scoped 消息方案，并补充测试 selector 默认值恢复以消除用例间配置泄漏喵~
+
+- 2026-09-25：thread 补丁本机定向静态检查通过；单文件 Vitest 复现该仓库既有本机收集卡住，等待约 90 秒无测试结果后停止，不重复启动相同命令，转 Actions 验证喵~
+
+- 2026-09-25：真实子话题运行 `1790334328316` 成功创建 thread，但 thread 命名请求为 401；只读数据库确认 topic 使用 `gemini/gemini-3.8-flash`，thread 无用户覆盖而回落内置 `deepseek/deepseek-v4-pro`。同时 thread 临时标题错误取自主话题消息；建立 `1d1b9da045` 检查点并实现模型重试与 thread-scoped 修复初稿喵~
 - 2026-09-25：修正断言后的首轮真实生产重跑确认普通话题完整通过：`aiChat.outputJSON` HTTP 200、最终标题“自动命名生产验收”、刷新保持一致、临时话题已清理；子话题尚未进入，因为生产操作栏将入口收进无标签 overflow 下拉菜单，验收脚本已按真实 `aria-haspopup=menu` → “创建子话题”菜单项路径修正喵~
 - 2026-09-25：修正真实生产验收脚本的旧断言，刷新后分别对比最终 AI 话题标题与最终子话题标题，不再把即时非空回退标题更新为最终标题误判为失败；项目内脚本与备份副本同步，`node --check` 通过喵~
 - 2026-09-25 18:57 +08:00：上下文续接后完整读取 899 行 `XJ.md`、近期 `YHYQ.md`、验收脚本与相关技能；只读复核 deploy-5 容器 `d96f4957b63c…`、镜像 `588aa8cf03d5…`、restart=0/OOM=false、内部版本 `2.2.8`，guard 已确认退出且没有回滚标记喵~
@@ -334,7 +367,9 @@
 - 路由器本轮启动约 05:02，LobeHub 已运行约12小时；DDNS 使用 pppoe-wan，AAAA 匹配当前地址；防火墙 WAN input ACCEPT、Lucky 附加链空，Nginx 实际配置为 `/etc/nginx/nginx.conf`，3210 双栈监听。
 - 外部 SSH 节点 f 无全局 IPv6/默认 IPv6 路由，不可把其 IPv6 探测失败算成家庭服务失败；ff 主机密钥与记录不一致，停止该入口，未绕过主机密钥校验。
 - 2026-09-19：创建项目记忆；记录新请求、历史部署约束、验证和回滚规则。
+
 ### 2026-09-19 继续执行
+
 - 编辑前检查点：`4b9ff2426b`；已实现但尚未验证：话题复制附件/线程/消息组独立关联，thread 原始数据初始化，手机完整分页搜索与全入口直接输入焦点保护，面板尺寸/标题关闭区，快捷键输入边界。
 - 新文件：`src/features/MobileApp/TopicList.tsx`、`inputFocusGuard.ts`。
 - 下一步：新增/调整专项回归，生产 bundle 浏览器验证，Actions / Release / 窄部署；线上未改变。
@@ -358,7 +393,9 @@
 - 任务四项回归在固定 UI 5.40.0 的 CI 全通过；本机5.19.0没有 base-ui ActionIcon/Text，故本机该组件测试失败不代表 CI / 生产结果。
 - 最终 `.2` 镜像 `297830400` 字节，SHA-256 `2eaecdfe281bb942e23eb3a3480c79ef2f9b011990e7630c705f11ce4cb9e8f3`；最终报告 `ui-matrix-release` / `ui-conversation-release` / `ui-grouped-release`，不要部署候选资产。
 - 最终部署前数据库归档 `database-final-predeploy.dump` 本机/远端哈希一致：`cb8d675723dd2a0323ce5e38ce57221398e6bfc53fbf4226021a30ec145c86d7`。
+
 ### 上线与交付
+
 - `.2` Release 两个资产已核验：镜像 ID 575071815（297830400 bytes），manifest ID 575071816（1358 bytes，SHA-256 `1f6224c0a9773133aacd199437f8ba4c9f52ef6b7939ca7009007f8106d7552e`）；标签指向 cd0a25f68b。
 - 服务器 00:18:18 启动 240 秒保护，00:20:01 完成 UI 后确认，00:23:24 再查仍为新镜像 running / restart=0，无回滚。
 - 只读线上报告 `ui-live-final/live-report.json` 7 入口通过；`production-backup` 已复制部署日志、guard、健康结果、其他服务前/后/最终状态、发布校验清单。
@@ -383,89 +420,115 @@
 - 待完成：源码实现、客户端/启动器定向测试、Docker构建与运行验证、GitHub Actions同源镜像/SPA预览、Release说明、独立备份后的LobeHub单服务保护部署和公网/本地回归喵~
 
 ## 19. Current Task
+
 - 2026-09-23：实现会话加载性能优化：首屏不再等待 IndexedDB 全量水合，查询优先同源 WebSocket，连接/响应失败自动回退 HTTP；写请求继续使用 HTTP，避免重复提交风险喵~
 - 修改前检查点：`7081603c31`喵~
 - 当前尚未修改运行时代码、Docker、线上配置或线上服务喵~
 
 ## 20. Next Steps
+
 - 实现客户端只读 tRPC WebSocket-first 传输和测试喵~
 - 实现启动器 HTTP 反代与 `/api/trpc-ws` 只读 WebSocket bridge喵~
 - 调整首屏水合门闩、补充专项测试并执行构建验证喵~
 - 通过 GitHub Actions 构建/发布后，按既有备份、回滚保护和单服务部署流程验证线上本地/公网入口喵~
 
 ## 21. Change Log
+
 - 2026-09-23：建立 `7081603c31` 修改前检查点，开始 WebSocket 优先查询与首屏白屏优化喵~
 
 ## 13. Completed Work
+
 - 2026-09-23：新增客户端 `websocketFirstLink`，query 优先同源 `/api/trpc-ws`，连接/响应失败 900ms fallback HTTP；只读查询使用，写操作保持 HTTP，避免重复副作用喵~
 
 ## 19. Current Task
+
 - 客户端 WebSocket-first link 已完成，待实现服务端 WebSocket bridge、启动器 HTTP 反代、首屏门闩调整及定向验证喵~
 
 ## 21. Change Log
+
 - 2026-09-23：新增 `packages/trpc/src/client/websocketFirstLink.ts` 并接入 `packages/trpc/src/client/lambda.ts`喵~
 
 ## 5. Architecture
+
 - 生产容器启动器现在采用双层服务：公开 `PORT` 由 Node HTTP/WS 代理监听，Next standalone 仅监听 `127.0.0.1:INTERNAL_PORT`；普通 HTTP 原样流式转发，`/api/trpc-ws` 使用只读 tRPC query bridge喵~
 - WebSocket bridge 复用原 Next `/trpc/lambda/*` 处理认证、上下文、业务逻辑和 SuperJSON；bridge 不执行 mutation，客户端失败自动 fallback HTTP喵~
 
 ## 7. Configuration and Environment
+
 - 新增可选 `INTERNAL_PORT`（默认公开 PORT + 1）与 `SERVER_LISTEN_HOST`（默认 `0.0.0.0`）；公开 `PORT` 接口保持不变喵~
 
 ## 13. Completed Work
+
 - 2026-09-23：实现公开 HTTP 代理、同源 `/api/trpc-ws` 只读 bridge、内部 Next 回环监听及 Docker `ws` 运行依赖打包喵~
 
 ## 19. Current Task
+
 - 客户端与服务端 WebSocket-first 主链路已落地，待首屏缓存门闩调整、测试修正和完整构建验证喵~
 
 ## 21. Change Log
+
 - 2026-09-23：新增 `scripts/serverLauncher/realtimeServer.js`，修改 `startServer.js` 与 Dockerfile 接入双层 HTTP/WS 启动架构喵~
 
 ## 17. Failed Approaches
+
 - 2026-09-23：定向 `bun run check ... --lint --type` 因本机 `node_modules/.bin/eslint` 缺失而未执行检查；Node 启动器语法和 `git diff --check` 已通过，不把工具未运行当作代码通过喵~
 
 ## 21. Change Log
+
 - 2026-09-23：记录首轮脚本语法、diff 检查及本机 ESLint 缺失阻塞喵~
 
 ## 5. Architecture
+
 - 首屏 CacheHydrationGate 只等待身份范围确定，IndexedDB 在 SWR provider 后台加载；`SWRMutateInitializer` 收到 scope hydration-ready 后触发一次当前作用域重验证喵~
 - IDB hydration 采用“只填充缺失 key”策略，网络已写入的同 key 优先，避免异步缓存回填覆盖 fresh data喵~
 
 ## 9. Testing and Verification
+
 - 新增 `CacheHydrationGate` 回归：Web 不等待 IDB、桌面身份初始化、1500ms 身份超时喵~
 - 新增 `localStorageProvider` 回归：late IndexedDB hydration 不覆盖网络值喵~
 
 ## 13. Completed Work
+
 - 2026-09-23：完成首屏缓存门闩拆分与后台 hydration 竞态保护喵~
 
 ## 19. Current Task
+
 - 首屏门闩与后台缓存链路已完成，待补 WebSocket link/server bridge 测试并修正启动器边界，再做构建验证喵~
 
 ## 21. Change Log
+
 - 2026-09-23：修改 `CacheHydrationGate.tsx`、`SWRMutateInitializer.tsx`、`Query.tsx`、`localStorageProvider.ts` 及对应缓存/门闩测试喵~
 
 ## 9. Testing and Verification
+
 - 2026-09-23：定向 Vitest `CacheHydrationGate.test.tsx` 4/4、`localStorageProvider.test.ts` 19/19 通过，共 23 项；未运行全仓测试喵~
 
 ## 21. Change Log
+
 - 2026-09-23：完成首屏/缓存定向回归，23 项通过喵~
 
 ## 9. Testing and Verification
+
 - 2026-09-23：新增 `websocketFirstLink.test.ts` 4/4 通过，覆盖 timeout/error fallback、mutation HTTP、WS 成功；测试运行伴随既有 `D:/tsconfig.json` 路径解析提示喵~
 
 ## 17. Failed Approaches
+
 - 2026-09-23：WebSocket link 首轮 mutation 测试使用无 observer 的 `.subscribe()`，触发 tRPC observable fixture 的 `observer.next` 异常；改为 `.subscribe({})` 后通过，非生产代码故障喵~
 
 ## 21. Change Log
+
 - 2026-09-23：新增 `packages/trpc/src/client/websocketFirstLink.test.ts`，4项定向测试通过喵~
 
 ## 12. APIs, Interfaces, and Data Formats
+
 - 外层普通 HTTP 代理保留端到端请求头及请求体，支持上传、mutation、SSE/流式响应；WebSocket bridge 仅接受标准 tRPC `query` 消息并返回同样的 SuperJSON envelope喵~
 
 ## 9. Testing and Verification
+
 - 2026-09-23：实时启动器 `node --check` 通过；临时集成夹具验证 HTTP health、POST content-type/body、WS Cookie/query 和 Origin 拒绝喵~
 
 ## 21. Change Log
+
 - 2026-09-23：修正 `realtimeServer.js` 普通 HTTP 头部转发，补齐写请求兼容性并完成本地集成验收喵~
 
 ## 2026-09-23：继续完成会话加载性能优化
@@ -617,11 +680,13 @@
 - 本机通过 IPv6 外部 HTTPS 访问 APP_URL `/api/version` 返回 HTTP 200 和版本 `2.2.8` 喵~
 - 本机真实 `wss://` 连接握手并收到标准业务 error，未带 `realtime-bridge` source，证明修正版经过公网 IPv6 WebSocket 入口喵~
 - 当前 deploy-2 guard 仍未确认，下一步核对其他服务/配置不变并等待保护窗口结束喵~
+
 ## 2026-09-23：.2 第二次保护部署因确认过晚自动回滚
 
 - .2 第二次部署已完成内部/公开版本、远端 WebSocket 标准业务 error、HTTP 401和本机外部 IPv6 HTTPS/WSS 全部验收，但等待 180 秒后才执行最终确认，超过 guard 截止时间喵~
 - deploy-2 guard 于远端 2026-09-24 03:22:00 +08:00 自动回滚到旧镜像，当前容器 9c37f0c7ecf8bb0d11a6224f34eeccaa69a171a480a5e26395b7c98a51c64807，旧镜像 running/restart=0/OOM=false，版本接口正常喵~
 - 该回滚是部署确认时序问题，不是 .2 代码或 WebSocket 验收失败；保留 deploy-2 日志，第三次部署将在探针连续通过后立即写确认标记喵~
+
 ## 2026-09-24：会话首屏与 WebSocket-first 修正版最终部署完成
 
 - 最终部署版本为 v2.2.8-codex.20260923.2，运行源码 2ae3466070027bc5e9c3f5605915f7b29916f813，Actions 35904190592 成功喵~
@@ -636,15 +701,18 @@
 ## 2026-09-24：真实跨设备消息同步与会话秒开修复
 
 ### Current Task
+
 - 用户确认 `.20260923.2` 仍存在同一会话手机与电脑最新消息不同步，以及本地进入会话长时间等待的问题喵~
 - 本轮修改前检查点为 `c1d37ced5d`；当前只更新项目记录，运行时代码、线上容器与其他服务尚未改变喵~
 
 ### Root Cause
+
 - 当前 `websocketFirstLink` 只把普通 query 经 WebSocket 发送到外层启动器，启动器仍为每条 query 单独请求内部 HTTP tRPC；没有会话订阅、数据库变更广播或跨设备缓存失效事件，因此不能产生实时同步喵~
 - WebSocket-first 截断了原 `httpBatchLink` 的批量读取能力，并增加外层 WebSocket、内部单条 HTTP 与 900ms fallback 路径；本地初始查询也可能比直接 HTTP batch 更慢喵~
 - 当前 IndexedDB provider 在 React 挂载后异步扫描整个 scope；会话 hook 可能先以空内存缓存发起网络请求，现有 hydration 后全局重验证不能保证当前会话缓存优先进入 Conversation store喵~
 
 ### Design Decisions
+
 - 普通 tRPC query 恢复 HTTP batch，WebSocket 只负责持久订阅和轻量 `messages.updated` 通知，不再代理首屏数据读取喵~
 - 消息写入成功后按用户或 workspace 会话作用域发布 Redis 事件，WebSocket 服务端只接受经现有认证解析得到的可信订阅目标，不允许客户端指定任意 Redis channel喵~
 - 客户端收到事件后只刷新当前会话精确 SWR key；本机正在流式生成时避免远端失效刷新覆盖流式内存，终态后再校验喵~
@@ -652,6 +720,7 @@
 - 广播节奏为用户消息稳定落库一次、助手终态稳定一次，不按 token/chunk 广播，避免另一设备频繁全量拉取喵~
 
 ### Next Steps
+
 1. 先提交本轮根因与设计记录，再恢复普通 query 的 HTTP batching喵~
 2. 实现认证后的会话订阅、Redis fan-out、断线清理和客户端精确失效喵~
 3. 覆盖普通消息 mutation、编辑、删除、自定义上下文及 Agent Runtime 终态广播喵~
@@ -660,6 +729,7 @@
 6. 最终使用两个独立客户端验证新消息、编辑和删除自动同步，并记录会话首个可见内容的性能结果喵~
 
 ### Implementation Status
+
 - 已从 `packages/trpc/src/client/lambda.ts` 移除普通 query 的 WebSocket-first link，恢复 `httpBatchLink`/`httpLink` 原有分流；旧 link 与测试文件已删除，外层 bridge 暂时保留旧客户端兼容喵~
 - 新增 `apps/server/src/services/message/realtime.ts`，按用户或 workspace 主体及会话上下文生成不可猜测 Redis channel，并以 best-effort 方式发布 `messages.updated`喵~
 - 消息服务的创建、编辑、插入上下文、更新、删除和压缩成功路径已接入会话广播；全量删除使用主体级全局 channel，Agent Runtime 终态在稳定快照解析后广播喵~
@@ -672,26 +742,31 @@
 ## 2026-09-24：上下文压缩续接与测试修正状态
 
 ### Current Status
+
 - 已从上下文压缩摘要续接，确认核心运行代码已提交到 `3054e7ab47`，线上仍为 `v2.2.8-codex.20260923.2` / 源码 `2ae3466070`，本轮真实订阅与会话单键缓存尚未推送、构建、发布或部署喵~
 - 当前未提交内容只包含启动器并发订阅/心跳修正、缓存竞态修正及对应测试；历史未跟踪构建目录和 `问题.txt` 保持不动，禁止使用 `git add -A` 喵~
 
 ### Testing and Verification
+
 - 缓存首轮测试发现 `mutate(..., { revalidate: false })` 会让 SWR 丢弃已经启动的旧网络响应；实现已改为先读取 IndexedDB 精确单键，再以 `fallbackData` 启动唯一一次 HTTP revalidate，回归随后通过喵~
 - 已有一次合并定向运行通过 8 个文件、111 项测试；后续新增 Redis 同 channel 并发订阅引用计数与流式期间延迟刷新两项测试并分别通过，当前有效覆盖合计 113 项，提交前仍需统一复跑喵~
 - 本轮源码使用现有 `node_modules/.bun/eslint@10.0.2.../eslint/bin/eslint.js` 定向检查为 0 error；`bun run check ... --lint` 因 `node_modules/.bin/eslint` 缺失未执行喵~
 - `bun run check ... --type` 会忽略显式文件并执行全仓 `tsgo --noEmit`，运行约五分钟无输出后已停止，类型检查尚未验证，必须由干净 GitHub Actions 构建继续兜底喵~
 
 ### Current Task
+
 - 下一步只显式暂存本轮测试、竞态修正与两份记录文件并提交检查点，然后统一复跑 113 项定向测试、直接 ESLint、`node --check` 和 `git diff --check` 喵~
 - 验证通过后推送当前分支并触发 `.github/workflows/codex-build-server-image.yml`，仅接受绑定最终源码提交的成功镜像，再进行 Release、独立备份、240 秒保护部署和双客户端真实同步/首屏耗时验收喵~
 
 ### Verification Result
+
 - 后续测试与竞态修正已提交为 `f0033422de`，只包含本轮 10 个目标文件，未暂存历史构建目录或 `问题.txt` 喵~
 - 最终统一 Vitest 通过 9 个文件、113 项测试：消息实时 helper 3、MessageService 26、Agent Runtime Coordinator 35、启动器 envelope/broker 5、真实 HTTP/WS/订阅集成 3、Conversation 数据层 37、缓存挂载顺序 2、浏览器订阅 1、流式保护 1 喵~
 - 对 `c138599aca..HEAD` 范围内 20 个 JavaScript/TypeScript 文件运行 ESLint 10.0.2 为 0 error；`node --check scripts/serverLauncher/realtimeServer.js` 与 `git diff --check c138599aca..HEAD` 均通过喵~
 - 本地验证后工作区只剩任务开始前的历史未跟踪目录和 `问题.txt`；下一步更新记录提交并推送最终源码，由 GitHub Actions 执行真实镜像与 SPA 构建喵~
 
 ### Build and Artifact Verification
+
 - 最终分支已推送，远端 `codex/deploy-server-image-20260720` 指向 `f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`；自动触发的 GitHub Actions `35971082150` 精确绑定该提交并成功完成喵~
 - Actions 中 OCI 构建、运行依赖验证、生产 SPA 导出、SPA artifact 上传和服务器镜像上传全部成功；作业耗时约 6 分 39 秒，仅有既存 Actions Node/Dockerfile secret lint/Buildx 清理警告喵~
 - 新证据目录为 `D:\Cursor\lobehub-backups\20260924-realtime-sync`；服务器 artifact ZIP `298424482` bytes / SHA-256 `0c0acbe9416460837882045af580f11a72d968f90531e803d96eb2bc5f33ba03`，SPA ZIP `26233620` bytes / SHA-256 `b6a4f2a5607867ad1c64bb6177bed95730c36bc587c16e084670b215dd112b54`，均与 GitHub API digest 一致喵~
@@ -699,6 +774,7 @@
 - 生产 SPA 共 1745 个文件，包含 `subscribeMessages`、`unsubscribeMessages`、`messages.updated` 与 `/api/trpc-ws`，未包含已删除的 `websocketFirstLink` 标记；下一步进行只读生产基线、Release 和独立保护部署喵~
 
 ### Release and Pre-deployment Baseline
+
 - 正式 Release `v2.2.8-codex.20260924.1` 已发布，标签指向 Actions 构建源码 `f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`；GitHub 上镜像、manifest、SHA256SUMS 的大小与 digest 均匹配本地喵~
 - Release 资产 digest：镜像 `e2c22c5901dd50f6a0ae99e1573409091ddd0575cc60832851abc853f723f74d`，manifest `31ac50b89ff330a1f66d494a4bec9a4657de7a86c483dde3f2aac5698608d17c`，SHA256SUMS `f2fb2119b933cfd92bcdb82ae2e974e4bc218ec58c6c056659cd20d518579abe` 喵~
 - 2026-09-24 15:53 +08:00 只读生产基线：旧容器 `3d6ea49a564c` / 镜像 `ea7da67e7e83`，running、restart=0、OOM=false；端口仍为 `127.0.0.1:13210 -> 3210`，内外 `/api/version` 正常，近 30 分钟致命日志计数 0 喵~
@@ -707,6 +783,7 @@
 - 下一步在 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 建立新独立备份、回滚脚本与 240 秒 guard，只重建 LobeHub 服务喵~
 
 ### Deployment Backup
+
 - 新独立备份目录 `/mnt/sda1/lobehub-backups/20260924-realtime-sync` 已创建，旧镜像 tar 约 988.6 MB / SHA-256 `b72e9694d36060a5bece763c6a5bc43734c143b944362bd04944349725777902` 喵~
 - 数据库备份约 43.7 MB / SHA-256 `b5302bb9eb87f33ac710bf44859cd0e4ed9578cd64ca41da635d940c03f087f9`，配置归档 SHA-256 `b882f6278ac6751d7d98ca626a950c01f885bda99674e55f85ab2d75d9d04f7c` 喵~
 - 已创建 `rollback.sh` 和等待 240 秒的 `guard.sh`，回滚只将旧镜像恢复为 `lobehub/lobehub:latest` 并使用 `docker compose up -d --no-deps --force-recreate lobehub` 重建应用喵~
@@ -715,12 +792,14 @@
 - 下一步上传 Release 三项资产、远端校验并离线加载/探测新镜像；服务替换只在 guard 启动后执行喵~
 
 ### Image Staging
+
 - Release 三项资产已上传远端 `release` 目录，`SHA256SUMS` 对镜像和 manifest 校验通过；新镜像已导入为 `lobehub/lobehub:codex-f2d03143e0766d7a0d3a61da8cf7587fe3fbd2d1`，镜像 ID `sha256:2e84ffa13a8d86712d9ba227199e2a6ab28d64775a8d0fe2bb0e53a54798e7a2` 喵~
 - 首次离线探针错误检查 `/app/scripts/serverLauncher/realtimeServer.js`，而 Dockerfile 实际复制到 `/app/realtimeServer.js`；该失败只发生在临时 `docker run --rm`，运行服务未变化喵~
 - 随后的内联更正命令在本地 PowerShell 解析 Node `for` 语句时失败，未执行远端命令；改用 LF 脚本后确认 `/app/realtimeServer.js`、`/app/startServer.js` 存在，`next`、`ws`、`ioredis` 可解析，`RUNTIME_PROBE_OK` 喵~
 - 镜像导入和探针完成后旧线上容器仍为 `3d6ea49a564c`、旧镜像 `ea7da67e7e83`、running/restart=0/OOM=false；下一步启动 guard 并仅重建 LobeHub 喵~
 
 ### Failed Deployment and Rollback
+
 - 2026-09-24 16:03:52 +08:00 启动首轮保护部署，只执行 `docker compose up -d --no-deps --force-recreate lobehub`；新容器持续重启，日志明确为 `Cannot find module '@ioredis/commands'` 喵~
 - 根因是 Dockerfile 最小运行镜像只复制了 `ioredis` 主包，Actions 的旧运行依赖检查仅使用 `require.resolve('ioredis')`，没有真正加载模块，因此未发现传递依赖缺失喵~
 - 首次手动回滚命令被本地 PowerShell 提前解释远端 `$(cat ...)`，未执行远端操作；改用单引号保护后于 16:05:38 开始回滚，16:06:30 完成喵~
@@ -728,12 +807,14 @@
 - 问题 Release `v2.2.8-codex.20260924.1` 不得部署；下一步完整补齐 `ioredis` 运行依赖闭包，并把 Actions/离线探针改为真正 `require('ioredis')` 和创建/关闭客户端，重新构建修正版喵~
 
 ### Runtime Dependency Fix
+
 - 失败镜像中 `/app/node_modules/.pnpm/ioredis@5.11.1` 的完整依赖闭包存在，但单独 `COPY /deps/node_modules/ioredis` 会把根 symlink 解引用为普通目录，使模块加载时无法回到 pnpm 虚拟仓库解析 `@ioredis/commands` 等依赖喵~
 - Dockerfile 已移除解引用复制，改为让 `/app/node_modules/ioredis` 指向 `.pnpm/ioredis@5.11.1/node_modules/ioredis`，并在镜像构建中断言入口文件存在喵~
 - Actions 运行依赖检查已从仅 `require.resolve` 升级为真正加载 `ioredis`、创建并关闭 lazy client、加载 `/app/realtimeServer.js` 并确认 broker 导出，能在发布前捕获传递依赖缺失喵~
 - 下一步运行 YAML/差异检查并提交修复，推送后只接受新提交的成功 Actions 镜像，发布 `.2` 修正版并复用现有独立备份进行第二次保护部署喵~
 
 ### Corrected Build Result
+
 - 修复提交为 `adb31345bb58d5d06aeedef318b2d204e2b9ad80`；工作流 YAML 解析、Dockerfile/Actions 静态断言和 `git diff --check` 均通过喵~
 - 推送后自动 run `35973730654` 已启动；因一次错误的完整 SHA 筛选又创建了手动 run `35973780030`，手动 run 随即取消，但 concurrency 随后取消了自动 run，二者均未产生可用镜像喵~
 - 队列清空后只触发权威 run `35973965711`；该 run 绑定修复提交并成功完成 OCI 构建、真正加载 ioredis 的运行依赖验证、生产 SPA 导出和两项 artifact 上传，耗时约 9 分 16 秒喵~
@@ -741,12 +822,14 @@
 - 修正版镜像 tar `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，标签 `lobehub/lobehub:codex-adb31345bb58d5d06aeedef318b2d204e2b9ad80`；下一步发布 `.20260924.2` 并执行 deploy-2 独立快照与保护部署喵~
 
 ### Corrected Release
+
 - 正式 Release `v2.2.8-codex.20260924.2` 已发布，标签精确指向修复源码 `adb31345bb58d5d06aeedef318b2d204e2b9ad80`，不是后续仅记录提交喵~
 - GitHub 资产已核验：镜像 `298301952` bytes / SHA-256 `893c9b5e851090971f20c18d2fb80f5227cc6981ea30ef3ae41c031712549c35`，manifest `2112` bytes / `e3200b3ef432836230efe570b89e96e9516d1c32bcb028df5365871bd1786ff9`，SHA256SUMS `179` bytes / `3746ca9d0e23780d1d54b250ed38471af817bed6d9944ce9094b944c1c71e4ff` 喵~
 - Release Notes 已完整记录实时同步/会话单键缓存、`.1` 的 ioredis 故障与回滚、pnpm symlink 修复、增强 Actions 探针、113 项测试和仅 LobeHub 服务的部署范围喵~
 - 下一步在远端备份根目录创建 `deploy-2`，保存第二次部署前容器/配置/其他服务基线，上传 `.2` 资产并使用真实 `require('ioredis')` 离线探针后启动独立 240 秒 guard 喵~
 
 ### Deploy-2 Staging
+
 - 远端 `/mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-2` 已创建，保存第二次部署前 LobeHub inspect、其他容器、配置哈希和独立数据库快照喵~
 - 第二次数据库快照约 43.7 MB / SHA-256 `2dafb1d1448bff97067393e61bdb03a90048c8b6b7094a513c27cc12fcd2ab84`；父目录旧镜像、首次数据库/配置备份和回滚脚本继续保留喵~
 - `.2` Release 镜像与 manifest 远端 `sha256sum -c` 通过；新镜像 ID `sha256:8fb5d27bd5c336f3677db02ea059a2fc7de25b06137b16f290669d85e26ea368` 喵~
@@ -754,6 +837,7 @@
 - staging 完成后线上仍为旧容器 `bbc91f4e2317`、旧镜像 `ea7da67e7e83`、running/restart=0/OOM=false；下一步启动 deploy-2 独立 guard 并只重建 LobeHub 喵~
 
 ### Deploy-2 Final Confirmation
+
 - 2026-09-24 16:41 +08:00 只读最终快照确认 `deploy-2` guard PID `7395` 已退出，`guard.log` 记录 `confirmed=2026-09-24 16:36:28 +0800`，确认与稳定标记均存在喵~
 - 当前容器仍为 `065ac2a81e4a3459fbe598d88e83332884f5d1b28571c4a87ec250f5c752c1bb`，镜像 `sha256:8fb5d27bd5c336f3677db02ea059a2fc7de25b06137b16f290669d85e26ea368`，running/restart=0/OOM=false，内部与公开 `/api/version` 均返回 `2.2.8` 喵~
 - Compose、`.env`、override 三项 SHA-256 与部署前完全一致；其他 7 个服务容器 ID 和镜像与部署前完全一致，最近 15 分钟致命日志计数为 0，Redis `PING=PONG` 喵~
@@ -761,6 +845,7 @@
 - 修改前检查点为 `de893bc942`；下一步使用两个独立 Playwright context 对同一真实会话执行临时上下文消息新增、编辑、删除自动同步，并记录首次与 IndexedDB 缓存后的消息可见耗时，凭据仅走内存且临时消息必须在 `finally` 清理喵~
 
 ### Live Realtime Verification Harness
+
 - 新增 `tests/mobile-studio/verify-live-realtime.mjs`，从 stdin 接收生产 URL、会话 cookie 和会话上下文，凭据不写文件、不进入报告或日志喵~
 - 脚本使用独立桌面与 iPhone 13 Playwright context，分别记录冷启动、同 context IndexedDB 暖缓存重载至锚点消息可见及 `subscription.ready` 的耗时喵~
 - 写入路径只使用 `message.insertContextMessage`、`message.editMessageContent` 和 `message.removeMessage`；测试期间拦截模型生成接口，临时消息在 `finally` 删除，并要求两端都自动显示新增、编辑和删除结果喵~
@@ -773,24 +858,28 @@
 - 当前新增失败诊断：保存最终 URL、标题、readyState、root 子节点、消息节点、contenteditable/password 输入计数及失败截图，用于区分登录重定向、路由壳和真实白屏，避免仅延长超时喵~
 
 ### 2026-09-24：加速续接发布收尾
+
 - 用户要求“继续，快一点”；复核工作树无目标源码未提交改动，复用 e807f67f62298be73dc92918247de69f4f0d5f69 与已成功 Actions 35985648092，不重建喵~
 - SPA 产物首屏 modulepreload：桌面240→103、HTML41147→29402 bytes；手机36→37；原动态依赖保留 idle 预热喵~
 - 产物目录 D:\Cursor\lobehub-backups\20260924-realtime-sync\revision-e807f67；镜像298277376 bytes，SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c喵~
 - 计划用同源 document-only 响应替换做必要A/B，不新搭代理；完成后独立 deploy-4 备份、Release、单应用部署和无拦截线上复验，当前线上仍为.3喵~
 
 ### 2026-09-24：候选加载验证通过，准备保护部署
+
 - Actions35985648092与下载digest一致，e807候选桌面首屏103个预加载；与.3全部静态资源内容相同喵~
 - document-only候选冷/暖4385/3050ms，紧随其后的无拦截旧版4896/3282ms；测量模式存在差异，不夸大为秒开，部署后须同一无拦截模式复测喵~
 - 两组runtime errors=0、冷暖WebSocket ready均成功，候选截图目视确认正文/输入区正常；原脚本durationMs误用绝对startTime已在独立探针修正喵~
 - 准备Release v2.2.8-codex.20260924.4，镜像SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c；只创建独立deploy-4备份并替换LobeHub喵~
 
 ### 2026-09-24：.4保护部署启动
+
 - 正式Release .20260924.4及三资产digest与本地一致，权威构建35985648092；完整备份deploy-4完成，数据库SHA25684d094795c71a1bf58018ff661e377ec8e253bb55e6b433d19c2c81d2b63e0bd喵~
 - 18:34:59 UTC+8启动240秒guard，18:35:12内部健康通过；新容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
 - 当前正在无请求拦截的桌面/手机线上冷暖加载与订阅验收；尚未确认guard，回滚入口为 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh喵~
 - 全仓35985593040仍App/Database失败，Packages/Desktop/Server两分片成功；E2E35985593136失败，不声称全仓通过喵~
 
 ### 2026-09-24：.4部署确认与真实双端加载完成
+
 - **当前生产为v2.2.8-codex.20260924.4**：运行源码e807f67f62298be73dc92918247de69f4f0d5f69，Actions35985648092成功，18:36:30 UTC+8确认deploy-4保护部署喵~
 - 当前容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
 - 最新无拦截线上电脑冷/暖4904/2788ms、手机模拟浏览器3293/2078ms，两端runtime errors=0、冷暖实时订阅ready正常；桌面首屏预加载240→103，正文与输入区截图已目视验证喵~
@@ -800,6 +889,7 @@
 - **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
 
 ### 2026-09-24：.4最终归档完成
+
 - 18:38:59 UTC+8 guard记录confirmed，超过240秒窗口后应用仍running/restart=0/OOM=false，未回滚喵~
 - Release最终说明、manifest和SHA256SUMS已更新并远端复核一致；manifest SHA25638e4edbd9299af9aafb0c2b5aed383ef43a80d6b97477420f8fe7c832e07da79，清单SHA2562e802293d97269fae0b6daa510b101d03a562696ecf9d2cf4c15e323afcb7d2e喵~
 - 已用原生PowerShell在绝对路径边界检查后删除revision-e807f67内两个冗余下载ZIP；最终镜像、SPA、测试报告、所有远端备份和回滚文件保留，历史目录未动喵~
@@ -808,54 +898,64 @@
 ## 2026-09-25：话题自动命名为空调查启动
 
 ### Current Task
+
 - 用户反馈新建话题后名称为空，自动命名没有触发或没有显示；本轮从话题创建、首条消息、自动命名模型请求、标题写入和列表刷新链路定位根因喵~
 - 本轮修改前 Git 检查点为 `c1f69838b8`；尚未修改运行时代码、数据库、线上服务或历史未跟踪证据喵~
 
 ### Next Steps
+
 1. 搜索并梳理 `generateTopicTitle`、`updateTopic`、`topic.update`、首条消息发送和 Topic 列表刷新实现喵~
 2. 确认是命名请求未触发、模型返回为空、数据库未写入，还是前端标题没有重新读取喵~
 3. 先补最小可复现回归测试，再修改实现并运行定向 Vitest、ESLint、类型/构建相关检查喵~
 4. 若运行时代码变化，按 GitHub Actions、Release、独立备份、240 秒回滚保护和线上验证流程部署，仅替换 LobeHub 服务喵~
 
 ### Change Log
+
 - 2026-09-25：记录用户“话题命名为空、自动命名不再触发”反馈，建立修改前检查点 `c1f69838b8`，准备开始代码链路调查喵~
 
 ## 2026-09-25：话题自动命名根因定位
 
 ### Current Status
+
 - 自动命名触发入口存在，`buildRunLifecycle.afterUserMessagePersisted` 会在新话题持久化后调用 `summaryTopicTitle`；问题不在入口完全缺失喵~
 - 现有 `summaryTopicTitle`/`summaryThreadTitle` 使用流式文本 completion，并在 `onFinish` 无条件保存原始文本；空响应或结构化响应不匹配时会写入空标题，错误路径也没有持久化的非空回退喵~
 - 当前代码还没有覆盖空响应、空白响应和响应对象解析失败的回归测试喵~
 
 ### Design Decision
+
 - 使用现有 `aiChatService.generateJSON` 与 `outputJSON` tRPC 边界，新增共享 `TOPIC_TITLE_JSON_SCHEMA` 与提示版本常量，话题和子话题都读取 `{ title }` 并 `trim` 校验喵~
 - 生成失败或返回空标题时保留此前可见标题；若此前是占位符，则回退到首条用户消息的纯文本（最多80字符）或本地化默认标题，确保列表不会再次为空喵~
 - 不修改数据库 schema、不修改网络/IPv6/Nginx、不影响其他容器；仅更新 LobeHub 前端/共享 prompt 代码及相关测试喵~
 
 ### Next Steps
+
 1. 修改共享标题 schema/prompt、话题与子话题命名实现喵~
 2. 补空响应/结构化标题/失败回退测试，并更新已有 mock 喵~
 3. 运行定向 Vitest、ESLint、`node --check`（如适用）和 `git diff --check`，提交源码与记录喵~
 4. 通过 GitHub Actions 构建同源镜像和 SPA，发布新 Release，创建独立 deploy-5 备份并仅保护替换 LobeHub，线上验证新建话题标题出现且跨设备列表同步喵~
 
 ### Change Log
+
 - 2026-09-25：完成自动命名链路只读调查，确认空标题写入缺少非空保护和结构化解析，准备实施修复喵~
 
 ## 2026-09-25：话题与子话题自动命名修复实现
 
 ### Current Status
+
 - 共享标题提示已要求结构化 `{ "title": "..." }` 输出，并导出统一 schema 与 prompt 版本；浏览器话题和子话题命名改用 `aiChatService.generateJSON`，不再把流式原始文本直接写入标题喵~
 - 生成结果会读取并 `trim` 校验 `data.title`；空白结果或异常不会写入空字符串，空标题会回退到首条用户消息纯文本前 80 个字符，再回退到本地化默认标题，已有非空标题保持不变喵~
 - 话题和子话题生成过程均显式维护 loading，并在 `finally` 中释放；新增 schema/tracing、非空回退、异常保留原标题和 loading 释放回归断言喵~
 - Prompt 专项测试已通过 1 个文件 1 项；App 话题专项在本机 Vitest 收集阶段长期无输出，接管后再等待 15 秒仍无结果，已终止旧进程，不能记为测试失败或通过喵~
 
 ### Next Steps
+
 1. 格式化并检查六个目标文件，运行 `git diff --check`、Prompt 专项、话题/子话题标题专项与 lifecycle 触发专项喵~
 2. 若 App Vitest 仍卡在收集阶段，记录准确边界并依赖定向 ESLint、静态检查及 GitHub Actions 专项验证，不重复启动相同阻塞进程喵~
 3. 显式暂存六个目标文件与记录文件并提交，推送后由 GitHub Actions 构建同源镜像和 SPA，发布新 Release 喵~
 4. 创建独立 deploy-5 备份和 240 秒回滚保护，仅替换 LobeHub；线上验证新建话题与子话题名称非空、刷新后仍存在喵~
 
 ### Change Log
+
 - 2026-09-25 17:50 +08:00：完成结构化自动命名和非空回退实现，补强话题与子话题回归断言，准备统一验证喵~
 - 2026-09-25 17:56 +08:00：Prompt 专项 1/1 通过，目标 ESLint 0 error、`git diff --check` 通过；App 三文件合并专项等待约 90 秒、lifecycle 单文件再等待约 60 秒均只完成 Vitest 启动而未进入收集结果，已分别停止且不记为失败或通过，后续交由 GitHub Actions 权威验证喵~
 - 2026-09-25：仓库现有 TypeScript 编译器对五个 TS/测试目标执行纯语法诊断并通过；额外 `esbuild` 解析因 PowerShell 参数拆分失败，未生成项目文件，临时目录清理命令被执行策略拒绝后未绕过，Git 工作区没有新增锁文件或依赖改动喵~
@@ -864,6 +964,7 @@
 ## 2026-09-25：自动命名修复 Actions 与 Release
 
 ### Current Status
+
 - 最终源码提交 `215ef9414b5f7c8659f378a05196303baf1f454d` 已推送；GitHub Actions 服务器镜像工作流 `36121690343` 成功完成 OCI 构建、真实运行依赖检查、生产 SPA 导出及两项 artifact 上传喵~
 - 同源服务器镜像 tar 为 298297344 bytes，SHA-256 `afc59b0da5b8bab96d96d5ccc66b7e69a7afafbeb27dda21c84dd4df37d57d01`，镜像标签绑定 `codex-215ef9414b5f7c8659f378a05196303baf1f454d`；SPA 共 1745 个文件并确认包含 `topic_title` schema 和新失败处理标记喵~
 - Codex Mobile Regression `36121690184` 成功；Test CI App shard 1 中本轮 `topic/action.test.ts` 52/52、`thread/action.test.ts` 33/33 通过喵~
@@ -871,31 +972,37 @@
 - Release `v2.2.8-codex.20260925.1` 已发布，标签精确指向 `215ef9414b`，包含镜像、`release-manifest.json` 与 `SHA256SUMS` 三项资产；本地发布归档位于 `D:\Cursor\lobehub-backups\20260925-topic-title\release-published` 喵~
 
 ### Next Steps
+
 1. 创建 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5` 独立备份、数据库快照、旧镜像、配置/容器基线、回滚与 240 秒 guard 喵~
 2. 上传并远端校验 Release 三资产，离线加载镜像并运行真实依赖探针喵~
 3. 仅重建 LobeHub，验证内外版本、容器/日志、配置和其他服务不变；随后验证新建话题与子话题非空命名和刷新持久化喵~
 
 ### Change Log
+
 - 2026-09-25：完成同源 Actions 构建、产物校验和 `v2.2.8-codex.20260925.1` Release 发布，准备 deploy-5 保护部署喵~
 
 ## 2026-09-25：deploy-5 独立生产备份完成
 
 ### Current Status
+
 - 已创建 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5`，保存部署前 LobeHub inspect、全部容器基线、三项配置哈希、配置归档、旧镜像和数据库快照喵~
 - 旧镜像 tar 约 989.7 MB / SHA-256 `9eeaeb54aeb62f43144af4e4b6b4c8d9eb2ba82a14e6b5814cacd17496a48e15`；数据库约 44.2 MB / `0f2592a287dbc188f90f4aac9a27b5aa6ca12fc3adbe8a72676bdcc2a286bd5b`；配置归档 / `84395dc9a43d9dd3b2473e191b1ae77a1ae7e16b7f0b5c0275e95520c915d18a` 喵~
 - 已生成只恢复旧应用镜像的 `rollback.sh` 与等待 240 秒未确认自动回滚的 `guard.sh`，权限已收紧；guard 尚未启动，当前线上容器仍为 `.20260924.4`，restart=0、OOM=false喵~
 
 ### Next Steps
+
 1. 上传 Release 三资产到 deploy-5 并远端执行 `sha256sum -c` 喵~
 2. 离线加载新镜像，验证标签、平台、用户、入口、Next/ioredis/实时启动器依赖喵~
 3. 启动 guard，仅重建 LobeHub 并完成线上功能验证后写入确认标记喵~
 
 ### Change Log
+
 - 2026-09-25：完成 deploy-5 部署前独立备份，生产尚未切换喵~
 
 ## 2026-09-25：deploy-5 Release 资产与镜像离线验证
 
 ### Current Status
+
 - Release 三资产已上传 deploy-5，远端 `sha256sum -c` 对镜像和 manifest 全部通过喵~
 - 新镜像已离线加载为 `lobehub/lobehub:codex-215ef9414b5f7c8659f378a05196303baf1f454d`，镜像 ID `588aa8cf03d…`，平台 `linux/amd64`、用户 `nextjs`、入口 `/bin/node`、命令 `/app/startServer.js` 喵~
 - 第一次探针因多层 shell 引号剥离导致 JavaScript 语法错误；第二次挂载探针因文件 `600` 而被容器内非 root 用户拒绝读取；两次均只影响临时探针且线上未切换喵~
@@ -903,9 +1010,11 @@
 - 当前线上仍为旧容器 `3f95340ef63d…`、旧镜像 `274e7fff…`、running/restart=0/OOM=false；guard 尚未启动喵~
 
 ### Next Steps
+
 1. 启动 deploy-5 240 秒 guard，标签切换并仅强制重建 LobeHub 喵~
 2. 在保护窗口内完成健康、日志、Redis、Host Executor、配置与其他服务不变检查喵~
 3. 执行真实话题和子话题非空命名验证，通过后写入 `deployment.confirmed` 喵~
 
 ### Change Log
+
 - 2026-09-25：同源 Release 镜像已通过远端最终运行探针，进入保护部署阶段喵~

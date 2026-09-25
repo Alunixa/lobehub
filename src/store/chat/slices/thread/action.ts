@@ -218,7 +218,9 @@ export class ChatThreadActionImpl {
     const shouldShowPlaceholder = !previousTitle || previousTitle === LOADING_FLAT;
     if (shouldShowPlaceholder) internal_updateThreadTitleInSummary(threadId, LOADING_FLAT);
 
-    const firstUserMessage = messages.find((message) => message.role === 'user');
+    const scopedMessages = messages.filter((message) => message.threadId === threadId);
+    const titleMessages = scopedMessages.length > 0 ? scopedMessages : messages;
+    const firstUserMessage = titleMessages.find((message) => message.role === 'user');
     const fallbackTitle =
       markdownToTxt(String(firstUserMessage?.content ?? ''))
         .trim()
@@ -240,31 +242,60 @@ export class ChatThreadActionImpl {
       }
     };
 
-    const { model, provider } = systemAgentSelectors.thread(useUserStore.getState());
+    const userState = useUserStore.getState();
+    const threadConfig = systemAgentSelectors.thread(userState);
+    const topicConfig = systemAgentSelectors.topic(userState);
+    const titleModelConfigs = [threadConfig];
+    if (
+      threadConfig.model !== topicConfig.model ||
+      threadConfig.provider !== topicConfig.provider
+    ) {
+      titleModelConfigs.push(topicConfig);
+    }
 
     internal_updateThreadLoading(threadId, true);
     try {
-      const { data } = await aiChatService.generateJSON(
-        {
-          ...chainSummaryTitle(
-            messages,
-            userGeneralSettingsSelectors.currentResponseLanguage(useUserStore.getState()),
-          ),
-          model,
-          provider,
-          schema: TOPIC_TITLE_JSON_SCHEMA,
-          tracing: {
-            promptVersion: TOPIC_TITLE_PROMPT_VERSION,
-            scenario: TRACING_SCENARIOS.TopicTitle,
-            schemaName: TOPIC_TITLE_JSON_SCHEMA.name,
-            threadId,
-          },
-        },
-        new AbortController(),
-      );
+      let title: string | undefined;
+      let latestError: unknown;
 
-      const title = (data as { title?: string } | undefined)?.title?.trim();
+      for (const [index, config] of titleModelConfigs.entries()) {
+        try {
+          const { data } = await aiChatService.generateJSON(
+            {
+              ...chainSummaryTitle(
+                titleMessages,
+                userGeneralSettingsSelectors.currentResponseLanguage(userState),
+              ),
+              model: config.model,
+              provider: config.provider,
+              schema: TOPIC_TITLE_JSON_SCHEMA,
+              tracing: {
+                promptVersion: TOPIC_TITLE_PROMPT_VERSION,
+                scenario: TRACING_SCENARIOS.TopicTitle,
+                schemaName: TOPIC_TITLE_JSON_SCHEMA.name,
+                threadId,
+              },
+            },
+            new AbortController(),
+          );
+
+          title = (data as { title?: string } | undefined)?.title?.trim();
+          if (title) break;
+        } catch (error) {
+          latestError = error;
+          if (index < titleModelConfigs.length - 1) {
+            console.error(
+              '[summaryThreadTitle] configured thread title model failed; retrying topic title model:',
+              error,
+            );
+          }
+        }
+      }
+
       if (!title) {
+        if (latestError) {
+          console.error('[summaryThreadTitle] failed to generate a title:', latestError);
+        }
         await restoreFallbackTitle();
         return;
       }

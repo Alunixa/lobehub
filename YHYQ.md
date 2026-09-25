@@ -1373,7 +1373,9 @@
 - 用户要求修复复制对话和开启子话题后图片不跟随、子话题无法关闭或调整大小、Shift+Enter 等按键引起页面乱跳、手机对话搜索缺少可展开完整列表，以及所有手机输入框未经直接点击就弹键盘；要求完成后自行部署，问题自主排查解决喵~
 - 本轮起点 `8ba37c3a64`，跟踪文件干净，仅有原有未跟踪历史产物与 `问题.txt`；保留不动喵~
 - 已读取近期操作日志、部署经验、项目架构、React / TypeScript / UX / Hotkey / 测试规范；发现缺少 `XJ.md`，已初始化 21 节项目记忆与新任务计划，尚未修改功能或线上服务喵~
+
 ### 继续执行：源码修复检查点
+
 - 已建立编辑前提交 `4b9ff2426b`；复制话题改为复制附件关联、独立 thread/group 图和二阶段父链，避免删除原话题影响副本喵~
 - 新子话题从 dbMessagesMap 原始消息初始化，切换上下文重算并清理空态；创建失败复位 busy 喵~
 - 手机新增完整分页搜索列表，去除重复且参数不一致的请求；移动入口安装直接输入手势焦点约束，发送不再强制重聚焦喵~
@@ -1704,10 +1706,12 @@
 - 外部 IPv6 HTTPS `/api/version` 返回 200，真实公网 `wss://` query 返回 `UNAUTHORIZED` 标准业务错误且 `bridgeSource=null`喵~
 - 普通 HTTP query 仍按预期返回 401，WebSocket-first 的业务错误分类修复已在公网入口验证喵~
 - 尚未写入 deployment.confirmed，仍保留 240 秒 guard 保护喵~
+
 ## 2026-09-23：.2 第二次部署保护回滚记录
 
 - .2 已在第二次尝试完成全部业务/网络探针，但确认动作晚于 240 秒 guard，远端自动回滚成功喵~
 - 当前恢复旧镜像和服务，第三次使用同一已加载的新镜像与父备份，改为快速连续验收后立即确认，不再等待超过保护窗口喵~
+
 ## 2026-09-24：会话加载与 WebSocket 优先查询最终上线
 
 - .2 第三次部署在保护窗口内完成所有探针并确认，03:38:38 +08:00 超过原 240 秒窗口后稳定复查通过喵~
@@ -1928,24 +1932,28 @@
 - `git diff --check` 通过，仅提示两份记录文件工作树 CRLF 将按 Git 配置转为 LF；未发现空白错误喵~
 
 ### 2026-09-24：加速续接发布收尾
+
 - 用户要求“继续，快一点”；复核工作树无目标源码未提交改动，复用 e807f67f62298be73dc92918247de69f4f0d5f69 与已成功 Actions 35985648092，不重建喵~
 - SPA 产物首屏 modulepreload：桌面240→103、HTML41147→29402 bytes；手机36→37；原动态依赖保留 idle 预热喵~
 - 产物目录 D:\Cursor\lobehub-backups\20260924-realtime-sync\revision-e807f67；镜像298277376 bytes，SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c喵~
 - 计划用同源 document-only 响应替换做必要A/B，不新搭代理；完成后独立 deploy-4 备份、Release、单应用部署和无拦截线上复验，当前线上仍为.3喵~
 
 ### 2026-09-24：候选加载验证通过，准备保护部署
+
 - Actions35985648092与下载digest一致，e807候选桌面首屏103个预加载；与.3全部静态资源内容相同喵~
 - document-only候选冷/暖4385/3050ms，紧随其后的无拦截旧版4896/3282ms；测量模式存在差异，不夸大为秒开，部署后须同一无拦截模式复测喵~
 - 两组runtime errors=0、冷暖WebSocket ready均成功，候选截图目视确认正文/输入区正常；原脚本durationMs误用绝对startTime已在独立探针修正喵~
 - 准备Release v2.2.8-codex.20260924.4，镜像SHA256 a1990409f6ea2f26fa3a16b3398f3f2ab466807e6136c4774d680e4eb017d64c；只创建独立deploy-4备份并替换LobeHub喵~
 
 ### 2026-09-24：.4保护部署启动
+
 - 正式Release .20260924.4及三资产digest与本地一致，权威构建35985648092；完整备份deploy-4完成，数据库SHA25684d094795c71a1bf58018ff661e377ec8e253bb55e6b433d19c2c81d2b63e0bd喵~
 - 18:34:59 UTC+8启动240秒guard，18:35:12内部健康通过；新容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
 - 当前正在无请求拦截的桌面/手机线上冷暖加载与订阅验收；尚未确认guard，回滚入口为 /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh喵~
 - 全仓35985593040仍App/Database失败，Packages/Desktop/Server两分片成功；E2E35985593136失败，不声称全仓通过喵~
 
 ## 2026-09-24：.4部署确认与收尾
+
 - **当前生产为v2.2.8-codex.20260924.4**：运行源码e807f67f62298be73dc92918247de69f4f0d5f69，Actions35985648092成功，18:36:30 UTC+8确认deploy-4保护部署喵~
 - 当前容器3f95340ef63dac4b6a799f9e1a1c287837a535edc0283e14636a3ae56c59a3c9，镜像sha256:274e7fff7464c406a687d38ca423321655fc5975d66dd6aac4bf43945b139d52，running/restart=0/OOM=false喵~
 - 最新无拦截线上电脑冷/暖4904/2788ms、手机模拟浏览器3293/2078ms，两端runtime errors=0、冷暖实时订阅ready正常；桌面首屏预加载240→103，正文与输入区截图已目视验证喵~
@@ -1955,6 +1963,7 @@
 - **以下.3条目为前一版历史基线，已由.4取代，不再重复部署或执行增改删验收**喵~
 
 ### 2026-09-24：.4最终归档完成
+
 - 18:38:59 UTC+8 guard记录confirmed，超过240秒窗口后应用仍running/restart=0/OOM=false，未回滚喵~
 - Release最终说明、manifest和SHA256SUMS已更新并远端复核一致；manifest SHA25638e4edbd9299af9aafb0c2b5aed383ef43a80d6b97477420f8fe7c832e07da79，清单SHA2562e802293d97269fae0b6daa510b101d03a562696ecf9d2cf4c15e323afcb7d2e喵~
 - 已用原生PowerShell在绝对路径边界检查后删除revision-e807f67内两个冗余下载ZIP；最终镜像、SPA、测试报告、所有远端备份和回滚文件保留，历史目录未动喵~
@@ -2022,3 +2031,12 @@
 - 修正断言后真实运行 `1790334131667`：普通话题新建、点击真实发送按钮、`aiChat.outputJSON` POST 200、最终标题“自动命名生产验收”和刷新持久化全部通过，`finally` 删除 1 个临时话题成功喵~
 - 本轮只在进入子话题前失败：生产消息操作栏只有编辑、复制和无标签 overflow，下拉中的“创建子话题”尚未被旧脚本打开；失败截图已目视确认页面、消息与标题正常，并非产品自动命名失败喵~
 - 已按真实 DOM 增加 `button[aria-haspopup=menu]` 下拉入口，再选择可见“创建子话题”菜单项；项目内脚本与备份副本同步，准备重跑完整子话题闭环喵~
+- overflow 修正后的真实运行 `1790334328316` 已成功创建子话题并发送，但 thread `aiChat.outputJSON` 返回 401；普通话题仍为 200、最终标题与刷新持久化通过，临时话题和子话题随父话题删除完成喵~
+- 只读检查用户设置只输出模型标识：topic 为 `gemini/gemini-3.8-flash`，thread 未单独配置；源码默认 thread 为 `deepseek/deepseek-v4-pro`，生产无对应凭据，因此 401 不是浏览器会话失效喵~
+- `portalAIChats` 同时包含父消息和 thread child 消息，旧回退使用第一条 user 导致临时 thread 标题取自主话题；修复将提示与回退限制到 `threadId` 匹配消息喵~
+- 已建立运行代码修改前检查点 `1d1b9da045`；当前实现 thread 配置优先，失败或空结果时重试 topic 命名配置，两个配置都不可用时才落到当前 thread 首条用户消息/默认标题，并补两项回归测试喵~
+- Prettier 完成后，目标 TypeScript 纯语法、ESLint 10.0.2 与 `git diff --check` 均通过喵~
+- 本机 `thread/action.test.ts` 单文件 Vitest 等待约 90 秒仍只显示启动信息，没有收集/测试结果；已发送中断并确认没有遗留进程，不把它记为通过或失败，也不重复启动相同阻塞命令，交由 GitHub Actions App 分片权威验证喵~
+- 用户在上下文压缩后要求继续；已重新完整读取 `XJ.md`、近期 `YHYQ.md`、当前四文件差异和 Zustand/TypeScript/测试规范，确认普通话题修复已上线，当前只需完成子话题模型重试与 thread-scoped 消息补丁的提交、Actions、Release、deploy-6 和真实生产验收喵~
+- 复核补丁后增加测试模型 selector 的 `beforeEach` 默认值恢复，避免 401 重试用例的自定义 thread/topic 配置泄漏到后续用例；未改运行逻辑，历史未跟踪目录保持不动喵~
+- 再次对两个目标 TypeScript 文件执行 Prettier，均无需变化；TypeScript 纯语法检查输出 `TYPESCRIPT_SYNTAX_OK`，ESLint 10.0.2 为 0 error，`git diff --check` 通过喵~
