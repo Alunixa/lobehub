@@ -848,3 +848,20 @@
 - 2026-09-25 17:56 +08:00：Prompt 专项 1/1 通过，目标 ESLint 0 error、`git diff --check` 通过；App 三文件合并专项等待约 90 秒、lifecycle 单文件再等待约 60 秒均只完成 Vitest 启动而未进入收集结果，已分别停止且不记为失败或通过，后续交由 GitHub Actions 权威验证喵~
 - 2026-09-25：仓库现有 TypeScript 编译器对五个 TS/测试目标执行纯语法诊断并通过；额外 `esbuild` 解析因 PowerShell 参数拆分失败，未生成项目文件，临时目录清理命令被执行策略拒绝后未绕过，Git 工作区没有新增锁文件或依赖改动喵~
 - 2026-09-25：自动命名功能修复已显式提交为 `c1f24f2641`（`🐛 fix: prevent empty auto-generated topic titles`），仅包含共享 prompt/schema、话题与子话题 action/测试及两份记录文件，历史未跟踪证据未进入提交喵~
+
+## 2026-09-25：自动命名修复 Actions 与 Release
+
+### Current Status
+- 最终源码提交 `215ef9414b5f7c8659f378a05196303baf1f454d` 已推送；GitHub Actions 服务器镜像工作流 `36121690343` 成功完成 OCI 构建、真实运行依赖检查、生产 SPA 导出及两项 artifact 上传喵~
+- 同源服务器镜像 tar 为 298297344 bytes，SHA-256 `afc59b0da5b8bab96d96d5ccc66b7e69a7afafbeb27dda21c84dd4df37d57d01`，镜像标签绑定 `codex-215ef9414b5f7c8659f378a05196303baf1f454d`；SPA 共 1745 个文件并确认包含 `topic_title` schema 和新失败处理标记喵~
+- Codex Mobile Regression `36121690184` 成功；Test CI App shard 1 中本轮 `topic/action.test.ts` 52/52、`thread/action.test.ts` 33/33 通过喵~
+- 全仓仍有既有 Database lint、OIDC、Agent selector、用户初始化和关闭自动滚动 E2E 失败；E2E `36121690297` 为 81/82 场景、490/491 步骤通过，不声明全仓全绿喵~
+- Release `v2.2.8-codex.20260925.1` 已发布，标签精确指向 `215ef9414b`，包含镜像、`release-manifest.json` 与 `SHA256SUMS` 三项资产；本地发布归档位于 `D:\Cursor\lobehub-backups\20260925-topic-title\release-published` 喵~
+
+### Next Steps
+1. 创建 `/mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5` 独立备份、数据库快照、旧镜像、配置/容器基线、回滚与 240 秒 guard 喵~
+2. 上传并远端校验 Release 三资产，离线加载镜像并运行真实依赖探针喵~
+3. 仅重建 LobeHub，验证内外版本、容器/日志、配置和其他服务不变；随后验证新建话题与子话题非空命名和刷新持久化喵~
+
+### Change Log
+- 2026-09-25：完成同源 Actions 构建、产物校验和 `v2.2.8-codex.20260925.1` Release 发布，准备 deploy-5 保护部署喵~

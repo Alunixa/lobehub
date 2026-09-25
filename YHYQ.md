@@ -1986,3 +1986,11 @@
 - App 三文件标题专项等待约 90 秒仍仅显示 Vitest 启动，单独 lifecycle 标题专项再等待约 60 秒也未进入测试结果；两个进程均已停止，不重复继续等待，后续由 Actions 做权威专项验证喵~
 - 使用仓库现有 TypeScript 编译器对五个目标文件执行纯语法诊断，结果 `TYPESCRIPT_SYNTAX_OK`；一次额外 `esbuild` 命令因 PowerShell `--outfile` 参数拆分失败，未改项目，临时缓存清理被执行策略拒绝后没有绕过喵~
 - 已显式暂存八个预期文件并提交为 `c1f24f2641`，提交说明为 `🐛 fix: prevent empty auto-generated topic titles`；历史未跟踪构建目录、发布证据和 `问题.txt` 均未暂存或删除喵~
+
+## 2026-09-25：自动命名修复 Actions 与 Release
+
+- 最终记录提交 `215ef9414b` 已推送，自动触发镜像、移动专项、Test CI 与 E2E，没有重复手动触发已有构建喵~
+- 服务器镜像 Actions `36121690343` 成功，镜像 tar 298297344 bytes / SHA-256 `afc59b0da5b8bab96d96d5ccc66b7e69a7afafbeb27dda21c84dd4df37d57d01`；SPA 1745 个文件并包含自动命名修复标记喵~
+- 移动专项 `36121690184` 成功；Test CI App shard 1 中 `topic/action.test.ts` 52 项与 `thread/action.test.ts` 33 项通过，证明本轮两条标题链路回归正常喵~
+- 全仓失败边界仍是历史 Database lint、OIDC、Agent selector、用户初始化和关闭自动滚动 E2E；E2E 为 81/82 场景、490/491 步骤通过，不把全仓描述为全绿喵~
+- 已发布 `v2.2.8-codex.20260925.1`，标签指向 `215ef9414b`，三项资产来自同源 Actions；下一步 deploy-5 独立备份和保护部署，仅替换 LobeHub 喵~
