@@ -1052,3 +1052,8 @@
 - 保护检查脚本因 .env 的 APP_URL 行带有结尾 CR，解析后 URL 被 curl 拒绝；因此未写 deployment.confirmed，guard 按设计于 20:02:53 启动回滚并于 20:03:12 完成喵~
 - 回滚后线上旧容器  aed2b142b33…、旧镜像 588aa8cf03d…、running/restart=0/OOM=false，内部版本接口正常；未修改数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6、Nginx 或其他服务喵~
 - deploy-6 作为失败尝试保留；下一步创建独立 deploy-7 备份和 guard，所有 URL 变量统一清理 CRLF，先完成健康检查再立即确认保护窗口喵~
+
+## 2026-09-25：deploy-7 备份校验脚本修正
+
+- deploy-7 初始化复制了旧镜像、数据库、配置和 Release 文件；首次校验因 SHA256SUMS 使用相对文件名而未在 elease 目录执行，命令退出但没有触碰容器或线上服务喵~
+- 当前保留 deploy-7 部分备份，修正为在资产目录内运行 sha256sum -c 后继续保存当前旧容器基线、回滚脚本和 guard，之后再启动保护部署喵~
