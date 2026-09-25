@@ -1069,3 +1069,9 @@
 - deploy-7 于 20:10:01 切换新镜像，内部/公开版本均可恢复，但 Host Executor 健康探测未在窗口内完成，guard 于 20:14:01 启动回滚、20:14:20 完成；当前旧容器 running/restart=0/OOM=false 喵~
 - 只读复核稳定容器与 Compose：Host Executor 实际地址为 http://172.20.0.1:3211，/health 返回 HTTP 200、success=true、mode=host；没有输出令牌喵~
 - deploy-8 将从新容器内部使用其真实 Node runtime 和实际注入环境验证 Host Executor，避免宿主侧启动瞬间探针误判；deploy-7 全部回滚证据保留喵~
+
+## 2026-09-25：deploy-8 独立备份完成
+
+- deploy-8 已重新保存旧镜像、数据库、配置归档、容器基线、Release 三资产、回滚脚本和 guard，deploy-6/7 的失败与回滚证据均保留喵~
+- 旧镜像 SHA-256 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172，数据库 96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8，配置归档 771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
+- 当前内外版本均正常；部署后 Host Executor 将用新容器实际 Node runtime 请求，另用令牌 SHA-256 比对注入一致性喵~

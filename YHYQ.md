@@ -2082,3 +2082,9 @@
 - deploy-7 于 20:10:01 启动，内部/公开版本恢复后仍未确认，20:14:01 触发 guard 回滚并于 20:14:20 完成；当前旧容器稳定，未修改数据库或其他服务喵~
 - 只读诊断确认当前稳定容器的 HOST_EXECUTOR_BASE_URL 为 http://172.20.0.1:3211，/health 直接返回 HTTP 200、mode=host、success=true；Compose 也解析出同一地址和令牌变量，令牌未输出喵~
 - 下一次不再依赖宿主侧 curl 作为新容器唯一判断，改为用新容器内部 /bin/node 读取实际运行环境请求 Host Executor，再新建 deploy-8 独立保护目录喵~
+
+## 2026-09-25T20:21:06.7885067+08:00：deploy-8 独立备份完成
+
+- deploy-8 已重新保存旧镜像、数据库快照、配置、容器基线和 Release 三资产，内外版本均返回 2.2.8 喵~
+- 旧镜像、数据库和配置归档哈希分别为 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172、96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8、771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
+- 额外保存 Host Executor 令牌的 SHA-256，不保存令牌本身；下一步使用 deploy-8 guard，并从新容器内部 Node runtime 验证 Host Executor 喵~
