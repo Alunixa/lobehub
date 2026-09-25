@@ -2088,3 +2088,9 @@
 - deploy-8 已重新保存旧镜像、数据库快照、配置、容器基线和 Release 三资产，内外版本均返回 2.2.8 喵~
 - 旧镜像、数据库和配置归档哈希分别为 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172、96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8、771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
 - 额外保存 Host Executor 令牌的 SHA-256，不保存令牌本身；下一步使用 deploy-8 guard，并从新容器内部 Node runtime 验证 Host Executor 喵~
+
+## 2026-09-25T20:26:21.7788558+08:00：deploy-8 保护部署确认
+
+- deploy-8 于新加坡时间 2026-09-25 20:22:26 启动，20:23:51 在 240 秒 guard 窗口内写入 deployment.confirmed 喵~
+- 新容器 539b611ddf8… 使用镜像 sha256:9e91be2e1251…，running/restart=0/OOM=false；内部/公开版本为 2.2.8，Redis=PONG，Host Executor 由容器内 Node runtime 返回 mode=host, success=true 喵~
+- 其他 7 个服务完整 ID、状态/重启计数和 Compose/.env/override 哈希保持不变，未触碰数据库、Redis、RustFS、SearXNG、设备网关、DNS、IPv6 或 Nginx；下一步执行真实普通话题与子话题自动命名验收喵~

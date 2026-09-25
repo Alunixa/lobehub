@@ -1075,3 +1075,9 @@
 - deploy-8 已重新保存旧镜像、数据库、配置归档、容器基线、Release 三资产、回滚脚本和 guard，deploy-6/7 的失败与回滚证据均保留喵~
 - 旧镜像 SHA-256 ef52ea3a79081616293615c46f91ef15f2fc5d14d5646a58c589f4d58817172，数据库 96be5c3ce852fc439df892b0d40058fe2466e5ac45e3b6cf8de6cdab2967d3f8，配置归档 771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc 喵~
 - 当前内外版本均正常；部署后 Host Executor 将用新容器实际 Node runtime 请求，另用令牌 SHA-256 比对注入一致性喵~
+
+## 2026-09-25：deploy-8 保护部署确认
+
+- deploy-8 于 20:22:26 启动，20:23:51 在保护窗口内确认；当前容器 539b611ddf8…、镜像 sha256:9e91be2e1251…，running/restart=0/OOM=false 喵~
+- 内部/公开 /api/version 均为 2.2.8；容器内 Node runtime 的 Host Executor /health 返回 mode=host, success=true，Redis 返回 PONG，配置哈希和其他 7 个服务基线未变喵~
+- deploy-8 guard 仍将等待窗口结束，当前下一步是运行真实普通话题/子话题命名验收，完成截图、刷新持久化、临时数据清理和稳定性复查喵~
