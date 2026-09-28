@@ -1121,3 +1121,12 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 
 - 首轮 Test CI 中核心目标测试均通过：createImage action 16/16、generationConfig action 30/30、aiProvider helper 14/14；新增 BatchItem UI 文件在收集阶段因未 mock `GenerationInvalidAPIKey`，间接加载聊天 ActionDropdown 并要求 `createGlobalStyle`，属于测试隔离缺失而非产品失败喵~
 - 已 mock 图片生成无效 Key 边界组件，避免加载无关聊天输入依赖；目标 ESLint 和 TypeScript 语法通过。本机单文件 Vitest 仍复现约 90 秒收集无结果并停止，下一次 Actions 做权威执行喵~
+
+## 2026-09-28：最终 Actions 与同源生产 SPA 验证
+
+- 最终源码提交 `ab221bfb537e52e8b2d02db77a38194b6025efbe` 的服务器镜像 Actions `36430243859` 与 Mobile Regression `36430244056` 成功喵~
+- Test CI 中本轮目标全部通过：BatchItem UI 3/3、createImage action 16/16、generationConfig action 30/30、aiProvider helper 14/14；其余失败仍为既有 OIDC、用户初始化、Agent selector、Host Executor no-suite、ComfyUI 和设置快照喵~
+- E2E `36430244239` 仍为既有自动滚动断言失败，81/82 场景、490/491 步骤通过；Database lint 仍为既有 1597 errors / 261 warnings，不声明全仓全绿喵~
+- 最终服务器 artifact ZIP digest `015fe0677105df915a99dc05584204e677384a2607aa330e706f03fd13b60667`，SPA ZIP digest `0b71673f9fc28b99990541b5542feee213f6b40346b6dbc875d1f2837cf787b6`；镜像 tar 为 298329088 bytes / SHA-256 `be30f2750a89d47c966bc2fd4217889a3e36305e9431c87c2170e4b9f200f6b5` 喵~
+- 同源生产 SPA 使用真实 Chromium/Edge 完成矩阵：`any/gpt-image-2.5` 显示最多 16 张参考图、4K 预设和自定义 1280×768；两张参考图与尺寸原样进入请求；重新生成保留旧批次并新增任务；调整后重新生成保留 prompt/参考图/尺寸；旧模型弹出现有模型选择窗口；runtime errors=0 喵~
+- 关键截图已目视确认，报告位于 `.records/reports/20260928-image-regeneration-preview/assets`；下一步创建 Release 与独立生产备份，只保护替换 LobeHub 喵~
