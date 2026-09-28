@@ -1142,3 +1142,9 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - 已创建 `/mnt/sda1/lobehub-backups/20260928-image-regeneration/deploy-1`，保存旧 LobeHub inspect、全部容器/其他服务基线、三项配置哈希、旧镜像、数据库快照、配置归档、回滚脚本和 240 秒 guard 喵~
 - 旧镜像 SHA-256 `56d6cb292a4908d8a7138266f51ec4d558553f5688c6b513056471ec7d118ab8`，数据库 `14bf4ef35d9a0a0041dc39691ef2f0f586017cda29b01b289a00da969ca8df1c`，配置归档 `771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc` 喵~
 - 备份前生产容器 `e539b611…` / 镜像 `9e91be2e…`，running、restart=8、OOM=false；该 restart 为 9 月 26 日启动前后的既有累计值，当前已稳定约 42 小时，其他服务正常；guard 尚未启动喵~
+
+## 2026-09-28：deploy-1 Release 资产与镜像离线验证完成
+
+- Release 三资产已上传 deploy-1 并通过远端 `sha256sum -c`；新镜像加载为 `lobehub/lobehub:codex-ab221bfb537e52e8b2d02db77a38194b6025efbe`，镜像 ID `sha256:655cec6268a822a360496b157683c3a1d946248abd4e4ec650e393fe254217c9`，平台 linux/amd64、用户 nextjs、入口 `/bin/node /app/startServer.js` 喵~
+- 前两次离线探针因探针脚本挂载在 `/tmp`，CommonJS 按脚本目录解析依赖而找不到 `/app/node_modules`；改为只读挂载到 `/app/runtime-probe.cjs` 后真实加载 Next、ioredis 和实时启动器，输出 `IMAGE_REGEN_RUNTIME_PROBE_OK`，不是镜像依赖故障喵~
+- staging 后线上仍为旧容器 `e539b611…` / 旧镜像 `9e91be2e…`，running、restart=8、OOM=false，guard 尚未启动；下一步仅保护替换 LobeHub 喵~
