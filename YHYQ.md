@@ -2131,3 +2131,8 @@
 - 历史任务新增独立“重新生成”和“调整后重新生成”入口；重新生成改为先提交新任务、确认接受后再显示新批次，旧批次不会被提前删除，且重复点击被 `isCreating` 防重喵~
 - 旧模型或服务商不在当前启用列表时，两个入口都会打开 base-ui 模型选择弹窗，让用户选择当前可用图片模型；调整流程载入兼容后的历史设置并回到编辑区，重新生成流程直接用兼容设置提交喵~
 - 新增 Image 2.5 schema alias 回归、历史批次非破坏重试/替换模型/重复点击回归和 BatchItem UI 行为回归；模型参数包测试 2/2 通过，目标 ESLint 0 error、TypeScript 语法和 git diff 检查通过；App 定向 Vitest 本机收集阶段约 90 秒无结果后停止，交由 Actions 权威执行喵~
+
+## 2026-09-28：BatchItem UI 回归夹具修正
+
+- 首轮 Test CI 中核心目标测试均通过：createImage action 16/16、generationConfig action 30/30、aiProvider helper 14/14；新增 BatchItem UI 文件在收集阶段因未 mock `GenerationInvalidAPIKey`，间接加载聊天 ActionDropdown 并要求 `createGlobalStyle`，属于测试隔离缺失而非产品失败喵~
+- 已 mock 图片生成无效 Key 边界组件，避免加载无关聊天输入依赖；目标 ESLint 和 TypeScript 语法通过。本机单文件 Vitest 仍复现约 90 秒收集无结果并停止，下一次 Actions 做权威执行喵~

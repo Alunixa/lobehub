@@ -79,6 +79,10 @@ vi.mock('@/features/ImageStudio/RetryModelModal', () => ({
   openImageRetryModelModal: mocks.openRetryModelModal,
 }));
 
+vi.mock('@/routes/(main)/(create)/features/GenerationInput', () => ({
+  GenerationInvalidAPIKey: () => <div data-testid={'invalid-api-key'} />,
+}));
+
 vi.mock('@/store/aiInfra', () => ({
   aiProviderSelectors: { enabledImageModelList: (state: typeof enabledModels) => state },
   useAiInfraStore: (selector: (state: typeof enabledModels) => unknown) => selector(enabledModels),

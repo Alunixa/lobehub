@@ -1116,3 +1116,8 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - 历史 provider/model 已不存在时，弹出当前启用图片模型选择器；调整路径载入兼容后的历史参数，重新生成路径使用替代模型和过滤后的参数直接提交，重复点击不会重复请求喵~
 - 目标 ESLint 0 error、TypeScript `transpileModule` 语法检查通过、`git diff --check` 通过；`packages/model-bank/src/const/imageParameters.test.ts` 2/2 通过；App 三文件定向 Vitest 本机收集阶段无结果约 90 秒后停止，未伪称通过，需由 GitHub Actions 做权威回归喵~
 - 当前运行时代码尚未推送、构建、Release 或部署；下一步显式提交本轮源码/测试/locale，触发 Actions 后再按独立备份、240 秒保护和真实生产图片 UI/任务验收上线喵~
+
+## 2026-09-28：BatchItem UI 回归夹具修正
+
+- 首轮 Test CI 中核心目标测试均通过：createImage action 16/16、generationConfig action 30/30、aiProvider helper 14/14；新增 BatchItem UI 文件在收集阶段因未 mock `GenerationInvalidAPIKey`，间接加载聊天 ActionDropdown 并要求 `createGlobalStyle`，属于测试隔离缺失而非产品失败喵~
+- 已 mock 图片生成无效 Key 边界组件，避免加载无关聊天输入依赖；目标 ESLint 和 TypeScript 语法通过。本机单文件 Vitest 仍复现约 90 秒收集无结果并停止，下一次 Actions 做权威执行喵~
