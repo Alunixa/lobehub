@@ -1130,3 +1130,9 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - 最终服务器 artifact ZIP digest `015fe0677105df915a99dc05584204e677384a2607aa330e706f03fd13b60667`，SPA ZIP digest `0b71673f9fc28b99990541b5542feee213f6b40346b6dbc875d1f2837cf787b6`；镜像 tar 为 298329088 bytes / SHA-256 `be30f2750a89d47c966bc2fd4217889a3e36305e9431c87c2170e4b9f200f6b5` 喵~
 - 同源生产 SPA 使用真实 Chromium/Edge 完成矩阵：`any/gpt-image-2.5` 显示最多 16 张参考图、4K 预设和自定义 1280×768；两张参考图与尺寸原样进入请求；重新生成保留旧批次并新增任务；调整后重新生成保留 prompt/参考图/尺寸；旧模型弹出现有模型选择窗口；runtime errors=0 喵~
 - 关键截图已目视确认，报告位于 `.records/reports/20260928-image-regeneration-preview/assets`；下一步创建 Release 与独立生产备份，只保护替换 LobeHub 喵~
+
+## 2026-09-28：图片生成修复 Release 已发布
+
+- 正式 Release `v2.2.8-codex.20260928.1` 已发布，标签精确指向运行源码 `ab221bfb537e52e8b2d02db77a38194b6025efbe` 喵~
+- 三项资产已由 GitHub 核验：镜像 298329088 bytes / SHA-256 `be30f2750a89d47c966bc2fd4217889a3e36305e9431c87c2170e4b9f200f6b5`，manifest `5fe097eb3dc6866a901cffdd506084901feea4086ee407d991568a4e54d32138`，SHA256SUMS `b52bcf702cc1ceab09d83de6ec8199f5742cce16e7ae92e3823ce1fd224eae76` 喵~
+- Release 地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260928.1`；下一步只读核对生产并创建独立 deploy-1 备份、数据库快照、旧镜像和 240 秒 guard，仅替换 LobeHub 喵~
