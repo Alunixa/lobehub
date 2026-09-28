@@ -8,16 +8,22 @@ import { App } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import dayjs from 'dayjs';
 import { omit } from 'es-toolkit/compat';
-import { CopyIcon, RotateCcwSquareIcon, Trash2 } from 'lucide-react';
-import { type RuntimeImageGenParams } from 'model-bank';
+import { CopyIcon, RefreshCw, SlidersHorizontal, Trash2 } from 'lucide-react';
+import type { RuntimeImageGenParams } from 'model-bank';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import useRenderBusinessBatchItem from '@/business/client/hooks/useRenderBusinessBatchItem';
+import {
+  type ImageRetryModelSelection,
+  openImageRetryModelModal,
+} from '@/features/ImageStudio/RetryModelModal';
 import { GenerationInvalidAPIKey } from '@/routes/(main)/(create)/features/GenerationInput';
+import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useImageStore } from '@/store/image';
-import { AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
+import { getReusableImageConfig } from '@/store/image/slices/generationConfig/action';
+import { AsyncTaskErrorType } from '@/types/asyncTask';
 import { type GenerationBatch } from '@/types/generation';
 
 import { GenerationItem } from './GenerationItem';
@@ -73,9 +79,11 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch, onRe
   const [imageGridRef] = useAutoAnimate();
 
   const activeTopicId = useImageStore((s) => s.activeGenerationTopicId);
+  const recreateImage = useImageStore((s) => s.recreateImage);
   const removeGenerationBatch = useImageStore((s) => s.removeGenerationBatch);
   const reuseSettings = useImageStore((s) => s.reuseSettings);
   const isCreating = useImageStore((s) => s.isCreating);
+  const enabledModels = useAiInfraStore(aiProviderSelectors.enabledImageModelList);
   const activeWorkspaceId = useActiveWorkspaceId();
   const { shouldRenderBusinessBatchItem, businessBatchItem } = useRenderBusinessBatchItem(batch);
 
@@ -97,14 +105,80 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch, onRe
     }
   };
 
+  const batchModelAvailable = enabledModels.some(
+    (provider) =>
+      provider.id === batch.provider && provider.children.some((model) => model.id === batch.model),
+  );
+
+  const applySettings = async (selection: ImageRetryModelSelection) => {
+    try {
+      reuseSettings(
+        selection.model,
+        selection.provider,
+        omit(batch.config as RuntimeImageGenParams, ['seed']),
+      );
+      onReuse?.();
+      message.success(t('studio.settingsLoaded'));
+    } catch (error) {
+      console.error('Failed to reuse image generation settings:', error);
+      message.error(t('studio.settingsLoadFailed'));
+      throw error;
+    }
+  };
+
+  const runRegenerate = async (selection?: ImageRetryModelSelection) => {
+    try {
+      const options = selection
+        ? {
+            model: selection.model,
+            params: getReusableImageConfig(
+              selection.model,
+              selection.provider,
+              omit(batch.config as RuntimeImageGenParams, ['seed']),
+            ).parameters,
+            provider: selection.provider,
+          }
+        : undefined;
+
+      await recreateImage(batch.id, options);
+      message.success(t('studio.regenerateSubmitted'));
+    } catch (error) {
+      console.error('Failed to regenerate image batch:', error);
+      message.error(t('studio.regenerateFailed'));
+      throw error;
+    }
+  };
+
   const handleReuseSettings = () => {
     if (isCreating) return;
-    reuseSettings(
-      batch.model,
-      batch.provider,
-      omit(batch.config as RuntimeImageGenParams, ['seed']),
-    );
-    onReuse?.();
+
+    if (batchModelAvailable) {
+      void applySettings({ model: batch.model, provider: batch.provider }).catch(() => undefined);
+      return;
+    }
+
+    openImageRetryModelModal({
+      mode: 'adjust',
+      originalModel: batch.model,
+      originalProvider: batch.provider,
+      onConfirm: applySettings,
+    });
+  };
+
+  const handleRegenerate = () => {
+    if (isCreating) return;
+
+    if (batchModelAvailable) {
+      void runRegenerate().catch(() => undefined);
+      return;
+    }
+
+    openImageRetryModelModal({
+      mode: 'regenerate',
+      originalModel: batch.model,
+      originalProvider: batch.provider,
+      onConfirm: runRegenerate,
+    });
   };
 
   const handleDeleteBatch = async () => {
@@ -200,14 +274,22 @@ export const GenerationBatchItem = memo<GenerationBatchItemProps>(({ batch, onRe
       <Flexbox horizontal align={'center'} className={styles.batchActions}>
         <Button
           disabled={isCreating}
-          icon={<RotateCcwSquareIcon size={18} />}
+          icon={<RefreshCw size={18} />}
+          loading={isCreating}
+          size={'small'}
+          style={{ minHeight: 44 }}
+          onClick={handleRegenerate}
+        >
+          {t('studio.regenerate')}
+        </Button>
+        <Button
+          disabled={isCreating}
+          icon={<SlidersHorizontal size={18} />}
           size={'small'}
           style={{ minHeight: 44 }}
           onClick={handleReuseSettings}
         >
-          {batch.generations.some((generation) => generation.task.status === AsyncTaskStatus.Error)
-            ? t('studio.adjustAndRetry')
-            : t('generation.actions.reuseSettings')}
+          {t('studio.adjustAndRetry')}
         </Button>
         <ActionIconGroup
           size={{ blockSize: 44, size: 18 }}

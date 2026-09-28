@@ -1108,3 +1108,11 @@ elease 目录内通过；旧镜像 SHA-256 ef52ea3a79081616293615c46f91ef15f2fc
 - 生产数据库只读确认 ny/gpt-image-2.5 已启用但 parameters={}；旧归一化只做精确 ID 查询，因模型库仅有 gpt-image-2 而退化为 prompt-only，导致尺寸与参考图 UI 隐藏喵~
 - 
 ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical schema 回退，inline schema 仍具有覆盖优先级；新增精确调用链回归喵~
+
+## 2026-09-28：图片生成参数与历史任务重试修复实现完成
+
+- 线上只读确认 `any/gpt-image-2.5` 的数据库 `parameters={}` 导致旧前端归一化为 prompt-only；新增 `gpt-image-2.x` 别名到 `gpt-image-2` canonical schema 的回退，供应商 inline schema 仍覆盖 canonical 字段喵~
+- 历史图片批次现在有独立“重新生成”和“调整后重新生成”操作；重试不再先删旧批次，而是接受新任务后立即发布到当前 topic 并后台刷新，避免请求失败时历史任务消失喵~
+- 历史 provider/model 已不存在时，弹出当前启用图片模型选择器；调整路径载入兼容后的历史参数，重新生成路径使用替代模型和过滤后的参数直接提交，重复点击不会重复请求喵~
+- 目标 ESLint 0 error、TypeScript `transpileModule` 语法检查通过、`git diff --check` 通过；`packages/model-bank/src/const/imageParameters.test.ts` 2/2 通过；App 三文件定向 Vitest 本机收集阶段无结果约 90 秒后停止，未伪称通过，需由 GitHub Actions 做权威回归喵~
+- 当前运行时代码尚未推送、构建、Release 或部署；下一步显式提交本轮源码/测试/locale，触发 Actions 后再按独立备份、240 秒保护和真实生产图片 UI/任务验收上线喵~

@@ -103,6 +103,22 @@ function preserveReusableSettings(
   return normalizeImageInputOnSchemaSwitch(reusableSettings, nextSchema, result);
 }
 
+/**
+ * Prepare a historical batch for a currently enabled model without mutating the
+ * editor. Direct regeneration uses this to drop unsupported legacy fields and
+ * fill required defaults before sending the replacement request.
+ */
+export function getReusableImageConfig(
+  model: string,
+  provider: string,
+  settings: Partial<RuntimeImageGenParams>,
+) {
+  const { defaultValues, parametersSchema } = getModelAndDefaults(model, provider);
+  const parameters = preserveReusableSettings(settings, defaultValues, parametersSchema);
+
+  return { parameters, parametersSchema };
+}
+
 type Setter = StoreSetter<ImageStore>;
 export const createGenerationConfigSlice = (set: Setter, get: () => ImageStore, _api?: unknown) =>
   new GenerationConfigActionImpl(set, get, _api);
@@ -351,8 +367,7 @@ export class GenerationConfigActionImpl {
     provider: string,
     settings: Partial<RuntimeImageGenParams>,
   ): void => {
-    const { defaultValues, parametersSchema } = getModelAndDefaults(model, provider);
-    const parameters = preserveReusableSettings(settings, defaultValues, parametersSchema);
+    const { parameters, parametersSchema } = getReusableImageConfig(model, provider, settings);
 
     this.#set(
       () => ({

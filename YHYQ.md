@@ -2124,3 +2124,10 @@
 - 线上只读数据库确认当前启用模型为 provider=any / model=gpt-image-2.5 / parameters={}；模型 ID 不在内置模型库，前端归一化后仅剩 prompt schema，因此尺寸/比例和参考图入口全部被隐藏喵~
 - 已让符合 gpt-image-2.x 的 OpenAI-compatible 新别名在精确模型与 :image 变体均无 schema 时回退到 gpt-image-2 参数定义，并保留 inline 参数覆盖喵~
 - 新增回归断言 gpt-image-2.5 可获得自定义尺寸、4K 预设和多参考图 schema；下一步继续修历史任务重试与模型替换弹窗喵~
+
+## 2026-09-28：图片生成参数与历史重试修复实现完成
+
+- Image 2.5 根因已修复：对 `gpt-image-2.x` OpenAI-compatible 别名，当精确模型和 `:image` 变体没有参数 schema 时继承 `gpt-image-2` canonical schema，因此重新显示自定义尺寸/宽高比、4K 预设和最多 16 张参考图入口喵~
+- 历史任务新增独立“重新生成”和“调整后重新生成”入口；重新生成改为先提交新任务、确认接受后再显示新批次，旧批次不会被提前删除，且重复点击被 `isCreating` 防重喵~
+- 旧模型或服务商不在当前启用列表时，两个入口都会打开 base-ui 模型选择弹窗，让用户选择当前可用图片模型；调整流程载入兼容后的历史设置并回到编辑区，重新生成流程直接用兼容设置提交喵~
+- 新增 Image 2.5 schema alias 回归、历史批次非破坏重试/替换模型/重复点击回归和 BatchItem UI 行为回归；模型参数包测试 2/2 通过，目标 ESLint 0 error、TypeScript 语法和 git diff 检查通过；App 定向 Vitest 本机收集阶段约 90 秒无结果后停止，交由 Actions 权威执行喵~
