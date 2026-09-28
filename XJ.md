@@ -1136,3 +1136,9 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - 正式 Release `v2.2.8-codex.20260928.1` 已发布，标签精确指向运行源码 `ab221bfb537e52e8b2d02db77a38194b6025efbe` 喵~
 - 三项资产已由 GitHub 核验：镜像 298329088 bytes / SHA-256 `be30f2750a89d47c966bc2fd4217889a3e36305e9431c87c2170e4b9f200f6b5`，manifest `5fe097eb3dc6866a901cffdd506084901feea4086ee407d991568a4e54d32138`，SHA256SUMS `b52bcf702cc1ceab09d83de6ec8199f5742cce16e7ae92e3823ce1fd224eae76` 喵~
 - Release 地址为 `https://github.com/Alunixa/lobehub/releases/tag/v2.2.8-codex.20260928.1`；下一步只读核对生产并创建独立 deploy-1 备份、数据库快照、旧镜像和 240 秒 guard，仅替换 LobeHub 喵~
+
+## 2026-09-28：图片生成修复 deploy-1 独立备份完成
+
+- 已创建 `/mnt/sda1/lobehub-backups/20260928-image-regeneration/deploy-1`，保存旧 LobeHub inspect、全部容器/其他服务基线、三项配置哈希、旧镜像、数据库快照、配置归档、回滚脚本和 240 秒 guard 喵~
+- 旧镜像 SHA-256 `56d6cb292a4908d8a7138266f51ec4d558553f5688c6b513056471ec7d118ab8`，数据库 `14bf4ef35d9a0a0041dc39691ef2f0f586017cda29b01b289a00da969ca8df1c`，配置归档 `771ec2b964c666171dcb0ecc348ce8a74893e2d3a75c2eb48151ff972b2a3abc` 喵~
+- 备份前生产容器 `e539b611…` / 镜像 `9e91be2e…`，running、restart=8、OOM=false；该 restart 为 9 月 26 日启动前后的既有累计值，当前已稳定约 42 小时，其他服务正常；guard 尚未启动喵~
