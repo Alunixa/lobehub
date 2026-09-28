@@ -2163,3 +2163,12 @@
 - Release 三资产已上传 deploy-1 并通过远端 `sha256sum -c`；新镜像加载为 `lobehub/lobehub:codex-ab221bfb537e52e8b2d02db77a38194b6025efbe`，镜像 ID `sha256:655cec6268a822a360496b157683c3a1d946248abd4e4ec650e393fe254217c9`，平台 linux/amd64、用户 nextjs、入口 `/bin/node /app/startServer.js` 喵~
 - 前两次离线探针因探针脚本挂载在 `/tmp`，CommonJS 按脚本目录解析依赖而找不到 `/app/node_modules`；改为只读挂载到 `/app/runtime-probe.cjs` 后真实加载 Next、ioredis 和实时启动器，输出 `IMAGE_REGEN_RUNTIME_PROBE_OK`，不是镜像依赖故障喵~
 - staging 后线上仍为旧容器 `e539b611…` / 旧镜像 `9e91be2e…`，running、restart=8、OOM=false，guard 尚未启动；下一步仅保护替换 LobeHub 喵~
+
+## 2026-09-28：图片生成参数与历史任务重试最终交付
+
+- `v2.2.8-codex.20260928.1` 已发布、deploy-1 保护上线并完成 guard 稳定复查；当前容器 `b0ecc8e9bd27…`、镜像 `655cec6268a8…`、running/restart=0/OOM=false，内外版本为 2.2.8 喵~
+- 真实旧任务验证：`gpt/gpt-image-2` 点击重新生成弹出现有模型选择；选择 `any/gpt-image-2.5` 后保留历史 prompt 和 1 张参考图，可设置 `1280×768`；实际请求 HTTP 200、1 张图片成功，runtime errors=0 喵~
+- 验收新增批次 `gb_IOK2PvfqxcW5` 与 generations 已清理，残留为 0，用户原历史批次未删除；其他服务和配置未变化喵~
+- GitHub Release 的最终 manifest、SHA256SUMS 与说明已更新并核验；远端 deploy-1 Release 副本校验通过，回滚入口为 `/mnt/sda1/lobehub-backups/20260928-image-regeneration/deploy-1/rollback.sh` 喵~
+- 本地结构化报告 6/6 passed；仓库 CLI 因没有生产验证平台登录态无法发布 `/verify`，未发起交互式登录。冗余 ZIP 清理被策略拒绝后未绕过喵~
+- 本轮任务完成喵~

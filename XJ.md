@@ -15,6 +15,10 @@
 
 ## 3. Current Status
 
+- **当前生产已更新为 `v2.2.8-codex.20260928.1`**：运行源码 `ab221bfb537e52e8b2d02db77a38194b6025efbe`，服务器镜像 Actions `36430243859`、Mobile Regression `36430244056` 成功喵~
+- 当前容器 `b0ecc8e9bd27ab9d636134b5acd5048ca2a0a857313da6066fd51d0846307800`，镜像 `sha256:655cec6268a822a360496b157683c3a1d946248abd4e4ec650e393fe254217c9`，running/restart=0/OOM=false；deploy-1 guard 于 2026-09-28 23:05:23 +08:00 confirmed，未回滚喵~
+- Image 2.5 参数与历史任务重试已上线：`gpt-image-2.5` 显示 4K/自定义尺寸和最多 16 张参考图；历史任务支持非破坏重新生成、调整后重新生成及旧模型替代选择喵~
+- 真实生产使用旧 `gpt/gpt-image-2` 批次选择 `any/gpt-image-2.5`，保留 1 张历史参考图并设置 `1280×768`，创建 HTTP 200、1 张图片生成成功、runtime errors=0；临时批次与 generations 残留为 0，旧历史未删除喵~
 - **子话题修正版已发布并部署**：`v2.2.8-codex.20260925.2` 已通过 deploy-8 保护上线和真实生产普通/子话题命名验收喵~
 - 新镜像 tar 为 `298292224` bytes，SHA-256 `dcaa9b0278a930b144ab824296d945474998b83837f2ad25f1ac6e19fd609d25`；Actions artifact ZIP 与 SPA ZIP digest 分别为 `872db55fb047bf7dd1ffd0d6779cacaf83f448b42a59ed8b44a357e7bfa1ba38`、`a6bebabf616f93b3d1152895598a3a4bc3d6c09cf729149bf74be87ae3a346c6` 喵~
 - Test CI App shard 1 中 `src/store/chat/slices/thread/action.test.ts` 35/35 通过；全仓仍是既有 Database lint、OIDC、Agent selector、用户初始化、ComfyUI/settings fixture 失败，E2E 仍为 81/82 场景、490/491 步骤，不声明全仓全绿喵~
@@ -238,6 +242,7 @@
 
 ## 18. Rollback and Recovery
 
+- **最新图片生成修复回滚**：`sh /mnt/sda1/lobehub-backups/20260928-image-regeneration/deploy-1/rollback.sh`，恢复部署前镜像 `sha256:9e91be2e…`，仅重建 LobeHub，不覆盖数据库喵~
 - **deploy-6 回滚已准备**：`sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-6/rollback.sh`，固定当前 `.1` 镜像 `588aa8cf03d…` 并只重建 LobeHub，不覆盖数据库；guard 尚未启动喵~
 - **最新 deploy-5 回滚**：`sh /mnt/sda1/lobehub-backups/20260925-topic-title/deploy-5/rollback.sh`，只恢复 deploy-5 前 `.20260924.4` 应用镜像，不覆盖数据库；当前部署已确认，除非真实验收发现生产回归，否则不要执行喵~
 - **最新.4回滚**：sh /mnt/sda1/lobehub-backups/20260924-realtime-sync/deploy-4/rollback.sh，恢复.3镜像6527f1f9a003，只回滚应用不覆盖数据库；deploy-4不可重复执行喵~
@@ -1148,3 +1153,13 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - Release 三资产已上传 deploy-1 并通过远端 `sha256sum -c`；新镜像加载为 `lobehub/lobehub:codex-ab221bfb537e52e8b2d02db77a38194b6025efbe`，镜像 ID `sha256:655cec6268a822a360496b157683c3a1d946248abd4e4ec650e393fe254217c9`，平台 linux/amd64、用户 nextjs、入口 `/bin/node /app/startServer.js` 喵~
 - 前两次离线探针因探针脚本挂载在 `/tmp`，CommonJS 按脚本目录解析依赖而找不到 `/app/node_modules`；改为只读挂载到 `/app/runtime-probe.cjs` 后真实加载 Next、ioredis 和实时启动器，输出 `IMAGE_REGEN_RUNTIME_PROBE_OK`，不是镜像依赖故障喵~
 - staging 后线上仍为旧容器 `e539b611…` / 旧镜像 `9e91be2e…`，running、restart=8、OOM=false，guard 尚未启动；下一步仅保护替换 LobeHub 喵~
+
+## 2026-09-28：图片生成参数与历史任务重试最终交付
+
+- Release `v2.2.8-codex.20260928.1` 已发布并更新为部署完成状态，标签指向 `ab221bfb537e52e8b2d02db77a38194b6025efbe`；镜像 298329088 bytes / SHA-256 `be30f2750a89d47c966bc2fd4217889a3e36305e9431c87c2170e4b9f200f6b5` 喵~
+- Test CI 本轮目标通过：BatchItem 3/3、createImage 16/16、generationConfig 30/30、aiProvider 14/14；全仓既有失败边界保持为 OIDC、用户初始化、Agent selector、Host Executor no-suite、ComfyUI、设置快照、Database lint 1597/261 和自动滚动 E2E 81/82 喵~
+- 同源 SPA 与真实生产双重验证通过；生产报告在 `D:\Cursor\lobehub\.records\reports\20260928-image-regeneration-production`，候选报告在 `D:\Cursor\lobehub\.records\reports\20260928-image-regeneration-preview` 喵~
+- 结构化 `result.json` 包含 6/6 passed；仓库 CLI 可执行但生产验证平台无登录态，返回需先执行 `lh login`，因此没有自动发布 `/verify/<id>`，未发起交互式登录打扰用户喵~
+- deploy-1 备份、数据库、旧镜像、guard、最终 Release manifest 和校验清单均保留；Release 最终三资产 digest 已核验，远端 deploy-1 Release 副本 `sha256sum -c` 通过喵~
+- 冗余 artifact ZIP 的绝对路径安全清理命令被执行策略拒绝，未绕过；提取后的镜像、SPA、报告、远端备份和回滚文件均保留，历史未跟踪目录及 `问题.txt` 未触碰喵~
+- 本轮任务已完成；后续不需要重复构建或部署此版本喵~
