@@ -103,16 +103,26 @@ export const normalizeImageModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
   const fallbackParametersPromise = (async () => {
-    let canonicalParameters = await getModelPropertyWithFallback<
-      ModelParamsSchema | undefined
-    >(model.id, 'parameters', model.providerId);
+    const parameterFallbackIds = [model.id];
 
-    if (!canonicalParameters && !model.id.endsWith(':image')) {
+    if (!model.id.endsWith(':image')) parameterFallbackIds.push(`${model.id}:image`);
+
+    // OpenAI-compatible providers often expose a newer gateway alias before it
+    // lands in the built-in model bank. GPT Image 2.x keeps the same generation
+    // controls as GPT Image 2, so inherit that canonical schema instead of
+    // silently degrading to a prompt-only form.
+    if (/^gpt-image-2(?:$|[.:-])/i.test(model.id) && model.id !== 'gpt-image-2') {
+      parameterFallbackIds.push('gpt-image-2');
+    }
+
+    let canonicalParameters: ModelParamsSchema | undefined;
+    for (const fallbackId of parameterFallbackIds) {
       canonicalParameters = await getModelPropertyWithFallback<ModelParamsSchema | undefined>(
-        `${model.id}:image`,
+        fallbackId,
         'parameters',
         model.providerId,
       );
+      if (canonicalParameters) break;
     }
 
     const inlineParameters = model.parameters as ModelParamsSchema | undefined;

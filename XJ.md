@@ -1102,3 +1102,9 @@ elease 目录内通过；旧镜像 SHA-256 ef52ea3a79081616293615c46f91ef15f2fc
 
 - 用户要求继续处理 Image 2.5 已配置但分辨率、宽高比和参考图入口不可用，以及历史任务重新生成/调整后重新生成无响应的问题喵~
 - 修改前检查点为 254d5321f2；当前重点核对模型 ID 到参数 schema 的匹配、历史 batch 配置复用、旧模型可用性判断、模型选择弹窗和重试数据安全，尚未修改运行代码喵~
+
+### 2026-09-28：Image 2.5 参数 schema 修复
+
+- 生产数据库只读确认 ny/gpt-image-2.5 已启用但 parameters={}；旧归一化只做精确 ID 查询，因模型库仅有 gpt-image-2 而退化为 prompt-only，导致尺寸与参考图 UI 隐藏喵~
+- 
+ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical schema 回退，inline schema 仍具有覆盖优先级；新增精确调用链回归喵~

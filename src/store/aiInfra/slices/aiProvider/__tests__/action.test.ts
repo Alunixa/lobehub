@@ -221,6 +221,40 @@ describe('aiProvider action helpers', () => {
       expect(result.parameters).toEqual(canonicalParameters);
     });
 
+    it('inherits GPT Image 2 controls for newer OpenAI-compatible 2.x aliases', async () => {
+      const canonicalParameters = {
+        imageUrls: { default: [], maxCount: 16 },
+        prompt: { default: '' },
+        size: {
+          allowCustom: true,
+          default: 'auto',
+          enum: ['auto', '1024x1024', '3840x2160'],
+          max: 4096,
+          min: 256,
+          step: 64,
+        },
+      } satisfies ModelParamsSchema;
+      const fallbackSpy = vi
+        .mocked(runtimeModule.getModelPropertyWithFallback)
+        .mockImplementation(async (id, key) => {
+          if (id === 'gpt-image-2' && key === 'parameters') return canonicalParameters;
+          return undefined;
+        });
+
+      const result = await normalizeImageModel(
+        createImageModel({
+          id: 'gpt-image-2.5',
+          parameters: {} as ModelParamsSchema,
+          providerId: 'any',
+        }),
+      );
+
+      expect(result.parameters).toEqual(canonicalParameters);
+      expect(fallbackSpy).toHaveBeenCalledWith('gpt-image-2.5', 'parameters', 'any');
+      expect(fallbackSpy).toHaveBeenCalledWith('gpt-image-2.5:image', 'parameters', 'any');
+      expect(fallbackSpy).toHaveBeenCalledWith('gpt-image-2', 'parameters', 'any');
+    });
+
     it('uses safe defaults when a custom image model exposes no parameter schema', async () => {
       const result = await normalizeImageModel(
         createImageModel({
