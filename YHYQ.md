@@ -2193,3 +2193,7 @@
 - 移动端 ActionPopover（包括上下文窗口使用量）改为点击触发，解决触摸设备点击后不显示详情。
 - 验证：数据库 MessageContentModel 测试 20/20 通过；目标 ESLint 0 error（Assistant MessageContent 保留 2 个既有 hook dependency warning）；locale JSON 解析和 git diff 检查通过。
 
+
+## 2026-09-29T17:05:00+08:00：用户询问部署状态
+- 用户询问本轮上下文角色和移动端交互修复是否已部署。当前仅完成本地提交与定向测试，尚未推送、构建、发布 Release 或替换生产服务。
+
