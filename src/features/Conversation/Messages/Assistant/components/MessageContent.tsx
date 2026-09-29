@@ -1,7 +1,9 @@
 import { LOADING_FLAT } from '@lobechat/const';
 import { type UIChatMessage } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
+import { Text } from '@lobehub/ui/base-ui';
 import { memo, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { useUserStore } from '@/store/user';
 import { userProfileSelectors } from '@/store/user/selectors';
@@ -18,6 +20,7 @@ import { useMarkdown } from '../useMarkdown';
 
 const MessageContent = memo<UIChatMessage>(
   ({ id, tools, content, chunksList, search, imageList, metadata, ...props }) => {
+    const { t } = useTranslation('chat');
     const { drawer, markdownProps } = useMarkdown(id);
     // Use ConversationStore instead of ChatStore
     const generating = useConversationStore(messageStateSelectors.isMessageGenerating(id));
@@ -68,6 +71,9 @@ const MessageContent = memo<UIChatMessage>(
 
     return (
       <Flexbox gap={8} id={id}>
+        {metadata?.isCustomContext && (
+          <Text type={'secondary'}>{t('messageContent.contextLabel')}</Text>
+        )}
         {drawer}
         {showSearch && (
           <SearchGrounding

@@ -10,6 +10,7 @@ export const EditMessageContentSchema = z.object({
 export const InsertContextMessageSchema = EditMessageContentSchema.extend({
   anchorId: z.string().min(1),
   position: z.enum(['before', 'after']),
+  role: z.enum(['assistant', 'user']).optional(),
   threadId: z.string().nullish(),
 });
 

@@ -36,6 +36,14 @@ export const styles = createStaticStyles(({ css, cssVar }) => {
           opacity: 1;
         }
       }
+
+      @media (hover: none), (pointer: coarse) {
+        time,
+        div[role='menubar'] {
+          pointer-events: unset;
+          opacity: 1;
+        }
+      }
     `,
     loading: css`
       position: absolute;

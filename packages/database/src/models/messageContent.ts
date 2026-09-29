@@ -125,6 +125,8 @@ export class MessageContentModel {
           !metadata?.isCustomContext
         )
           throw new Error('Message ID is already in use');
+        if (params.role && existing.role !== params.role)
+          throw new Error('The context role cannot change after saving');
         const anchor = await this.findMessage(tx, params.anchorId);
         const samePosition =
           params.position === 'before'
@@ -171,7 +173,7 @@ export class MessageContentModel {
               isCustomContext: true,
             },
             parentId: before ? anchor.parentId : anchor.id,
-            role: 'user',
+            role: params.role ?? 'user',
             sessionId: anchor.sessionId,
             threadId: anchor.threadId,
             topicId: anchor.topicId,

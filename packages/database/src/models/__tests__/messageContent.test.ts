@@ -136,6 +136,21 @@ describe('MessageContentModel', () => {
     },
   );
 
+  it('supports inserting context as an assistant output', async () => {
+    await model.insert({
+      anchorId: 'u1',
+      content: 'assistant context',
+      fileIds: [],
+      id: 'assistant-context',
+      position: 'after',
+      role: 'assistant',
+    });
+
+    const inserted = (await read()).find((message) => message.id === 'assistant-context');
+    expect(inserted?.role).toBe('assistant');
+    expect(inserted?.metadata?.isCustomContext).toBe(true);
+  });
+
   it('inserts at the end and before the first message without changing existing answers', async () => {
     await insert('u2', 'after', 'last');
     await insert('u1', 'before', 'first');

@@ -20,14 +20,25 @@ const ContextMessageEditor = ({ anchorId, draftKey, onSave }: ContextMessageEdit
   const positionId = useId();
   const [id] = useState(() => nanoid());
   const [position, setPosition] = useState<'before' | 'after'>('after');
+  const [role, setRole] = useState<'user' | 'assistant'>('user');
   return (
     <MessageContentEditor
       draftKey={draftKey}
       onCancel={close}
-      onSave={(value) => onSave({ ...value, anchorId, id, position })}
+      onSave={(value) => onSave({ ...value, anchorId, id, position, role })}
     >
       <Flexbox gap={8}>
         <Text>{t('messageContent.contextDescription')}</Text>
+        <label htmlFor={`${positionId}-role`}>{t('messageContent.role')}</label>
+        <Select
+          id={`${positionId}-role`}
+          value={role}
+          options={[
+            { label: t('messageContent.role.user'), value: 'user' },
+            { label: t('messageContent.role.assistant'), value: 'assistant' },
+          ]}
+          onChange={(value) => setRole(value === 'assistant' ? 'assistant' : 'user')}
+        />
         <label htmlFor={positionId}>{t('messageContent.position')}</label>
         <Select
           id={positionId}

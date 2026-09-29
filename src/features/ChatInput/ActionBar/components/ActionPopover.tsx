@@ -46,6 +46,7 @@ const ActionPopover = memo<ActionPopoverProps>(
     classNames: customClassNames,
     title,
     placement,
+    trigger,
     loading,
     extra,
     content,
@@ -87,6 +88,7 @@ const ActionPopover = memo<ActionPopoverProps>(
         content={popoverContent}
         nativeButton={false}
         placement={isMobile ? 'top' : placement}
+        trigger={isMobile ? 'click' : trigger}
         classNames={{
           ...(typeof resolvedClassNames === 'object' ? resolvedClassNames : {}),
           content: contentClassName,

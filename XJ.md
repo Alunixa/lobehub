@@ -1179,3 +1179,10 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - 用户追加：会话内插入上下文需要选择用户输入或 AI 输出；移动端将桌面端依赖 hover 才显示的操作改为始终显示；修复移动端上下文窗口用量点击不显示。
 - 已定位上下文插入链路为 ContextMessageEditor → InsertContextMessageSchema → MessageContentModel.insert；移动端操作隐藏主要来自 Conversation ChatItem 的 hover menubar，Token ActionPopover 默认 hover 导致触摸端点击无效。
 
+
+## 2026-09-29T16:50:00+08:00：上下文角色与移动端交互修复完成
+- 会话内插入上下文新增角色选择：用户输入上下文或 AI 输出上下文；协议、服务端持久化、消息展示和中英文文案已同步更新，默认兼容旧请求为用户输入。
+- 移动端在无 hover 能力或 coarse pointer 下始终显示会话消息操作栏、输入框展开按钮和群组配置 hover 操作；桌面端行为保持不变。
+- 移动端 ActionPopover（包括上下文窗口使用量）改为点击触发，解决触摸设备点击后不显示详情。
+- 验证：数据库 MessageContentModel 测试 20/20 通过；目标 ESLint 0 error（Assistant MessageContent 保留 2 个既有 hook dependency warning）；locale JSON 解析和 git diff 检查通过。
+

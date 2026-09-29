@@ -3,13 +3,16 @@ export default {
   'messageContent.after': 'After this message',
   'messageContent.before': 'Before this message',
   'messageContent.contextDescription':
-    'Insert text and attachments as user-provided context at this position. Existing replies stay unchanged; no AI response is started. Future requests use this context within the conversation history limit.',
+    'Insert text and attachments as context at this position. Choose whether it appears as user input or AI output. Existing replies stay unchanged; no AI response is started.',
   'messageContent.contextLabel': 'Custom context',
   'messageContent.draftFailed':
     'The browser could not back up this draft. Keep this window open until it is saved.',
   'messageContent.editTitle': 'Edit message and attachments',
   'messageContent.insertContext': 'Insert context here',
   'messageContent.position': 'Insertion position',
+  'messageContent.role': 'Insert as',
+  'messageContent.role.assistant': 'AI output context',
+  'messageContent.role.user': 'User input context',
   'messageContent.removeAttachment': 'Remove',
   'messageContent.saveFailed':
     'Could not save. Your text and attachments are kept here; please retry.',

@@ -36,6 +36,12 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
       opacity: 0;
     }
 
+    @media (hover: none), (pointer: coarse) {
+      .show-on-hover {
+        opacity: 1;
+      }
+    }
+
     &:hover {
       .show-on-hover {
         opacity: 1;
