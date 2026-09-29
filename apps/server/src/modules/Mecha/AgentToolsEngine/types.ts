@@ -87,6 +87,8 @@ export interface ServerCreateAgentToolsEngineParams {
     /** Plugin IDs enabled for this agent */
     plugins?: string[];
   };
+  /** Whether cross-conversation topic references are enabled for this user/turn */
+  allowTopicReference?: boolean;
   /**
    * Whether device tools (local-system / remote-device) are allowed this turn.
    * Computed by `resolveDeviceAccessPolicy` from the caller identity:

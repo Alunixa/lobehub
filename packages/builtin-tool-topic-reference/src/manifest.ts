@@ -6,7 +6,7 @@ export const TopicReferenceManifest: BuiltinToolManifest = {
   api: [
     {
       description:
-        'Retrieve context from a referenced topic conversation. Returns the topic summary if available, otherwise returns the most recent messages. Use this when you see a topic reference tag in the user message and need to understand what was discussed in that topic.',
+        'Read another user-owned conversation by its topic ID. Use this when the user pastes a conversation ID, when a recent-conversation directory lists a relevant ID, or when a <refer_topic> tag is present. Returns a summary when available and otherwise recent messages.',
       name: TopicReferenceApiName.getTopicContext,
       parameters: {
         additionalProperties: false,
@@ -24,9 +24,10 @@ export const TopicReferenceManifest: BuiltinToolManifest = {
   identifier: TopicReferenceIdentifier,
   meta: {
     avatar: '📋',
-    description: 'Retrieve context from referenced topic conversations',
+    description: 'Read user-owned conversations by ID',
     title: 'Topic Reference',
   },
-  systemRole: '',
+  systemRole:
+    'Use getTopicContext when the user provides a conversation/topic ID or when a recent conversation directory contains a relevant ID. Do not guess IDs; only read IDs supplied by the user or listed in the injected recent-conversation context. The tool is scoped to the current user and may return a summary or recent messages.',
   type: 'builtin',
 };

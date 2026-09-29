@@ -53,6 +53,7 @@ import {
   AVAILABLE_AGENTS_CONTEXT_QUERY_LIMIT,
 } from '@/services/agent';
 import { notebookService } from '@/services/notebook';
+import { topicService } from '@/services/topic';
 import { getAgentStoreState } from '@/store/agent';
 import { agentChatConfigSelectors, agentSelectors } from '@/store/agent/selectors';
 import { getChatGroupStoreState } from '@/store/agentGroup';
@@ -68,6 +69,8 @@ import {
   toolSelectors,
 } from '@/store/tool/selectors';
 import { ComposioServerStatus } from '@/store/tool/slices/composioStore';
+import { getUserStoreState } from '@/store/user';
+import { userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 import {
   getRuntimeModelDisplayName,
@@ -398,14 +401,12 @@ export const contextEngineering = async ({
     try {
       const credsResult = await lambdaClient.market.creds.list.query();
       const userCreds = (credsResult as any)?.data ?? [];
-      credsList = userCreds.map(
-        (cred: any): CredSummary => ({
-          description: cred.description,
-          key: cred.key,
-          name: cred.name,
-          type: cred.type,
-        }),
-      );
+      credsList = userCreds.map((cred: any): CredSummary => ({
+        description: cred.description,
+        key: cred.key,
+        name: cred.name,
+        type: cred.type,
+      }));
       log('Creds context resolved: count=%d', credsList?.length ?? 0);
     } catch (error) {
       // Silently fail - creds context is optional
@@ -629,7 +630,7 @@ export const contextEngineering = async ({
   }
 
   // Resolve topic references from messages containing <refer_topic> tags
-  const topicReferences =
+  let topicReferences =
     (await resolveTopicReferences(
       messages,
       async (topicId: string) => {
@@ -645,6 +646,42 @@ export const contextEngineering = async ({
         }));
       },
     )) ?? [];
+
+  // Optional proactive cross-conversation context. The injected directory
+  // contains only recent topic IDs and titles; the model can call the topic
+  // reference tool for whichever entries are relevant.
+  const userState = getUserStoreState();
+  const alreadyHasTopicReferences = messages.some(
+    (message) =>
+      typeof message.content === 'string' && message.content.includes('topic_reference_context'),
+  );
+  if (
+    userGeneralSettingsSelectors.enableProactiveTopicReading(userState) &&
+    !alreadyHasTopicReferences
+  ) {
+    try {
+      const configuredLimit = userGeneralSettingsSelectors.proactiveTopicReadingCount(userState);
+      const limit =
+        configuredLimit === 'auto'
+          ? 25
+          : typeof configuredLimit === 'number'
+            ? Math.min(25, Math.max(1, configuredLimit))
+            : 10;
+      const recentTopics = await topicService.getRecentTopics(limit + 1);
+      const existingIds = new Set(topicReferences.map((item) => item.topicId));
+      const recentReferences = recentTopics
+        .filter((topic) => topic.id !== topicId && !existingIds.has(topic.id))
+        .slice(0, limit)
+        .map((topic) => ({
+          topicId: topic.id,
+          topicTitle: topic.title || 'Untitled',
+        }));
+
+      topicReferences = [...topicReferences, ...recentReferences];
+    } catch (error) {
+      log('Failed to build proactive recent-topic context: %O', error);
+    }
+  }
 
   // Build onboarding context if this is the web-onboarding agent.
   // Single combined trpc call — server runs state/soul/persona DB queries in parallel.

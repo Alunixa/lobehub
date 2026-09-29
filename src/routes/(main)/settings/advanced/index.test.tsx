@@ -63,6 +63,7 @@ vi.mock('@lobehub/ui', () => ({
     </div>
   ),
   Icon: () => null,
+  InputNumber: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => <input {...props} />,
   InputPassword: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input type="password" {...props} />
@@ -147,6 +148,34 @@ describe('Advanced settings page', () => {
     render(<Page />, { wrapper: createWrapper() });
 
     expect(screen.getByText('features.agentDocumentFloatingChatPanel.title')).toBeDefined();
+  });
+
+  it('persists cross-conversation reading toggles', async () => {
+    const setSettings = vi.fn().mockResolvedValue(undefined);
+    useUserStore.setState({
+      isUserStateInit: true,
+      setSettings,
+      updateLab: vi.fn(),
+    });
+
+    render(<Page />, { wrapper: createWrapper() });
+
+    const referenceSwitch = screen
+      .getByText('tab.advanced.conversationReading.reference.title')
+      .parentElement?.querySelector('button');
+    const proactiveSwitch = screen
+      .getByText('tab.advanced.conversationReading.proactive.title')
+      .parentElement?.querySelector('button');
+
+    fireEvent.click(referenceSwitch!);
+    fireEvent.click(proactiveSwitch!);
+
+    await waitFor(() => {
+      expect(setSettings).toHaveBeenCalledWith({ general: { enableTopicReference: true } });
+      expect(setSettings).toHaveBeenCalledWith({
+        general: { enableProactiveTopicReading: true },
+      });
+    });
   });
 
   it('renders automatic updates disabled by default and persists a toggle', async () => {

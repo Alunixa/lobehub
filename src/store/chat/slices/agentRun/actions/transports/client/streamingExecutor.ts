@@ -14,6 +14,7 @@ import {
 import { LobeAgentManifest } from '@lobechat/builtin-tool-lobe-agent';
 import { createPathScopeAudit } from '@lobechat/builtin-tool-local-system';
 import { PageAgentIdentifier } from '@lobechat/builtin-tool-page-agent';
+import { TopicReferenceIdentifier } from '@lobechat/builtin-tool-topic-reference';
 import { manualModeExcludeToolIds } from '@lobechat/builtin-tools';
 import { isDesktop } from '@lobechat/const';
 import { type ToolsEngine } from '@lobechat/context-engine';
@@ -54,7 +55,7 @@ import { getServerConfigStoreState, serverConfigSelectors } from '@/store/server
 import { getTaskStoreState } from '@/store/task';
 import { pageAgentRuntime } from '@/store/tool/slices/builtin/executors/lobe-page-agent';
 import { type StoreSetter } from '@/store/types';
-import { toolInterventionSelectors } from '@/store/user/selectors';
+import { toolInterventionSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
 import { getUserStoreState } from '@/store/user/store';
 
 import { buildRunLifecycle } from '../../lifecycle/buildRunLifecycle';
@@ -182,6 +183,11 @@ export class StreamingExecutorActionImpl {
 
     // Dynamically inject turn-scoped builtin tools.
     const hasTopicReference = messages.some((m) => hasReferTopicNode(m.editorData));
+    const userState = getUserStoreState();
+    const topicReferenceEnabled =
+      hasTopicReference ||
+      userGeneralSettingsSelectors.enableTopicReference(userState) ||
+      userGeneralSettingsSelectors.enableProactiveTopicReading(userState);
     const visualMediaAvailability = getVisualMediaAvailability(messages);
     const serverConfigState = getServerConfigStoreState();
     const visualUnderstandingConfigured =
@@ -195,7 +201,7 @@ export class StreamingExecutorActionImpl {
     const runtimePluginIds = [
       ...new Set([
         ...(pluginIds || []),
-        ...(hasTopicReference ? ['lobe-topic-reference'] : []),
+        ...(topicReferenceEnabled ? [TopicReferenceIdentifier] : []),
         ...(shouldEnableVisualUnderstanding ? [LobeAgentManifest.identifier] : []),
       ]),
     ];
@@ -206,11 +212,12 @@ export class StreamingExecutorActionImpl {
         : effectivePluginIds;
 
     log(
-      '[internal_createAgentState] resolved plugins=%o, isSubAgent=%s, disableTools=%s, hasTopicReference=%s',
+      '[internal_createAgentState] resolved plugins=%o, isSubAgent=%s, disableTools=%s, hasTopicReference=%s, topicReferenceEnabled=%s',
       effectivePluginIds,
       isSubAgent,
       disableTools,
       hasTopicReference,
+      topicReferenceEnabled,
     );
 
     // Generate tools using ToolsEngine (centralized here, passed to chatService via agentConfig)

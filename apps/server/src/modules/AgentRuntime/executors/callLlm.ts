@@ -407,6 +407,45 @@ export const callLlm =
               );
             },
           );
+
+          // Optional proactive cross-conversation context. The directory only
+          // exposes user-owned topic IDs and titles; the model must call
+          // getTopicContext to read any selected conversation in full.
+          try {
+            const userSettings = await new UserModel(ctx.serverDB, ctx.userId).getUserSettings();
+            const generalSettings = userSettings?.general as
+              | {
+                  enableProactiveTopicReading?: boolean;
+                  proactiveTopicReadingCount?: number | 'auto';
+                }
+              | undefined;
+
+            if (generalSettings?.enableProactiveTopicReading === true) {
+              const configuredLimit = generalSettings.proactiveTopicReadingCount;
+              const limit =
+                configuredLimit === 'auto'
+                  ? 25
+                  : typeof configuredLimit === 'number'
+                    ? Math.min(25, Math.max(1, configuredLimit))
+                    : 10;
+              const recentTopics = await topicModel.queryRecent(limit + 1);
+              const currentTopicId = state.metadata?.topicId;
+              const existingIds = new Set((topicReferences ?? []).map((item) => item.topicId));
+              const recentReferences = recentTopics
+                .filter((topic) => topic.id !== currentTopicId && !existingIds.has(topic.id))
+                .slice(0, limit)
+                .map((topic) => ({
+                  topicId: topic.id,
+                  topicTitle: topic.title || 'Untitled',
+                }));
+
+              if (recentReferences.length > 0) {
+                topicReferences = [...(topicReferences ?? []), ...recentReferences];
+              }
+            }
+          } catch (error) {
+            log('Failed to build proactive recent-topic context: %O', error);
+          }
         }
 
         // Fetch agent documents for context injection

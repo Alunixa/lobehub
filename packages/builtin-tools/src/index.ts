@@ -101,6 +101,7 @@ export const manualModeExcludeToolIds = [
 export const chatModeAllowedToolIds = [
   KnowledgeBaseManifest.identifier,
   MemoryManifest.identifier,
+  TopicReferenceManifest.identifier,
   WebBrowsingManifest.identifier,
 ];
 

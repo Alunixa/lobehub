@@ -21,6 +21,10 @@ export interface UserGeneralConfig {
    * @default true
    */
   enableMessageLinkIcon?: boolean;
+  /** Allow the model to inspect a directory of recently updated topics. */
+  enableProactiveTopicReading?: boolean;
+  /** Allow the model to read a user-provided topic/conversation ID. */
+  enableTopicReference?: boolean;
   fontSize: number;
   highlighterTheme?: HighlighterProps['theme'];
   /** Attach a fresh minute-resolution timestamp to every model request. Default: false. */
@@ -30,6 +34,8 @@ export interface UserGeneralConfig {
   mermaidTheme?: MermaidProps['theme'];
   neutralColor?: NeutralColors;
   primaryColor?: PrimaryColors;
+  /** Number of recent topics to expose, or `auto` to expose the latest 25. */
+  proactiveTopicReadingCount?: number | 'auto';
   responseLanguage?: string;
   telemetry: boolean;
   timezone?: string;

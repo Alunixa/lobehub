@@ -1169,3 +1169,8 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - 当前仓库已存在 Topic Reference 基础设施：lobe-topic-reference 工具、<refer_topic> 解析、	opic.getTopicContext 路由和上下文注入；本轮将在其上扩展设置、工具可用性和最近会话目录注入。
 - 当前工作区保留历史未跟踪目录与 问题.txt，不触碰。
 
+
+## 2026-09-29T16:15:00+08:00：跨会话读取功能实现阶段完成
+- 高级设置新增按会话 ID 读取、主动读取最近会话两个开关；主动读取数量支持固定 1 到 25 或自动（最近 25 个）。
+- 复用 lobe-topic-reference 工具，客户端与服务端均注入最近会话标题和 ID，并通过工具按需读取；英文与简体中文文案已补齐。
+- 目标 ESLint 通过；高级设置 7/7、contextEngineering 30/30、服务端 AgentToolsEngine 44/44 通过；完整 tsc 仍受现有 .next/dev/types 损坏和 Node 堆内存限制影响。

@@ -1,10 +1,7 @@
 import type { AgentRuntimeContext, AgentState } from '@lobechat/agent-runtime';
 import { BUILTIN_AGENT_SLUGS, getAgentRuntimeConfig } from '@lobechat/builtin-agents';
 import { builtinSkills } from '@lobechat/builtin-skills';
-import {
-  CloudSandboxApiName,
-  CloudSandboxManifest,
-} from '@lobechat/builtin-tool-cloud-sandbox';
+import { CloudSandboxApiName, CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
 import { LobeAgentIdentifier, LobeAgentManifest } from '@lobechat/builtin-tool-lobe-agent';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MessageToolIdentifier } from '@lobechat/builtin-tool-message';
@@ -2104,6 +2101,7 @@ export class AiAgentService {
     // Agent-level memory config takes priority; fallback to user-level setting
     const agentMemoryEnabled = agentConfig.chatConfig?.memory?.enabled;
     let globalMemoryEnabled = agentMemoryEnabled ?? false;
+    let allowTopicReference = false;
     let userTimezone: string | undefined;
     // Resolved once below (alongside the group-tool authorization fetch) and
     // forwarded into op metadata for the per-step context engine.
@@ -2115,7 +2113,16 @@ export class AiAgentService {
 
       globalMemoryEnabled = agentMemoryEnabled ?? memorySettings?.enabled !== false;
 
-      const generalSettings = settings?.general as { timezone?: string } | undefined;
+      const generalSettings = settings?.general as
+        | {
+            enableProactiveTopicReading?: boolean;
+            enableTopicReference?: boolean;
+            timezone?: string;
+          }
+        | undefined;
+      allowTopicReference =
+        generalSettings?.enableTopicReference === true ||
+        generalSettings?.enableProactiveTopicReading === true;
       userTimezone = generalSettings?.timezone;
     } catch (error) {
       log('execAgent: failed to fetch user settings: %O', error);
@@ -2469,7 +2476,7 @@ export class AiAgentService {
         visualUnderstandingConfigured && (needsImageUnderstanding || needsVideoUnderstanding);
       agentPlugins = [
         ...agentPlugins,
-        ...(hasTopicReference ? ['lobe-topic-reference'] : []),
+        ...(hasTopicReference || allowTopicReference ? ['lobe-topic-reference'] : []),
         ...(isBotConversation ? [MessageToolIdentifier] : []),
         ...(shouldEnableVisualUnderstanding ? [LobeAgentManifest.identifier] : []),
       ];
@@ -2554,6 +2561,7 @@ export class AiAgentService {
           ...composioManifests,
           ...connectorManifests,
         ],
+        allowTopicReference: allowTopicReference || hasTopicReference,
         agentConfig: {
           chatConfig: agentConfig.chatConfig ?? undefined,
           plugins: agentPlugins,

@@ -5,6 +5,7 @@ import { CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
 import { KnowledgeBaseManifest } from '@lobechat/builtin-tool-knowledge-base';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MemoryManifest } from '@lobechat/builtin-tool-memory';
+import { TopicReferenceManifest } from '@lobechat/builtin-tool-topic-reference';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
 import { alwaysOnToolIds, chatModeAllowedToolIds, defaultToolIds } from '@lobechat/builtin-tools';
 import { createEnableChecker, type PluginEnableChecker } from '@lobechat/context-engine';
@@ -30,7 +31,7 @@ import {
 } from '@/store/tool/selectors';
 import { connectorSelectors } from '@/store/tool/slices/connector';
 import { useUserStore } from '@/store/user';
-import { settingsSelectors } from '@/store/user/selectors';
+import { settingsSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 import { getSearchConfig } from '../getSearchConfig';
 import { isCanUseFC } from '../isCanUseFC';
@@ -199,10 +200,15 @@ export const createAgentToolsEngine = (
     agentChatConfigSelectors.currentChatConfig(agentState).memory?.enabled ??
     settingsSelectors.memoryEnabled(useUserStore.getState());
   const webBrowsingEnabled = searchConfig.useApplicationBuiltinSearchTool;
+  const topicReferenceEnabled =
+    userGeneralSettingsSelectors.enableTopicReference(useUserStore.getState()) ||
+    userGeneralSettingsSelectors.enableProactiveTopicReading(useUserStore.getState()) ||
+    pluginIds?.includes(TopicReferenceManifest.identifier) === true;
 
   const chatModeRules = {
     [KnowledgeBaseManifest.identifier]: kbEnabled,
     [MemoryManifest.identifier]: memoryEnabled,
+    [TopicReferenceManifest.identifier]: topicReferenceEnabled,
     [WebBrowsingManifest.identifier]: webBrowsingEnabled,
   };
 
@@ -219,6 +225,7 @@ export const createAgentToolsEngine = (
     [KnowledgeBaseManifest.identifier]: kbEnabled,
     [LocalSystemManifest.identifier]: agentChatConfigSelectors.isLocalSystemEnabled(agentState),
     [MemoryManifest.identifier]: memoryEnabled,
+    [TopicReferenceManifest.identifier]: topicReferenceEnabled,
     [WebBrowsingManifest.identifier]: webBrowsingEnabled,
   };
 

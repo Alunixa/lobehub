@@ -1149,6 +1149,21 @@ When I am ___, I need ___
   'tab.advanced.gatewayMode.desc':
     'Run supported agent tasks through the cloud Gateway by default. Individual agents can override this from the chat menu.',
   'tab.advanced.gatewayMode.title': 'Gateway Mode',
+  'tab.advanced.conversationReading.title': 'Cross-conversation reading',
+  'tab.advanced.conversationReading.reference.title': 'Allow reading by conversation ID',
+  'tab.advanced.conversationReading.reference.desc':
+    'When enabled, the AI can use a conversation ID you paste or reference to read that conversation.',
+  'tab.advanced.conversationReading.proactive.title': 'Allow proactive recent-conversation reading',
+  'tab.advanced.conversationReading.proactive.desc':
+    'Give the AI a list of recent conversations so it can choose relevant context to read.',
+  'tab.advanced.conversationReading.count.title': 'Recent conversation list mode',
+  'tab.advanced.conversationReading.count.desc':
+    'Choose a fixed list size or automatic mode, which exposes up to the latest 25 conversations.',
+  'tab.advanced.conversationReading.count.auto': 'Automatic (latest 25)',
+  'tab.advanced.conversationReading.count.custom': 'Custom count',
+  'tab.advanced.conversationReading.customCount.title': 'Custom recent conversation count',
+  'tab.advanced.conversationReading.customCount.desc':
+    'Choose between 1 and 25 recent conversations.',
   'tab.advanced.memoryEmbedding.apiKey.desc':
     'Stored encrypted with the account key vault and used only for memory embeddings.',
   'tab.advanced.memoryEmbedding.apiKey.title': 'Key',

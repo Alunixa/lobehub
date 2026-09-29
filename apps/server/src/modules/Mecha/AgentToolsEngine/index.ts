@@ -15,6 +15,7 @@ import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MemoryManifest } from '@lobechat/builtin-tool-memory';
 import { MessageManifest } from '@lobechat/builtin-tool-message';
 import { RemoteDeviceManifest } from '@lobechat/builtin-tool-remote-device';
+import { TopicReferenceManifest } from '@lobechat/builtin-tool-topic-reference';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
 import {
   alwaysOnToolIds,
@@ -148,6 +149,7 @@ export const createServerAgentToolsEngine = (
 ): ToolsEngine => {
   const {
     additionalManifests,
+    allowTopicReference = false,
     agentConfig,
     canUseDevice = false,
     deviceContext,
@@ -219,6 +221,7 @@ export const createServerAgentToolsEngine = (
   const chatModeRules = {
     [KnowledgeBaseManifest.identifier]: hasEnabledKnowledgeBases,
     [MemoryManifest.identifier]: globalMemoryEnabled,
+    [TopicReferenceManifest.identifier]: allowTopicReference,
     [WebBrowsingManifest.identifier]: isSearchEnabled,
   };
 
@@ -250,6 +253,7 @@ export const createServerAgentToolsEngine = (
       !!deviceContext?.deviceOnline &&
       !!deviceContext?.autoActivated,
     [MemoryManifest.identifier]: globalMemoryEnabled,
+    [TopicReferenceManifest.identifier]: allowTopicReference,
     // Only auto-enable in bot conversations; otherwise let user's plugin selection take effect
     ...(isBotConversation && { [MessageManifest.identifier]: true }),
     // Group supervisor: enable the orchestration toolset (see

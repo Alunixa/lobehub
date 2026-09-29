@@ -2,7 +2,7 @@
 
 import { isDesktop } from '@lobechat/const';
 import { type FormGroupItemType, type FormItemProps } from '@lobehub/ui';
-import { Form, Icon, Skeleton } from '@lobehub/ui';
+import { Form, Icon, InputNumber, Skeleton } from '@lobehub/ui';
 import { Select, Switch, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
@@ -48,6 +48,9 @@ const Page = memo(() => {
       s.refreshUserState,
     ]);
   const [loading, setLoading] = useState(false);
+  const enableTopicReference = general.enableTopicReference ?? false;
+  const enableProactiveTopicReading = general.enableProactiveTopicReading ?? false;
+  const proactiveTopicReadingCount = general.proactiveTopicReadingCount ?? 10;
 
   const [
     isPreferenceInit,
@@ -127,6 +130,13 @@ const Page = memo(() => {
     [updateDefaultAgent],
   );
 
+  const handleTopicReadingSettingChange = useCallback(
+    async (value: Partial<typeof general>) => {
+      await setSettings({ general: value });
+    },
+    [setSettings],
+  );
+
   if (!isUserStateInit) {
     // A failed user-state init must show error + Retry, not a permanent skeleton
     // (LOBE-11139).
@@ -200,6 +210,87 @@ const Page = memo(() => {
       },
     ],
     title: t('tab.advanced.appUpdates.title'),
+  };
+
+  const conversationReadingGroup: FormGroupItemType = {
+    children: [
+      {
+        children: (
+          <Switch
+            checked={enableTopicReference}
+            onChange={(checked) =>
+              void handleTopicReadingSettingChange({ enableTopicReference: checked })
+            }
+          />
+        ),
+        desc: t('tab.advanced.conversationReading.reference.desc'),
+        label: t('tab.advanced.conversationReading.reference.title'),
+        minWidth: undefined,
+      },
+      {
+        children: (
+          <Switch
+            checked={enableProactiveTopicReading}
+            onChange={(checked) =>
+              void handleTopicReadingSettingChange({ enableProactiveTopicReading: checked })
+            }
+          />
+        ),
+        desc: t('tab.advanced.conversationReading.proactive.desc'),
+        label: t('tab.advanced.conversationReading.proactive.title'),
+        minWidth: undefined,
+      },
+      ...(enableProactiveTopicReading
+        ? [
+            {
+              children: (
+                <Select
+                  value={proactiveTopicReadingCount === 'auto' ? 'auto' : 'custom'}
+                  options={[
+                    {
+                      label: t('tab.advanced.conversationReading.count.auto'),
+                      value: 'auto',
+                    },
+                    {
+                      label: t('tab.advanced.conversationReading.count.custom'),
+                      value: 'custom',
+                    },
+                  ]}
+                  onChange={(value) =>
+                    void handleTopicReadingSettingChange({
+                      proactiveTopicReadingCount: value === 'auto' ? 'auto' : 10,
+                    })
+                  }
+                />
+              ),
+              desc: t('tab.advanced.conversationReading.count.desc'),
+              label: t('tab.advanced.conversationReading.count.title'),
+            } satisfies FormItemProps,
+            ...(proactiveTopicReadingCount !== 'auto'
+              ? [
+                  {
+                    children: (
+                      <InputNumber
+                        max={25}
+                        min={1}
+                        value={proactiveTopicReadingCount}
+                        onChange={(value) => {
+                          const nextValue = typeof value === 'number' ? value : 10;
+                          void handleTopicReadingSettingChange({
+                            proactiveTopicReadingCount: Math.min(25, Math.max(1, nextValue)),
+                          });
+                        }}
+                      />
+                    ),
+                    desc: t('tab.advanced.conversationReading.customCount.desc'),
+                    label: t('tab.advanced.conversationReading.customCount.title'),
+                  } satisfies FormItemProps,
+                ]
+              : []),
+          ]
+        : []),
+    ],
+    title: t('tab.advanced.conversationReading.title'),
   };
 
   const labItems: FormItemProps[] = [
@@ -310,8 +401,21 @@ const Page = memo(() => {
   };
 
   const items = isDesktop
-    ? [advancedGroup, updateChannelGroup, memoryEmbeddingGroup, memoryTextModelGroup, labsGroup]
-    : [advancedGroup, memoryEmbeddingGroup, memoryTextModelGroup, labsGroup];
+    ? [
+        advancedGroup,
+        conversationReadingGroup,
+        updateChannelGroup,
+        memoryEmbeddingGroup,
+        memoryTextModelGroup,
+        labsGroup,
+      ]
+    : [
+        advancedGroup,
+        conversationReadingGroup,
+        memoryEmbeddingGroup,
+        memoryTextModelGroup,
+        labsGroup,
+      ];
 
   return (
     <>

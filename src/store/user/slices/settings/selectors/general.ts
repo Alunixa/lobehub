@@ -34,6 +34,11 @@ const telemetry = (s: UserStore) => generalConfig(s).telemetry;
 const enableAutoScrollOnStreaming = (s: UserStore) =>
   generalConfig(s).enableAutoScrollOnStreaming ?? true;
 const enableMessageLinkIcon = (s: UserStore) => generalConfig(s).enableMessageLinkIcon ?? true;
+const enableTopicReference = (s: UserStore) => generalConfig(s).enableTopicReference ?? false;
+const enableProactiveTopicReading = (s: UserStore) =>
+  generalConfig(s).enableProactiveTopicReading ?? false;
+const proactiveTopicReadingCount = (s: UserStore) =>
+  generalConfig(s).proactiveTopicReadingCount ?? 10;
 
 export const userGeneralSettingsSelectors = {
   animationMode,
@@ -41,11 +46,14 @@ export const userGeneralSettingsSelectors = {
   contextMenuMode,
   enableAutoScrollOnStreaming,
   enableMessageLinkIcon,
+  enableProactiveTopicReading,
+  enableTopicReference,
   fontSize,
   highlighterTheme,
   mermaidTheme,
   neutralColor,
   primaryColor,
+  proactiveTopicReadingCount,
   currentResponseLanguage,
   responseLanguage,
   telemetry,
