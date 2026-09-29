@@ -2181,3 +2181,8 @@
 - 高级设置新增按会话 ID 读取、主动读取最近会话两个开关；主动读取数量支持固定 1 到 25 或自动（最近 25 个）。
 - 复用 lobe-topic-reference 工具，客户端与服务端均注入最近会话标题和 ID，并通过工具按需读取；英文与简体中文文案已补齐。
 - 目标 ESLint 通过；高级设置 7/7、contextEngineering 30/30、服务端 AgentToolsEngine 44/44 通过；完整 tsc 仍受现有 .next/dev/types 损坏和 Node 堆内存限制影响。
+
+## 2026-09-29T16:35:00+08:00：上下文角色与移动端交互修复启动
+- 用户追加：会话内插入上下文需要选择用户输入或 AI 输出；移动端将桌面端依赖 hover 才显示的操作改为始终显示；修复移动端上下文窗口用量点击不显示。
+- 已定位上下文插入链路为 ContextMessageEditor → InsertContextMessageSchema → MessageContentModel.insert；移动端操作隐藏主要来自 Conversation ChatItem 的 hover menubar，Token ActionPopover 默认 hover 导致触摸端点击无效。
+
