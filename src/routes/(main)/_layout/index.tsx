@@ -13,6 +13,7 @@ import WorkspaceContextSlot from '@/business/client/WorkspaceContextSlot';
 import Loading from '@/components/Loading/BrandTextLoading';
 import { isDesktop } from '@/const/version';
 import { BANNER_HEIGHT } from '@/features/AlertBanner/CloudBanner';
+import CovertNarrative from '@/features/CovertNarrative';
 import DesktopFileMenuBridge from '@/features/DesktopFileMenuBridge';
 import DesktopNavigationBridge from '@/features/DesktopNavigationBridge';
 import AuthRequiredModal from '@/features/Electron/AuthRequiredModal';
@@ -39,9 +40,7 @@ import RegisterHotkeys from './RegisterHotkeys';
 import { styles } from './style';
 
 const CloudBanner = dynamic(() => import('@/features/AlertBanner/CloudBanner'));
-const GlobalApprovalNotification = dynamic(
-  () => import('@/features/GlobalApprovalNotification'),
-);
+const GlobalApprovalNotification = dynamic(() => import('@/features/GlobalApprovalNotification'));
 
 const Layout: FC = () => {
   const { isPWA } = usePlatform();
@@ -95,6 +94,7 @@ const Layout: FC = () => {
           <CmdkLazy />
           <GlobalApprovalNotification />
         </Suspense>
+        <CovertNarrative />
       </WorkspaceContextSlot>
     </HotkeysProvider>
   );
