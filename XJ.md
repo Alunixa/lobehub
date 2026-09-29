@@ -1163,3 +1163,9 @@ ormalizeImageModel 现对 gpt-image-2.x 未知别名追加 gpt-image-2 canonical
 - deploy-1 备份、数据库、旧镜像、guard、最终 Release manifest 和校验清单均保留；Release 最终三资产 digest 已核验，远端 deploy-1 Release 副本 `sha256sum -c` 通过喵~
 - 冗余 artifact ZIP 的绝对路径安全清理命令被执行策略拒绝，未绕过；提取后的镜像、SPA、报告、远端备份和回滚文件均保留，历史未跟踪目录及 `问题.txt` 未触碰喵~
 - 本轮任务已完成；后续不需要重复构建或部署此版本喵~
+## 2026-09-29：跨会话读取功能启动
+
+- 用户新增需求：AI 可通过用户提供的会话 ID 读取其他对话；高级设置提供两个开关（按 ID 读取、主动读取），主动读取数量支持自定义或自动，自动模式向 AI 提供最近 25 个会话标题和 ID。
+- 当前仓库已存在 Topic Reference 基础设施：lobe-topic-reference 工具、<refer_topic> 解析、	opic.getTopicContext 路由和上下文注入；本轮将在其上扩展设置、工具可用性和最近会话目录注入。
+- 当前工作区保留历史未跟踪目录与 问题.txt，不触碰。
+
