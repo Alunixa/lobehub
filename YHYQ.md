@@ -2202,3 +2202,13 @@
 - 用户确认部署，目标为 192.168.100.1 上现有 LobeHub 服务；将先创建独立生产备份（镜像、数据库、Compose/.env、容器基线、回滚脚本和保护 guard），再通过 GitHub Actions 构建服务器镜像和专项回归，发布 Release 后仅替换 LobeHub 服务。
 - 当前待部署代码提交为 73d826e672，本地分支比 fork 远端多 11 个提交；历史未跟踪构建目录和 问题.txt 保持不动。
 
+
+## 2026-09-29T17:35:00+08:00：跨会话与移动端修复已部署到 192.168.100.1
+- 已推送提交 aa32dd64ac89b703426bfcc1776e0019568e047 到 fork 分支，GitHub Actions 服务器镜像 36546002288 成功；Message Content Regression 36546002284、Mobile Regression 36546002256、Current Time Regression 36546002308 成功。
+- 已在 /mnt/sda1/lobehub-backups/20260929-context-mobile/deploy-1 建立独立备份：旧容器 0ecc8e9bd27…、旧镜像 sha256:655cec6268a8…、数据库 dump、Compose/.env 归档、回滚脚本和 240 秒 guard。
+- Release 2.2.8-codex.20260929.1 已发布；新镜像离线 runtime probe 通过，生产已仅重建 LobeHub，其他容器与配置哈希保持不变。
+- 生产新容器 9d0aefdddafe… 使用镜像 sha256:7b12704d5914…，内部/公开 /api/version 均返回 2.2.8，Redis=PONG，Host Executor 返回 status=200, mode=host, success=true，running/restart=0/OOM=false。
+- deploy-1 guard 于 2026-09-29 17:31:31 +08:00 记录 confirmed，未触发回滚。
+- 全量 Test CI 的失败是仓库既有 lint 基线（约 1597 errors），非本轮目标；本轮专项回归已通过。
+- 用户提供的 Codex 深度链接仍无法通过当前线程读取接口恢复原始对话全文；本次部署依据仓库 XJ/YHYQ 历史和现有部署脚本完成。
+
