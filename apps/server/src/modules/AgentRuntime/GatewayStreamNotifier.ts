@@ -198,6 +198,10 @@ export class GatewayStreamNotifier implements IStreamEventManager {
     return this.inner.cleanupOperation(operationId);
   }
 
+  async closeReadConnection(): Promise<void> {
+    await this.inner.closeReadConnection?.();
+  }
+
   async getActiveOperationsCount(): Promise<number> {
     return this.inner.getActiveOperationsCount();
   }

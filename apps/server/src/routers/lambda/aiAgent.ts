@@ -1437,11 +1437,17 @@ export const aiAgentRouter = router({
       }
 
       const streamEventManager = createStreamEventManager();
-      const { events, lastEventId: nextEventId } = await streamEventManager.readEventsOnce(
-        operationId,
-        lastEventId,
-        blockMs,
-      );
+      let events: Awaited<ReturnType<typeof streamEventManager.readEventsOnce>>['events'];
+      let nextEventId: string;
+      try {
+        ({ events, lastEventId: nextEventId } = await streamEventManager.readEventsOnce(
+          operationId,
+          lastEventId,
+          blockMs,
+        ));
+      } finally {
+        await streamEventManager.closeReadConnection?.();
+      }
 
       // Only intervention responses matter to the producer; everything else on
       // the stream is already going out via its own outbound ingest path.

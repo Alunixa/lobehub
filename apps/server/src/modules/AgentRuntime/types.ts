@@ -116,6 +116,12 @@ export interface IStreamEventManager {
   cleanupOperation: (operationId: string) => Promise<void>;
 
   /**
+   * Close only a manager-owned blocking read connection. The shared publish
+   * connection remains available to active producers.
+   */
+  closeReadConnection?: () => Promise<void>;
+
+  /**
    * Close connections
    */
   disconnect: () => Promise<void>;

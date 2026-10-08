@@ -25,7 +25,7 @@ export const createResumableAgentStream = ({
 }: {
   getStatus: () => Promise<string | undefined>;
   lastEventId: string;
-  manager: Pick<IStreamEventManager, 'readEventsOnce'>;
+  manager: Pick<IStreamEventManager, 'closeReadConnection' | 'readEventsOnce'>;
   operationId: string;
   signal?: AbortSignal;
 }) => {
@@ -98,6 +98,7 @@ export const createResumableAgentStream = ({
         if (!stopped) console.error('[AgentStream] Subscription failed:', error);
       } finally {
         cleanup();
+        await manager.closeReadConnection?.();
         try {
           controller.close();
         } catch {

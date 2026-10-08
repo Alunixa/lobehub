@@ -20,11 +20,12 @@ const getStream = checkAuth(async (request, { serverDB, userId }) => {
     return Response.json({ error: 'Operation not found or inaccessible' }, { status: 404 });
   }
 
+  const manager = createStreamEventManager();
   return new Response(
     createResumableAgentStream({
       getStatus: async () => (await operations.findById(operationId))?.status,
       lastEventId,
-      manager: createStreamEventManager(),
+      manager,
       operationId,
       signal: request.signal,
     }),

@@ -136,6 +136,12 @@ export interface StreamChunkData {
 
 export class StreamEventManager {
   private redis: Redis;
+  /**
+   * Redis BLOCK commands must never share the publish connection. A blocking
+   * XREAD on the singleton connection queues XADD/EXPIRE behind it, which
+   * makes server-side output appear only after the model finishes.
+   */
+  private blockingRedis: Redis | null = null;
   private readonly STREAM_PREFIX = 'agent_runtime_stream';
   private readonly STREAM_RETENTION = 2 * 3600; // 2 hours
 
@@ -145,6 +151,27 @@ export class StreamEventManager {
       throw new Error('Redis is not available. Please configure REDIS_URL environment variable.');
     }
     this.redis = redisClient;
+  }
+
+  private getBlockingRedis(): Redis {
+    if (!this.blockingRedis) {
+      const duplicate = (this.redis as Redis & { duplicate?: () => Redis }).duplicate;
+      this.blockingRedis = duplicate ? duplicate.call(this.redis) : this.redis;
+    }
+
+    return this.blockingRedis;
+  }
+
+  /**
+   * Close only this manager's dedicated blocking connection.
+   * The shared publish connection belongs to the process and stays alive.
+   */
+  async closeReadConnection(): Promise<void> {
+    if (!this.blockingRedis || this.blockingRedis === this.redis) return;
+
+    const connection = this.blockingRedis;
+    this.blockingRedis = null;
+    await connection.quit();
   }
 
   /**
@@ -279,6 +306,7 @@ export class StreamEventManager {
     signal?: AbortSignal,
   ): Promise<void> {
     const streamKey = `${this.STREAM_PREFIX}:${operationId}`;
+    const blockingRedis = this.getBlockingRedis();
     let currentLastId = lastEventId;
 
     log('Starting subscription for operation %s from %s', operationId, lastEventId);
@@ -286,7 +314,7 @@ export class StreamEventManager {
     while (!signal?.aborted) {
       try {
         const xreadStart = Date.now();
-        const results = await this.redis.xread(
+        const results = await blockingRedis.xread(
           'BLOCK',
           1000, // 1 second timeout
           'STREAMS',
@@ -356,6 +384,7 @@ export class StreamEventManager {
       }
     }
 
+    await this.closeReadConnection();
     log('Subscription ended for operation %s', operationId);
   }
 
@@ -381,17 +410,18 @@ export class StreamEventManager {
     blockMs: number = 25_000,
   ): Promise<{ events: StreamEvent[]; lastEventId: string }> {
     const streamKey = `${this.STREAM_PREFIX}:${operationId}`;
+    const blockingRedis = this.getBlockingRedis();
 
     // Resolve the '$' sentinel to a concrete tail id up front (see doc above).
     // A timeout on a blocking XREAD means nothing was appended after this id, so
     // it is still the true tail — safe to hand back for the next poll.
     let fromId = lastEventId;
     if (fromId === '$') {
-      const tail = await this.redis.xrevrange(streamKey, '+', '-', 'COUNT', 1);
+      const tail = await blockingRedis.xrevrange(streamKey, '+', '-', 'COUNT', 1);
       fromId = tail.length > 0 ? tail[0][0] : '0';
     }
 
-    const results = await this.redis.xread('BLOCK', blockMs, 'STREAMS', streamKey, fromId);
+    const results = await blockingRedis.xread('BLOCK', blockMs, 'STREAMS', streamKey, fromId);
     if (!results || results.length === 0) return { events: [], lastEventId: fromId };
 
     const [, messages] = results[0];
@@ -483,6 +513,7 @@ export class StreamEventManager {
    * Close Redis connection
    */
   async disconnect(): Promise<void> {
+    await this.closeReadConnection();
     await this.redis.quit();
   }
 }

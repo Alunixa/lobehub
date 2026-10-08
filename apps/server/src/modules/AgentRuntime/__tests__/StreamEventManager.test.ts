@@ -16,6 +16,12 @@ const mockRedis = {
   xread: vi.fn(),
   xrevrange: vi.fn(),
 };
+const mockBlockingRedis = {
+  quit: vi.fn(),
+  xread: vi.fn(),
+  xrevrange: vi.fn(),
+};
+mockRedis.duplicate = vi.fn(() => mockBlockingRedis);
 
 vi.mock('../redis', () => ({
   getAgentRuntimeRedisClient: () => mockRedis,
@@ -301,20 +307,20 @@ describe('StreamEventManager', () => {
   describe('readEventsOnce', () => {
     it("resolves '$' to the current tail and returns it (not '$') on timeout", async () => {
       // Stream has a tail entry; xread then times out (no newer events).
-      mockRedis.xrevrange.mockResolvedValue([['7-0', ['type', 'stream_chunk']]]);
-      mockRedis.xread.mockResolvedValue(null);
+      mockBlockingRedis.xrevrange.mockResolvedValue([['7-0', ['type', 'stream_chunk']]]);
+      mockBlockingRedis.xread.mockResolvedValue(null);
 
       const res = await streamManager.readEventsOnce('op-1', '$', 25_000);
 
       // '$' was resolved to the concrete tail before blocking…
-      expect(mockRedis.xrevrange).toHaveBeenCalledWith(
+      expect(mockBlockingRedis.xrevrange).toHaveBeenCalledWith(
         'agent_runtime_stream:op-1',
         '+',
         '-',
         'COUNT',
         1,
       );
-      expect(mockRedis.xread).toHaveBeenCalledWith(
+      expect(mockBlockingRedis.xread).toHaveBeenCalledWith(
         'BLOCK',
         25_000,
         'STREAMS',
@@ -326,12 +332,12 @@ describe('StreamEventManager', () => {
     });
 
     it("resolves '$' on an empty stream to '0'", async () => {
-      mockRedis.xrevrange.mockResolvedValue([]);
-      mockRedis.xread.mockResolvedValue(null);
+      mockBlockingRedis.xrevrange.mockResolvedValue([]);
+      mockBlockingRedis.xread.mockResolvedValue(null);
 
       const res = await streamManager.readEventsOnce('op-1', '$');
 
-      expect(mockRedis.xread).toHaveBeenCalledWith(
+      expect(mockBlockingRedis.xread).toHaveBeenCalledWith(
         'BLOCK',
         expect.any(Number),
         'STREAMS',
@@ -342,12 +348,12 @@ describe('StreamEventManager', () => {
     });
 
     it('does not resolve an explicit cursor and blocks from it directly', async () => {
-      mockRedis.xread.mockResolvedValue(null);
+      mockBlockingRedis.xread.mockResolvedValue(null);
 
       const res = await streamManager.readEventsOnce('op-1', '5-0');
 
-      expect(mockRedis.xrevrange).not.toHaveBeenCalled();
-      expect(mockRedis.xread).toHaveBeenCalledWith(
+      expect(mockBlockingRedis.xrevrange).not.toHaveBeenCalled();
+      expect(mockBlockingRedis.xread).toHaveBeenCalledWith(
         'BLOCK',
         expect.any(Number),
         'STREAMS',
@@ -358,7 +364,7 @@ describe('StreamEventManager', () => {
     });
 
     it('parses events and advances the cursor to the last id', async () => {
-      mockRedis.xread.mockResolvedValue([
+      mockBlockingRedis.xread.mockResolvedValue([
         [
           'agent_runtime_stream:op-1',
           [
@@ -391,6 +397,16 @@ describe('StreamEventManager', () => {
         stepIndex: 2,
         data: { toolCallId: 't1' },
       });
+    });
+
+    it('uses a dedicated Redis connection for blocking reads', async () => {
+      mockBlockingRedis.xread.mockResolvedValue(null);
+
+      await streamManager.readEventsOnce('op-1', '5-0', 1000);
+
+      expect(mockRedis.duplicate).toHaveBeenCalledOnce();
+      expect(mockRedis.xread).not.toHaveBeenCalled();
+      expect(mockBlockingRedis.xread).toHaveBeenCalledOnce();
     });
   });
 
