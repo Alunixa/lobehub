@@ -8,6 +8,7 @@ import {
 
 // Mock Redis client
 const mockRedis = {
+  duplicate: vi.fn(() => mockBlockingRedis),
   del: vi.fn(),
   expire: vi.fn(),
   keys: vi.fn(),
@@ -21,7 +22,6 @@ const mockBlockingRedis = {
   xread: vi.fn(),
   xrevrange: vi.fn(),
 };
-mockRedis.duplicate = vi.fn(() => mockBlockingRedis);
 
 vi.mock('../redis', () => ({
   getAgentRuntimeRedisClient: () => mockRedis,
