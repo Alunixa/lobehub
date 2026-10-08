@@ -26,6 +26,7 @@ vi.mock('@/services/message', () => ({
 
 vi.mock('@/services/topic', () => ({
   topicService: {
+    clearRunningOperation: vi.fn().mockResolvedValue(undefined),
     updateTopicMetadata: vi.fn().mockResolvedValue(undefined),
   },
 }));
@@ -1308,13 +1309,13 @@ describe('GatewayActionImpl', () => {
         topicId: 'topic-1',
       });
 
-      vi.mocked(topicService.updateTopicMetadata)
+      vi.mocked(topicService.clearRunningOperation)
         .mockClear()
         .mockResolvedValue(undefined as never);
       captured.onSessionComplete!({ authFailed: false, succeeded: false, terminalReceived: false });
 
       expect(completeOperation).toHaveBeenCalledWith('gw-op-reconnect');
-      expect(topicService.updateTopicMetadata).not.toHaveBeenCalled();
+      expect(topicService.clearRunningOperation).not.toHaveBeenCalled();
       expect(updateTopicStatus).not.toHaveBeenCalled();
     });
 
@@ -1329,7 +1330,7 @@ describe('GatewayActionImpl', () => {
         topicId: 'topic-1',
       });
 
-      vi.mocked(topicService.updateTopicMetadata)
+      vi.mocked(topicService.clearRunningOperation)
         .mockClear()
         .mockResolvedValue(undefined as never);
       captured.onSessionComplete!({ authFailed: false, succeeded: true, terminalReceived: true });
@@ -1337,9 +1338,7 @@ describe('GatewayActionImpl', () => {
       // The run lifecycle owns completion when a terminal event arrives, so the
       // reconnect path must not double-complete its local op here.
       expect(completeOperation).not.toHaveBeenCalled();
-      expect(topicService.updateTopicMetadata).toHaveBeenCalledWith('topic-1', {
-        runningOperation: null,
-      });
+      expect(topicService.clearRunningOperation).toHaveBeenCalledWith('topic-1', 'server-op-1');
     });
 
     // auth_failed (or a failed token refresh) is authoritative that the op is
@@ -1355,15 +1354,13 @@ describe('GatewayActionImpl', () => {
         topicId: 'topic-1',
       });
 
-      vi.mocked(topicService.updateTopicMetadata)
+      vi.mocked(topicService.clearRunningOperation)
         .mockClear()
         .mockResolvedValue(undefined as never);
       captured.onSessionComplete!({ authFailed: true, succeeded: false, terminalReceived: false });
 
       expect(completeOperation).toHaveBeenCalledWith('gw-op-reconnect');
-      expect(topicService.updateTopicMetadata).toHaveBeenCalledWith('topic-1', {
-        runningOperation: null,
-      });
+      expect(topicService.clearRunningOperation).toHaveBeenCalledWith('topic-1', 'server-op-1');
     });
   });
 });

@@ -293,13 +293,12 @@ export class AbandonOperationService {
         topicModel = new TopicModel(this.db, op.userId, op.workspaceId ?? undefined);
         const topic = await topicModel.findById(op.topicId);
         const running = topic?.metadata?.runningOperation as
-          | { assistantMessageId?: string; operationId?: string }
-          | undefined;
+          { assistantMessageId?: string; operationId?: string } | undefined;
 
         if (running?.operationId && running.operationId !== operationId) return undefined;
 
         if (running?.operationId === operationId) {
-          await topicModel.updateMetadata(op.topicId, { runningOperation: null }).catch(() => {});
+          await topicModel.clearRunningOperation(op.topicId, operationId).catch(() => {});
           if (running.assistantMessageId) return running.assistantMessageId;
         }
       } catch (e) {

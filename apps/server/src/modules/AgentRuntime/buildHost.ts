@@ -36,6 +36,7 @@ export const buildHost = (ctx: RuntimeExecutorContext): AgentRuntimeHost => ({
       ctx.userId,
       ctx.workspaceId,
       ctx.topicId,
+      ctx.operationId,
     ),
     stream: new ServerStreamSink(ctx.streamManager, ctx.operationId),
   },

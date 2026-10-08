@@ -171,6 +171,15 @@ describe('getServerGlobalConfig', () => {
     });
   });
 
+  it('offers server-owned SSE execution on self-hosted builds without an external Gateway', async () => {
+    await expect(loadServerConfig(false)).resolves.toMatchObject({
+      enableServerAgentRuntime: true,
+    });
+    await expect(loadServerConfig(true)).resolves.toMatchObject({
+      enableServerAgentRuntime: false,
+    });
+  });
+
   it('should enable gateway mode for self-hosted builds only when explicitly enabled with a gateway url', async () => {
     await expect(
       loadServerConfig(false, {

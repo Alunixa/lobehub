@@ -70,13 +70,15 @@ describe('request time context', () => {
       injectCurrentTime: true,
       timezone: 'Asia/Shanghai',
     });
-    expect(result[0].content).toContain('2026-09-20 17:12');
-    expect(result[0].content).toContain('Sunday');
-    expect(result[0].content).toContain('Asia/Shanghai (UTC+08:00)');
-    expect(result[0].content).not.toContain('17:12:57');
-    expect(result.slice(1)).toEqual(messages);
+    const timePart = (result[1].content as Array<{ text?: string }>).at(-1)?.text;
+    expect(timePart).toContain('2026-09-20 17:12');
+    expect(timePart).toContain('Sunday');
+    expect(timePart).toContain('Asia/Shanghai (UTC+08:00)');
+    expect(timePart).not.toContain('17:12:57');
+    expect(result[0]).toBe(messages[0]);
     expect(messages).toHaveLength(2);
-    expect(result[2]).toBe(messages[1]);
+    expect(result).toHaveLength(2);
+    expect(messages[1].content).toHaveLength(1);
   });
 
   it('refreshes on subsequent calls and removes the prior snapshot when switched off', () => {
@@ -85,9 +87,10 @@ describe('request time context', () => {
     const first = withCurrentTime(messages, { injectCurrentTime: true });
     vi.setSystemTime(new Date('2026-09-20T09:13:01Z'));
     const second = withCurrentTime(first, { injectCurrentTime: true });
-    expect(second).toHaveLength(3);
-    expect(second[0].content).toContain('2026-09-20 09:13');
-    expect(second[0].content).not.toContain('09:12');
+    expect(second).toHaveLength(2);
+    const timePart = (second[1].content as Array<{ text?: string }>).at(-1)?.text;
+    expect(timePart).toContain('2026-09-20 09:13');
+    expect(timePart).not.toContain('09:12');
     expect(withCurrentTime(second, { injectCurrentTime: false })).toEqual(messages);
   });
 
@@ -97,5 +100,23 @@ describe('request time context', () => {
       role: 'user',
     };
     expect(withCurrentTime([user], {})).toEqual([user]);
+  });
+
+  it('keeps the complete historical prefix byte-identical across different minutes', () => {
+    vi.useFakeTimers();
+    const history = [
+      { content: 'Stable system instructions', role: 'system' },
+      { content: 'Very long historical context'.repeat(1000), role: 'user' },
+      { content: 'Previous answer', role: 'assistant' },
+      { content: 'Latest question', role: 'user' },
+    ];
+    vi.setSystemTime(new Date('2026-10-08T01:00:00Z'));
+    const first = withCurrentTime(history, { injectCurrentTime: true });
+    vi.setSystemTime(new Date('2026-10-08T01:02:00Z'));
+    const next = withCurrentTime(history, { injectCurrentTime: true });
+    expect(JSON.stringify(first.slice(0, -1))).toBe(JSON.stringify(next.slice(0, -1)));
+    expect(first.at(-1)).not.toEqual(next.at(-1));
+    expect(first.at(-1)?.content).toContain('Latest question');
+    expect(history.at(-1)?.content).toBe('Latest question');
   });
 });

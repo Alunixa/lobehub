@@ -13,6 +13,7 @@ import type {
 } from '@lobechat/types';
 
 import { isDesktop } from '@/const/version';
+import { ServerAgentStreamClient } from '@/services/agentRuntime/serverStreamClient';
 import {
   aiAgentService,
   type ResumeApprovalParam,
@@ -157,7 +158,7 @@ export class GatewayActionImpl {
 
   /** Overridable factory for testing */
   createClient: (options: AgentStreamClientOptions) => GatewayConnection['client'] = (options) =>
-    new AgentStreamClient(options);
+    options.gatewayUrl ? new AgentStreamClient(options) : new ServerAgentStreamClient(options);
 
   constructor(set: Setter, get: () => ChatStore, _api?: unknown) {
     void _api;
@@ -347,8 +348,8 @@ export class GatewayActionImpl {
     const disableGatewayMode = agentDisableGatewayMode ?? defaultDisableGatewayMode;
 
     return (
-      !!serverConfig?.agentGatewayUrl &&
-      !!serverConfig.enableGatewayMode &&
+      (!!serverConfig?.enableServerAgentRuntime ||
+        (!!serverConfig?.agentGatewayUrl && !!serverConfig.enableGatewayMode)) &&
       disableGatewayMode !== true
     );
   };
@@ -371,6 +372,7 @@ export class GatewayActionImpl {
     context: ConversationContext;
     /** File IDs of already-uploaded attachments to attach to the new user message */
     fileIds?: string[];
+    editorData?: Record<string, unknown> | null;
     message: string;
     /** Request metadata carried from the originating user message. */
     metadata?: Pick<MessageMetadata, 'trigger'>;
@@ -431,6 +433,7 @@ export class GatewayActionImpl {
     const {
       context,
       fileIds,
+      editorData,
       message,
       metadata,
       onComplete,
@@ -445,7 +448,7 @@ export class GatewayActionImpl {
     } = params;
 
     const agentGatewayUrl =
-      window.global_serverConfigStore!.getState().serverConfig.agentGatewayUrl!;
+      window.global_serverConfigStore?.getState()?.serverConfig.agentGatewayUrl ?? '';
 
     const isCreateNewTopic = !context.topicId;
     const taskId = context.viewedTask?.type === 'detail' ? context.viewedTask.taskId : undefined;
@@ -509,6 +512,7 @@ export class GatewayActionImpl {
           topicId: context.topicId,
         },
         deviceId: localDeviceId,
+        editorData,
         fileIds,
         mentionedAgents,
         parentMessageId,
@@ -521,6 +525,9 @@ export class GatewayActionImpl {
       },
       { signal: abortSignal },
     );
+    if (!result.success) {
+      throw new Error(result.error || 'Server agent could not start');
+    }
 
     if (abortSignal?.aborted) {
       // Cancel arrived after execAgentTask resolved — server task exists.
@@ -712,9 +719,7 @@ export class GatewayActionImpl {
           }
           // Clear running operation from topic metadata (best-effort from frontend;
           // if browser was closed, reconnect logic will handle stale entries)
-          topicService
-            .updateTopicMetadata(result.topicId, { runningOperation: null })
-            .catch(() => {});
+          topicService.clearRunningOperation(result.topicId, result.operationId).catch(() => {});
         }
         onComplete?.();
       },
@@ -742,7 +747,11 @@ export class GatewayActionImpl {
 
     const agentGatewayUrl =
       window.global_serverConfigStore?.getState()?.serverConfig?.agentGatewayUrl;
-    if (!agentGatewayUrl) return;
+    if (
+      !agentGatewayUrl &&
+      !window.global_serverConfigStore?.getState()?.serverConfig.enableServerAgentRuntime
+    )
+      return;
 
     // Skip reconnect if the gateway action already established (or is establishing)
     // a fresh connection for this operation. This prevents a race on new-topic creation
@@ -764,7 +773,7 @@ export class GatewayActionImpl {
     if (topicCurrentOpId && topicCurrentOpId !== operationId) return;
 
     // Get a fresh JWT token (original expired after 5 min)
-    const { token } = await aiAgentService.refreshGatewayToken(topicId);
+    const token = agentGatewayUrl ? (await aiAgentService.refreshGatewayToken(topicId)).token : '';
 
     // Re-check after the async token refresh: a newer executeGatewayAgent call may have
     // taken over for this topic while we were waiting. If so, bail to avoid a duplicate stream.
@@ -845,7 +854,7 @@ export class GatewayActionImpl {
     });
 
     this.#get().connectToGateway({
-      gatewayUrl: agentGatewayUrl,
+      gatewayUrl: agentGatewayUrl ?? '',
       onEvent: eventRouter,
       onSessionComplete: ({ succeeded, terminalReceived, authFailed }) => {
         this.#get().internal_updateTopicLoading(topicId, false);
@@ -883,7 +892,7 @@ export class GatewayActionImpl {
         }
         // Clear the persisted marker useGatewayReconnect keys off so a dead op
         // doesn't get reconnected on every reload / task-drawer open.
-        topicService.updateTopicMetadata(topicId, { runningOperation: null }).catch(() => {});
+        topicService.clearRunningOperation(topicId, operationId).catch(() => {});
       },
       operationId,
       resumeOnConnect: true,

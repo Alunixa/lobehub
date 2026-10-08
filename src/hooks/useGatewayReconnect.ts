@@ -30,9 +30,10 @@ export const useGatewayReconnect = (
   runningOperation: RunningOperation | null | undefined,
 ) => {
   const agentGatewayUrl = useServerConfigStore((s) => s.serverConfig.agentGatewayUrl);
+  const serverAgentRuntime = useServerConfigStore((s) => s.serverConfig.enableServerAgentRuntime);
 
   useSWR(
-    runningOperation && topicId && agentGatewayUrl
+    runningOperation && topicId && (agentGatewayUrl || serverAgentRuntime)
       ? gatewayKeys.reconnect(runningOperation.operationId)
       : null,
     async () => {

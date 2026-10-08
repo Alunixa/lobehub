@@ -51,6 +51,13 @@ const topicProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
 });
 
 export const topicRouter = router({
+  clearRunningOperation: topicProcedure
+    .use(withScopedPermission('topic:update'))
+    .input(z.object({ id: z.string(), operationId: z.string() }))
+    .mutation(async ({ input, ctx }) => {
+      await ctx.topicModel.clearRunningOperation(input.id, input.operationId);
+      return { success: true };
+    }),
   getTopicDetail: topicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input, ctx }) => {

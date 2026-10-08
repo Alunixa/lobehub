@@ -49,7 +49,7 @@ const topicUpdateMetadataMock = vi.fn().mockResolvedValue(undefined);
 vi.mock('@/database/models/topic', () => ({
   TopicModel: vi.fn().mockImplementation(() => ({
     findById: topicFindByIdMock,
-    updateMetadata: topicUpdateMetadataMock,
+    clearRunningOperation: topicUpdateMetadataMock,
   })),
 }));
 
@@ -154,7 +154,7 @@ describe('AbandonOperationService', () => {
         toolCalls: 0,
       }),
     );
-    expect(topicUpdateMetadataMock).toHaveBeenCalledWith('tpc_x', { runningOperation: null });
+    expect(topicUpdateMetadataMock).toHaveBeenCalledWith('tpc_x', 'op_x');
     expect(messageUpdateMock).toHaveBeenCalledWith('msg_assist_1', {
       content: '',
       error: expect.objectContaining({

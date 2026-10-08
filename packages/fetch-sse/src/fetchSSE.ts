@@ -230,7 +230,9 @@ const createSmoothMessage = (params: {
 
   return {
     flushQueue,
-    isAnimationActive,
+    get isAnimationActive() {
+      return isAnimationActive;
+    },
     isTokenRemain: () => outputQueue.length > 0,
     pushToQueue,
     startAnimation,
@@ -251,6 +253,8 @@ export const standardizeAnimationStyle = (
 export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptions = {}) => {
   let toolCalls: undefined | MessageToolCall[];
   let triggerOnMessageHandler = false;
+  let receivedCompletion = false;
+  let hasContentImage = false;
 
   let finishedType: SSEFinishType = 'done';
   let response!: Response;
@@ -293,6 +297,17 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
     },
     startSpeed: smoothingSpeed,
   });
+  const flushHiddenTab = () => {
+    if (document.visibilityState !== 'hidden') return;
+    textController.stopAnimation();
+    thinkingController.stopAnimation();
+    textController.flushQueue();
+    thinkingController.flushQueue();
+    flushTextBuffer();
+  };
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', flushHiddenTab);
+  }
 
   let thinkingBuffer = '';
   let thinkingBufferTimer: ReturnType<typeof setTimeout> | null = null;
@@ -380,6 +395,7 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
         }
 
         case 'done': {
+          receivedCompletion = true;
           return CLOSE_EVENT_SOURCE;
         }
 
@@ -402,7 +418,11 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
           } else if (textSmoothing) {
             textController.pushToQueue(data);
 
-            if (!textController.isAnimationActive) textController.startAnimation();
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+              textController.flushQueue();
+            } else if (!textController.isAnimationActive) {
+              textController.startAnimation();
+            }
           } else {
             output += data;
 
@@ -428,8 +448,14 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
         }
 
         case 'speed': {
-          speed = data;
-          options.onMessageHandle?.({ speed: data, type: 'speed' });
+          // A provider's NaN/Infinity becomes null in JSON. Never persist it as
+          // a number: message.update would reject the entire final answer.
+          speed = Object.fromEntries(
+            Object.entries(data).filter(
+              ([, value]) => typeof value === 'number' && Number.isFinite(value),
+            ),
+          );
+          options.onMessageHandle?.({ speed, type: 'speed' });
           break;
         }
 
@@ -453,7 +479,11 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
           if (textSmoothing) {
             thinkingController.pushToQueue(data);
 
-            if (!thinkingController.isAnimationActive) thinkingController.startAnimation();
+            if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+              thinkingController.flushQueue();
+            } else if (!thinkingController.isAnimationActive) {
+              thinkingController.startAnimation();
+            }
           } else {
             thinking += data;
 
@@ -493,6 +523,7 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
           if (data.partType === 'text' && data.content) {
             output += data.content;
           }
+          if (data.partType === 'image' && data.content) hasContentImage = true;
           options.onMessageHandle?.({
             content: data.content,
             mimeType: data.mimeType,
@@ -521,6 +552,9 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
     },
     signal: options.signal,
   });
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', flushHiddenTab);
+  }
 
   // only call onFinish when response is available
   // so like abort, we don't need to call onFinish
@@ -541,7 +575,10 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
 
     if (response.ok) {
       // if there is no onMessageHandler, we should call onHandleMessage first
-      if (!triggerOnMessageHandler) {
+      if (
+        !triggerOnMessageHandler &&
+        !response.headers.get('content-type')?.includes('text/event-stream')
+      ) {
         output = await response.clone().text();
         options.onMessageHandle?.({ text: output, type: 'text' });
       }
@@ -551,6 +588,26 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
 
       textController.flushQueue();
       thinkingController.flushQueue();
+
+      if (
+        finishedType === 'done' &&
+        ((!output.trim() && !toolCalls?.length && !images.length && !hasContentImage) ||
+          (response.headers.get('content-type')?.includes('text/event-stream') &&
+            !receivedCompletion))
+      ) {
+        finishedType = 'error';
+        options.onErrorHandle?.({
+          body: {
+            ...options.requestContext,
+            elapsedMs: Date.now() - fetchStartTime,
+            receivedCompletion,
+          },
+          message: receivedCompletion
+            ? 'The model returned no visible output or tool calls'
+            : 'The response connection closed before any output was received',
+          type: ChatErrorType.UnknownChatFetchError,
+        });
+      }
 
       await options?.onFinish?.(output, {
         grounding,

@@ -15,13 +15,14 @@ export class ServerOperationStore implements OperationStore {
     private readonly userId: string | undefined,
     private readonly workspaceId: string | undefined,
     private readonly topicId: string | undefined,
+    private readonly operationId: string,
   ) {}
 
   async clearRunningMark(): Promise<void> {
     if (!this.topicId || !this.userId) return;
     try {
       const topicModel = new TopicModel(this.serverDB, this.userId, this.workspaceId);
-      await topicModel.updateMetadata(this.topicId, { runningOperation: null });
+      await topicModel.clearRunningOperation(this.topicId, this.operationId);
     } catch {
       // best-effort — swallow
     }

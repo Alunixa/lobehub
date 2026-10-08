@@ -947,6 +947,7 @@ export class AiAgentService {
       botPlatformContext,
       discordContext,
       existingMessageIds = [],
+      editorData,
       fileIds: attachedFileIds,
       files,
       functionTools,
@@ -1488,6 +1489,7 @@ export class AiAgentService {
       : await this.messageModel.create({
           agentId: persistAgentId,
           content: prompt,
+          editorData: editorData ?? undefined,
           files: runAttachments.fileIds,
           // Group reads filter on messages.groupId (MessageModel.query group
           // branch), so a group turn must stamp groupId or the message never

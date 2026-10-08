@@ -16,6 +16,7 @@ import {
   type VertexAIKeyVault,
 } from '@lobechat/types';
 import { safeParseJSON } from '@lobechat/utils';
+import { pickString, toRecord } from '@lobechat/utils/object';
 import { ModelProvider } from 'model-bank';
 
 import { getBusinessModelRuntimeHooks } from '@/business/server/model-runtime';
@@ -28,6 +29,7 @@ import { createLLMGenerationTracingHook } from '@/server/services/llmGenerationT
 import { KeyVaultsGateKeeper } from '../KeyVaultsEncrypt';
 import apiKeyManager from './apiKeyManager';
 import { createCurrentTimeHook } from './currentTimeHook';
+import { createOwnedMediaHook } from './ownedMediaHook';
 
 export * from './trace';
 
@@ -445,10 +447,17 @@ export const initModelRuntimeFromDB = async (
   const tracingHooks = createLLMGenerationTracingHook(userId, provider, workspaceId);
   const currentTimeHooks = createCurrentTimeHook(async () => {
     const settings = await new UserModel(db, userId).getUserSettings();
-    return settings?.general;
+    const general = toRecord(settings?.general);
+    return {
+      injectCurrentTime: general?.injectCurrentTime === true,
+      timezone: pickString(general?.timezone),
+    };
   });
   const hooks = mergeModelRuntimeHooks(
-    mergeModelRuntimeHooks(businessHooks, currentTimeHooks),
+    mergeModelRuntimeHooks(
+      mergeModelRuntimeHooks(businessHooks, currentTimeHooks),
+      createOwnedMediaHook(db, userId, workspaceId),
+    ),
     tracingHooks,
   );
 

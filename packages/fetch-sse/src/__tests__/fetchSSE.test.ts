@@ -26,7 +26,64 @@ afterEach(() => {
 });
 
 describe('fetchSSE', () => {
-  it('should finish immediately when a protocol done event arrives', async () => {
+  it('preserves a partial answer but reports an SSE connection that closes before done', async () => {
+    const onError = vi.fn();
+    const onFinish = vi.fn();
+    vi.mocked(fetchEventSource).mockImplementationOnce(async (_url, options) => {
+      await options.onopen(new Response('', { headers: { 'content-type': 'text/event-stream' } }));
+      options.onmessage?.({ data: JSON.stringify('partial answer'), event: 'text', id: '' });
+    });
+    await fetchSSE('/', { onErrorHandle: onError, onFinish, responseAnimation: 'none' });
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onFinish).toHaveBeenCalledWith(
+      'partial answer',
+      expect.objectContaining({ type: 'error' }),
+    );
+  });
+
+  it('drops non-numeric speed fields without dropping the successful answer', async () => {
+    const onFinish = vi.fn();
+    vi.mocked(fetchEventSource).mockImplementationOnce(async (_url, options) => {
+      await options.onopen(new Response('', { headers: { 'content-type': 'text/event-stream' } }));
+      options.onmessage?.({ data: JSON.stringify('answer'), event: 'text', id: '' });
+      options.onmessage?.({
+        data: JSON.stringify({ tps: null, ttft: 2000, duration: null }),
+        event: 'speed',
+        id: '',
+      });
+      options.onmessage?.({ data: JSON.stringify('done'), event: 'done', id: '' });
+    });
+    await fetchSSE('/', { onFinish, responseAnimation: 'none' });
+    expect(onFinish).toHaveBeenCalledWith(
+      'answer',
+      expect.objectContaining({ speed: { ttft: 2000 }, type: 'done' }),
+    );
+  });
+
+  it('keeps text flowing while requestAnimationFrame is suspended in a hidden tab', async () => {
+    const onFinish = vi.fn();
+    const onMessage = vi.fn();
+    const frame = vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation(() => 1);
+    const visibility = vi.spyOn(document, 'visibilityState', 'get');
+    visibility.mockReturnValue('visible');
+    vi.mocked(fetchEventSource).mockImplementationOnce(async (_url, options) => {
+      await options.onopen(new Response('', { headers: { 'content-type': 'text/event-stream' } }));
+      options.onmessage?.({ data: JSON.stringify('before '), event: 'text', id: '' });
+      visibility.mockReturnValue('hidden');
+      document.dispatchEvent(new Event('visibilitychange'));
+      options.onmessage?.({ data: JSON.stringify('background'), event: 'text', id: '' });
+      options.onmessage?.({ data: JSON.stringify('done'), event: 'done', id: '' });
+    });
+    await fetchSSE('/', { onFinish, onMessageHandle: onMessage, responseAnimation: 'smooth' });
+    expect(onFinish).toHaveBeenCalledWith(
+      'before background',
+      expect.objectContaining({ type: 'done' }),
+    );
+    expect(onMessage).toHaveBeenCalledWith({ text: 'background', type: 'text' });
+    frame.mockRestore();
+    visibility.mockRestore();
+  });
+  it('reports an empty completion instead of silently succeeding', async () => {
     const mockOnFinish = vi.fn();
     let messageResult: unknown;
 
@@ -47,7 +104,7 @@ describe('fetchSSE', () => {
       observationId: null,
       toolCalls: undefined,
       traceId: null,
-      type: 'done',
+      type: 'error',
     });
   });
 

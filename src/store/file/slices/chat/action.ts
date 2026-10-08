@@ -1,7 +1,6 @@
 import { type ChatContextContent } from '@lobechat/types';
 import { COMPRESSIBLE_IMAGE_TYPES, compressImageFile } from '@lobechat/utils/compressImage';
 import { toast } from '@lobehub/ui/base-ui';
-import { Buffer } from 'buffer.js';
 import { t } from 'i18next';
 
 import { notification } from '@/components/AntdStaticMethods';
@@ -21,7 +20,8 @@ import { sleep } from '@/utils/sleep';
 import { setNamespace } from '@/utils/storeDebug';
 
 import { type FileStore } from '../../store';
-import { filterSupportedChatUploadFiles } from './uploadGuard';
+import { filterSupportedChatUploadFiles, videoMimeFromExtension } from './uploadGuard';
+import { createChatUploadPreview } from './uploadPreview';
 
 const n = setNamespace('chat');
 
@@ -182,25 +182,18 @@ export class FileActionImpl {
 
     // 1. compress images and add files with base64
     const files = await Promise.all(
-      supportedFiles.map((file) =>
-        COMPRESSIBLE_IMAGE_TYPES.has(file.type) ? compressImageFile(file) : file,
-      ),
+      supportedFiles.map((file) => {
+        const videoType = videoMimeFromExtension(file.name);
+        if (videoType && (!file.type || file.type === 'application/octet-stream')) {
+          return new File([file], file.name, { lastModified: file.lastModified, type: videoType });
+        }
+        return COMPRESSIBLE_IMAGE_TYPES.has(file.type) ? compressImageFile(file) : file;
+      }),
     );
 
     const uploadFiles: UploadFileItem[] = await Promise.all(
       files.map(async (file) => {
-        let previewUrl: string | undefined = undefined;
-        let base64Url: string | undefined = undefined;
-
-        // only image and video can be previewed, we create a previewUrl and base64Url for them
-        if (file.type.startsWith('image') || file.type.startsWith('video')) {
-          const data = await file.arrayBuffer();
-
-          previewUrl = URL.createObjectURL(new Blob([data!], { type: file.type }));
-
-          const base64 = Buffer.from(data!).toString('base64');
-          base64Url = `data:${file.type};base64,${base64}`;
-        }
+        const { previewUrl, base64Url } = await createChatUploadPreview(file);
 
         return { base64Url, file, id: file.name, previewUrl, status: 'pending' } as UploadFileItem;
       }),

@@ -38,6 +38,32 @@ describe('TopicModel', () => {
     await serverDB.delete(users);
   });
 
+  describe('operation marker ownership', () => {
+    it('an older completion cannot erase a newer run', async () => {
+      const topic = await topicModel.create({ title: 'Concurrent devices' });
+      await topicModel.updateMetadata(topic.id, {
+        runningOperation: { assistantMessageId: 'new-answer', operationId: 'new-op' },
+      });
+      await topicModel.clearRunningOperation(topic.id, 'old-op');
+      expect((await topicModel.findById(topic.id))?.metadata?.runningOperation?.operationId).toBe(
+        'new-op',
+      );
+      await topicModel.clearRunningOperation(topic.id, 'new-op');
+      expect((await topicModel.findById(topic.id))?.metadata?.runningOperation).toBeNull();
+    });
+
+    it('another user cannot clear the owner operation', async () => {
+      const topic = await topicModel.create({ title: 'Private run' });
+      await topicModel.updateMetadata(topic.id, {
+        runningOperation: { assistantMessageId: 'answer', operationId: 'owner-op' },
+      });
+      await new TopicModel(serverDB, otherUserId).clearRunningOperation(topic.id, 'owner-op');
+      expect((await topicModel.findById(topic.id))?.metadata?.runningOperation?.operationId).toBe(
+        'owner-op',
+      );
+    });
+  });
+
   describe('create', () => {
     it('creates a topic owned by the calling user with null owner columns by default', async () => {
       const topic = await topicModel.create({ title: 'Hello' });

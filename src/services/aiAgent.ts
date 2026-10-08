@@ -56,6 +56,7 @@ export interface ExecAgentTaskParams {
   appContext?: ExecAgentAppContext;
   autoStart?: boolean;
   deviceId?: string;
+  editorData?: Record<string, unknown> | null;
   existingMessageIds?: string[];
   /** File IDs of already-uploaded attachments to attach to the new user message */
   fileIds?: string[];

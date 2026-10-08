@@ -102,6 +102,19 @@ const SUPPORTED_CHAT_DOCUMENT_MIME_TYPES = new Set([
 ]);
 
 const getExtension = (filename: string) => filename.split('.').pop()?.toLowerCase() || '';
+const VIDEO_EXTENSION_MIME_TYPES: Record<string, string> = {
+  '3gp': 'video/3gpp',
+  'avi': 'video/x-msvideo',
+  'm4v': 'video/mp4',
+  'mkv': 'video/x-matroska',
+  'mov': 'video/quicktime',
+  'mp4': 'video/mp4',
+  'mpeg': 'video/mpeg',
+  'mpg': 'video/mpeg',
+  'webm': 'video/webm',
+};
+export const videoMimeFromExtension = (filename: string) =>
+  VIDEO_EXTENSION_MIME_TYPES[getExtension(filename)];
 
 // Canonical audio mime for each supported extension. Audio containers like .m4a share the
 // ISO-BMFF box layout with .mp4, so the browser often reports an empty mime and byte-sniffing
@@ -139,6 +152,8 @@ export const isSupportedChatUploadFile = (file: File) => {
   if (!fileType && SUPPORTED_CHAT_IMAGE_EXTENSIONS.has(extension)) return true;
 
   if (fileType.startsWith('video/')) return true;
+  if ((!fileType || fileType === 'application/octet-stream') && videoMimeFromExtension(file.name))
+    return true;
 
   if (fileType.startsWith('audio/')) return true;
 

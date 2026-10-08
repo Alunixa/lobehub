@@ -145,6 +145,7 @@ class UploadService {
     const xhr = new XMLHttpRequest();
 
     const { preSignUrl, ...result } = await this.getSignedUploadUrl(file, { directory, pathname });
+    if (abortController?.signal.aborted) throw new DOMException('Upload cancelled', 'AbortError');
     const startTime = Date.now();
 
     // Setup abort listener
@@ -158,7 +159,7 @@ class UploadService {
       if (event.lengthComputable) {
         const progress = Number(((event.loaded / event.total) * 100).toFixed(1));
 
-        const speedInByte = event.loaded / ((Date.now() - startTime) / 1000);
+        const speedInByte = event.loaded / (Math.max(1, Date.now() - startTime) / 1000);
 
         onProgress?.('uploading', {
           // if the progress is 100, it means the file is uploaded
@@ -172,8 +173,12 @@ class UploadService {
     });
 
     xhr.open('PUT', preSignUrl);
+    // Bound a stalled upload while allowing larger files on slower connections.
+    xhr.timeout = Math.max(
+      120_000,
+      Math.min(30 * 60_000, Math.ceil(file.size / 262_144) * 1000 + 30_000),
+    );
     xhr.setRequestHeader('Content-Type', file.type);
-    const data = await file.arrayBuffer();
 
     await new Promise((resolve, reject) => {
       xhr.addEventListener('load', () => {
@@ -181,7 +186,7 @@ class UploadService {
           onProgress?.('success', {
             progress: 100,
             restTime: 0,
-            speed: file.size / ((Date.now() - startTime) / 1000),
+            speed: file.size / (Math.max(1, Date.now() - startTime) / 1000),
           });
           resolve(xhr.response);
         } else {
@@ -192,11 +197,12 @@ class UploadService {
         if (xhr.status === 0) reject(UPLOAD_NETWORK_ERROR);
         else reject(xhr.statusText);
       });
+      xhr.addEventListener('timeout', () => reject(UPLOAD_NETWORK_ERROR));
       xhr.addEventListener('abort', () => {
         onProgress?.('cancelled', { progress: 0, restTime: 0, speed: 0 });
         reject(new Error('Upload cancelled by user'));
       });
-      xhr.send(data);
+      xhr.send(file);
     });
 
     return result;

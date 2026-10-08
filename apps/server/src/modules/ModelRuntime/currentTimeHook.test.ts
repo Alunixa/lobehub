@@ -23,7 +23,7 @@ describe('current time model hooks', () => {
     vi.setSystemTime(new Date('2026-09-20T09:14:00Z'));
     await hooks.beforeChat!(payload);
     expect(payload.messages[0].content).toContain('17:14');
-    expect(payload.messages).toHaveLength(2);
+    expect(payload.messages).toHaveLength(1);
     getSettings.mockResolvedValue({ injectCurrentTime: false });
     await hooks.beforeChat!(payload);
     expect(payload.messages).toEqual([{ content: 'hello', role: 'user' }]);

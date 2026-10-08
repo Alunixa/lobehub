@@ -75,6 +75,8 @@ export interface GlobalServerConfig {
   enableLobehubSkill?: boolean;
   enableMagicLink?: boolean;
   enableMarketTrustedClient?: boolean;
+  /** Server-owned execution with resumable SSE, without an external Gateway. */
+  enableServerAgentRuntime?: boolean;
   enableUploadFileToServer?: boolean;
   enableVisualUnderstanding?: boolean;
   image?: PartialDeep<UserImageConfig>;

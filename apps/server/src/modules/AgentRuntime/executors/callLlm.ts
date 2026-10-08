@@ -298,11 +298,20 @@ export const callLlm =
         // Custom/remote user models aren't in the bundled model bank, so both cards
         // miss. Fall back to the user's own AI model record so server-side runs still
         // surface identity (the inbox `{{model}}` fallback no longer exists).
-        if (!modelDisplayName && ctx.serverDB && ctx.userId) {
+        let userModelAbilities:
+          | {
+              audio?: boolean;
+              functionCall?: boolean;
+              video?: boolean;
+              vision?: boolean;
+            }
+          | undefined;
+        if (ctx.serverDB && ctx.userId) {
           try {
             const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId, ctx.workspaceId);
             const userModel = await aiModelModel.findByIdAndProvider(model, provider);
-            modelDisplayName = userModel?.displayName ?? undefined;
+            modelDisplayName ||= userModel?.displayName ?? undefined;
+            userModelAbilities = userModel?.abilities ?? undefined;
           } catch (error) {
             log('Failed to resolve user model display name for %s: %O', model, error);
           }
@@ -825,17 +834,17 @@ export const callLlm =
               const info =
                 builtinModels.find((item) => item.id === m && item.providerId === p) ??
                 builtinModels.find((item) => item.id === m);
-              return info?.abilities?.audio ?? false;
+              return userModelAbilities?.audio ?? info?.abilities?.audio ?? false;
             },
             isCanUseFC: (m: string, p: string) => {
               const info = builtinModels.find((item) => item.id === m && item.providerId === p);
-              return info?.abilities?.functionCall ?? true;
+              return userModelAbilities?.functionCall ?? info?.abilities?.functionCall ?? true;
             },
             isCanUseVideo: (m: string, p: string) => {
               const info =
                 builtinModels.find((item) => item.id === m && item.providerId === p) ??
                 builtinModels.find((item) => item.id === m);
-              return info?.abilities?.video ?? false;
+              return userModelAbilities?.video ?? info?.abilities?.video ?? false;
             },
             isCanUseVision: (m: string, p: string) => {
               // Aggregator providers (e.g. lobehub) route to upstream model cards
@@ -845,7 +854,7 @@ export const callLlm =
               const info =
                 builtinModels.find((item) => item.id === m && item.providerId === p) ??
                 builtinModels.find((item) => item.id === m);
-              return info?.abilities?.vision ?? false;
+              return userModelAbilities?.vision ?? info?.abilities?.vision ?? false;
             },
           },
           botPlatformContext: ctx.botPlatformContext,

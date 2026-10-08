@@ -124,6 +124,8 @@ export interface ExecAgentParams {
   autoStart?: boolean;
   /** Explicit device ID to bind to the topic and activate for this run */
   deviceId?: string;
+  /** Rich user-message data, preserved by the server-owned execution path. */
+  editorData?: UIChatMessage['editorData'];
   /** Optional existing message IDs to include in context */
   existingMessageIds?: string[];
   /**

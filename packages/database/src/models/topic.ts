@@ -1122,6 +1122,22 @@ export class TopicModel {
    * Update topic metadata with merge logic
    * This method merges new metadata with existing metadata instead of replacing it
    */
+  /** An older viewer/producer finishing must not clear a newer operation's mark. */
+  clearRunningOperation = async (id: string, operationId: string) => {
+    return this.db
+      .update(topics)
+      .set({
+        metadata: sql`COALESCE(${topics.metadata}, '{}'::jsonb) || '{"runningOperation":null}'::jsonb`,
+      })
+      .where(
+        and(
+          eq(topics.id, id),
+          this.ownership(),
+          sql`${topics.metadata}->'runningOperation'->>'operationId' = ${operationId}`,
+        ),
+      );
+  };
+
   updateMetadata = async (id: string, metadata: TopicMetadataPatch) => {
     // Merge into the existing metadata under a row lock so concurrent writers
     // can't lose each other's keys. The old read-then-write was a non-atomic
