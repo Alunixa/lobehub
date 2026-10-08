@@ -102,4 +102,54 @@ describe('server-owned stream subscriptions', () => {
     const text = await new Response(stream).text();
     expect(text).toContain('"reason":"done"');
   });
+
+  it('delivers an intermediate chunk before the terminal event and closes the read connection', async () => {
+    const closeReadConnection = vi.fn(async () => {});
+    const readEventsOnce = vi
+      .fn()
+      .mockResolvedValueOnce({
+        events: [
+          {
+            data: { chunkType: 'text', content: 'partial' },
+            id: '30-0',
+            operationId: 'op',
+            stepIndex: 0,
+            timestamp: 30,
+            type: 'stream_chunk' as const,
+          },
+        ],
+        lastEventId: '30-0',
+      })
+      .mockResolvedValueOnce({
+        events: [
+          {
+            data: { reason: 'done' },
+            id: '31-0',
+            operationId: 'op',
+            stepIndex: 0,
+            timestamp: 31,
+            type: 'agent_runtime_end' as const,
+          },
+        ],
+        lastEventId: '31-0',
+      });
+    const stream = createResumableAgentStream({
+      getStatus: async () => 'running',
+      lastEventId: '0',
+      manager: { closeReadConnection, readEventsOnce },
+      operationId: 'op',
+    });
+    const reader = stream.getReader();
+    await reader.read();
+    const first = await reader.read();
+    const firstText = new TextDecoder().decode(first.value);
+
+    expect(firstText).toContain('"content":"partial"');
+    expect(firstText).not.toContain('agent_runtime_end');
+
+    reader.releaseLock();
+    const rest = await new Response(stream).text();
+    expect(rest).toContain('agent_runtime_end');
+    expect(closeReadConnection).toHaveBeenCalledOnce();
+  });
 });
