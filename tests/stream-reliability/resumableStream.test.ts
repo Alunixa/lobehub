@@ -4,7 +4,7 @@ import { createResumableAgentStream } from '@/server/modules/AgentRuntime/resuma
 import type { IStreamEventManager } from '@/server/modules/AgentRuntime/types';
 
 const manager = (events: Awaited<ReturnType<IStreamEventManager['readEventsOnce']>>['events']) => ({
-  readEventsOnce: vi.fn(async (_id: string, cursor: string) => {
+  readEventsOnce: vi.fn(async (_id: string, cursor = '0') => {
     const index = events.findIndex((event) => event.id === cursor);
     const next = events.slice(index + 1);
     return { events: next, lastEventId: next.at(-1)?.id ?? cursor };
