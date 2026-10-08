@@ -1,0 +1,38 @@
+name: Codex Chat and Media Regression
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - codex/**
+    paths:
+      - .github/workflows/codex-chat-media-regressions.yml
+      - apps/server/src/**
+      - packages/database/src/models/topic.ts
+      - packages/database/src/models/__tests__/topic.test.ts
+      - packages/fetch-sse/**
+      - packages/types/**
+      - packages/utils/src/currentTime*
+      - src/**
+      - tests/stream-reliability/**
+
+permissions:
+  contents: read
+
+concurrency:
+  group: codex-chat-media-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-env
+      - run: pnpm install
+      - name: Chat stream and media regressions
+        run: node node_modules/vitest/vitest.mjs run --config tests/stream-reliability/vitest.config.mts --silent=passed-only
+      - name: Topic operation ownership and cleanup regressions
+        working-directory: packages/database
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts
