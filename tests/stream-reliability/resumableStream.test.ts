@@ -139,7 +139,7 @@ describe('server-owned stream subscriptions', () => {
       manager: { closeReadConnection, readEventsOnce },
       operationId: 'op',
     });
-    const reader = stream.getReader();
+    const reader = new Response(stream).body!.getReader();
     await reader.read();
     const first = await reader.read();
     const firstText = new TextDecoder().decode(first.value);
@@ -147,9 +147,10 @@ describe('server-owned stream subscriptions', () => {
     expect(firstText).toContain('"content":"partial"');
     expect(firstText).not.toContain('agent_runtime_end');
 
+    const terminal = await reader.read();
+    const terminalText = new TextDecoder().decode(terminal.value);
+    expect(terminalText).toContain('agent_runtime_end');
     reader.releaseLock();
-    const rest = await new Response(stream).text();
-    expect(rest).toContain('agent_runtime_end');
     expect(closeReadConnection).toHaveBeenCalledOnce();
   });
 });
