@@ -26,6 +26,8 @@ import type { ChatStore } from '@/store/chat/store';
 import { notifyDesktopHumanApprovalRequired } from '@/store/chat/utils/desktopNotification';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 
+import { createGatewayEventQueue } from './gatewayEventQueue';
+
 // `agent_runtime_end` reasons that are NOT a clean completion: a mid-stream
 // cancel and a deferred-tool park. These must NOT mark the topic unread, and
 // must take the non-success branch in `onSessionComplete` so the run clears
@@ -390,12 +392,59 @@ export const createGatewayEventHandler = (
     reasoningOperationId = undefined;
   };
 
-  // Sequential processing queue — ensures stream_chunk waits for stream_start's fetch
-  let processingChain: Promise<void> = Promise.resolve();
+  // Keep step reconciliation ordered, coalesce replay bursts and yield between
+  // batches so a long conversation cannot starve input and browser paint.
+  const { enqueue, enqueueChunk } = createGatewayEventQueue((data) => {
+    if (data.chunkType === 'text' && data.content) {
+      endReasoningIfNeeded();
+      accumulatedContent += data.content;
+      hasStreamedContent = true;
+      get().internal_dispatchMessage(
+        {
+          id: currentAssistantMessageId,
+          type: 'updateMessage',
+          value: { content: accumulatedContent },
+        },
+        dispatchContext,
+      );
+    }
 
-  const enqueue = (fn: () => Promise<void> | void): void => {
-    processingChain = processingChain.then(fn, fn);
-  };
+    if (data.chunkType === 'reasoning' && data.reasoning) {
+      startReasoningIfNeeded();
+      accumulatedReasoning += data.reasoning;
+      hasStreamedContent = true;
+      get().internal_dispatchMessage(
+        {
+          id: currentAssistantMessageId,
+          type: 'updateMessage',
+          value: { reasoning: { content: accumulatedReasoning } },
+        },
+        dispatchContext,
+      );
+    }
+
+    if (data.chunkType === 'tools_calling' && data.toolsCalling) {
+      endReasoningIfNeeded();
+      hasStreamedContent = true;
+      get().internal_dispatchMessage(
+        {
+          id: currentAssistantMessageId,
+          type: 'updateMessage',
+          value: { tools: data.toolsCalling },
+        },
+        dispatchContext,
+      );
+      get().internal_toggleToolCallingStreaming(
+        currentAssistantMessageId,
+        data.toolsCalling.map(() => true),
+      );
+
+      // Pending approval messages have already been persisted by the server.
+      if ('toolMessageIds' in data) {
+        fetchAndReplaceMessages(get, context).catch(console.error);
+      }
+    }
+  });
 
   return (event: AgentStreamEvent) => {
     if (terminalState) return;
@@ -492,68 +541,8 @@ export const createGatewayEventHandler = (
       }
 
       case 'stream_chunk': {
-        enqueue(() => {
-          const data = event.data as StreamChunkData | undefined;
-          if (!data) return;
-
-          if (data.chunkType === 'text' && data.content) {
-            // Text after reasoning marks the end of the thinking pass — see
-            // `StreamingHandler.handleText` for the same transition.
-            endReasoningIfNeeded();
-            accumulatedContent += data.content;
-            hasStreamedContent = true;
-            get().internal_dispatchMessage(
-              {
-                id: currentAssistantMessageId,
-                type: 'updateMessage',
-                value: { content: accumulatedContent },
-              },
-              dispatchContext,
-            );
-          }
-
-          if (data.chunkType === 'reasoning' && data.reasoning) {
-            startReasoningIfNeeded();
-            accumulatedReasoning += data.reasoning;
-            hasStreamedContent = true;
-            get().internal_dispatchMessage(
-              {
-                id: currentAssistantMessageId,
-                type: 'updateMessage',
-                value: { reasoning: { content: accumulatedReasoning } },
-              },
-              dispatchContext,
-            );
-          }
-
-          if (data.chunkType === 'tools_calling' && data.toolsCalling) {
-            endReasoningIfNeeded();
-            hasStreamedContent = true;
-            get().internal_dispatchMessage(
-              {
-                id: currentAssistantMessageId,
-                type: 'updateMessage',
-                value: { tools: data.toolsCalling },
-              },
-              dispatchContext,
-            );
-
-            // Drive tool calling animation
-            get().internal_toggleToolCallingStreaming(
-              currentAssistantMessageId,
-              data.toolsCalling.map(() => true),
-            );
-
-            // If the server attached a `toolMessageIds` map, it has persisted
-            // pending tool messages (human approval path). Fetch the latest
-            // messages so ApprovalActions can read them by id instead of
-            // waiting for `agent_runtime_end` (which won't fire while paused
-            // in `waiting_for_human`).
-            if ((data as any).toolMessageIds) {
-              fetchAndReplaceMessages(get, context).catch(console.error);
-            }
-          }
-        });
+        const data = event.data as StreamChunkData | undefined;
+        if (data) enqueueChunk(data);
         break;
       }
 
@@ -618,21 +607,16 @@ export const createGatewayEventHandler = (
           uiMessages?: UIChatMessage[];
         };
 
-        // The server's stepIndex is the authoritative step counter — mirror it
-        // onto the operation so step-based UI (OpStatusTray) stays correct
-        // even across page-refresh reconnects.
-        if (typeof event.stepIndex === 'number') {
-          get().updateOperationMetadata(operationId, { stepCount: event.stepIndex + 1 });
-        }
-
-        // Server attaches the canonical UIChatMessage[] snapshot at every
-        // step boundary (agent-runtime #15152). Use it as Source of Truth
-        // instead of issuing a DB refetch — the refetch returns a stale
-        // assistant placeholder while DB fan-out is still in flight, which
-        // clobbers the in-memory streamed assistantGroup.
-        if (Array.isArray(data?.uiMessages)) {
-          get().replaceMessages(data.uiMessages, { action: 'gateway/step_start', context });
-        }
+        // Snapshots belong in the same queue as chunks. Applying the next
+        // step synchronously lets replayed old chunks overwrite the new SoT.
+        enqueue(() => {
+          if (typeof event.stepIndex === 'number') {
+            get().updateOperationMetadata(operationId, { stepCount: event.stepIndex + 1 });
+          }
+          if (Array.isArray(data?.uiMessages)) {
+            get().replaceMessages(data.uiMessages, { action: 'gateway/step_start', context });
+          }
+        });
 
         if (data?.phase === 'human_approval' && data.requiresApproval && data.pendingToolsCalling) {
           void notifyDesktopHumanApprovalRequired(get, context);

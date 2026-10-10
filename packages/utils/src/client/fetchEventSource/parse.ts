@@ -1,6 +1,8 @@
 //@ts-nocheck
 
 /* eslint-disable no-fallthrough, perfectionist/sort-interfaces, unicorn/switch-case-braces */
+import { yieldToEventLoop } from '../cooperativeQueue';
+
 /**
  * Represents a message sent in an event stream
  * https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format
@@ -27,10 +29,17 @@ export async function getBytes(
   onChunk: (arr: Uint8Array) => void,
 ) {
   const reader = stream.getReader();
+  let batchStart = performance.now();
   try {
     let result: ReadableStreamDefaultReadResult<Uint8Array>;
     while (!(result = await reader.read()).done) {
       onChunk(result.value);
+      // Cached/replayed reads resolve in microtasks and can otherwise drain
+      // an entire long stream without giving clicks or paint a turn.
+      if (performance.now() - batchStart >= 8) {
+        await yieldToEventLoop();
+        batchStart = performance.now();
+      }
     }
   } catch (error) {
     await reader.cancel(error).catch(() => {});

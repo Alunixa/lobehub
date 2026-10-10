@@ -13,8 +13,10 @@ on:
       - packages/fetch-sse/**
       - packages/types/**
       - packages/utils/src/currentTime*
+      - packages/utils/src/client/**
       - src/**
       - tests/stream-reliability/**
+      - tests/browser-responsiveness/**
 
 permissions:
   contents: read
@@ -35,6 +37,8 @@ jobs:
         run: node node_modules/vitest/vitest.mjs run --config tests/stream-reliability/vitest.config.mts --silent=passed-only
       - name: Request history and failure-state regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/chat-diagnostics/vitest.config.mts --silent=passed-only
+      - name: Browser responsiveness and stream replay regressions
+        run: node node_modules/vitest/vitest.mjs run --config tests/browser-responsiveness/vitest.config.mts --silent=passed-only
       - name: Provider stream decoder regressions
         working-directory: packages/model-runtime
         run: |

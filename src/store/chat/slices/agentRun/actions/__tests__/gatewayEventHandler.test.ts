@@ -200,6 +200,25 @@ describe('createGatewayEventHandler', () => {
   });
 
   describe('stream_chunk', () => {
+    it('reconciles a large reconnect burst once while preserving the complete answer', async () => {
+      const store = createMockStore();
+      const handler = createHandler(store);
+      const deltas = Array.from({ length: 1500 }, (_, index) => `片段${index}\n`);
+      for (const content of deltas) {
+        handler(makeEvent('stream_chunk', { chunkType: 'text', content }));
+      }
+      await flush();
+
+      expect(store.internal_dispatchMessage).toHaveBeenCalledOnce();
+      expect(store.internal_dispatchMessage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ value: { content: deltas.join('') } }),
+        { operationId: 'op-1' },
+      );
+      // No terminal event has arrived: coalescing must not defer live output
+      // until agent_runtime_end or rely on a foreground animation frame.
+      expect(store.completeOperation).not.toHaveBeenCalled();
+    });
+
     it('should accumulate text content and pass operationId context', async () => {
       const store = createMockStore();
       const handler = createHandler(store);
@@ -566,6 +585,33 @@ describe('createGatewayEventHandler', () => {
   });
 
   describe('step_start', () => {
+    it('applies a next-step snapshot after all preceding chunks during replay', async () => {
+      const store = createMockStore();
+      const handler = createHandler(store);
+      handler(makeEvent('stream_chunk', { chunkType: 'text', content: 'previous step' }));
+      const snapshot = [{ id: 'msg-next', role: 'assistant', content: '...' }];
+      handler(makeEvent('step_start', { uiMessages: snapshot }));
+      handler(makeEvent('stream_start', { assistantMessage: { id: 'msg-next' } }));
+      handler(makeEvent('stream_chunk', { chunkType: 'text', content: 'next step' }));
+      await flush();
+
+      expect(store.internal_dispatchMessage).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ id: 'msg-initial', value: { content: 'previous step' } }),
+        { operationId: 'op-1' },
+      );
+      expect(store.internal_dispatchMessage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 'msg-next', value: { content: 'next step' } }),
+        { operationId: 'op-1' },
+      );
+      expect(store.replaceMessages.mock.invocationCallOrder[0]).toBeGreaterThan(
+        store.internal_dispatchMessage.mock.invocationCallOrder[0],
+      );
+      expect(store.replaceMessages.mock.invocationCallOrder[0]).toBeLessThan(
+        store.internal_dispatchMessage.mock.invocationCallOrder[1],
+      );
+    });
+
     it('should notify desktop when human approval is required', () => {
       const store = createMockStore();
       const handler = createHandler(store);
