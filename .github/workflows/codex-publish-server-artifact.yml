@@ -147,13 +147,16 @@ jobs:
         run: |
           set -eu
           cd /tmp/server-release
-          if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > existing-release.json 2>/dev/null; then
-            node -e "const r=require('./existing-release.json'); if(!r.draft || r.target_commitish!==process.env.SOURCE_SHA) throw new Error('Existing release is not the matching draft')"
+          gh api "repos/$GH_REPO/releases?per_page=100" > releases.json
+          node -e "const fs=require('fs'); const r=require('./releases.json').find(r=>r.tag_name===process.env.RELEASE_TAG); if(r){if(!r.draft || r.target_commitish!==process.env.SOURCE_SHA)throw new Error('Existing release is not the matching draft'); fs.writeFileSync('created-release.json',JSON.stringify(r))}"
+          if test -f created-release.json; then
+            echo 'Resuming verified matching draft'
           else
             gh api --method POST "repos/$GH_REPO/releases" --input release-body.json > created-release.json
           fi
-          gh release upload "$RELEASE_TAG" lobehub-server-image.tar release-manifest.json SHA256SUMS
-          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > uploaded-assets.json
+          gh release upload "$RELEASE_TAG" lobehub-server-image.tar release-manifest.json SHA256SUMS --clobber
+          RELEASE_ID=$(node -p "require('./created-release.json').id")
+          gh api "repos/$GH_REPO/releases/$RELEASE_ID" > uploaded-assets.json
           node <<'NODE'
           const fs = require('node:fs');
           const crypto = require('node:crypto');
