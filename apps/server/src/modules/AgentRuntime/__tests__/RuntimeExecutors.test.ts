@@ -4795,6 +4795,87 @@ describe('RuntimeExecutors', () => {
       ).toBe(false);
     });
 
+    it('persists a no-output failure on its exact assistant target before emitting the error', async () => {
+      const mockChat = vi.fn().mockResolvedValue(new Response('done'));
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValue({ chat: mockChat } as any);
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { chatConfig: { enableAgentMode: false } },
+      });
+      const state = createMockState({
+        messages: [{ content: 'previous answer', id: 'previous-assistant', role: 'assistant' }],
+        metadata: {
+          agentId: 'agent-123',
+          threadId: 'thread-123',
+          topicId: 'topic-123',
+        },
+      });
+      const instruction = {
+        payload: {
+          assistantMessageId: 'current-failed-assistant',
+          messages: [{ content: '晚上好', role: 'user' }],
+          model: 'gpt-4',
+          provider: 'openai',
+          tools: [],
+        },
+        type: 'call_llm' as const,
+      };
+
+      await expect(executors.call_llm!(instruction, state)).rejects.toThrow(
+        /no visible answer or tool calls/,
+      );
+
+      expect(mockMessageModel.update).toHaveBeenCalledWith('current-failed-assistant', {
+        error: expect.objectContaining({
+          message: expect.stringContaining('no visible answer'),
+          type: 'ModelEmptyCompletion',
+        }),
+      });
+      expect(mockMessageModel.update).not.toHaveBeenCalledWith(
+        'previous-assistant',
+        expect.anything(),
+      );
+      const errorIndex = mockStreamManager.publishStreamEvent.mock.calls.findIndex(
+        ([, event]: PublishStreamEventCall) => event.type === 'error',
+      );
+      expect(mockMessageModel.update.mock.invocationCallOrder.at(-1)).toBeLessThan(
+        mockStreamManager.publishStreamEvent.mock.invocationCallOrder[errorIndex],
+      );
+    });
+
+    it('does not replace a provider error when persisting its assistant error fails', async () => {
+      const error = Object.assign(new Error('provider request failed'), { status: 400 });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValue({
+        chat: vi.fn().mockRejectedValue(error),
+      } as any);
+      mockMessageModel.update.mockRejectedValueOnce(new Error('database unavailable'));
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { chatConfig: { enableAgentMode: false } },
+      });
+      const instruction = {
+        payload: {
+          assistantMessageId: 'current-failed-assistant',
+          messages: [{ content: 'Hello', role: 'user' }],
+          model: 'gpt-4',
+          provider: 'openai',
+          tools: [],
+        },
+        type: 'call_llm' as const,
+      };
+
+      await expect(executors.call_llm!(instruction, createMockState())).rejects.toThrow(
+        'provider request failed',
+      );
+      expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
+        'op-123',
+        expect.objectContaining({
+          data: expect.objectContaining({ error: 'provider request failed' }),
+          type: 'error',
+        }),
+      );
+    });
+
     it('should retry llm execution, emit stream_retry, and commit only the successful attempt', async () => {
       vi.useFakeTimers();
 

@@ -98,6 +98,7 @@ import {
   timing,
 } from '../executorHelpers';
 import { formatErrorEventData } from '../formatErrorEventData';
+import { formatErrorForState } from '../formatErrorForState';
 import { prepareInferenceMessages } from '../inferenceMessages';
 import { classifyLLMError } from '../llmErrorClassification';
 import { createConversationParentMissingError } from '../messagePersistErrors';
@@ -1865,6 +1866,19 @@ export const callLlm =
     } catch (error) {
       // Publish error event
       if (!(await isOperationInterrupted(ctx))) {
+        // A failed step never appends its assistant row to the runtime state.
+        // Server operations also omit metadata.assistantMessageId, so the
+        // terminal lifecycle cannot reliably locate this row. Persist against
+        // this executor's exact target before SSE/end snapshots are emitted.
+        // Only patch the error: a partial answer, reasoning or media remains intact.
+        try {
+          await ctx.messageModel.update(assistantMessageItem.id, {
+            error: formatErrorForState(error),
+          });
+        } catch (persistError) {
+          console.error('[call_llm] Failed to persist assistant error:', persistError);
+        }
+
         await streamManager.publishStreamEvent(operationId, {
           data: formatErrorEventData(error, 'llm_execution'),
           stepIndex,
