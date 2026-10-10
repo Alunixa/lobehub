@@ -1,0 +1,167 @@
+name: Codex Publish Verified Server Artifact
+
+'on':
+  workflow_dispatch:
+    inputs:
+      build_run_id:
+        description: Successful server-image build run
+        required: true
+        type: string
+      source_sha:
+        description: Exact application commit built by that run
+        required: true
+        type: string
+      release_tag:
+        description: Server release tag
+        required: true
+        type: string
+      regression_runs:
+        description: JSON array of required regression run IDs
+        required: true
+        type: string
+      release_notes:
+        description: Code changes and verification notes
+        required: true
+        type: string
+      backup_directory:
+        description: Independent deployment backup directory
+        required: true
+        type: string
+  push:
+    branches:
+      - codex/**
+    paths:
+      - .github/workflows/codex-publish-server-artifact.yml
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      BUILD_RUN_ID: ${{ inputs.build_run_id }}
+      SOURCE_SHA: ${{ inputs.source_sha }}
+      RELEASE_TAG: ${{ inputs.release_tag }}
+      REGRESSION_RUNS: ${{ inputs.regression_runs }}
+      RELEASE_NOTES: ${{ inputs.release_notes }}
+      BACKUP_DIRECTORY: ${{ inputs.backup_directory }}
+    steps:
+      - name: Validate immutable build and regression provenance
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { BUILD_RUN_ID, SOURCE_SHA, RELEASE_TAG, REGRESSION_RUNS, BACKUP_DIRECTORY } = process.env;
+          if (!/^\d+$/.test(BUILD_RUN_ID) || !/^[a-f0-9]{40}$/.test(SOURCE_SHA)) throw new Error('Invalid build identity');
+          if (!/^v\d+\.\d+\.\d+-codex\.\d{8}\.\d+$/.test(RELEASE_TAG)) throw new Error('Invalid release tag');
+          if (!/^\/mnt\/sda1\/lobehub-backups\/[\w/-]+$/.test(BACKUP_DIRECTORY)) throw new Error('Invalid backup directory');
+          const required = new Set([
+            'Codex Build Server Image',
+            'Codex Chat and Media Regression',
+            'Codex Mobile Regression',
+            'Codex Current Time Regression',
+          ]);
+          const checks = {};
+          (async () => {
+            const ids = [BUILD_RUN_ID, ...JSON.parse(REGRESSION_RUNS)];
+            for (const id of ids) {
+              if (!/^\d+$/.test(String(id))) throw new Error('Invalid regression run ID');
+              const response = await fetch(`https://api.github.com/repos/${process.env.GH_REPO}/actions/runs/${id}`, {
+                headers: { Authorization: `Bearer ${process.env.GH_TOKEN}`, Accept: 'application/vnd.github+json' },
+              });
+              if (!response.ok) throw new Error(`Cannot inspect run ${id}`);
+              const run = await response.json();
+              if (run.head_sha !== SOURCE_SHA || run.conclusion !== 'success' || !required.has(run.name)) {
+                throw new Error(`Run ${id} is not a successful same-source required check`);
+              }
+              checks[run.name] = { id: run.id, conclusion: run.conclusion, url: run.html_url };
+            }
+            if (required.size !== Object.keys(checks).length) throw new Error('Required checks missing');
+            fs.mkdirSync('/tmp/server-release', { recursive: true });
+            fs.writeFileSync('/tmp/server-release/checks.json', JSON.stringify(checks));
+          })().catch(error => { console.error(error.message); process.exitCode = 1; });
+          NODE
+
+      - name: Download exact verified server image
+        uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          name: lobehub-server-image-${{ inputs.source_sha }}
+          path: /tmp/server-release
+          run-id: ${{ inputs.build_run_id }}
+
+      - name: Prepare checksums and release manifest
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const dir = '/tmp/server-release';
+          const sha256 = file => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
+          const image = `${dir}/lobehub-server-image.tar`;
+          if (fs.statSync(image).size < 100 * 1024 * 1024) throw new Error('Server image unexpectedly small');
+          const manifest = {
+            release: process.env.RELEASE_TAG,
+            sourceCommit: process.env.SOURCE_SHA,
+            platform: 'linux/amd64',
+            imageTag: `lobehub/lobehub:codex-${process.env.SOURCE_SHA}`,
+            imageAsset: 'lobehub-server-image.tar',
+            imageSha256: sha256(image),
+            imageBytes: fs.statSync(image).size,
+            githubActions: JSON.parse(fs.readFileSync(`${dir}/checks.json`)),
+            publishingRun: `${process.env.GITHUB_SERVER_URL}/${process.env.GH_REPO}/actions/runs/${process.env.GITHUB_RUN_ID}`,
+            deployment: {
+              status: 'ready_for_protected_deployment',
+              backupDirectory: process.env.BACKUP_DIRECTORY,
+              guardSeconds: 240,
+            },
+            changes: [
+              'Exclude generating assistant placeholders from inference history',
+              'Respect configured API mode and model reasoning parameters',
+              'Surface provider errors, empty output and premature EOF without stacked silent chat retries',
+              'Persist current assistant failure before stream errors and terminal snapshots',
+              'Preserve partial text, reasoning and media without overwriting previous turns',
+              'Keep authorized historical media and cooperative ordered browser replay',
+            ],
+          };
+          fs.writeFileSync(`${dir}/release-manifest.json`, JSON.stringify(manifest, null, 2));
+          fs.writeFileSync(`${dir}/SHA256SUMS`, ['lobehub-server-image.tar', 'release-manifest.json']
+            .map(name => `${sha256(`${dir}/${name}`)}  ${name}`).join('\n') + '\n');
+          fs.writeFileSync(`${dir}/RELEASE_NOTES.md`, process.env.RELEASE_NOTES);
+          fs.writeFileSync(`${dir}/release-body.json`, JSON.stringify({
+            tag_name: process.env.RELEASE_TAG,
+            target_commitish: process.env.SOURCE_SHA,
+            name: `${process.env.RELEASE_TAG} · 对话可靠性与页面响应修复`,
+            body: process.env.RELEASE_NOTES,
+            draft: true,
+            prerelease: false,
+            make_latest: 'false',
+          }));
+          NODE
+
+      - name: Publish only checksummed same-source assets
+        run: |
+          set -eu
+          cd /tmp/server-release
+          if gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > existing-release.json 2>/dev/null; then
+            node -e "const r=require('./existing-release.json'); if(!r.draft || r.target_commitish!==process.env.SOURCE_SHA) throw new Error('Existing release is not the matching draft')"
+          else
+            gh api --method POST "repos/$GH_REPO/releases" --input release-body.json > created-release.json
+          fi
+          gh release upload "$RELEASE_TAG" lobehub-server-image.tar release-manifest.json SHA256SUMS
+          gh api "repos/$GH_REPO/releases/tags/$RELEASE_TAG" > uploaded-assets.json
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const { assets } = JSON.parse(fs.readFileSync('uploaded-assets.json'));
+          for (const name of ['lobehub-server-image.tar', 'release-manifest.json', 'SHA256SUMS']) {
+            const expected = 'sha256:' + crypto.createHash('sha256').update(fs.readFileSync(name)).digest('hex');
+            const actual = assets.find(asset => asset.name === name);
+            if (!actual || actual.digest !== expected) throw new Error(`Release asset digest mismatch: ${name}`);
+          }
+          NODE
+          gh release edit "$RELEASE_TAG" --draft=false --notes-file RELEASE_NOTES.md
