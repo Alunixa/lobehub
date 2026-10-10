@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { AgentRuntimeErrorType } from '../../../types/error';
 import { FIRST_CHUNK_ERROR_KEY } from '../protocol';
 import { createReadableStream, readStreamChunk } from '../utils';
-import { OpenAIResponsesStream } from './responsesStream';
+import { OpenAIResponsesStream as streamWithCompletionGuard } from './responsesStream';
+
+// Single-frame transformer fixtures are not complete provider responses.
+// Full-stream EOF/error handling has separate chat-diagnostics regressions.
+const OpenAIResponsesStream: typeof streamWithCompletionGuard = (stream, options) =>
+  streamWithCompletionGuard(stream, { requireTerminalEvent: false, ...options });
 
 describe('OpenAIResponsesStream', () => {
   it('should transform OpenAI stream to protocol stream', async () => {

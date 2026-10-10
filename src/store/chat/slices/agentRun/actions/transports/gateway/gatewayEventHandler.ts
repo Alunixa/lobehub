@@ -30,7 +30,14 @@ import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 // cancel and a deferred-tool park. These must NOT mark the topic unread, and
 // must take the non-success branch in `onSessionComplete` so the run clears
 // back to 'active' rather than persisting as an unread completion.
-const NON_COMPLETION_RUNTIME_END_REASONS = new Set(['interrupted', 'waiting_for_async_tool']);
+const NON_COMPLETION_RUNTIME_END_REASONS = new Set([
+  'cancelled',
+  'error',
+  'human_approve_required',
+  'interrupted',
+  'waiting_for_async_tool',
+  'waiting_for_human',
+]);
 
 /**
  * Whether an `agent_runtime_end` event represents a clean completion (vs. a
@@ -694,7 +701,15 @@ export const createGatewayEventHandler = (
 
       case 'agent_runtime_end': {
         enqueue(async () => {
-          const data = event.data as { reason?: string; uiMessages?: UIChatMessage[] } | undefined;
+          const data = event.data as
+            | {
+                error?: unknown;
+                finalState?: { error?: unknown };
+                reason?: string;
+                reasonDetail?: string;
+                uiMessages?: UIChatMessage[];
+              }
+            | undefined;
 
           void emitClientAgentSignalSourceEvent({
             payload: {
@@ -760,8 +775,32 @@ export const createGatewayEventHandler = (
           //     notification (skipped if a queued follow-up was scheduled).
           //   • cancelled → completeRun only completes the op (no unread badge,
           //     no queue drain, no notification) — same as the old inline path.
+          const failed = data?.reason === 'error';
+          if (failed) {
+            // A reconnect can see only the durable terminal state after the
+            // original error event expired. Never turn it into a blank stop.
+            const error = toChatMessageError(
+              data?.error ??
+                data?.finalState?.error ?? {
+                  message: data?.reasonDetail || 'Server agent operation failed',
+                  type: AgentRuntimeErrorType.AgentRuntimeError,
+                },
+            );
+            get().internal_dispatchMessage(
+              {
+                id: currentAssistantMessageId,
+                type: 'updateMessage',
+                value: { error },
+              },
+              dispatchContext,
+            );
+          }
           if (runtimeType === 'gateway' && runLifecycle) {
-            const status = isCompletedRuntimeEnd(data?.reason) ? 'completed' : 'cancelled';
+            const status = failed
+              ? 'failed'
+              : isCompletedRuntimeEnd(data?.reason)
+                ? 'completed'
+                : 'cancelled';
             const { requeued } = await runLifecycle.completeRun({
               ...lifecycleEventBase,
               status,

@@ -23,7 +23,7 @@ export const createResumableAgentStream = ({
   operationId,
   signal,
 }: {
-  getStatus: () => Promise<string | undefined>;
+  getStatus: () => Promise<string | { error?: unknown; status: string } | undefined>;
   lastEventId: string;
   manager: Pick<IStreamEventManager, 'closeReadConnection' | 'readEventsOnce'>;
   operationId: string;
@@ -76,12 +76,22 @@ export const createResumableAgentStream = ({
           const now = Date.now();
           if (result.events.length === 0 && now - checkedStatusAt >= 5000) {
             checkedStatusAt = now;
-            const status = await getStatus();
+            const persisted = await getStatus();
+            const status = typeof persisted === 'string' ? persisted : persisted?.status;
             if (status && TERMINAL_STATUSES.has(status)) {
               // DB is authoritative if the terminal event expired/was trimmed.
               write(
                 formatSSEEvent({
-                  data: { data: { reason: status }, operationId, type: 'agent_runtime_end' },
+                  data: {
+                    data: {
+                      reason: status,
+                      ...(typeof persisted === 'object' && persisted.error
+                        ? { error: persisted.error }
+                        : {}),
+                    },
+                    operationId,
+                    type: 'agent_runtime_end',
+                  },
                   event: 'agent_runtime_end',
                 }),
               );

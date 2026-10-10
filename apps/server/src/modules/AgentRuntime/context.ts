@@ -45,6 +45,8 @@ export interface RuntimeExecutorContext {
    * child operation as a sub-agent.
    */
   execVirtualSubAgent?: (params: ExecVirtualSubAgentParams) => Promise<unknown>;
+  /** Lightweight producer status, without cloning the entire conversation. */
+  getOperationStatus?: (operationId: string) => Promise<string | undefined>;
   hookDispatcher?: HookDispatcher;
   loadAgentState?: (operationId: string) => Promise<AgentState | null>;
   messageModel: MessageModel;

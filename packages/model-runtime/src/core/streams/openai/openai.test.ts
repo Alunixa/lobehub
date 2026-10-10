@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AgentRuntimeErrorType } from '../../../types/error';
 import { FIRST_CHUNK_ERROR_KEY } from '../protocol';
-import { OpenAIStream } from './openai';
+import { OpenAIStream as streamWithCompletionGuard } from './openai';
+
+// These cases decode individual frames, many deliberately nonterminal.
+// End-to-end completion/error guards are exercised by chat-diagnostics/streams.
+const OpenAIStream: typeof streamWithCompletionGuard = (stream, options) =>
+  streamWithCompletionGuard(stream, { requireTerminalEvent: false, ...options });
 
 describe('OpenAIStream', () => {
   it('should transform OpenAI stream to protocol stream', async () => {

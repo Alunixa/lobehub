@@ -1,7 +1,11 @@
 import type { Stream } from '@anthropic-ai/sdk/streaming';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AnthropicStream } from './anthropic';
+import { AnthropicStream as streamWithCompletionGuard } from './anthropic';
+
+// Keep isolated block parser fixtures independent of the terminal validator.
+const AnthropicStream: typeof streamWithCompletionGuard = (stream, options) =>
+  streamWithCompletionGuard(stream, { requireTerminalEvent: false, ...options });
 
 describe('AnthropicStream', () => {
   it('should transform Anthropic stream to protocol stream', async () => {

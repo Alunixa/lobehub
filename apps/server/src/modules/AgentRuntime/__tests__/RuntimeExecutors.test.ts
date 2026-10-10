@@ -1,5 +1,6 @@
 import { type AgentState } from '@lobechat/agent-runtime';
 import { BRANDING_PROVIDER } from '@lobechat/business-const';
+import type { ChatMethodOptions, ChatStreamPayload } from '@lobechat/model-runtime';
 import { consumeStreamUntilDone, ModelEmptyError } from '@lobechat/model-runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -314,6 +315,7 @@ describe('RuntimeExecutors', () => {
         'user-123',
         'openai',
         'ws-1',
+        { maxRetries: 0 },
       );
     });
 
@@ -960,6 +962,110 @@ describe('RuntimeExecutors', () => {
 
       expect(result.newState.messages.at(-1)).toEqual(
         expect.objectContaining({ content: 'Here is your answer.', role: 'assistant' }),
+      );
+    });
+
+    it('does not send its own generating assistant placeholder as a model prefill', async () => {
+      const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+        await options?.callback?.onText?.('answer');
+        return new Response('done');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as any);
+      const executors = createRuntimeExecutors(ctx);
+      await executors.call_llm!(
+        {
+          type: 'call_llm',
+          payload: {
+            model: 'gpt-4',
+            provider: 'openai',
+            assistantMessageId: 'pending',
+            messages: [
+              { id: 'user', role: 'user', content: '晚上好' },
+              { id: 'pending', role: 'assistant', content: '...' },
+            ],
+          },
+        } as any,
+        createMockState(),
+      );
+      expect(chat.mock.calls[0][0].messages).toEqual([
+        { id: 'user', role: 'user', content: '晚上好' },
+      ]);
+    });
+
+    it('reports a chat-mode empty billed response immediately without hidden retries', async () => {
+      const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+        await options?.callback?.onCompletion?.({ text: '', usage: { totalOutputTokens: 688 } });
+        return new Response('done');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as any);
+      vi.spyOn(ContextEngineering, 'serverMessagesEngine').mockResolvedValueOnce([]);
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { chatConfig: { enableAgentMode: false }, plugins: [] },
+      });
+      await expect(
+        executors.call_llm!(
+          {
+            type: 'call_llm',
+            payload: { model: 'gpt-4', provider: 'openai', messages: [], tools: [] },
+          },
+          createMockState(),
+        ),
+      ).rejects.toBeInstanceOf(ModelEmptyError);
+      expect(chat).toHaveBeenCalledTimes(1);
+      expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
+        'op-123',
+        expect.objectContaining({
+          type: 'error',
+          data: expect.objectContaining({ errorType: 'ModelEmptyCompletion' }),
+        }),
+      );
+    });
+
+    it('persists partial text and original request error when the chat stream fails', async () => {
+      const body = {
+        error: { type: 'upstream_error', message: 'request failed' },
+        provider: 'claude',
+        status: 502,
+      };
+      const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+        await options?.callback?.onText?.('partial answer');
+        await options?.callback?.onError?.({
+          type: 'ProviderBizError',
+          message: 'request failed',
+          body,
+        });
+        return new Response('done');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as any);
+      vi.spyOn(ContextEngineering, 'serverMessagesEngine').mockResolvedValueOnce([]);
+      const executors = createRuntimeExecutors({
+        ...ctx,
+        agentConfig: { chatConfig: { enableAgentMode: false }, plugins: [] },
+      });
+      await expect(
+        executors.call_llm!(
+          {
+            type: 'call_llm',
+            payload: { model: 'gpt-4', provider: 'openai', messages: [], tools: [] },
+          },
+          createMockState(),
+        ),
+      ).rejects.toMatchObject({ errorType: 'ProviderBizError', _responseBody: body });
+      expect(chat).toHaveBeenCalledTimes(1);
+      expect(mockMessageModel.update).toHaveBeenCalledWith(
+        'msg-123',
+        expect.objectContaining({
+          content: 'partial answer',
+          metadata: expect.objectContaining({ failedMidStream: true }),
+        }),
+      );
+      expect(mockStreamManager.publishStreamEvent).toHaveBeenCalledWith(
+        'op-123',
+        expect.objectContaining({
+          type: 'error',
+          data: expect.objectContaining({ body: expect.objectContaining(body) }),
+        }),
       );
     });
 
@@ -2509,7 +2615,7 @@ describe('RuntimeExecutors', () => {
         expect(mockMessageModel.update).not.toHaveBeenCalled();
       });
 
-      it('does NOT persist partial content on non-interrupt errors (preserves existing retry/error flow)', async () => {
+      it('preserves partial content on non-interrupt errors for a readable failed turn', async () => {
         // Use a stop-classified error (status 400) so the retry loop exits
         // immediately and the test doesn't burn the timeout on backoff sleeps.
         const mockChat = vi.fn().mockImplementation(async (_payload, options) => {
@@ -2547,7 +2653,13 @@ describe('RuntimeExecutors', () => {
           ),
         ).rejects.toThrow();
 
-        expect(mockMessageModel.update).not.toHaveBeenCalled();
+        expect(mockMessageModel.update).toHaveBeenCalledWith(
+          'asst-error',
+          expect.objectContaining({
+            content: 'Partial before crash',
+            metadata: expect.objectContaining({ failedMidStream: true }),
+          }),
+        );
       });
     });
   });
@@ -4788,6 +4900,7 @@ describe('RuntimeExecutors', () => {
       vi.mocked(initModelRuntimeFromDB).mockResolvedValue({ chat: mockChat } as any);
       const loadAgentState = vi
         .fn()
+        .mockResolvedValue({ status: 'interrupted' })
         .mockResolvedValueOnce({ status: 'running' })
         .mockResolvedValueOnce({ status: 'interrupted' });
 
@@ -4817,7 +4930,12 @@ describe('RuntimeExecutors', () => {
         await rejectionExpectation;
 
         expect(mockChat).toHaveBeenCalledTimes(1);
-        expect(loadAgentState).toHaveBeenCalledTimes(2);
+        expect(loadAgentState.mock.calls.length).toBeGreaterThanOrEqual(2);
+        expect(
+          mockStreamManager.publishStreamEvent.mock.calls.some(
+            ([, event]: PublishStreamEventCall) => event.type === 'error',
+          ),
+        ).toBe(false);
       } finally {
         vi.useRealTimers();
       }

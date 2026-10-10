@@ -2357,10 +2357,12 @@ export class AgentRuntimeService {
    * results written out-of-band (e.g. by a sub-agent completion bridge).
    */
   private async refreshMessagesFromDB(state: AgentState): Promise<AgentState['messages']> {
-    let postProcessUrl: ((path: string | null) => Promise<string>) | undefined;
+    let postProcessUrl:
+      ((path: string | null, file: { id?: string | null }) => Promise<string>) | undefined;
     try {
       const fileService = new FileService(this.serverDB, this.userId);
-      postProcessUrl = (path: string | null) => fileService.getFullFileUrl(path);
+      postProcessUrl = (path: string | null, file: { id?: string | null }) =>
+        fileService.getFileAccessUrl({ id: file.id, url: path });
     } catch {
       postProcessUrl = undefined;
     }
@@ -2525,6 +2527,7 @@ export class AgentRuntimeService {
       execVirtualSubAgent: this.delegate.execVirtualSubAgent,
       execGroupMember: this.delegate.execGroupMember,
       hookDispatcher,
+      getOperationStatus: async (id) => (await this.coordinator.getOperationMetadata(id))?.status,
       loadAgentState: this.coordinator.loadAgentState.bind(this.coordinator),
       messageModel: this.messageModel,
       operationId,

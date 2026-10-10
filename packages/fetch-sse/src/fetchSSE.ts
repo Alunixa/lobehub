@@ -399,6 +399,16 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
           return CLOSE_EVENT_SOURCE;
         }
 
+        case 'stop': {
+          if (typeof data === 'string' && data.length > 0) {
+            receivedCompletion = true;
+            if (data === 'abort') finishedType = 'abort';
+          }
+          // Usage and speed may follow stop, so continue reading them.
+          options.onMessageHandle?.({ reason: data, type: 'stop' });
+          break;
+        }
+
         case 'base64_image': {
           const id = 'tmp_img_' + nanoid();
           const item = { data, id, isBase64: true };
@@ -467,11 +477,6 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
 
         case 'reasoning_signature': {
           thinkingSignature = data;
-          break;
-        }
-
-        case 'stop': {
-          options.onMessageHandle?.({ reason: data, type: 'stop' });
           break;
         }
 
@@ -604,7 +609,7 @@ export const fetchSSE = async (url: string, options: RequestInit & FetchSSEOptio
           },
           message: receivedCompletion
             ? 'The model returned no visible output or tool calls'
-            : 'The response connection closed before any output was received',
+            : 'The response connection closed before completion',
           type: ChatErrorType.UnknownChatFetchError,
         });
       }

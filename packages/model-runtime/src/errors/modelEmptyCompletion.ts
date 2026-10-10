@@ -2,7 +2,7 @@ import { AgentRuntimeErrorType } from '@lobechat/types';
 
 /**
  * Thrown when the model returns an empty completion — no text content, no
- * reasoning, no tool calls, no images, and ~0 output tokens. This is the "empty
+ * visible tool calls or images, even if reasoning/output tokens were billed. This is the "empty
  * completion" failure mode: after a stalled tool loop the model effectively
  * gives up and emits a blank turn, which the harness used to silently finalize
  * to `done` while persisting an empty assistant message (empty bubble,
@@ -29,15 +29,8 @@ export class ModelEmptyError extends Error {
 }
 
 /**
- * Output-token count at or below this — combined with no content, reasoning,
- * tool calls, or images — marks a turn as an empty completion.
- * The observed failure case reported `out=1 token`.
- */
-const EMPTY_COMPLETION_MAX_OUTPUT_TOKENS = 1;
-
-/**
  * Detect the "empty completion" failure mode: the model returns a turn with no
- * text, no reasoning, no tool calls, no images, and ~0 output tokens —
+ * visible text, tool calls or images —
  * typically after a stalled tool loop where it effectively gives up. Callers
  * throw {@link ModelEmptyError} on a hit so the LLM retry loop re-attempts
  * instead of silently finalizing to `done` with a blank assistant message.
@@ -49,19 +42,12 @@ export const isEmptyModelCompletion = (params: {
   reasoning: string;
   toolCallCount: number;
 }): boolean => {
-  const { content, reasoning, toolCallCount, imageCount, outputTokens } = params;
+  const { content, toolCallCount, imageCount } = params;
 
   if (content.trim().length > 0) return false;
-  if (reasoning.trim().length > 0) return false;
   if (toolCallCount > 0) return false;
   if (imageCount > 0) return false;
-
-  // When the provider reports output tokens, only treat as empty if it's ~0.
-  // Guards against rare cases where structured output we don't accumulate into
-  // `content`/`reasoning` here (e.g. grounding) still consumed real tokens.
-  if (typeof outputTokens === 'number' && outputTokens > EMPTY_COMPLETION_MAX_OUTPUT_TOKENS) {
-    return false;
-  }
-
+  // Usage and internal reasoning are not a visible answer. They must not
+  // turn a truncated, rejected or parser-dropped reply into a silent success.
   return true;
 };

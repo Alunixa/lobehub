@@ -26,6 +26,27 @@ afterEach(() => {
 });
 
 describe('fetchSSE', () => {
+  it('accepts a real stop frame without requiring an invented done frame and still reads usage', async () => {
+    const onError = vi.fn();
+    const onFinish = vi.fn();
+    vi.mocked(fetchEventSource).mockImplementationOnce(async (_url, options) => {
+      await options.onopen(new Response('', { headers: { 'content-type': 'text/event-stream' } }));
+      options.onmessage?.({ event: 'text', data: JSON.stringify('answer'), id: '1' });
+      options.onmessage?.({ event: 'stop', data: JSON.stringify('end_turn'), id: '1' });
+      options.onmessage?.({
+        event: 'usage',
+        data: JSON.stringify({ totalOutputTokens: 34 }),
+        id: '1',
+      });
+    });
+    await fetchSSE('/', { onErrorHandle: onError, onFinish, responseAnimation: 'none' });
+    expect(onError).not.toHaveBeenCalled();
+    expect(onFinish).toHaveBeenCalledWith(
+      'answer',
+      expect.objectContaining({ type: 'done', usage: { totalOutputTokens: 34 } }),
+    );
+  });
+
   it('preserves a partial answer but reports an SSE connection that closes before done', async () => {
     const onError = vi.fn();
     const onFinish = vi.fn();

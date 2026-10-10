@@ -98,8 +98,10 @@ import {
   timing,
 } from '../executorHelpers';
 import { formatErrorEventData } from '../formatErrorEventData';
+import { prepareInferenceMessages } from '../inferenceMessages';
 import { classifyLLMError } from '../llmErrorClassification';
 import { createConversationParentMissingError } from '../messagePersistErrors';
+import { watchOperationInterruption } from '../operationInterruption';
 import { VISIBLE_OUTPUT_END_PUBLISHED_STEP_INDEX_METADATA_KEY } from '../visibleOutputEnd';
 import { routeInstructions } from './instructions';
 
@@ -235,6 +237,10 @@ export const callLlm =
       });
       log(`${stagePrefix} Created new assistant message: %s`, assistantMessageItem.id);
     }
+    const inferenceMessages = prepareInferenceMessages(
+      llmPayload.messages as UIChatMessage[],
+      assistantMessageItem.id,
+    );
 
     // Publish stream start event
     const stepLabel = (instruction as any).stepLabel;
@@ -258,7 +264,7 @@ export const callLlm =
       // Process messages through serverMessagesEngine to inject system role, knowledge, etc.
       // Rebuild params from agentConfig at execution time (capabilities built dynamically)
       const agentConfig = ctx.agentConfig;
-      let processedMessages;
+      let processedMessages: ChatStreamPayload['messages'];
       if (agentConfig) {
         const { loadModels } = await import('@/business/client/model-bank/loadModels');
         const builtinModels = await loadModels();
@@ -306,25 +312,32 @@ export const callLlm =
               vision?: boolean;
             }
           | undefined;
+        let userModelExtendParams: ExtendParamsType[] | undefined;
         if (ctx.serverDB && ctx.userId) {
           try {
             const aiModelModel = new AiModelModel(ctx.serverDB, ctx.userId, ctx.workspaceId);
             const userModel = await aiModelModel.findByIdAndProvider(model, provider);
             modelDisplayName ||= userModel?.displayName ?? undefined;
             userModelAbilities = userModel?.abilities ?? undefined;
+            userModelExtendParams = userModel?.settings?.extendParams ?? undefined;
           } catch (error) {
             log('Failed to resolve user model display name for %s: %O', model, error);
           }
         }
 
-        let modelExtendParams = readExtendParams(modelCard);
+        // Follow the user's explicit custom model configuration just as the
+        // client path does; an empty list deliberately disables these extras.
+        let modelExtendParams = userModelExtendParams ?? readExtendParams(modelCard);
 
         // Aggregation providers (e.g. `lobehub`) may serve a model without copying
         // its origin `settings.extendParams`. Fall back to the canonical model card
         // (matched by id across any provider) so reasoning/thinking params like
         // `thinkingLevel` still reach the model. Mirrors the client-side
         // `transformToAiModelList` re-namespacing behavior.
-        if (!modelExtendParams || modelExtendParams.length === 0) {
+        if (
+          userModelExtendParams === undefined &&
+          (!modelExtendParams || modelExtendParams.length === 0)
+        ) {
           modelExtendParams = readExtendParams(canonicalModelCard);
         }
 
@@ -385,8 +398,8 @@ export const callLlm =
         }
 
         const messagesForContext = shouldReplayAssistantReasoning
-          ? (llmPayload.messages as UIChatMessage[])
-          : stripAssistantReasoningForReplay(llmPayload.messages as UIChatMessage[]);
+          ? inferenceMessages
+          : stripAssistantReasoningForReplay(inferenceMessages);
 
         // Extract <refer_topic> tags from messages and fetch summaries.
         // Skip if messages already contain injected topic_reference_context
@@ -460,7 +473,15 @@ export const callLlm =
         // Fetch agent documents for context injection
         let agentDocuments: AgentContextDocument[] | undefined;
         const agentId = state.metadata?.agentId;
-        if (agentId && ctx.serverDB && ctx.userId) {
+        // The context engine suppresses document discovery in chat mode.
+        // Avoid loading hundreds of progressive document records just to
+        // discard their metadata again during that same request.
+        if (
+          agentConfig.chatConfig?.enableAgentMode !== false &&
+          agentId &&
+          ctx.serverDB &&
+          ctx.userId
+        ) {
           try {
             const agentDocService = new AgentDocumentsService(
               ctx.serverDB,
@@ -964,7 +985,7 @@ export const callLlm =
           processedMessages,
         );
       } else {
-        processedMessages = llmPayload.messages;
+        processedMessages = inferenceMessages as unknown as ChatStreamPayload['messages'];
       }
 
       // Initialize ModelRuntime (read user's keyVaults from database)
@@ -973,6 +994,7 @@ export const callLlm =
         ctx.userId!,
         provider,
         ctx.workspaceId,
+        { maxRetries: 0 },
       );
 
       // Construct ChatStreamPayload
@@ -1109,7 +1131,12 @@ export const callLlm =
           });
       };
 
-      const maxAttempts = resolveLLMMaxAttempts(provider);
+      // Conversational failures must be visible immediately, not rerun a
+      // multi-minute request up to six times behind a "thinking" indicator.
+      // Agentic runs retain the existing bounded retry policy; SDK retries
+      // are disabled above so the two retry layers cannot multiply.
+      const isPlainChat = agentConfig?.chatConfig?.enableAgentMode === false;
+      const maxAttempts = isPlainChat ? 1 : resolveLLMMaxAttempts(provider);
 
       // OTel chat span — wraps all retry attempts; TTFT recorded on the first
       // text/reasoning chunk regardless of which attempt produced it (the
@@ -1169,6 +1196,7 @@ export const callLlm =
               textBuffer = '';
               reasoningBuffer = '';
             };
+            const interruption = watchOperationInterruption(ctx);
 
             try {
               log(
@@ -1184,6 +1212,7 @@ export const callLlm =
               const response = await modelRuntime.chat(chatPayload, {
                 callback: {
                   onCompletion: async (data) => {
+                    if (data.error) streamError = data.error;
                     // Capture usage (may or may not include cost)
                     if (data.usage) {
                       currentStepUsage = data.usage;
@@ -1384,11 +1413,15 @@ export const callLlm =
                   topicId: state.metadata?.topicId,
                   trigger: state.metadata?.trigger,
                 },
+                signal: interruption.signal,
                 user: ctx.userId,
               });
 
               // Consume stream to ensure all callbacks complete execution
               await consumeStreamUntilDone(response);
+              if (interruption.signal.aborted || (await isOperationInterrupted(ctx))) {
+                throw new DOMException('Operation interrupted', 'AbortError');
+              }
 
               // If a stream error was captured via onError callback, throw to propagate the error
               if (streamError) {
@@ -1402,6 +1435,14 @@ export const callLlm =
                   unknown
                 >;
                 Object.assign(streamExecutionError, restStreamError);
+                // Preserve the original structured provider error all the way
+                // through state persistence and the SSE error event.
+                if (streamError.type !== undefined) {
+                  Object.assign(streamExecutionError, {
+                    _responseBody: streamError.body,
+                    errorType: streamError.type,
+                  });
+                }
                 throw streamExecutionError;
               }
 
@@ -1426,26 +1467,6 @@ export const callLlm =
                   ? (currentStepUsage as { totalOutputTokens?: unknown }).totalOutputTokens
                   : undefined;
 
-              if (
-                isEmptyModelCompletion({
-                  content,
-                  imageCount: imageList.length,
-                  outputTokens:
-                    typeof reportedOutputTokens === 'number' ? reportedOutputTokens : undefined,
-                  reasoning: thinkingContent,
-                  toolCallCount: toolsCalling.length + tool_calls.length,
-                }) &&
-                !(await isOperationInterrupted(ctx))
-              ) {
-                log(
-                  '[%s] Model returned an empty completion (attempt %d/%d) — throwing ModelEmptyError to retry',
-                  operationLogId,
-                  attempt,
-                  maxAttempts,
-                );
-                throw new ModelEmptyError();
-              }
-
               // Answer-in-thinking salvage: some thinking-mode models — notably
               // DeepSeek V4 over the Anthropic-compatible API — occasionally emit
               // the final user-facing answer inside the reasoning channel and stop
@@ -1459,6 +1480,7 @@ export const callLlm =
               const isTerminalNaturalStop =
                 currentStepFinishReason === 'end_turn' || currentStepFinishReason === 'stop';
               if (
+                isDeepSeekThinkingEligibleModel(model) &&
                 isTerminalNaturalStop &&
                 toolsCalling.length === 0 &&
                 tool_calls.length === 0 &&
@@ -1474,6 +1496,23 @@ export const callLlm =
                 content = thinkingContent;
                 thinkingContent = '';
                 answerSalvagedFromReasoning = true;
+              }
+
+              if (
+                isEmptyModelCompletion({
+                  content,
+                  imageCount:
+                    imageList.length + contentParts.filter((part) => part.type === 'image').length,
+                  outputTokens:
+                    typeof reportedOutputTokens === 'number' ? reportedOutputTokens : undefined,
+                  reasoning: thinkingContent,
+                  toolCallCount: toolsCalling.length + tool_calls.length,
+                }) &&
+                !(await isOperationInterrupted(ctx))
+              ) {
+                throw new ModelEmptyError(
+                  `Model returned no visible answer or tool calls (finishReason=${currentStepFinishReason ?? 'missing'}, reasoningChars=${thinkingContent.length}, outputTokens=${reportedOutputTokens ?? 'unknown'}).`,
+                );
               }
 
               log(
@@ -1718,6 +1757,7 @@ export const callLlm =
                 },
               };
             } catch (error) {
+              interruption.dispose();
               clearAttemptBuffers();
 
               const classified = classifyLLMError(error);
@@ -1725,7 +1765,11 @@ export const callLlm =
 
               const retryBudget = resolveLLMRetryBudget(provider, error);
 
-              if (!interrupted && shouldRetryLLM(classified.kind, attempt, retryBudget)) {
+              if (
+                !isPlainChat &&
+                !interrupted &&
+                shouldRetryLLM(classified.kind, attempt, retryBudget)
+              ) {
                 const delayMs = getLLMRetryDelayMs(attempt);
 
                 log(
@@ -1759,7 +1803,7 @@ export const callLlm =
               // to the client, clobbering the streamed content accumulated in memory.
               // We persist whatever partial content the stream callbacks already
               // accumulated so that reload/end snapshots reflect actual progress.
-              if (interrupted && (content || thinkingContent || toolsCalling.length > 0)) {
+              if (content || thinkingContent || toolsCalling.length > 0) {
                 try {
                   const persistedTools =
                     toolsCalling.length > 0
@@ -1771,7 +1815,9 @@ export const callLlm =
                   const interruptedReasoning = thinkingContent
                     ? { content: thinkingContent }
                     : undefined;
-                  const interruptedMetadata: Record<string, any> = { interruptedMidStream: true };
+                  const interruptedMetadata: Record<string, any> = interrupted
+                    ? { interruptedMidStream: true }
+                    : { failedMidStream: true };
                   if (currentStepUsage && typeof currentStepUsage === 'object') {
                     Object.assign(interruptedMetadata, currentStepUsage);
                     interruptedMetadata.usage = currentStepUsage;
@@ -1799,6 +1845,8 @@ export const callLlm =
               }
 
               throw error;
+            } finally {
+              interruption.dispose();
             }
           }
 
@@ -1816,11 +1864,13 @@ export const callLlm =
       }
     } catch (error) {
       // Publish error event
-      await streamManager.publishStreamEvent(operationId, {
-        data: formatErrorEventData(error, 'llm_execution'),
-        stepIndex,
-        type: 'error',
-      });
+      if (!(await isOperationInterrupted(ctx))) {
+        await streamManager.publishStreamEvent(operationId, {
+          data: formatErrorEventData(error, 'llm_execution'),
+          stepIndex,
+          type: 'error',
+        });
+      }
 
       console.error(
         `[StreamingLLMExecutor][${operationId}:${stepIndex}] LLM execution failed:`,

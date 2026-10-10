@@ -30,6 +30,7 @@ import { KeyVaultsGateKeeper } from '../KeyVaultsEncrypt';
 import apiKeyManager from './apiKeyManager';
 import { createCurrentTimeHook } from './currentTimeHook';
 import { createOwnedMediaHook } from './ownedMediaHook';
+import { createProviderConfigHook } from './providerConfigHook';
 
 export * from './trace';
 
@@ -419,6 +420,7 @@ export const initModelRuntimeFromDB = async (
   userId: string,
   provider: string,
   workspaceId?: string,
+  runtimeOptions?: { maxRetries?: number },
 ): Promise<ModelRuntime> => {
   // 1. Get user's provider configuration from database
   const aiProviderModel = new AiProviderModel(db, userId, workspaceId);
@@ -453,14 +455,21 @@ export const initModelRuntimeFromDB = async (
       timezone: pickString(general?.timezone),
     };
   });
+  const responseApiPreference = toRecord(toRecord(providerConfig)?.config)?.enableResponseApi;
   const hooks = mergeModelRuntimeHooks(
     mergeModelRuntimeHooks(
-      mergeModelRuntimeHooks(businessHooks, currentTimeHooks),
+      mergeModelRuntimeHooks(
+        mergeModelRuntimeHooks(businessHooks, currentTimeHooks),
+        createProviderConfigHook(
+          runtimeProvider,
+          typeof responseApiPreference === 'boolean' ? responseApiPreference : undefined,
+        ),
+      ),
       createOwnedMediaHook(db, userId, workspaceId),
     ),
     tracingHooks,
   );
 
   // 6. Initialize ModelRuntime with the payload and hooks
-  return initModelRuntimeWithUserPayload(provider, payload, { userId }, hooks);
+  return initModelRuntimeWithUserPayload(provider, payload, { ...runtimeOptions, userId }, hooks);
 };

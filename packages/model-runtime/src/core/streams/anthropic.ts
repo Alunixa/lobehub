@@ -1,8 +1,10 @@
 import type Anthropic from '@anthropic-ai/sdk';
 import type { Stream } from '@anthropic-ai/sdk/streaming';
 import type { ChatCitationItem } from '@lobechat/types';
+import { isRecord, pickNonEmptyString, toRecord } from '@lobechat/utils/object';
 
 import type { ChatStreamCallbacks } from '../../types';
+import { AgentRuntimeErrorType } from '../../types/error';
 import { convertAnthropicUsage } from '../usageConverters';
 import type {
   ChatPayloadForTransformStream,
@@ -14,15 +16,32 @@ import type {
 import {
   convertIterableToStream,
   createCallbacksTransformer,
+  createFirstErrorHandleTransformer,
   createSSEProtocolTransformer,
   createTokenSpeedCalculator,
+  FIRST_CHUNK_ERROR_KEY,
 } from './protocol';
 
 export const transformAnthropicStream = (
-  chunk: Anthropic.MessageStreamEvent,
+  chunk:
+    Anthropic.MessageStreamEvent | { error?: { message?: string; type?: string }; type: 'error' },
   context: StreamContext,
   payload?: ChatPayloadForTransformStream,
 ): StreamProtocolChunk | StreamProtocolChunk[] => {
+  // SDK iterator failures are encoded by convertIterableToStream. Preserve
+  // them as errors instead of treating the envelope as unhandled stream data.
+  if (isRecord(chunk) && FIRST_CHUNK_ERROR_KEY in chunk) {
+    const failure = toRecord(chunk)!;
+    return {
+      data: {
+        body: chunk,
+        message: pickNonEmptyString(failure.message) || 'Provider stream request failed',
+        type: failure.errorType || AgentRuntimeErrorType.ProviderBizError,
+      },
+      id: context.id,
+      type: 'error',
+    };
+  }
   // maybe need another structure to add support for multiple choices
   switch (chunk.type) {
     case 'message_start': {
@@ -49,7 +68,11 @@ export const transformAnthropicStream = (
         }
 
         case 'text': {
-          return { data: chunk.content_block.text, id: context.id, type: 'data' };
+          return {
+            data: chunk.content_block.text,
+            id: context.id,
+            type: chunk.content_block.text ? 'text' : 'data',
+          };
         }
 
         case 'server_tool_use':
@@ -239,6 +262,19 @@ export const transformAnthropicStream = (
       ] as any;
     }
 
+    case 'error': {
+      const error = (chunk as unknown as { error?: { message?: string; type?: string } }).error;
+      return {
+        data: {
+          body: { error, model: payload?.model, provider: payload?.provider },
+          message: error?.message || 'Provider returned an error in the response stream',
+          type: AgentRuntimeErrorType.ProviderBizError,
+        },
+        id: context.id,
+        type: 'error',
+      };
+    }
+
     default: {
       return { data: chunk, id: context.id, type: 'data' };
     }
@@ -250,11 +286,18 @@ export interface AnthropicStreamOptions {
   enableStreaming?: boolean; // Select TPS calculation method (pass false for non-streaming)
   inputStartAt?: number;
   payload?: ChatPayloadForTransformStream;
+  requireTerminalEvent?: boolean;
 }
 
 export const AnthropicStream = (
   stream: Stream<Anthropic.MessageStreamEvent> | ReadableStream,
-  { callbacks, inputStartAt, enableStreaming = true, payload }: AnthropicStreamOptions = {},
+  {
+    callbacks,
+    inputStartAt,
+    enableStreaming = true,
+    payload,
+    requireTerminalEvent = true,
+  }: AnthropicStreamOptions = {},
 ) => {
   const streamStack: StreamContext = { id: '' };
 
@@ -267,6 +310,7 @@ export const AnthropicStream = (
     transformAnthropicStream(chunk, ctx, payload);
 
   return readableStream
+    .pipeThrough(createFirstErrorHandleTransformer(undefined, payload?.provider))
     .pipeThrough(
       createTokenSpeedCalculator(transformWithPayload, {
         enableStreaming,
@@ -274,6 +318,6 @@ export const AnthropicStream = (
         streamStack,
       }),
     )
-    .pipeThrough(createSSEProtocolTransformer((c) => c, streamStack))
+    .pipeThrough(createSSEProtocolTransformer((c) => c, streamStack, { requireTerminalEvent }))
     .pipeThrough(createCallbacksTransformer(callbacks, { streamStack }));
 };

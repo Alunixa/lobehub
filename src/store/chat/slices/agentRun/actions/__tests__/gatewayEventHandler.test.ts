@@ -792,6 +792,24 @@ describe('createGatewayEventHandler', () => {
   });
 
   describe('agent_runtime_end', () => {
+    it('shows the persisted error when reconnect receives only an error terminal, not the original error event', async () => {
+      const store = createMockStore();
+      const handler = createHandler(store);
+      const error = {
+        type: 'ProviderBizError',
+        message: 'request failed',
+        body: { error: { type: 'upstream_error', message: 'request failed' } },
+      };
+      handler(makeEvent('agent_runtime_end', { reason: 'error', error }));
+      await flush();
+      expect(store.internal_dispatchMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'msg-initial', value: { error } }),
+        expect.anything(),
+      );
+      expect(store.failOperation).toHaveBeenCalled();
+      expect(store.markTopicUnread).not.toHaveBeenCalled();
+    });
+
     it('should complete operation and refresh messages', async () => {
       const store = createMockStore();
       const handler = createHandler(store);

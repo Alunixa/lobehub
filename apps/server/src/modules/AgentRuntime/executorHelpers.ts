@@ -174,8 +174,7 @@ export const buildServerVirtualSubAgentRunner = (
         title: description,
         topicId,
       })) as
-        | { error?: string; operationId?: string; success?: boolean; threadId?: string }
-        | undefined;
+        { error?: string; operationId?: string; success?: boolean; threadId?: string } | undefined;
 
       // 3. If the child op never started, no completion bridge will fire — parking
       //    the parent on it would hang forever. Drop the placeholder and signal
@@ -409,10 +408,12 @@ export const getLLMRetryDelayMs = (attempt: number) =>
   Math.min(LLM_RETRY_BASE_DELAY_MS * 2 ** Math.max(attempt - 1, 0), LLM_RETRY_MAX_DELAY_MS);
 
 export const isOperationInterrupted = async (ctx: RuntimeExecutorContext) => {
-  if (!ctx.loadAgentState) return false;
+  if (!ctx.getOperationStatus && !ctx.loadAgentState) return false;
 
   try {
-    const latestState = await ctx.loadAgentState(ctx.operationId);
+    if (ctx.getOperationStatus)
+      return (await ctx.getOperationStatus(ctx.operationId)) === 'interrupted';
+    const latestState = await ctx.loadAgentState!(ctx.operationId);
     return latestState?.status === 'interrupted';
   } catch (error) {
     console.error('[RuntimeExecutors] Failed to load operation state for retry guard:', error);

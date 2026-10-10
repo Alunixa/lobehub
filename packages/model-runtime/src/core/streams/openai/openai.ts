@@ -183,6 +183,7 @@ const transformOpenAIStream = (
     }
 
     const item = chunk.choices[0];
+    if (item.finish_reason) streamContext.terminalReason = item.finish_reason;
 
     if (item && typeof item.delta?.tool_calls === 'object' && item.delta.tool_calls?.length > 0) {
       // tools calling
@@ -683,6 +684,8 @@ export interface OpenAIStreamOptions {
   enableStreaming?: boolean; // Choose TPS calculation method (pass false for non-streaming)
   inputStartAt?: number;
   payload?: ChatPayloadForTransformStream;
+  /** Disable only when intentionally decoding a nonterminal frame fragment. */
+  requireTerminalEvent?: boolean;
 }
 
 export const OpenAIStream = (
@@ -693,6 +696,7 @@ export const OpenAIStream = (
     payload,
     inputStartAt,
     enableStreaming = true,
+    requireTerminalEvent = true,
   }: OpenAIStreamOptions = {},
 ) => {
   const streamStack: StreamContext = {
@@ -720,7 +724,7 @@ export const OpenAIStream = (
           streamStack,
         }),
       )
-      .pipeThrough(createSSEProtocolTransformer((c) => c, streamStack))
+      .pipeThrough(createSSEProtocolTransformer((c) => c, streamStack, { requireTerminalEvent }))
       .pipeThrough(createCallbacksTransformer(callbacks, { streamStack }))
   );
 };

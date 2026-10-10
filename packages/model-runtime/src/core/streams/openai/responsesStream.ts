@@ -25,6 +25,11 @@ const transformOpenAIStream = (
   chunk:
     | OpenAI.Responses.ResponseStreamEvent
     | {
+        delta: string;
+        item_id: string;
+        type: 'response.reasoning_text.delta';
+      }
+    | {
         annotation: {
           end_index: number;
           start_index: number;
@@ -207,6 +212,12 @@ const transformOpenAIStream = (
         return { data: chunk.delta, id: chunk.item_id, type: 'reasoning' };
       }
 
+      // Some OpenAI-compatible endpoints stream raw reasoning rather than
+      // a summary. It belongs in the thinking UI, never the visible answer.
+      case 'response.reasoning_text.delta': {
+        return { data: chunk.delta, id: chunk.item_id, type: 'reasoning' };
+      }
+
       case 'response.output_text.annotation.added': {
         // OpenAI SDK v6 types the annotation payload as `unknown`; narrow to the URL-citation shape we read.
         const citations = chunk.annotation as { title?: string; url?: string };
@@ -296,6 +307,7 @@ export const OpenAIResponsesStream = (
     bizErrorTypeTransformer,
     inputStartAt,
     enableStreaming = true,
+    requireTerminalEvent = true,
     payload,
   }: OpenAIStreamOptions = {},
 ) => {
@@ -323,7 +335,7 @@ export const OpenAIResponsesStream = (
           streamStack,
         }),
       )
-      .pipeThrough(createSSEProtocolTransformer((c) => c, streamStack))
+      .pipeThrough(createSSEProtocolTransformer((c) => c, streamStack, { requireTerminalEvent }))
       .pipeThrough(createCallbacksTransformer(callbacks, { streamStack }))
   );
 };

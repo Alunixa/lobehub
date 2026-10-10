@@ -103,6 +103,21 @@ describe('server-owned stream subscriptions', () => {
     expect(text).toContain('"reason":"done"');
   });
 
+  it('preserves the durable error if the original error event is no longer retained', async () => {
+    const stream = createResumableAgentStream({
+      getStatus: async () => ({
+        status: 'error',
+        error: { type: 'ProviderBizError', message: 'request failed' },
+      }),
+      lastEventId: '0',
+      manager: manager([]),
+      operationId: 'op',
+    });
+    const text = await new Response(stream).text();
+    expect(text).toContain('"reason":"error"');
+    expect(text).toContain('"message":"request failed"');
+  });
+
   it('delivers an intermediate chunk before the terminal event and closes the read connection', async () => {
     const closeReadConnection = vi.fn(async () => {});
     const readEventsOnce = vi

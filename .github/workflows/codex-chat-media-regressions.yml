@@ -33,6 +33,16 @@ jobs:
       - run: pnpm install
       - name: Chat stream and media regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/stream-reliability/vitest.config.mts --silent=passed-only
+      - name: Request history and failure-state regressions
+        run: node node_modules/vitest/vitest.mjs run --config tests/chat-diagnostics/vitest.config.mts --silent=passed-only
+      - name: Provider stream decoder regressions
+        working-directory: packages/model-runtime
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/core/streams/openai/openai.test.ts \
+            src/core/streams/openai/responsesStream.test.ts \
+            src/core/streams/anthropic.test.ts \
+            src/core/streams/protocol.test.ts
       - name: Topic operation ownership and cleanup regressions
         working-directory: packages/database
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts

@@ -23,7 +23,10 @@ const getStream = checkAuth(async (request, { serverDB, userId }) => {
   const manager = createStreamEventManager();
   return new Response(
     createResumableAgentStream({
-      getStatus: async () => (await operations.findById(operationId))?.status,
+      getStatus: async () => {
+        const persisted = await operations.findById(operationId);
+        return persisted ? { error: persisted.error, status: persisted.status } : undefined;
+      },
       lastEventId,
       manager,
       operationId,

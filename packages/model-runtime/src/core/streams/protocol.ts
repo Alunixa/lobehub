@@ -40,6 +40,8 @@ export interface StreamContext {
    * O series models need a condition to separate part
    */
   startReasoning?: boolean;
+  /** Terminal observed in a frame that also carried text/tool deltas. */
+  terminalReason?: string;
   thinking?: {
     id: string;
     name: string;
@@ -401,8 +403,17 @@ export const createSSEProtocolTransformer = (
 
   return new TransformStream({
     flush(controller) {
+      // A compatible provider can put finish_reason and the final text/tool
+      // delta in the same frame. Preserve both: clients still need a stop
+      // marker after the content, even if the provider omits a usage frame.
+      if (requireTerminalEvent && !hasTerminalEvent && streamStack?.terminalReason) {
+        controller.enqueue(`id: ${streamStack.id || 'stream_end'}\n`);
+        controller.enqueue('event: stop\n');
+        controller.enqueue(`data: ${JSON.stringify(streamStack.terminalReason)}\n\n`);
+        return;
+      }
       // If the upstream closes without sending a terminal event, emit a final error event
-      if (requireTerminalEvent && !hasTerminalEvent) {
+      if (requireTerminalEvent && !hasTerminalEvent && !streamStack?.terminalReason) {
         const id = streamStack?.id || 'stream_end';
         const data = {
           body: { name: 'Stream parsing error', reason: 'unexpected_end' },
@@ -426,7 +437,11 @@ export const createSSEProtocolTransformer = (
         controller.enqueue(`data: ${JSON.stringify(data)}\n\n`);
 
         // mark terminal when receiving any of these events
-        if (type === 'stop' || type === 'usage' || type === 'error' || type === 'done') {
+        if (
+          (type === 'stop' && typeof data === 'string' && data.length > 0) ||
+          type === 'error' ||
+          type === 'done'
+        ) {
           hasTerminalEvent = true;
         }
       });
@@ -457,7 +472,7 @@ export function createCallbacksTransformer(
     async flush(): Promise<void> {
       const data: OnFinishData = {
         error: streamError,
-        finishReason,
+        finishReason: finishReason || options?.streamStack?.terminalReason,
         grounding,
         speed,
         text: aggregatedText,
@@ -492,15 +507,9 @@ export function createCallbacksTransformer(
       }
       // if the message is a data chunk, handle the callback
       else if (chunk.startsWith('data:')) {
-        // `base64_image` payloads are raw data-URIs (`data:image/png;base64,...`)
-        // that contain `data:` themselves, which the legacy `split('data:')[1]`
-        // corrupts (it splits on the embedded marker too). Strip only the leading
-        // field marker for that type; every other event type keeps the original
-        // split path unchanged for compatibility.
-        const content =
-          currentType === 'base64_image'
-            ? chunk.slice('data:'.length).trim()
-            : chunk.split('data:')[1].trim();
+        // Strip the field marker once. Text, tool arguments and media parts
+        // can themselves contain "data:"; splitting on it drops real output.
+        const content = chunk.slice('data:'.length).trim();
 
         const data = safeParseJSON(content) as any;
 

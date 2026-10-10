@@ -32,10 +32,7 @@ export const formatErrorEventData = (error: unknown, phase: string) => {
   const payload = toRecord(error);
   const rawPayloadErrorType = payload?.errorType ?? payload?.type;
   const payloadErrorType = isErrorType(rawPayloadErrorType) ? rawPayloadErrorType : undefined;
-  const structuredError =
-    error instanceof Error || payloadErrorType === undefined
-      ? undefined
-      : formatErrorForState(payload);
+  const structuredError = payloadErrorType === undefined ? undefined : formatErrorForState(error);
   const body = structuredError?.body;
   const hasPayloadErrorType = payloadErrorType !== undefined;
   let errorType = hasPayloadErrorType
