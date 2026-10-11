@@ -504,3 +504,9 @@
 - **Failure-path rule**: initialize report sections before launch and persist the original
   exception in the report. A reporting error in `finally` must never replace the actual
   browser, navigation, authentication, or subscription failure.
+
+### E8. Validate the mobile entry and enabled-model state before studio interactions
+
+- **Situation**: a read-only working-tree studio preview uses an authenticated production backend, while the installed UI package differs from the repository pin.
+- **Doesn't work**: loading desktop HTML at a phone viewport; assuming a selected default video model is enabled; importing a directory service as `/src/services/chat.ts`; using non-relative TS path aliases or the removed `baseUrl` option; screenshotting only after leaving the failure/empty state.
+- **Works**: serve `index.mobile.html` for the mobile browser, render against an isolated copy of the pinned UI, use relative alias paths, and resolve the actual service entry (`/src/services/chat/index.ts`). First verify the real no-model guard; inject enabled models and billable-service fixtures only in the disposable browser context. Keep production writes blocked. Capture empty/error evidence before the return action, assert Escape hides the menu, wait for upload state and rendered buttons to settle, and inspect the screenshots. A fixture video playback is not provider-generation evidence.
