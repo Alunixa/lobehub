@@ -4,8 +4,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiAgentService } from '../index';
 
 // Use vi.hoisted to ensure mock functions are available before vi.mock runs
-const { mockMessageCreate } = vi.hoisted(() => ({
-  mockMessageCreate: vi.fn(),
+const { mockMessageCreate, mockMessagesEngine, mockOperationCreate, mockRealtimeNotify } =
+  vi.hoisted(() => ({
+    mockMessageCreate: vi.fn(),
+    mockMessagesEngine: vi.fn(),
+    mockOperationCreate: vi.fn(),
+    mockRealtimeNotify: vi.fn().mockResolvedValue(undefined),
+  }));
+
+vi.mock('@/server/services/message/realtime', () => ({
+  publishMessageRealtimeUpdate: mockRealtimeNotify,
 }));
 
 // Mock trusted client to avoid server-side env access
@@ -94,12 +102,7 @@ vi.mock('@/database/models/chatGroup', () => ({
 // Mock AgentRuntimeService
 vi.mock('@/server/services/agentRuntime', () => ({
   AgentRuntimeService: vi.fn().mockImplementation(() => ({
-    createOperation: vi.fn().mockResolvedValue({
-      autoStarted: true,
-      messageId: 'queue-msg-1',
-      operationId: 'op-123',
-      success: true,
-    }),
+    createOperation: mockOperationCreate,
   })),
 }));
 
@@ -130,7 +133,7 @@ vi.mock('@/server/modules/Mecha', () => ({
     generateToolsDetailed: vi.fn().mockReturnValue({ enabledToolIds: [], tools: [] }),
     getEnabledPluginManifests: vi.fn().mockReturnValue(new Map()),
   }),
-  serverMessagesEngine: vi.fn().mockResolvedValue([{ content: 'test', role: 'user' }]),
+  serverMessagesEngine: mockMessagesEngine,
 }));
 
 // Mock deviceGateway
@@ -170,6 +173,16 @@ describe('AiAgentService.execAgent - threadId handling', () => {
     // Explicitly clear the shared mock to prevent state pollution between tests
     mockMessageCreate.mockClear();
     mockMessageCreate.mockResolvedValue({ id: 'msg-1' });
+    mockMessagesEngine.mockReset();
+    mockMessagesEngine.mockResolvedValue([{ content: 'test', role: 'user' }]);
+    mockRealtimeNotify.mockClear();
+    mockOperationCreate.mockReset();
+    mockOperationCreate.mockResolvedValue({
+      autoStarted: true,
+      messageId: 'queue-msg-1',
+      operationId: 'op-123',
+      success: true,
+    });
 
     service = new AiAgentService(mockDb, userId);
   });
@@ -178,6 +191,51 @@ describe('AiAgentService.execAgent - threadId handling', () => {
     // Ensure cleanup after each test
     mockMessageCreate.mockClear();
   });
+
+  it('notifies peers after persisting the turn without waiting for blocked operation startup', async () => {
+    const pending = Promise.withResolvers<{
+      autoStarted: boolean;
+      messageId: string;
+      operationId: string;
+      success: boolean;
+    }>();
+    mockOperationCreate.mockReturnValueOnce(pending.promise);
+    let completed = false;
+    const run = service
+      .execAgent({
+        agentId: 'agent-1',
+        appContext: { threadId: 'thread-1', topicId: 'topic-1' },
+        prompt: 'new mobile message',
+      })
+      .finally(() => {
+        completed = true;
+      });
+    await vi.waitFor(() =>
+      expect(mockRealtimeNotify).toHaveBeenCalledWith(
+        expect.objectContaining({ userId }),
+        { agentId: 'agent-1', groupId: undefined, threadId: 'thread-1', topicId: 'topic-1' },
+        'create',
+      ),
+    );
+    expect(mockMessageCreate).toHaveBeenCalledTimes(2);
+    expect(completed).toBe(false);
+    await vi.waitFor(() => expect(mockOperationCreate).toHaveBeenCalled());
+    expect(mockRealtimeNotify.mock.invocationCallOrder[0]).toBeLessThan(
+      mockOperationCreate.mock.invocationCallOrder[0],
+    );
+    pending.resolve({
+      autoStarted: true,
+      messageId: 'queue-msg-1',
+      operationId: 'op-123',
+      success: true,
+    });
+    await run;
+    expect(mockRealtimeNotify).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ threadId: 'thread-1', topicId: 'topic-1' }),
+      'update',
+    );
+  }, 10_000);
 
   describe('when threadId is provided in appContext', () => {
     it('should pass threadId when creating user message', async () => {

@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   dispose: vi.fn(),
   mutate: vi.fn(),
   streaming: false,
+  syncTopicMetadata: vi.fn().mockResolvedValue(undefined),
   subscribe: vi.fn(),
 }));
 
@@ -19,7 +20,7 @@ vi.mock('@/services/realtime/messageSubscription', () => ({
   subscribeToMessageUpdates: mocks.subscribe,
 }));
 vi.mock('@/store/chat', () => ({
-  getChatStoreState: () => ({}),
+  getChatStoreState: () => ({ syncTopicMetadata: mocks.syncTopicMetadata }),
   useChatStore: (selector: (state: unknown) => unknown) => selector({}),
 }));
 vi.mock('@/store/chat/selectors', () => ({
@@ -34,6 +35,7 @@ describe('MessageRealtimeSync', () => {
     mocks.dispose.mockReset();
     mocks.mutate.mockReset();
     mocks.streaming = false;
+    mocks.syncTopicMetadata.mockClear();
     mocks.subscribe.mockReset();
     mocks.subscribe.mockImplementation((_context, callbacks) => {
       mocks.callbacks = callbacks;
@@ -49,6 +51,7 @@ describe('MessageRealtimeSync', () => {
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);
     act(() => mocks.callbacks!.onUpdate());
     expect(mocks.mutate).toHaveBeenLastCalledWith(['message:list', context, 1]);
+    expect(mocks.syncTopicMetadata).toHaveBeenCalledWith(context);
 
     mocks.streaming = true;
     view.rerender(<MessageRealtimeSync context={{ ...context }} />);
@@ -56,6 +59,7 @@ describe('MessageRealtimeSync', () => {
     expect(mocks.subscribe).toHaveBeenCalledTimes(1);
     act(() => mocks.callbacks!.onUpdate());
     expect(mocks.mutate).toHaveBeenCalledTimes(1);
+    expect(mocks.syncTopicMetadata).toHaveBeenCalledTimes(2);
 
     mocks.streaming = false;
     view.rerender(<MessageRealtimeSync context={{ ...context }} />);

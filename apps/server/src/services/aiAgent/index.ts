@@ -127,6 +127,7 @@ import type { ConversationHistoryEntry } from '@/server/services/heterogeneousAg
 import { buildCloudHeteroContext } from '@/server/services/heterogeneousAgent/cloudHeteroContext';
 import { buildRemoteDeviceHeteroContext } from '@/server/services/heterogeneousAgent/remoteDeviceHeteroContext';
 import { MarketService } from '@/server/services/market';
+import { publishMessageRealtimeUpdate } from '@/server/services/message/realtime';
 import { markdownToTxt } from '@/utils/markdownToTxt';
 
 import { resolveDeviceAccessPolicy } from './deviceAccessPolicy';
@@ -1541,6 +1542,15 @@ export class AiAgentService {
     selfMessageIds.add(assistantMessageRecord.id);
     assistantMessageRef.current = assistantMessageRecord.id;
     log('execAgent: created assistant message %s', assistantMessageRecord.id);
+    const realtimeScope = { userId: this.userId, workspaceId: this.workspaceId };
+    const realtimeContext = {
+      agentId: persistAgentId,
+      groupId: appContext?.groupId,
+      threadId: appContext?.threadId,
+      topicId,
+    };
+    // Notify peers before context preparation or the first model call can block.
+    void publishMessageRealtimeUpdate(realtimeScope, realtimeContext, 'create');
 
     // Agent Signal is a governance side-channel (feedback / self-iteration). It
     // only applies to the server-side LLM pipeline, so it is intentionally NOT
@@ -3514,6 +3524,7 @@ export class AiAgentService {
           threadId: appContext?.threadId ?? undefined,
         },
       });
+      void publishMessageRealtimeUpdate(realtimeScope, realtimeContext, 'update');
 
       // Generate a short-lived JWT for Gateway WebSocket authentication
       let gatewayToken: string | undefined;
@@ -3563,6 +3574,7 @@ export class AiAgentService {
           type: 'ServerAgentRuntimeError', // ServiceUnavailable - agent runtime service unavailable
         },
       });
+      void publishMessageRealtimeUpdate(realtimeScope, realtimeContext, 'update');
 
       // Return result with error status - messages are valid but agent didn't start
       return {

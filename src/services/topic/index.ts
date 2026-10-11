@@ -17,6 +17,8 @@ type UpdateTopicMetadataInput = Omit<Partial<ChatTopicMetadata>, 'onboardingSess
 };
 
 export class TopicService {
+  getTopicDetail = (id: string) => lambdaClient.topic.getTopicDetail.query({ id });
+
   clearRunningOperation = (id: string, operationId: string) =>
     lambdaClient.topic.clearRunningOperation.mutate({ id, operationId });
 

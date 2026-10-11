@@ -41,6 +41,7 @@ vi.mock('@/services/topic', () => ({
     updateTopic: vi.fn(),
     batchRemoveTopics: vi.fn(),
     getTopics: vi.fn(),
+    getTopicDetail: vi.fn(),
     searchTopics: vi.fn(),
   },
 }));
@@ -102,6 +103,47 @@ afterEach(() => {
 });
 
 describe('topic action', () => {
+  describe('syncTopicMetadata', () => {
+    it('updates the owning topic after navigation without borrowing the active group scope', async () => {
+      const ownerKey = topicMapKey({ agentId: 'agent-owner' });
+      const activeKey = topicMapKey({ agentId: 'agent-current', groupId: 'group-current' });
+      const original = { id: 'topic-owner', metadata: {}, title: 'Owner topic' } as ChatTopic;
+      const active = { id: 'topic-current', metadata: {}, title: 'Current topic' } as ChatTopic;
+      useChatStore.setState({
+        activeAgentId: 'agent-current',
+        activeGroupId: 'group-current',
+        topicDataMap: {
+          [ownerKey]: { currentPage: 0, hasMore: false, items: [original], pageSize: 20, total: 1 },
+          [activeKey]: { currentPage: 0, hasMore: false, items: [active], pageSize: 20, total: 1 },
+        },
+      });
+      const metadata = {
+        runningOperation: { assistantMessageId: 'answer-1', operationId: 'operation-1' },
+      };
+      vi.mocked(topicService.getTopicDetail).mockResolvedValueOnce({
+        ...original,
+        createdAt: new Date(),
+        metadata,
+        updatedAt: new Date(),
+      } as Awaited<ReturnType<typeof topicService.getTopicDetail>>);
+      await useChatStore.getState().syncTopicMetadata({
+        agentId: 'agent-owner',
+        topicId: 'topic-owner',
+      });
+      expect(useChatStore.getState().topicDataMap[ownerKey].items[0].metadata).toEqual(metadata);
+      expect(useChatStore.getState().topicDataMap[activeKey].items[0]).toEqual(active);
+    });
+
+    it('ignores a topic that is no longer available instead of clearing another conversation', async () => {
+      vi.mocked(topicService.getTopicDetail).mockResolvedValueOnce(null);
+      await useChatStore.getState().syncTopicMetadata({
+        agentId: 'agent-owner',
+        topicId: 'deleted-topic',
+      });
+      expect(useChatStore.getState().topicDataMap).toEqual({});
+    });
+  });
+
   describe('openNewTopicOrSaveTopic', () => {
     it('should call switchTopic if activeTopicId exists', async () => {
       const { result } = renderHook(() => useChatStore());

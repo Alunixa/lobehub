@@ -1,6 +1,7 @@
 import isEqual from 'fast-deep-equal';
 import { current, produce } from 'immer';
 
+import type { TopicMapScope } from '@/store/chat/utils/topicMapKey';
 import { type ChatTopic, type CreateTopicParams } from '@/types/topic';
 
 /**
@@ -13,6 +14,7 @@ import { type ChatTopic, type CreateTopicParams } from '@/types/topic';
 interface ChatTopicScope {
   agentId?: string;
   groupId?: string;
+  scope?: TopicMapScope;
 }
 
 type AddChatTopicAction = ChatTopicScope & {

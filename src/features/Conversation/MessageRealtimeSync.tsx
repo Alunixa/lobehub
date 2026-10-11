@@ -34,6 +34,11 @@ const MessageRealtimeSync = memo<MessageRealtimeSyncProps>(({ context, disabled 
     !context.topicShareId &&
     Boolean((context.agentId || context.groupId || context.sessionId) && context.topicId);
   const refresh = useEventCallback(() => {
+    void getChatStoreState()
+      .syncTopicMetadata(context)
+      .catch((error) => {
+        console.error('Failed to refresh synchronized topic metadata:', error);
+      });
     if (operationSelectors.isAgentRuntimeRunningByContext(context)(getChatStoreState())) {
       pendingRefresh.current = true;
       return;

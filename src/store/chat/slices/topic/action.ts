@@ -6,7 +6,12 @@ import {
   TOPIC_TITLE_JSON_SCHEMA,
   TOPIC_TITLE_PROMPT_VERSION,
 } from '@lobechat/prompts';
-import { type ChatTopicMetadata, type MessageMapScope, type UIChatMessage } from '@lobechat/types';
+import {
+  type ChatTopicMetadata,
+  type ConversationContext,
+  type MessageMapScope,
+  type UIChatMessage,
+} from '@lobechat/types';
 import isEqual from 'fast-deep-equal';
 import { t } from 'i18next';
 import { type SWRResponse } from 'swr';
@@ -997,6 +1002,23 @@ export class ChatTopicActionImpl {
     );
   };
 
+  syncTopicMetadata = async (context: ConversationContext): Promise<void> => {
+    if (!context.topicId) return;
+    const topic = await topicService.getTopicDetail(context.topicId);
+    if (!topic) return;
+    this.#get().internal_dispatchTopic(
+      {
+        agentId: context.agentId,
+        groupId: context.groupId ?? undefined,
+        id: context.topicId,
+        scope: context.groupId ? (context.agentId ? 'group_agent' : 'group') : 'agent',
+        type: 'updateTopic',
+        value: { metadata: topic.metadata ?? {} },
+      },
+      'syncTopicMetadata',
+    );
+  };
+
   refreshTopic = async (): Promise<void> => {
     const { activeAgentId, activeGroupId } = this.#get();
     // Use topicMapKey to generate the same key used in useFetchTopics
@@ -1144,6 +1166,7 @@ export class ChatTopicActionImpl {
     const key = topicMapKey({
       agentId: payload.agentId ?? activeAgentId,
       groupId: payload.groupId ?? activeGroupId,
+      scope: payload.scope,
     });
     const currentData = this.#get().topicDataMap[key];
     const nextItems = topicReducer(currentData?.items, payload);

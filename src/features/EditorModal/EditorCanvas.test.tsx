@@ -4,7 +4,9 @@
 import { type IEditor } from '@lobehub/editor';
 import { moment } from '@lobehub/editor';
 import { useEditor } from '@lobehub/editor/react';
+import { ConfigProvider } from '@lobehub/ui';
 import { act, cleanup, render, screen } from '@testing-library/react';
+import * as motion from 'motion/react-m';
 import { memo, useEffect, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -60,7 +62,11 @@ const TestWrapper = memo<TestWrapperProps>(({ defaultValue, editorData, onEditor
 
   if (!editor) return null;
 
-  return <EditorCanvas defaultValue={defaultValue} editor={editor} editorData={editorData} />;
+  return (
+    <ConfigProvider motion={motion}>
+      <EditorCanvas defaultValue={defaultValue} editor={editor} editorData={editorData} />
+    </ConfigProvider>
+  );
 });
 
 TestWrapper.displayName = 'EditorModalEditorCanvasTestWrapper';

@@ -50,6 +50,8 @@ jobs:
             src/features/ChatInput/ActionBar/Token/contextUsage.test.ts \
             src/hooks/useTokenCount.test.tsx \
             src/store/chat/slices/message/action.test.ts \
+            src/store/chat/slices/topic/action.test.ts \
+            apps/server/src/services/aiAgent/__tests__/execAgent.threadId.test.ts \
             scripts/serverLauncher/realtimeServer.test.mjs
       - name: Authenticated realtime bridge integration
         run: node node_modules/vitest/vitest.mjs run --silent=passed-only scripts/serverLauncher/realtimeServer.integration.test.mjs
