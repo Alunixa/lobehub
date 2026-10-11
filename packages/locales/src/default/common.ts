@@ -18,6 +18,11 @@ export default {
   'mediaStudio.generateVideo': 'Generate video',
   'mediaStudio.videoResultsDescription':
     'Your video tasks, progress, and completed clips appear here.',
+  'mediaStudio.searchVideoHistory': 'Search video projects',
+  'mediaStudio.videoHistoryEmpty': 'No video projects yet. Create your first clip.',
+  'mediaStudio.videoTaskSummary':
+    '{{success}} completed · {{pending}} generating · {{failed}} failed',
+  'mediaStudio.loadingVideos': 'Loading videos…',
   'mobile.uploadReference': 'Upload or replace a reference image',
   'mobile.agentProfile': 'Agent profile and runtime',
   'mobile.autoSave': 'Changes are saved automatically',

@@ -18,7 +18,10 @@ import VideoModelItem from '@/routes/(main)/(create)/video/features/ConfigPanel/
 import { useVideoReferenceUpload } from '@/routes/(main)/(create)/video/features/PromptInput/useVideoReferenceUpload';
 import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useVideoStore } from '@/store/video';
-import { useVideoGenerationConfigParam } from '@/store/video/slices/generationConfig/hooks';
+import {
+  useVideoGenerationConfigParam,
+  useVideoUploadingPreview,
+} from '@/store/video/slices/generationConfig/hooks';
 
 import { VideoStudioSettings } from './Settings';
 import type { useVideoStudio } from './useVideoStudio';
@@ -37,7 +40,9 @@ export const VideoStudioComposer = ({
     value: imageUrls,
     setValue: setImageUrls,
     maxCount,
+    maxFileSize,
   } = useVideoGenerationConfigParam('imageUrls');
+  const trackUpload = useVideoUploadingPreview();
   const model = useVideoStore((s) => s.model);
   const provider = useVideoStore((s) => s.provider);
   const schema = useVideoStore((s) => s.parametersSchema);
@@ -58,12 +63,12 @@ export const VideoStudioComposer = ({
   return (
     <Flexbox className={styles.composer} data-mobile={mobile} data-testid={'video-studio-composer'}>
       <Flexbox className={styles.scroll}>
-        <Flexbox className={styles.form} gap={22}>
-          <Flexbox gap={5}>
+        <Flexbox className={styles.form} gap={24}>
+          <Flexbox gap={8}>
             <Text as={'h2'} fontSize={20} style={{ margin: 0 }} weight={600}>
               {t('mediaStudio.videoCreateTitle', { ns: 'common' })}
             </Text>
-            <Text fontSize={13} type={'secondary'}>
+            <Text fontSize={14} type={'secondary'}>
               {t('mediaStudio.videoCreateDescription', { ns: 'common' })}
             </Text>
           </Flexbox>
@@ -82,7 +87,7 @@ export const VideoStudioComposer = ({
                 <Button
                   aria-label={t('mediaStudio.videoModel', { ns: 'common' })}
                   className={styles.modelButton}
-                  disabled={disabled}
+                  disabled={disabled || uploading}
                   icon={<ModelIcon model={model || ''} size={20} />}
                 >
                   <Text ellipsis style={{ flex: 1, textAlign: 'start' }}>
@@ -142,21 +147,35 @@ export const VideoStudioComposer = ({
                     <UploadCard
                       imageUrl={url}
                       key={url}
+                      maxFileSize={maxFileSize}
+                      onUploadingChange={trackUpload}
                       onRemove={() =>
-                        setImageUrls((imageUrls ?? []).filter((item) => item !== url))
+                        setImageUrls(
+                          (useVideoStore.getState().parameters.imageUrls ?? []).filter(
+                            (item) => item !== url,
+                          ),
+                        )
                       }
                       onUpload={(data) => {
                         const next = typeof data === 'string' ? data : data.url;
-                        setImageUrls([...(imageUrls ?? []), next]);
+                        setImageUrls(
+                          (useVideoStore.getState().parameters.imageUrls ?? []).map((item) =>
+                            item === url ? next : item,
+                          ),
+                        );
                       }}
                     />
                   ))}
                   {(imageUrls?.length ?? 0) < (maxCount ?? 4) && (
                     <UploadCard
+                      loading={uploading}
+                      maxFileSize={maxFileSize}
                       onRemove={() => {}}
+                      onUploadingChange={trackUpload}
                       onUpload={(data) => {
                         const next = typeof data === 'string' ? data : data.url;
-                        setImageUrls([...(imageUrls ?? []), next]);
+                        const current = useVideoStore.getState().parameters.imageUrls ?? [];
+                        if (current.length < (maxCount ?? 4)) setImageUrls([...current, next]);
                       }}
                     />
                   )}
@@ -165,7 +184,7 @@ export const VideoStudioComposer = ({
             )}
             <VideoStudioSettings />
             <Flexbox horizontal align={'center'} justify={'space-between'}>
-              <Text fontSize={13}>{t('studio.visibility', { ns: 'image' })}</Text>
+              <Text fontSize={14}>{t('studio.visibility', { ns: 'image' })}</Text>
               <GenerationVisibilitySelector
                 visibility={visibility === 'public' ? 'public' : 'private'}
                 disabledReason={

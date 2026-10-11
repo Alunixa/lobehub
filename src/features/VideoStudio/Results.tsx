@@ -26,7 +26,9 @@ export const VideoStudioResults = ({ studio }: { studio: ReturnType<typeof useVi
     [studio.batches],
   );
   const newest = batches[0]?.id;
-  useEffect(() => scrollRef.current?.scrollTo({ top: 0 }), [newest, studio.activeTopicId]);
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [newest, studio.activeTopicId]);
   return (
     <Flexbox className={styles.results} data-testid={'video-studio-results'}>
       <Flexbox
@@ -42,7 +44,7 @@ export const VideoStudioResults = ({ studio }: { studio: ReturnType<typeof useVi
           </Text>
           <Text aria-live={'polite'} fontSize={12} type={'secondary'}>
             {studio.counts.total
-              ? t('studio.taskSummary', studio.counts)
+              ? t('mediaStudio.videoTaskSummary', { ...studio.counts, ns: 'common' })
               : t('mediaStudio.videoResultsDescription', { ns: 'common' })}
           </Text>
         </Flexbox>
@@ -98,7 +100,7 @@ export const VideoStudioResults = ({ studio }: { studio: ReturnType<typeof useVi
           {!batches.length && studio.batchesQuery.isLoading && !studio.isCreating && (
             <Center gap={12} padding={32} role={'status'}>
               <NeuralNetworkLoading size={40} />
-              <Text type={'secondary'}>{t('studio.loadingResults')}</Text>
+              <Text type={'secondary'}>{t('mediaStudio.loadingVideos', { ns: 'common' })}</Text>
             </Center>
           )}
           {!batches.length &&

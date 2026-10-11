@@ -1,10 +1,10 @@
 'use client';
 
-import { LoadingOutlined } from '@ant-design/icons';
 import { Block, Center } from '@lobehub/ui';
-import { Progress, Spin } from 'antd';
+import { Progress } from 'antd';
 import { memo, useEffect, useState } from 'react';
 
+import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
 import { ElapsedTime } from '@/routes/(main)/(create)/image/features/GenerationFeed/GenerationItem/ElapsedTime';
 import { AsyncTaskStatus } from '@/types/asyncTask';
 import type { Generation } from '@/types/generation';
@@ -76,7 +76,7 @@ const VideoLoadingItem = memo<VideoLoadingItemProps>(
           {progress !== null ? (
             <Progress percent={progress} size={48} type="circle" />
           ) : (
-            <Spin indicator={<LoadingOutlined spin />} />
+            <NeuralNetworkLoading size={32} />
           )}
           {progress === 99 && <ElapsedTime generationId={generation.id} isActive={isGenerating} />}
         </Center>

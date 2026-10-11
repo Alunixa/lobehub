@@ -60,6 +60,93 @@ afterEach(() => {
 });
 
 describe('LobeOpenAICompatibleFactory', () => {
+  describe('Responses instruction compatibility', () => {
+    const successfulResponse = {
+      id: 'response-fixture',
+      created_at: 0,
+      error: null,
+      incomplete_details: null,
+      instructions: null,
+      metadata: null,
+      model: 'gpt-test',
+      object: 'response',
+      output_text: 'OK',
+      parallel_tool_calls: true,
+      status: 'completed',
+      temperature: null,
+      tool_choice: 'auto',
+      tools: [],
+      top_p: null,
+      output: [
+        {
+          id: 'message-fixture',
+          type: 'message',
+          role: 'assistant',
+          status: 'completed',
+          content: [{ type: 'output_text', text: 'OK', annotations: [] }],
+        },
+      ],
+      usage: {
+        input_tokens: 4,
+        output_tokens: 1,
+        total_tokens: 5,
+        input_tokens_details: { cached_tokens: 0 },
+        output_tokens_details: { reasoning_tokens: 0 },
+      },
+    } satisfies OpenAI.Responses.Response;
+
+    it('sends leading persona as instructions while preserving later system context', async () => {
+      const create = vi
+        .spyOn(instance.client.responses, 'create')
+        .mockResolvedValueOnce(successfulResponse);
+      const response = await instance.chat({
+        apiMode: 'responses',
+        messages: [
+          { role: 'system', content: 'persona' },
+          { role: 'user', content: 'question' },
+          { role: 'system', content: 'context added later' },
+        ],
+        model: 'gpt-test',
+        stream: false,
+      });
+      expect(await response.text()).toContain('OK');
+      expect(create.mock.calls[0][0]).toMatchObject({
+        instructions: 'persona',
+        input: [
+          { role: 'user', content: 'question' },
+          { role: 'developer', content: 'context added later' },
+        ],
+      });
+    });
+
+    it.each(['custom instructions', ''])(
+      'does not replace an explicit instructions field (%j)',
+      async (instructions) => {
+        const create = vi
+          .spyOn(instance.client.responses, 'create')
+          .mockResolvedValueOnce(successfulResponse);
+        const response = await instance.chat({
+          apiMode: 'responses',
+          instructions,
+          messages: [
+            { role: 'system', content: 'additional persona' },
+            { role: 'user', content: 'question' },
+          ],
+          model: 'gpt-test',
+          stream: false,
+        });
+        expect(await response.text()).toContain('OK');
+        expect(create.mock.calls[0][0]).toMatchObject({
+          instructions,
+          input: [
+            { role: 'developer', content: 'additional persona' },
+            { role: 'user', content: 'question' },
+          ],
+        });
+      },
+    );
+  });
+
   // Polyfill File for Node environment used in image tests
   if (typeof File === 'undefined') {
     // @ts-ignore

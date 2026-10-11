@@ -4,6 +4,13 @@ import { useCallback, useMemo } from 'react';
 import { useVideoStore } from '../../store';
 import { videoGenerationConfigSelectors } from './selectors';
 
+export const useVideoUploadingPreview = () =>
+  useCallback((previewUrl: string, uploading: boolean) => {
+    const store = useVideoStore.getState();
+    if (uploading) store.addUploadingImagePreviews([previewUrl]);
+    else store.removeUploadingImagePreviews([previewUrl]);
+  }, []);
+
 export function useVideoGenerationConfigParam<
   N extends RuntimeVideoGenParamsKeys,
   V extends RuntimeVideoGenParams[N],

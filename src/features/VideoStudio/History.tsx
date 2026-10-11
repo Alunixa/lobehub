@@ -43,8 +43,8 @@ export const VideoStudioHistory = ({ studio }: { studio: ReturnType<typeof useVi
         </Flexbox>
         <SearchBar
           allowClear
-          aria-label={t('studio.searchHistory', { ns: 'image' })}
-          placeholder={t('studio.searchHistory', { ns: 'image' })}
+          aria-label={t('mediaStudio.searchVideoHistory', { ns: 'common' })}
+          placeholder={t('mediaStudio.searchVideoHistory', { ns: 'common' })}
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
@@ -67,7 +67,9 @@ export const VideoStudioHistory = ({ studio }: { studio: ReturnType<typeof useVi
           <Center gap={12} padding={24}>
             <Film size={28} />
             <Text align={'center'} type={'secondary'}>
-              {t(search ? 'studio.noMatches' : 'studio.historyEmpty', { ns: 'image' })}
+              {search
+                ? t('studio.noMatches', { ns: 'image' })
+                : t('mediaStudio.videoHistoryEmpty', { ns: 'common' })}
             </Text>
             {!search && <Button onClick={studio.openNew}>{t('topic.createNew')}</Button>}
           </Center>

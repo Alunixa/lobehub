@@ -56,7 +56,11 @@ describe('Responses instructions preserve caller context', () => {
     expect(extractResponseInstructions(messages)).toEqual({ instructions: undefined, messages });
   });
   it('retains explicitly selected image detail in Responses inputs', async () => {
-    vi.mocked(parseDataUri).mockReturnValue({ type: 'data' } as ReturnType<typeof parseDataUri>);
+    vi.mocked(parseDataUri).mockReturnValue({
+      base64: 'AAAA',
+      mimeType: 'image/png',
+      type: 'base64',
+    });
     const input = await convertOpenAIResponseInputs([
       {
         role: 'user',

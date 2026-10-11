@@ -97,6 +97,19 @@ export class GenerationTopicActionImpl {
     );
   };
 
+  setGenerationTopicVisibility = async (
+    id: string,
+    visibility: GenerationTopicVisibility,
+  ): Promise<void> => {
+    this.#get().internal_updateGenerationTopicLoading(id, true);
+    try {
+      await generationTopicService.setTopicVisibility(id, visibility);
+      await this.#get().refreshGenerationTopics();
+    } finally {
+      this.#get().internal_updateGenerationTopicLoading(id, false);
+    }
+  };
+
   internal_dispatchGenerationTopic = (payload: GenerationTopicDispatch, action?: any): void => {
     const nextTopics = generationTopicReducer(this.#get().generationTopics, payload);
 

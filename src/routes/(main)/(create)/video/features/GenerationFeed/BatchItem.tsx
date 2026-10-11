@@ -2,10 +2,11 @@
 
 import { ModelTag } from '@lobehub/icons';
 import { ActionIconGroup, Block, Flexbox, Markdown, Tag, Text } from '@lobehub/ui';
+import { Button } from '@lobehub/ui/base-ui';
 import { App } from 'antd';
 import { createStaticStyles } from 'antd-style';
 import dayjs from 'dayjs';
-import { CopyIcon, RotateCcwSquareIcon, Trash2 } from 'lucide-react';
+import { CopyIcon, RefreshCw, RotateCcwSquareIcon, Trash2 } from 'lucide-react';
 import { type RuntimeVideoGenParamsKeys, type RuntimeVideoGenParamsValue } from 'model-bank';
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -13,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
 import useRenderBusinessVideoBatchItem from '@/business/client/hooks/useRenderBusinessVideoBatchItem';
 import { GenerationInvalidAPIKey } from '@/routes/(main)/(create)/features/GenerationInput';
+import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useVideoStore } from '@/store/video';
 import { AsyncTaskErrorType, AsyncTaskStatus } from '@/types/asyncTask';
 import type { GenerationBatch } from '@/types/generation';
@@ -50,13 +52,20 @@ interface VideoGenerationBatchItemProps {
 
 export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ batch }) => {
   const { message } = App.useApp();
-  const { t } = useTranslation(['video', 'image']);
+  const { t } = useTranslation(['video', 'image', 'common']);
   const useCheckGenerationStatus = useVideoStore((s) => s.useCheckGenerationStatus);
   const removeGeneration = useVideoStore((s) => s.removeGeneration);
   const removeGenerationBatch = useVideoStore((s) => s.removeGenerationBatch);
   const setModelAndProviderOnSelect = useVideoStore((s) => s.setModelAndProviderOnSelect);
   const setParamOnInput = useVideoStore((s) => s.setParamOnInput);
   const activeTopicId = useVideoStore((s) => s.activeGenerationTopicId);
+  const recreateVideo = useVideoStore((s) => s.recreateVideo);
+  const isCreating = useVideoStore((s) => s.isCreating);
+  const models = useAiInfraStore(aiProviderSelectors.enabledVideoModelList);
+  const modelAvailable = models.some(
+    (group) =>
+      group.id === batch.provider && group.children.some((model) => model.id === batch.model),
+  );
   const activeWorkspaceId = useActiveWorkspaceId();
   const { shouldRenderBusinessBatchItem, businessBatchItem } =
     useRenderBusinessVideoBatchItem(batch);
@@ -103,6 +112,11 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
   }, [batch.prompt, message, t]);
 
   const handleReuseSettings = useCallback(() => {
+    if (isCreating) return;
+    if (!modelAvailable) {
+      message.error(t('mediaStudio.noVideoModel', { ns: 'common' }));
+      return;
+    }
     setModelAndProviderOnSelect(batch.model, batch.provider);
 
     if (!batch.config) return;
@@ -112,7 +126,28 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
 
       setParamOnInput(paramName as RuntimeVideoGenParamsKeys, value as RuntimeVideoGenParamsValue);
     }
-  }, [batch.config, batch.model, batch.provider, setModelAndProviderOnSelect, setParamOnInput]);
+  }, [
+    batch.config,
+    batch.model,
+    batch.provider,
+    isCreating,
+    message,
+    modelAvailable,
+    setModelAndProviderOnSelect,
+    setParamOnInput,
+    t,
+  ]);
+
+  const handleRegenerate = async () => {
+    if (isCreating || !modelAvailable) return;
+    try {
+      await recreateVideo(batch.id);
+      message.success(t('studio.regenerateSubmitted', { ns: 'image' }));
+    } catch (error) {
+      console.error('Failed to regenerate video batch:', error);
+      message.error(t('studio.regenerateFailed', { ns: 'image' }));
+    }
+  };
 
   const handleDeleteBatch = useCallback(async () => {
     if (!activeTopicId) return;
@@ -269,7 +304,17 @@ export const VideoGenerationBatchItem = memo<VideoGenerationBatchItemProps>(({ b
           </Text>
         </Flexbox>
       </Flexbox>
-      <Flexbox horizontal align={'center'} className={styles.batchActions}>
+      <Flexbox horizontal align={'center'} className={styles.batchActions} gap={8}>
+        <Button
+          disabled={isCreating || !modelAvailable}
+          icon={<RefreshCw size={18} />}
+          loading={isCreating}
+          size={'small'}
+          style={{ minHeight: 44 }}
+          onClick={() => void handleRegenerate()}
+        >
+          {t('studio.regenerate', { ns: 'image' })}
+        </Button>
         <ActionIconGroup
           items={[
             {

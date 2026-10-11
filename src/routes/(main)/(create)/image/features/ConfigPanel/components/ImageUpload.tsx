@@ -29,6 +29,7 @@ export interface ImageUploadProps {
       | string // Old API: just URL
       | { dimensions?: { height: number; width: number }; url: string }, // New API: URL with dimensions
   ) => void;
+  onUploadingChange?: (previewUrl: string, uploading: boolean) => void;
   /** Height of the empty placeholder area. Defaults to 160. */
   placeholderHeight?: number;
   style?: React.CSSProperties;
@@ -429,7 +430,16 @@ SuccessDisplay.displayName = 'SuccessDisplay';
 // ======== Main Component ======== //
 
 const ImageUpload: FC<ImageUploadProps> = memo(
-  ({ value, onChange, style, className, maxFileSize, imageConstraints, placeholderHeight }) => {
+  ({
+    value,
+    onChange,
+    onUploadingChange,
+    style,
+    className,
+    maxFileSize,
+    imageConstraints,
+    placeholderHeight,
+  }) => {
     const inputRef = useRef<HTMLInputElement>(null);
     const uploadWithProgress = useFileStore((s) => s.uploadWithProgress);
     const [uploadState, setUploadState] = useState<UploadState | null>(null);
@@ -440,6 +450,16 @@ const ImageUpload: FC<ImageUploadProps> = memo(
       maxFileSize,
       imageConstraints,
     );
+
+    const pendingPreview =
+      uploadState && uploadState.status !== 'success' && uploadState.status !== 'error'
+        ? uploadState.previewUrl
+        : undefined;
+    useEffect(() => {
+      if (!pendingPreview) return;
+      onUploadingChange?.(pendingPreview, true);
+      return () => onUploadingChange?.(pendingPreview, false);
+    }, [onUploadingChange, pendingPreview]);
 
     // Cleanup blob URLs to prevent memory leaks
     useEffect(() => {

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LobeOpenAI } from '../providers/openai';
 import { providerRuntimeMap } from '../runtimeMap';
-import type { ChatStreamCallbacks, ChatStreamPayload } from '../types';
+import type { ChatMethodOptions, ChatStreamCallbacks, ChatStreamPayload } from '../types';
 import type { CreateImagePayload } from '../types/image';
 import type { CreateVideoPayload } from '../types/video';
 import { ModelRuntime, type ModelRuntimeHooks } from './ModelRuntime';

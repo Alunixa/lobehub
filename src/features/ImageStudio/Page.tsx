@@ -77,7 +77,7 @@ export const ImageStudioPage = ({ mobile: forceMobile = false }: { mobile?: bool
           await reference.handleUploadFiles(files);
         }}
       >
-        <div className={cx(styles.body, mobile && styles.mobileBody)}>
+        <div className={cx(styles.body, mobile && styles.mobileBody)} data-mobile={mobile}>
           <Flexbox
             style={{
               display: mobile && studio.view !== 'create' ? 'none' : 'flex',

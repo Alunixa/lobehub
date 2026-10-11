@@ -11,6 +11,7 @@ on:
       - packages/database/src/models/topic.ts
       - packages/database/src/models/__tests__/topic.test.ts
       - packages/fetch-sse/**
+      - packages/model-runtime/**
       - packages/types/**
       - packages/utils/src/currentTime*
       - packages/utils/src/client/**
@@ -47,6 +48,13 @@ jobs:
             src/core/streams/openai/responsesStream.test.ts \
             src/core/streams/anthropic.test.ts \
             src/core/streams/protocol.test.ts
+      - name: Provider request preparation regressions
+        working-directory: packages/model-runtime
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/core/ModelRuntime.test.ts \
+            src/core/contextBuilders/openai.test.ts \
+            src/core/openaiCompatibleFactory/index.test.ts
       - name: Topic operation ownership and cleanup regressions
         working-directory: packages/database
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts

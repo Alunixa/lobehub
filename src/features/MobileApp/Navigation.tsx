@@ -22,7 +22,7 @@ export const MobileNavigation = () => {
   const { active, showNav } = resolveMobileNavigation(pathname, workspaceSlug);
   const items = [
     { icon: MessageSquare, key: 'chat', label: t('tab.chat'), path: '/agent' },
-    { icon: ImageIcon, key: 'image', label: t('tab.image'), path: '/image' },
+    { icon: ImageIcon, key: 'image', label: t('mediaStudio.shortTitle'), path: '/image' },
     { icon: Grid2X2, key: 'tools', label: t('mobile.workbench'), path: '/tools' },
     ...(showMarket
       ? [{ icon: Compass, key: 'community', label: t('tab.community'), path: '/community' }]

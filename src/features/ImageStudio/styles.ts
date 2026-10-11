@@ -43,7 +43,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     display: grid;
     grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
     flex: 1;
-    gap: 18px;
+    gap: 20px;
 
     width: 100%;
     min-width: 0;
@@ -55,7 +55,19 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     @container (max-width: 900px) {
       grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
       gap: 12px;
-      padding: 14px;
+      padding: 16px;
+    }
+
+    &[data-mobile='true'] {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0;
+      padding: 12px;
+    }
+
+    @media (orientation: landscape) and (height <= 500px) {
+      &[data-mobile='true'] {
+        padding: 8px;
+      }
     }
   `,
   mobileBody: css`
@@ -65,7 +77,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   `,
   viewTabs: css`
     flex: none;
-    padding-inline: 14px;
+    padding-inline: 12px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
     background: ${cssVar.colorBgContainer};
   `,
@@ -76,12 +88,12 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
     min-height: 0;
     border: 1px solid ${cssVar.colorBorderSecondary};
-    border-radius: 16px;
+    border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
 
     &[data-mobile='true'] {
-      border-radius: 14px;
+      border-radius: ${cssVar.borderRadiusLG};
     }
   `,
   scroll: css`
@@ -110,7 +122,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   fieldset: css`
     display: flex;
     flex-direction: column;
-    gap: 22px;
+    gap: 24px;
 
     min-width: 0;
     margin: 0;
@@ -135,6 +147,10 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     border-block-start: 1px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
+
+    @media (orientation: landscape) and (height <= 500px) {
+      padding: 8px;
+    }
   `,
   modelButton: css`
     justify-content: flex-start;
@@ -184,7 +200,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
     min-height: 0;
     border: 1px solid ${cssVar.colorBorderSecondary};
-    border-radius: 16px;
+    border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
   `,
@@ -194,7 +210,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     min-width: 0;
     min-height: 72px;
     padding-block: 16px;
-    padding-inline: 22px;
+    padding-inline: 24px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
   `,
   feed: css`
@@ -237,7 +253,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     min-height: 60px;
   `,
   status: css`
-    padding-block: 14px;
+    padding-block: 16px;
     padding-inline: 16px;
     border: 1px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
@@ -247,7 +263,7 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   parameterGrid: css`
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 18px 12px;
+    gap: 16px 12px;
   `,
   sectionLabel: css`
     padding-block-end: 8px;

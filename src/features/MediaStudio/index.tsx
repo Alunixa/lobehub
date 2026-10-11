@@ -63,7 +63,7 @@ export const MediaStudioHeader = ({
       <div className={cx(styles.studioMark, mode === 'video' && styles.videoMark)}>
         <Icon icon={mode === 'video' ? Film : ImagePlus} size={23} />
       </div>
-      <Flexbox gap={3} style={{ minWidth: 0 }}>
+      <Flexbox gap={4} style={{ minWidth: 0 }}>
         <Text as={'h1'} className={styles.title} style={{ margin: 0 }} weight={600}>
           {t('mediaStudio.title')}
         </Text>
@@ -75,7 +75,7 @@ export const MediaStudioHeader = ({
   );
   if (mobile) {
     return (
-      <Flexbox className={styles.mobileHeader} gap={14}>
+      <Flexbox className={styles.mobileHeader}>
         <Flexbox horizontal align={'center'} gap={8} justify={'space-between'}>
           {identity}
           {action}
@@ -107,7 +107,7 @@ export const MediaStudioEmpty = ({
 }) => {
   const { t } = useTranslation('common');
   return (
-    <Flexbox align={'center'} className={styles.empty} gap={18}>
+    <Flexbox align={'center'} className={styles.empty} gap={20}>
       <div aria-hidden className={cx(styles.contactSheet, mode === 'video' && styles.filmSheet)}>
         <div className={styles.contactFrame}>
           <span className={styles.frameHorizon} />

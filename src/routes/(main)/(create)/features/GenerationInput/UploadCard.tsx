@@ -5,7 +5,7 @@ import { ActionIcon, Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar, cx } from 'antd-style';
 import { Plus, X } from 'lucide-react';
 import type { ChangeEvent, CSSProperties } from 'react';
-import { memo, useCallback, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
@@ -127,9 +127,9 @@ export const uploadCardStyles = createStaticStyles(({ css }) => ({
 
     border-radius: 3px;
 
-    background: ${cssVar.colorBgMask};
-
     color: ${cssVar.colorWhite};
+
+    background: ${cssVar.colorBgMask};
   `,
 }));
 
@@ -151,6 +151,7 @@ interface UploadCardProps {
    * internal single-file upload, enabling multi-select.
    */
   onUploadFiles?: (files: File[]) => void | Promise<void>;
+  onUploadingChange?: (previewUrl: string, uploading: boolean) => void;
   style?: CSSProperties;
   variant?: 'card' | 'circle';
 }
@@ -162,6 +163,7 @@ const UploadCard = memo<UploadCardProps>(
     loading = false,
     onUpload,
     onUploadFiles,
+    onUploadingChange,
     onRemove,
     maxFileSize,
     multiple = false,
@@ -175,6 +177,12 @@ const UploadCard = memo<UploadCardProps>(
     const uploadWithProgress = useFileStore((s) => s.uploadWithProgress);
     const [isUploading, setIsUploading] = useState(false);
     const [uploadPreview, setUploadPreview] = useState<string | null>(null);
+
+    useEffect(() => {
+      if (!uploadPreview) return;
+      onUploadingChange?.(uploadPreview, true);
+      return () => onUploadingChange?.(uploadPreview, false);
+    }, [onUploadingChange, uploadPreview]);
 
     // Combine internal single-upload spinner with externally-driven batch loading.
     const uploading = isUploading || loading;

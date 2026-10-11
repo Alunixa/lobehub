@@ -5,7 +5,7 @@ export const mediaStudioStyles = createStaticStyles(({ css, cssVar }) => ({
     flex: none;
 
     min-height: 84px;
-    padding-block: 18px;
+    padding-block: 16px;
     padding-inline: 24px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
 
@@ -13,12 +13,29 @@ export const mediaStudioStyles = createStaticStyles(({ css, cssVar }) => ({
   `,
   mobileHeader: css`
     flex: none;
+    gap: 12px;
 
-    padding-block: 16px 10px;
+    padding-block: 16px 12px;
     padding-inline: 16px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
 
     background: ${cssVar.colorBgContainer};
+
+    @media (orientation: landscape) and (height <= 500px) {
+      flex-direction: row;
+      align-items: center;
+      padding-block: 8px;
+
+      > div:first-child {
+        flex: 1;
+        min-width: 0;
+      }
+
+      > div:last-child {
+        flex: none;
+        width: 204px;
+      }
+    }
   `,
   identity: css`
     min-width: 0;
@@ -31,32 +48,45 @@ export const mediaStudioStyles = createStaticStyles(({ css, cssVar }) => ({
     width: 44px;
     height: 44px;
     border: 1px solid ${cssVar.colorPrimaryBorder};
-    border-radius: 14px;
+    border-radius: ${cssVar.borderRadiusLG};
 
     color: ${cssVar.colorPrimary};
 
     background: ${cssVar.colorPrimaryBg};
+
+    @media (orientation: landscape) and (height <= 500px) {
+      width: 32px;
+      height: 32px;
+    }
   `,
   videoMark: css`
-    border-radius: 10px;
+    border-radius: ${cssVar.borderRadius};
   `,
   title: css`
-    font-size: 23px;
+    font-size: ${cssVar.fontSizeHeading3};
     line-height: 1.25;
     letter-spacing: -0.6px;
 
     @media (width <= 600px) {
-      font-size: 20px;
+      font-size: ${cssVar.fontSizeHeading4};
+    }
+
+    @media (orientation: landscape) and (height <= 500px) {
+      font-size: ${cssVar.fontSizeHeading4};
     }
   `,
   subtitle: css`
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+
+    @media (orientation: landscape) and (height <= 500px) {
+      display: none;
+    }
   `,
   modeTabs: css`
     min-width: 204px;
-    padding: 3px;
+    padding: 4px;
     border: 1px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
 
@@ -83,10 +113,10 @@ export const mediaStudioStyles = createStaticStyles(({ css, cssVar }) => ({
     gap: 8px;
 
     width: min(320px, 100%);
-    padding-block: 14px 34px;
-    padding-inline: 14px;
+    padding-block: 16px 36px;
+    padding-inline: 16px;
     border: 1px solid ${cssVar.colorBorderSecondary};
-    border-radius: 16px;
+    border-radius: ${cssVar.borderRadiusLG};
 
     background: ${cssVar.colorBgContainer};
     box-shadow: 0 8px 28px ${cssVar.colorFillSecondary};
@@ -104,7 +134,7 @@ export const mediaStudioStyles = createStaticStyles(({ css, cssVar }) => ({
 
     aspect-ratio: 3 / 4;
     border: 1px solid ${cssVar.colorBorderSecondary};
-    border-radius: 7px;
+    border-radius: ${cssVar.borderRadiusSM};
 
     color: ${cssVar.colorTextQuaternary};
 
@@ -135,17 +165,17 @@ export const mediaStudioStyles = createStaticStyles(({ css, cssVar }) => ({
     inset-inline-start: 16px;
 
     font-family: ${cssVar.fontFamilyCode};
-    font-size: 9px;
+    font-size: ${cssVar.fontSizeSM};
     color: ${cssVar.colorTextDescription};
     letter-spacing: 2px;
   `,
   emptyTitle: css`
-    font-size: 23px;
+    font-size: ${cssVar.fontSizeHeading3};
     letter-spacing: -0.4px;
   `,
   emptyDescription: css`
     max-width: 340px;
-    font-size: 13px;
+    font-size: ${cssVar.fontSize};
     line-height: 1.75;
   `,
 }));

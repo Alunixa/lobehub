@@ -32,7 +32,7 @@ jobs:
       - name: Validate mobile and image UI imports
         run: |
           node node_modules/eslint/bin/eslint.js --pass-on-unpruned-suppressions \
-            src/features/MobileApp src/features/ImageStudio \
+            src/features/MobileApp src/features/ImageStudio src/features/VideoStudio src/features/MediaStudio \
             src/hooks/useIsMobile.ts src/hooks/useEnterToSend.ts \
             src/features/ChatInput/Mobile/index.tsx src/features/ChatInput/ControlBar/index.tsx \
             src/features/ChatInput/Desktop/index.tsx \
@@ -46,6 +46,10 @@ jobs:
             src/store/image/slices/createImage/action.ts \
             src/store/image/slices/generationTopic/action.ts \
             src/store/image/slices/generationBatch/action.ts \
+            src/store/video/slices/createVideo/action.ts \
+            src/store/video/slices/generationTopic/action.ts \
+            src/store/video/slices/generationBatch/action.ts \
+            src/store/video/slices/generationConfig/hooks.ts \
             'src/routes/(main)/(create)/features/GenerationInput/UploadCard.tsx' \
             'src/routes/(main)/(create)/image/features/ConfigPanel/components/Select/index.tsx' \
             'src/routes/(main)/(create)/image/features/GenerationFeed/BatchItem.tsx' \
@@ -68,6 +72,16 @@ jobs:
             'src/routes/(main)/(create)/image/features/ConfigPanel/components/Select/utils.test.ts' \
             'src/routes/(main)/(create)/image/features/PromptInput/useImageReferenceUpload.test.ts' \
             'src/routes/(main)/(create)/image/features/GenerationFeed/GenerationItem'
+      - name: Video studio lifecycle and shared navigation regressions
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/features/VideoStudio/useVideoStudio.test.tsx \
+            src/store/video/slices/createVideo/action.test.ts \
+            src/store/video/slices/generationTopic/action.test.ts \
+            src/store/video/slices/generationConfig/action.test.ts \
+            src/store/video/slices/generationConfig/hooks.test.tsx \
+            src/features/MobileApp/navigation.test.ts \
+            'src/routes/(main)/(create)/video/_layout/index.test.tsx'
       - name: Topic clone attachment and ownership regressions
         working-directory: packages/database
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts

@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { mutate } from '@/libs/swr';
 import { generationTopicService } from '@/services/generationTopic';
@@ -18,6 +18,7 @@ vi.mock('@/services/generationTopic', () => ({
     createTopic: vi.fn(),
     deleteTopic: vi.fn(),
     getAllGenerationTopics: vi.fn(),
+    setTopicVisibility: vi.fn(),
     updateTopic: vi.fn(),
     updateTopicCover: vi.fn(),
   },
@@ -57,7 +58,37 @@ beforeEach(() => {
   });
 });
 
+afterEach(() => vi.restoreAllMocks());
+
 describe('VideoGenerationTopicAction', () => {
+  describe('setGenerationTopicVisibility', () => {
+    it('keeps the topic loading until visibility and list revalidation finish', async () => {
+      const pending = Promise.withResolvers<void>();
+      vi.mocked(generationTopicService.setTopicVisibility).mockReturnValueOnce(pending.promise);
+      const refresh = vi
+        .spyOn(useVideoStore.getState(), 'refreshGenerationTopics')
+        .mockResolvedValueOnce();
+      const update = useVideoStore
+        .getState()
+        .setGenerationTopicVisibility('video-project', 'public');
+      expect(useVideoStore.getState().loadingGenerationTopicIds).toContain('video-project');
+      pending.resolve();
+      await update;
+      expect(refresh).toHaveBeenCalledOnce();
+      expect(useVideoStore.getState().loadingGenerationTopicIds).not.toContain('video-project');
+    });
+
+    it('releases the loading state and surfaces a rejected visibility update', async () => {
+      vi.mocked(generationTopicService.setTopicVisibility).mockRejectedValueOnce(
+        new Error('visibility unavailable'),
+      );
+      await expect(
+        useVideoStore.getState().setGenerationTopicVisibility('video-project', 'private'),
+      ).rejects.toThrow('visibility unavailable');
+      expect(useVideoStore.getState().loadingGenerationTopicIds).not.toContain('video-project');
+    });
+  });
+
   describe('setNewGenerationTopicVisibility', () => {
     it('should default new generation topics to private visibility', () => {
       const { result } = renderHook(() => useVideoStore());
