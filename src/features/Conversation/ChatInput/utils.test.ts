@@ -57,6 +57,23 @@ describe('toChatInputMessages', () => {
 });
 
 describe('getContextWindowMessages', () => {
+  it('preserves the provider usage and tool fields needed for context accounting', () => {
+    const message = {
+      ...tokenMessages[1],
+      model: 'test-model',
+      provider: 'test-provider',
+      reasoning: { content: 'thinking' },
+      usage: { inputCachedTokens: 280_000, totalInputTokens: 512_000 },
+    };
+    expect(getContextWindowMessages([message], {})).toEqual([
+      expect.objectContaining({
+        model: 'test-model',
+        provider: 'test-provider',
+        reasoning: { content: 'thinking' },
+        usage: { inputCachedTokens: 280_000, totalInputTokens: 512_000 },
+      }),
+    ]);
+  });
   it('uses the full conversation when history count is disabled', () => {
     expect(
       getContextWindowMessages(tokenMessages, {

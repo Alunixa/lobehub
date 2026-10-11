@@ -32,7 +32,7 @@ const MessageRealtimeSync = memo<MessageRealtimeSyncProps>(({ context, disabled 
     !disabled &&
     !context.isNew &&
     !context.topicShareId &&
-    Boolean(context.agentId && context.topicId);
+    Boolean((context.agentId || context.groupId || context.sessionId) && context.topicId);
   const refresh = useEventCallback(() => {
     if (operationSelectors.isAgentRuntimeRunningByContext(context)(getChatStoreState())) {
       pendingRefresh.current = true;
@@ -40,7 +40,9 @@ const MessageRealtimeSync = memo<MessageRealtimeSyncProps>(({ context, disabled 
     }
 
     pendingRefresh.current = false;
-    void mutate(messageKeys.list(context));
+    void Promise.resolve(mutate(messageKeys.list(context))).catch((error) => {
+      console.error('Failed to refresh synchronized messages:', error);
+    });
   });
 
   useEffect(() => {

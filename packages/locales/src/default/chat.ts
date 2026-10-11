@@ -1,4 +1,13 @@
 export default {
+  'tokenDetails.cachedIncluded': 'Cached tokens (already included)',
+  'tokenDetails.currentEstimate': 'Current text / tool estimate',
+  'tokenDetails.estimatedDescription':
+    'Estimate only. Media encoding, dynamic memory, and provider-specific context may not be fully counted.',
+  'tokenDetails.estimatedUsed': 'Estimated context',
+  'tokenDetails.lastRequest': 'Last request input',
+  'tokenDetails.lastRequestRemaining': 'Remaining in that request',
+  'tokenDetails.reportedDescription':
+    'Provider-reported input for the last request with this model, including cached tokens. This is not a prediction for the next request.',
   'messageContent.addAttachments': 'Add attachments',
   'messageContent.after': 'After this message',
   'messageContent.before': 'Before this message',

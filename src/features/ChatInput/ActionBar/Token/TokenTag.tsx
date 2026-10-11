@@ -4,7 +4,7 @@ import { Center, Flexbox, Tooltip } from '@lobehub/ui';
 import { TokenTag } from '@lobehub/ui/chat';
 import { cssVar } from 'antd-style';
 import numeral from 'numeral';
-import { memo, useCallback } from 'react';
+import { memo, useCallback, useDeferredValue, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { createAgentToolsEngine } from '@/helpers/toolEngineering';
@@ -25,6 +25,11 @@ import { settingsSelectors, userGeneralSettingsSelectors } from '@/store/user/se
 import { useAgentId } from '../../hooks/useAgentId';
 import { useChatInputStore } from '../../store';
 import ActionPopover from '../components/ActionPopover';
+import {
+  getContextCapacity,
+  getContextTextEstimateInput,
+  getRecordedContextUsage,
+} from './contextUsage';
 import TokenProgress from './TokenProgress';
 import { getToolContextRefreshKey, getToolExcludeDefaultToolIds } from './utils';
 
@@ -54,6 +59,7 @@ const Token = memo(() => {
     agentMemoryEnabled,
     runtimeMode,
     hasEnabledKnowledgeBases,
+    preserveThinking,
   ] = useAgentStore((s) => {
     const chatConfig = chatConfigByIdSelectors.getChatConfigById(agentId)(s);
 
@@ -71,6 +77,7 @@ const Token = memo(() => {
       agentByIdSelectors
         .getAgentKnowledgeBasesById(agentId)(s)
         .some((item) => item.enabled),
+      chatConfig.preserveThinking ?? false,
     ];
   });
   const globalMemoryEnabled = useUserStore(settingsSelectors.memoryEnabled);
@@ -140,10 +147,11 @@ const Token = memo(() => {
   // Chat usage token
   const inputTokenCount = useTokenCount(input);
 
-  const messageString =
-    contextWindowMessages
-      ?.map((message) => (typeof message.content === 'string' ? message.content : ''))
-      .join('') || '';
+  const deferredMessages = useDeferredValue(contextWindowMessages);
+  const messageString = useMemo(
+    () => getContextTextEstimateInput(deferredMessages, preserveThinking),
+    [deferredMessages, preserveThinking],
+  );
   const chatsToken = useTokenCount(messageString) + inputTokenCount;
 
   // SystemRole token
@@ -152,10 +160,13 @@ const Token = memo(() => {
 
   // Total token
   const totalToken = systemRoleToken + historySummaryToken + toolsToken + chatsToken;
+  const recordedUsage = useMemo(
+    () => getRecordedContextUsage(contextWindowMessages, model, provider),
+    [contextWindowMessages, model, provider],
+  );
+  const capacity = getContextCapacity(recordedUsage?.inputTokens ?? totalToken, maxTokens);
 
   const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
-
-  if (!isDevMode && maxTokens > 0 && totalToken / maxTokens <= 0.5) return null;
 
   const content = (
     <Flexbox gap={12} style={{ minWidth: 200 }}>
@@ -182,6 +193,25 @@ const Token = memo(() => {
             TOKEN
           </Center>
         </Tooltip>
+      </Flexbox>
+      <Flexbox gap={8}>
+        <div style={{ color: cssVar.colorTextSecondary }}>
+          {t(
+            recordedUsage
+              ? 'tokenDetails.reportedDescription'
+              : 'tokenDetails.estimatedDescription',
+          )}
+        </div>
+        <Flexbox horizontal gap={8} justify={'space-between'}>
+          <span>{t('tokenDetails.currentEstimate')}</span>
+          <span>{numeral(totalToken).format('0,0')}</span>
+        </Flexbox>
+        {recordedUsage && (
+          <Flexbox horizontal gap={8} justify={'space-between'}>
+            <span>{t('tokenDetails.cachedIncluded')}</span>
+            <span>{numeral(recordedUsage.cachedTokens).format('0,0')}</span>
+          </Flexbox>
+        )}
       </Flexbox>
       {isDevMode && (
         <TokenProgress
@@ -217,18 +247,19 @@ const Token = memo(() => {
       <TokenProgress
         showIcon={isDevMode}
         showTotal={t('tokenDetails.total')}
+        totalValue={capacity.maximum}
         data={[
           {
             color: cssVar.colorSuccess,
             id: 'used',
-            title: t('tokenDetails.used'),
-            value: totalToken,
+            title: t(recordedUsage ? 'tokenDetails.lastRequest' : 'tokenDetails.estimatedUsed'),
+            value: capacity.used,
           },
           {
             color: cssVar.colorFill,
             id: 'rest',
-            title: t('tokenDetails.rest'),
-            value: maxTokens - totalToken,
+            title: t(recordedUsage ? 'tokenDetails.lastRequestRemaining' : 'tokenDetails.rest'),
+            value: capacity.remaining,
           },
         ]}
       />
@@ -238,9 +269,10 @@ const Token = memo(() => {
   return (
     <ActionPopover content={content}>
       <TokenTag
-        maxValue={maxTokens}
+        aria-label={t('tokenDetails.title')}
+        maxValue={capacity.maximum}
         mode={'used'}
-        value={totalToken}
+        value={capacity.used}
         size={{
           blockSize: 28,
           size: 18,
@@ -248,7 +280,7 @@ const Token = memo(() => {
         text={{
           overload: t('tokenTag.overload'),
           remained: t('tokenTag.remained'),
-          used: t('tokenTag.used'),
+          used: t(recordedUsage ? 'tokenDetails.lastRequest' : 'tokenDetails.estimatedUsed'),
         }}
       />
     </ActionPopover>

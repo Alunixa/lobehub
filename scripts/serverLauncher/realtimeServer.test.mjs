@@ -4,8 +4,11 @@ import { createRequire } from 'node:module';
 import { describe, expect, it, vi } from 'vitest';
 
 const require = createRequire(import.meta.url);
-const { createBridgeError, createRedisMessageBroker, toWebSocketResponse } =
-  require('./realtimeServer.js');
+const {
+  createBridgeError,
+  createRedisMessageBroker,
+  toWebSocketResponse,
+} = require('./realtimeServer.js');
 
 describe('realtime tRPC bridge envelopes', () => {
   it('converts an HTTP success envelope into a WebSocket data envelope', () => {
@@ -90,6 +93,35 @@ describe('realtime tRPC bridge envelopes', () => {
 });
 
 describe('Redis message broker', () => {
+  it('invalidates active conversations after Redis resubscribes to recover missed updates', async () => {
+    const instances = [];
+    class FakeRedis extends EventEmitter {
+      status = 'wait';
+      constructor() {
+        super();
+        instances.push(this);
+      }
+      connect = vi.fn(async () => {
+        this.status = 'ready';
+        this.emit('ready');
+      });
+      subscribe = vi.fn(async () => {});
+      unsubscribe = vi.fn(async () => {});
+      quit = vi.fn(async () => {});
+    }
+    const broker = createRedisMessageBroker({ RedisClass: FakeRedis, redisUrl: 'redis://test' });
+    const onUpdate = vi.fn();
+    const dispose = await broker.subscribe('authorized-conversation', onUpdate);
+    expect(onUpdate).not.toHaveBeenCalled();
+    instances[0].emit('ready');
+    expect(JSON.parse(onUpdate.mock.calls[0][0])).toMatchObject({
+      reason: 'update',
+      timestamp: expect.any(Number),
+      type: 'messages.updated',
+    });
+    await dispose();
+    await broker.close();
+  });
   it('shares one Redis subscription and releases it after the last listener', async () => {
     class FakeRedis extends EventEmitter {
       status = 'wait';

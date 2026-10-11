@@ -29,13 +29,12 @@ import { reconcileAssistantToolLinks } from '../utils/reconcileTools';
  * `replaceMessages` → `#writeThroughMessageCache`), so a switch-back within
  * this window hydrates from a FRESH cache and the refetch is pure redundancy.
  *
- * 30s covers the typical "switch away, glance at another conversation, switch
- * back" loop while keeping cross-device / server-agent updates within an
- * acceptable staleness bound — `revalidateOnFocus` (5min throttle) and
- * `revalidateOnReconnect` remain the longer-tail backstop, and a running
- * conversation keeps its live gateway stream regardless of this window.
+ * A short window collapses duplicate mounts without trusting a device-local
+ * cache for 30 seconds after another device has updated the conversation.
+ * Subscription readiness and page-resume invalidations are the primary
+ * catch-up paths; focus and reconnect remain backstops.
  */
-const MESSAGE_LIST_DEDUPING_INTERVAL = 30 * 1000;
+const MESSAGE_LIST_DEDUPING_INTERVAL = 1000;
 
 type Setter = StoreSetter<ChatStore>;
 export const messageQuery = (set: Setter, get: () => ChatStore, _api?: unknown) =>
@@ -221,6 +220,7 @@ export class MessageQueryActionImpl {
         // is kept current by mutation write-through, so a remount hydrates from
         // a fresh cache instead of forcing a network revalidate every switch.
         dedupingInterval: MESSAGE_LIST_DEDUPING_INTERVAL,
+        focusThrottleInterval: 1000,
         hydrateFromIndexedDB: true,
         onData: (data) => {
           if (!data || !context.topicId) return;

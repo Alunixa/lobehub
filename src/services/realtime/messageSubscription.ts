@@ -6,11 +6,8 @@ interface MessageSubscriptionCallbacks {
 }
 
 interface MessageSubscriptionRecord extends MessageSubscriptionCallbacks {
-  context: Pick<
-    ConversationContext,
-    'agentId' | 'groupId' | 'sessionId' | 'threadId' | 'topicId'
-  >;
-  readyCount: number;
+  context: Pick<ConversationContext, 'agentId' | 'groupId' | 'sessionId' | 'threadId' | 'topicId'>;
+  ready: boolean;
 }
 
 type ServerMessage =
@@ -29,27 +26,50 @@ const getWebSocketUrl = () => {
 };
 
 class MessageSubscriptionClient {
+  private fallbackTimer?: ReturnType<typeof setInterval>;
+  private heartbeatTimer?: ReturnType<typeof setInterval>;
+  private pongTimer?: ReturnType<typeof setTimeout>;
   private reconnectAttempt = 0;
   private reconnectTimer?: ReturnType<typeof setTimeout>;
+  private resumeTimer?: ReturnType<typeof setTimeout>;
   private socket?: WebSocket;
   private subscriptions = new Map<string, MessageSubscriptionRecord>();
 
-  constructor() {
+  private attachLifecycle = () => {
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    window.addEventListener('online', this.ensureConnected);
+    window.addEventListener('focus', this.handleResume);
+    window.addEventListener('online', this.handleResume);
+    window.addEventListener('pageshow', this.handleResume);
     window.addEventListener('pagehide', this.closeSocket);
-  }
+    this.fallbackTimer = setInterval(() => {
+      if (document.visibilityState === 'hidden') return;
+      this.ensureConnected();
+      for (const [id, subscription] of this.subscriptions) {
+        if (subscription.ready) continue;
+        subscription.onReconnect();
+        this.sendSubscription(id, subscription);
+      }
+    }, 30_000);
+  };
 
-  subscribe(
-    context: ConversationContext,
-    callbacks: MessageSubscriptionCallbacks,
-  ): () => void {
+  private detachLifecycle = () => {
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    window.removeEventListener('focus', this.handleResume);
+    window.removeEventListener('online', this.handleResume);
+    window.removeEventListener('pageshow', this.handleResume);
+    window.removeEventListener('pagehide', this.closeSocket);
+    clearInterval(this.fallbackTimer);
+    this.fallbackTimer = undefined;
+  };
+
+  subscribe(context: ConversationContext, callbacks: MessageSubscriptionCallbacks): () => void {
     const subscriptionId =
       typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
         : `messages-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    this.subscriptions.set(subscriptionId, {
+    if (this.subscriptions.size === 0) this.attachLifecycle();
+    const subscription: MessageSubscriptionRecord = {
       ...callbacks,
       context: {
         agentId: context.agentId,
@@ -58,27 +78,66 @@ class MessageSubscriptionClient {
         threadId: context.threadId,
         topicId: context.topicId,
       },
-      readyCount: 0,
-    });
-    this.ensureConnected();
+      ready: false,
+    };
+    this.subscriptions.set(subscriptionId, subscription);
+    if (this.socket?.readyState === WebSocket.OPEN)
+      this.sendSubscription(subscriptionId, subscription);
+    else this.ensureConnected();
 
     return () => {
       if (this.socket?.readyState === WebSocket.OPEN) {
         this.socket.send(JSON.stringify({ subscriptionId, type: 'unsubscribeMessages' }));
       }
       this.subscriptions.delete(subscriptionId);
-      if (this.subscriptions.size === 0) this.closeSocket();
+      if (this.subscriptions.size === 0) {
+        this.closeSocket();
+        this.detachLifecycle();
+      }
     };
   }
+
+  private sendSubscription = (id: string, subscription: MessageSubscriptionRecord) => {
+    if (this.socket?.readyState !== WebSocket.OPEN) return;
+    this.socket.send(
+      JSON.stringify({
+        context: subscription.context,
+        subscriptionId: id,
+        type: 'subscribeMessages',
+      }),
+    );
+  };
 
   private closeSocket = () => {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = undefined;
     }
+    clearTimeout(this.resumeTimer);
+    this.resumeTimer = undefined;
+    this.stopHeartbeat();
+    for (const subscription of this.subscriptions.values()) subscription.ready = false;
     const socket = this.socket;
     this.socket = undefined;
     if (socket && socket.readyState < WebSocket.CLOSING) socket.close(1000, 'Client idle');
+  };
+
+  private stopHeartbeat = () => {
+    clearInterval(this.heartbeatTimer);
+    clearTimeout(this.pongTimer);
+    this.heartbeatTimer = undefined;
+    this.pongTimer = undefined;
+  };
+
+  private ping = () => {
+    if (this.socket?.readyState !== WebSocket.OPEN || this.pongTimer) return;
+    const socket = this.socket;
+    socket.send('PING');
+    this.pongTimer = setTimeout(() => {
+      if (this.socket !== socket) return;
+      this.closeSocket();
+      this.ensureConnected();
+    }, 10_000);
   };
 
   private ensureConnected = () => {
@@ -98,18 +157,18 @@ class MessageSubscriptionClient {
       if (this.socket !== socket) return;
       this.reconnectAttempt = 0;
       for (const [subscriptionId, subscription] of this.subscriptions) {
-        socket.send(
-          JSON.stringify({
-            context: subscription.context,
-            subscriptionId,
-            type: 'subscribeMessages',
-          }),
-        );
+        this.sendSubscription(subscriptionId, subscription);
       }
+      this.heartbeatTimer = setInterval(this.ping, 15_000);
     });
 
     socket.addEventListener('message', (event) => {
       if (this.socket !== socket || typeof event.data !== 'string') return;
+      if (event.data === 'PONG') {
+        clearTimeout(this.pongTimer);
+        this.pongTimer = undefined;
+        return;
+      }
 
       let message: ServerMessage;
       try {
@@ -127,13 +186,20 @@ class MessageSubscriptionClient {
       }
 
       if (message.type === 'subscription.ready') {
-        subscription.readyCount += 1;
-        if (subscription.readyCount > 1) subscription.onReconnect();
+        subscription.ready = true;
+        // The first handshake also closes the fetch-to-subscribe race.
+        subscription.onReconnect();
+      }
+      if (message.type === 'subscription.error') {
+        subscription.ready = false;
+        subscription.onReconnect();
       }
     });
 
     const reconnect = () => {
       if (this.socket !== socket) return;
+      this.stopHeartbeat();
+      for (const subscription of this.subscriptions.values()) subscription.ready = false;
       this.socket = undefined;
       if (this.subscriptions.size === 0 || document.visibilityState === 'hidden') return;
 
@@ -146,12 +212,23 @@ class MessageSubscriptionClient {
     socket.addEventListener('error', () => socket.close());
   };
 
+  private handleResume = () => {
+    if (document.visibilityState === 'hidden' || this.subscriptions.size === 0) return;
+    this.ensureConnected();
+    this.ping();
+    if (this.resumeTimer) return;
+    this.resumeTimer = setTimeout(() => {
+      this.resumeTimer = undefined;
+      for (const subscription of this.subscriptions.values()) subscription.onReconnect();
+    }, 50);
+  };
+
   private handleVisibilityChange = () => {
     if (document.visibilityState === 'hidden') {
       this.closeSocket();
       return;
     }
-    this.ensureConnected();
+    this.handleResume();
   };
 }
 

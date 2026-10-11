@@ -16,6 +16,7 @@ on:
       - packages/utils/src/currentTime*
       - packages/utils/src/client/**
       - src/**
+      - scripts/serverLauncher/**
       - tests/stream-reliability/**
       - tests/browser-responsiveness/**
 
@@ -40,6 +41,18 @@ jobs:
         run: node node_modules/vitest/vitest.mjs run --config tests/chat-diagnostics/vitest.config.mts --silent=passed-only
       - name: Browser responsiveness and stream replay regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/browser-responsiveness/vitest.config.mts --silent=passed-only
+      - name: Context usage and cross-device recovery regressions
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/services/realtime/messageSubscription.test.ts \
+            src/features/Conversation/MessageRealtimeSync.test.tsx \
+            src/features/Conversation/ChatInput/utils.test.ts \
+            src/features/ChatInput/ActionBar/Token/contextUsage.test.ts \
+            src/hooks/useTokenCount.test.tsx \
+            src/store/chat/slices/message/action.test.ts \
+            scripts/serverLauncher/realtimeServer.test.mjs
+      - name: Authenticated realtime bridge integration
+        run: node node_modules/vitest/vitest.mjs run --silent=passed-only scripts/serverLauncher/realtimeServer.integration.test.mjs
       - name: Provider stream decoder regressions
         working-directory: packages/model-runtime
         run: |

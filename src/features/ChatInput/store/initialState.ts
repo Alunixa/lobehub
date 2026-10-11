@@ -1,4 +1,4 @@
-import { type OpenAIChatMessage } from '@lobechat/types';
+import type { OpenAIChatMessage, UIChatMessage } from '@lobechat/types';
 import { type IEditor, type SlashOptions } from '@lobehub/editor';
 import { type ChatInputProps } from '@lobehub/editor/react';
 import { type MenuProps } from '@lobehub/ui';
@@ -28,7 +28,12 @@ export const initialSendButtonState: SendButtonProps = {
 
 export type SlashPlacement = 'top' | 'bottom';
 
-export interface ContextWindowMessage {
+export interface ContextWindowMessage extends Partial<
+  Pick<
+    UIChatMessage,
+    'error' | 'id' | 'metadata' | 'model' | 'provider' | 'reasoning' | 'role' | 'tools' | 'usage'
+  >
+> {
   content: string;
 }
 

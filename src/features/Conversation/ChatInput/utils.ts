@@ -27,7 +27,22 @@ export const getContextWindowMessages = (
     enableHistoryCount?: boolean;
     historyCount?: number;
   },
-) => toChatInputMessages(chatHelpers.getSlicedMessages(messages, options));
+) =>
+  chatHelpers
+    .getSlicedMessages(messages, options)
+    .filter(isSupportedChatInputMessage)
+    .map((message) => ({
+      content: typeof message.content === 'string' ? message.content : '',
+      error: message.error,
+      id: message.id,
+      metadata: message.metadata,
+      model: message.model,
+      provider: message.provider,
+      reasoning: message.reasoning,
+      role: message.role,
+      tools: message.tools,
+      usage: message.usage,
+    }));
 
 export interface ConversationChatInputUiState {
   placeholderVariant: PlaceholderVariant;

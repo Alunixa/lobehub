@@ -48,6 +48,20 @@ const createRedisMessageBroker = ({ RedisClass, redisUrl = process.env.REDIS_URL
     maxRetriesPerRequest: null,
   });
   const subscriptions = new Map();
+  let wasReady = false;
+
+  subscriber.on('ready', () => {
+    if (wasReady) {
+      const event = JSON.stringify({
+        reason: 'update',
+        timestamp: Date.now(),
+        type: 'messages.updated',
+      });
+      for (const subscription of subscriptions.values())
+        for (const listener of subscription.listeners) listener(event);
+    }
+    wasReady = true;
+  });
 
   subscriber.on('message', (channel, payload) => {
     const subscription = subscriptions.get(channel);
@@ -463,9 +477,7 @@ const requestMessageSubscriptionChannels = async ({
   if (
     !Array.isArray(channels) ||
     channels.length === 0 ||
-    channels.some(
-      (channel) => typeof channel !== 'string' || !/^[\w:-]{1,256}$/.test(channel),
-    )
+    channels.some((channel) => typeof channel !== 'string' || !/^[\w:-]{1,256}$/.test(channel))
   ) {
     return {
       error: createBridgeError(
@@ -495,7 +507,9 @@ const rejectUpgrade = (socket, statusCode, message) => {
 };
 
 const proxyHttpRequest = ({ agent, internalHost, internalPort, request, response }) => {
-  if (new URL(request.url || '/', `http://${getRequestHost(request)}`).pathname === WEBSOCKET_PATH) {
+  if (
+    new URL(request.url || '/', `http://${getRequestHost(request)}`).pathname === WEBSOCKET_PATH
+  ) {
     response.writeHead(426, {
       'cache-control': 'no-store',
       'content-type': 'text/plain; charset=utf-8',
@@ -507,7 +521,7 @@ const proxyHttpRequest = ({ agent, internalHost, internalPort, request, response
   const headers = copyForwardedHeaders(
     request.headers,
     {
-      host: getRequestHost(request),
+      'host': getRequestHost(request),
       'x-forwarded-proto': getForwardedProtocol(request),
       'x-forwarded-host': getRequestHost(request),
     },
@@ -696,7 +710,10 @@ const createRealtimeServer = ({
           subscriptionId,
         });
 
-        if (!pendingMessageSubscriptions.has(subscriptionId) || client.readyState !== WebSocket.OPEN)
+        if (
+          !pendingMessageSubscriptions.has(subscriptionId) ||
+          client.readyState !== WebSocket.OPEN
+        )
           return;
 
         if (result.error) {
@@ -729,7 +746,10 @@ const createRealtimeServer = ({
           disposers.push(dispose);
         }
 
-        if (pendingMessageSubscriptions.has(subscriptionId) && client.readyState === WebSocket.OPEN) {
+        if (
+          pendingMessageSubscriptions.has(subscriptionId) &&
+          client.readyState === WebSocket.OPEN
+        ) {
           pendingMessageSubscriptions.delete(subscriptionId);
           messageSubscriptions.set(subscriptionId, disposers);
           safeSendJson(client, { subscriptionId, type: 'subscription.ready' });
@@ -900,9 +920,7 @@ const runRealtimeServer = async ({
 }) => {
   const internalHost = '127.0.0.1';
   const command = useProxy ? '/bin/proxychains' : process.execPath;
-  const args = useProxy
-    ? ['-q', process.execPath, serverScriptPath]
-    : [serverScriptPath];
+  const args = useProxy ? ['-q', process.execPath, serverScriptPath] : [serverScriptPath];
   const child = spawn(command, args, {
     env: {
       ...process.env,

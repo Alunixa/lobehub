@@ -15,10 +15,11 @@ interface TokenProgressProps {
   data: TokenProgressItem[];
   showIcon?: boolean;
   showTotal?: string;
+  totalValue?: number;
 }
 
-const TokenProgress = memo<TokenProgressProps>(({ data, showIcon, showTotal }) => {
-  const total = data.reduce((acc, item) => acc + item.value, 0);
+const TokenProgress = memo<TokenProgressProps>(({ data, showIcon, showTotal, totalValue }) => {
+  const total = totalValue ?? data.reduce((acc, item) => acc + Math.max(0, item.value), 0);
   return (
     <Flexbox gap={8} style={{ position: 'relative' }} width={'100%'}>
       <Flexbox
@@ -36,7 +37,7 @@ const TokenProgress = memo<TokenProgressProps>(({ data, showIcon, showTotal }) =
           <Flexbox
             height={'100%'}
             key={item.id}
-            style={{ background: item.color, flex: item.value }}
+            style={{ background: item.color, flex: Math.max(0, item.value) }}
           />
         ))}
       </Flexbox>

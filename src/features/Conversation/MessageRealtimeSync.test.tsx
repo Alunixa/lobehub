@@ -7,9 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import MessageRealtimeSync from './MessageRealtimeSync';
 
 const mocks = vi.hoisted(() => ({
-  callbacks: undefined as
-    | { onReconnect: () => void; onUpdate: () => void }
-    | undefined,
+  callbacks: undefined as { onReconnect: () => void; onUpdate: () => void } | undefined,
   dispose: vi.fn(),
   mutate: vi.fn(),
   streaming: false,
@@ -79,5 +77,16 @@ describe('MessageRealtimeSync', () => {
       { agentId: 'agent-1', topicId: 'topic-2' },
       expect.any(Object),
     );
+  });
+
+  it('subscribes to a group-owned conversation without requiring an agent ID', () => {
+    const view = render(
+      <MessageRealtimeSync context={{ agentId: '', groupId: 'group-1', topicId: 'topic-1' }} />,
+    );
+    expect(mocks.subscribe).toHaveBeenCalledWith(
+      expect.objectContaining({ groupId: 'group-1', topicId: 'topic-1' }),
+      expect.any(Object),
+    );
+    view.unmount();
   });
 });
