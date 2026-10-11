@@ -1,13 +1,13 @@
 'use client';
 
 import { Flexbox } from '@lobehub/ui';
-import { Button, Tabs, Text } from '@lobehub/ui/base-ui';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
 import { cx } from 'antd-style';
 import { Plus } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import DragUploadZone from '@/components/DragUploadZone';
-import NavHeader from '@/features/NavHeader';
+import { MediaStudioHeader } from '@/features/MediaStudio';
 import { NavPanelPortal } from '@/features/NavPanel';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useImageReferenceUpload } from '@/routes/(main)/(create)/image/features/PromptInput/useImageReferenceUpload';
@@ -47,14 +47,9 @@ export const ImageStudioPage = ({ mobile: forceMobile = false }: { mobile?: bool
   return (
     <Flexbox className={styles.page} data-testid={'image-studio'}>
       {!mobile && <NavPanelPortal navKey={'image'}>{history}</NavPanelPortal>}
-      {mobile ? (
-        <Flexbox className={styles.mobileHeader}>
-          <Flexbox horizontal align={'center'} justify={'space-between'}>
-            <Text fontSize={20} weight={600}>
-              {t('studio.title')}
-            </Text>
-            {createButton}
-          </Flexbox>
+      <MediaStudioHeader action={createButton} mobile={mobile} mode={'image'} />
+      {mobile && (
+        <Flexbox className={styles.viewTabs}>
           <Tabs
             activeKey={studio.view}
             styles={{ list: { width: '100%' }, tab: { flex: 1, minHeight: 44 } }}
@@ -72,16 +67,6 @@ export const ImageStudioPage = ({ mobile: forceMobile = false }: { mobile?: bool
             }}
           />
         </Flexbox>
-      ) : (
-        <NavHeader
-          className={styles.header}
-          right={createButton}
-          left={
-            <Text fontSize={20} weight={600}>
-              {t('studio.title')}
-            </Text>
-          }
-        />
       )}
       <DragUploadZone
         disabled={!reference.canDropImage || studio.isCreating}

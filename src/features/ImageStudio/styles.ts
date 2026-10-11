@@ -2,11 +2,14 @@ import { createStaticStyles } from 'antd-style';
 
 export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   layout: css`
+    container-type: inline-size;
     overflow: hidden;
     flex: 1;
+
     min-width: 0;
-    min-height: 0;
     height: 100%;
+    min-height: 0;
+
     background: ${cssVar.colorBgContainer};
   `,
   mobileLayout: css`
@@ -20,84 +23,117 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   `,
   header: css`
     flex: none;
+
     min-height: 60px;
-    padding: 12px 20px;
+    padding-block: 12px;
+    padding-inline: 20px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
   `,
   mobileHeader: css`
     flex: none;
     gap: 8px;
-    padding: 8px 12px;
+
+    padding-block: 8px;
+    padding-inline: 12px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
   `,
   body: css`
     container-type: inline-size;
     overflow: hidden;
     display: grid;
-    flex: 1;
     grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+    flex: 1;
+    gap: 18px;
+
+    width: 100%;
     min-width: 0;
     min-height: 0;
-    width: 100%;
+    padding: 20px;
+
+    background: ${cssVar.colorBgLayout};
+
+    @container (max-width: 900px) {
+      grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+      gap: 12px;
+      padding: 14px;
+    }
   `,
   mobileBody: css`
     grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    padding: 12px;
+  `,
+  viewTabs: css`
+    flex: none;
+    padding-inline: 14px;
+    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+    background: ${cssVar.colorBgContainer};
   `,
   composer: css`
     overflow: hidden;
     flex: 1;
+
     min-width: 0;
     min-height: 0;
-    border-inline-end: 1px solid ${cssVar.colorBorderSecondary};
+    border: 1px solid ${cssVar.colorBorderSecondary};
+    border-radius: 16px;
+
     background: ${cssVar.colorBgContainer};
 
     &[data-mobile='true'] {
-      border: 0;
+      border-radius: 14px;
     }
   `,
   scroll: css`
+    scrollbar-gutter: stable;
+
     overflow: auto;
     overscroll-behavior: contain;
     flex: 1;
+
     min-width: 0;
     min-height: 0;
-    scrollbar-gutter: stable;
+
     -webkit-overflow-scrolling: touch;
   `,
   form: css`
     width: 100%;
     max-width: 640px;
     margin-inline: auto;
-    padding: 20px;
+    padding: 24px;
 
-    @media (max-width: 420px) {
-      padding: 16px 12px;
+    @media (width <= 420px) {
+      padding-block: 16px;
+      padding-inline: 12px;
     }
   `,
   fieldset: css`
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 22px;
+
     min-width: 0;
     margin: 0;
     padding: 0;
     border: 0;
 
     &:disabled {
-      opacity: 0.65;
       pointer-events: none;
+      opacity: 0.65;
     }
   `,
   textarea: css`
-    min-height: 128px;
+    min-height: 148px;
     font-size: 16px;
     line-height: 1.6;
   `,
   footer: css`
     flex: none;
     gap: 8px;
-    padding: 12px 16px;
+
+    padding: 16px;
     border-block-start: 1px solid ${cssVar.colorBorderSecondary};
+
     background: ${cssVar.colorBgContainer};
   `,
   modelButton: css`
@@ -112,11 +148,14 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     }
   `,
   references: css`
+    scrollbar-width: thin;
+
     overflow-x: auto;
     display: flex;
     gap: 12px;
-    padding: 8px 4px;
-    scrollbar-width: thin;
+
+    padding-block: 8px;
+    padding-inline: 4px;
 
     .upload-card-close {
       opacity: 1 !important;
@@ -141,14 +180,21 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
   results: css`
     overflow: hidden;
     flex: 1;
+
     min-width: 0;
     min-height: 0;
-    background: ${cssVar.colorBgLayout};
+    border: 1px solid ${cssVar.colorBorderSecondary};
+    border-radius: 16px;
+
+    background: ${cssVar.colorBgContainer};
   `,
   resultsHeader: css`
     flex: none;
+
     min-width: 0;
-    padding: 12px 20px;
+    min-height: 72px;
+    padding-block: 16px;
+    padding-inline: 22px;
     border-block-end: 1px solid ${cssVar.colorBorderSecondary};
   `,
   feed: css`
@@ -157,26 +203,29 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     margin-inline: auto;
     padding: 20px;
 
-    @media (max-width: 600px) {
+    @media (width <= 600px) {
       padding: 12px;
     }
   `,
   empty: css`
     min-height: 240px;
-    padding: 32px 24px;
+    padding-block: 32px;
+    padding-inline: 24px;
     text-align: center;
   `,
   emptyIcon: css`
     padding: 18px;
     border: 1px solid ${cssVar.colorBorderSecondary};
     border-radius: 20px;
+
     color: ${cssVar.colorTextSecondary};
+
     background: ${cssVar.colorBgContainer};
   `,
   history: css`
     min-width: 0;
-    min-height: 0;
     height: 100%;
+    min-height: 0;
 
     .nav-item-actions {
       width: auto !important;
@@ -184,13 +233,29 @@ export const studioStyles = createStaticStyles(({ css, cssVar }) => ({
     }
   `,
   historyRow: css`
-    min-height: 60px;
     height: auto;
+    min-height: 60px;
   `,
   status: css`
-    padding: 14px 16px;
+    padding-block: 14px;
+    padding-inline: 16px;
     border: 1px solid ${cssVar.colorBorderSecondary};
     border-radius: 12px;
+
     background: ${cssVar.colorBgContainer};
+  `,
+  parameterGrid: css`
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 12px;
+  `,
+  sectionLabel: css`
+    padding-block-end: 8px;
+    border-block-end: 1px solid ${cssVar.colorBorderSecondary};
+
+    font-size: 12px;
+    font-weight: 500;
+    color: ${cssVar.colorTextSecondary};
+    letter-spacing: 0.5px;
   `,
 }));

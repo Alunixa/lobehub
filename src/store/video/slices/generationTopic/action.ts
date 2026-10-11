@@ -65,14 +65,28 @@ export class GenerationTopicActionImpl {
 
     this.#get().internal_updateGenerationTopicLoading(tmpId, true);
 
-    const topicId = await generationTopicService.createTopic('video', newGenerationTopicVisibility);
-    this.#get().internal_updateGenerationTopicLoading(tmpId, false);
-
-    this.#get().internal_updateGenerationTopicLoading(topicId, true);
-    await this.#get().refreshGenerationTopics();
-    this.#get().internal_updateGenerationTopicLoading(topicId, false);
-
-    return topicId;
+    try {
+      const topicId = await generationTopicService.createTopic(
+        'video',
+        newGenerationTopicVisibility,
+      );
+      this.#get().internal_dispatchGenerationTopic({ id: tmpId, type: 'deleteTopic' });
+      this.#get().internal_dispatchGenerationTopic({
+        type: 'addTopic',
+        value: { id: topicId, title: '', visibility: newGenerationTopicVisibility },
+      });
+      try {
+        await this.#get().refreshGenerationTopics();
+      } catch (error) {
+        console.error('Failed to refresh accepted video topic:', error);
+      }
+      return topicId;
+    } catch (error) {
+      this.#get().internal_dispatchGenerationTopic({ id: tmpId, type: 'deleteTopic' });
+      throw error;
+    } finally {
+      this.#get().internal_updateGenerationTopicLoading(tmpId, false);
+    }
   };
 
   setNewGenerationTopicVisibility = (visibility: GenerationTopicVisibility): void => {

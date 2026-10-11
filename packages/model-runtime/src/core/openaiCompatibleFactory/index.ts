@@ -63,7 +63,11 @@ import {
 import { StreamingResponse } from '../../utils/response';
 import type { LobeRuntimeAI } from '../BaseAI';
 import { normalizeToolsParameters } from '../contextBuilders/normalizeToolSchema';
-import { convertOpenAIMessages, convertOpenAIResponseInputs } from '../contextBuilders/openai';
+import {
+  convertOpenAIMessages,
+  convertOpenAIResponseInputs,
+  extractResponseInstructions,
+} from '../contextBuilders/openai';
 import { resolveModelSamplingParameters } from '../parameterResolver';
 import type { OpenAIStreamOptions } from '../streams';
 import { OpenAIResponsesStream, OpenAIStream } from '../streams';
@@ -1407,7 +1411,12 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
       delete res.presence_penalty;
       delete res.preserveThinking;
 
-      const input = await convertOpenAIResponseInputs(messages as any, {
+      const explicitInstructions = (res as { instructions?: unknown }).instructions;
+      const responseMessages =
+        explicitInstructions === undefined
+          ? extractResponseInstructions(messages)
+          : { instructions: undefined, messages };
+      const input = await convertOpenAIResponseInputs(responseMessages.messages as any, {
         forceImageBase64: chatCompletion?.forceImageBase64,
         forceVideoBase64: chatCompletion?.forceVideoBase64,
         strictToolPairing: true,
@@ -1423,6 +1432,9 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
 
       const postPayload = {
         ...res,
+        ...(responseMessages.instructions !== undefined
+          ? { instructions: responseMessages.instructions }
+          : {}),
         ...(reasoning || reasoning_effort
           ? {
               reasoning: {

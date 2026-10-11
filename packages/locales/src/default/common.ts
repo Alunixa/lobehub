@@ -1,4 +1,23 @@
 export default {
+  'mediaStudio.title': 'Creative Studio',
+  'mediaStudio.shortTitle': 'Create',
+  'mediaStudio.imageDescription': 'Shape your idea with images, references, and precise controls.',
+  'mediaStudio.videoDescription': 'Create motion with prompts, reference frames, and video models.',
+  'mediaStudio.imageEmptyTitle': 'Your next image starts here',
+  'mediaStudio.imageEmptyDescription':
+    'Describe a scene and choose a model. Your images and generation progress will appear here.',
+  'mediaStudio.videoEmptyTitle': 'Make your ideas move',
+  'mediaStudio.videoEmptyDescription':
+    'Describe the shot, add reference frames, and choose a video model. Track and play your results here.',
+  'mediaStudio.startCreating': 'Start creating',
+  'mediaStudio.videoCreateTitle': 'Direct your next shot',
+  'mediaStudio.videoCreateDescription': 'Describe the scene, the movement, and the atmosphere.',
+  'mediaStudio.videoModel': 'Choose a video model',
+  'mediaStudio.noVideoModel':
+    'No enabled video model is available. Configure one in provider settings to create videos.',
+  'mediaStudio.generateVideo': 'Generate video',
+  'mediaStudio.videoResultsDescription':
+    'Your video tasks, progress, and completed clips appear here.',
   'mobile.uploadReference': 'Upload or replace a reference image',
   'mobile.agentProfile': 'Agent profile and runtime',
   'mobile.autoSave': 'Changes are saved automatically',

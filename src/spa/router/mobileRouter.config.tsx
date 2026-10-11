@@ -41,6 +41,22 @@ export const sharedMainAreaChildren: RouteObject[] = [
     path: 'image',
   },
 
+  // Video generation uses the same touch-friendly studio layout as images.
+  {
+    children: [
+      {
+        element: dynamicElement(() => import('@/routes/(mobile)/video'), 'Mobile > Video'),
+        index: true,
+      },
+    ],
+    element: dynamicLayout(
+      () => import('@/routes/(mobile)/video/_layout'),
+      'Mobile > Video > Layout',
+    ),
+    errorElement: <ErrorBoundary />,
+    path: 'video',
+  },
+
   // Chat routes
   {
     children: [

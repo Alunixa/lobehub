@@ -85,6 +85,7 @@
   "studio.new": "New project",
   "studio.noMatches": "No projects match your search",
   "studio.noModel": "Enable an image model to start creating.",
+  "studio.parameters": "Output settings",
   "studio.prompt": "Describe your image",
   "studio.readOnly": "You do not have permission to create images in this space.",
   "studio.referenceHint": "Optional · Add up to {{count}} references. Swipe to see every image.",

@@ -230,6 +230,8 @@ export interface ModelPerformance {
    * from input start to output finish (ms)
    */
   latency?: number;
+  /** Auth/preferences/media hooks before entering the provider adapter (ms). */
+  providerPreparationMs?: number;
   /**
    * tokens per second
    */

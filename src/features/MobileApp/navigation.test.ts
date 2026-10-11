@@ -7,6 +7,8 @@ describe('mobile navigation', () => {
     ['/', 'chat', true],
     ['/image', 'image', true],
     ['/image/', 'image', true],
+    ['/video', 'image', true],
+    ['/video/', 'image', true],
     ['/tasks', 'tools', true],
     ['/tools', 'tools', true],
     ['/me', 'me', true],
@@ -21,6 +23,10 @@ describe('mobile navigation', () => {
   });
 
   it('keeps team navigation scoped without confusing similarly prefixed paths', () => {
+    expect(resolveMobileNavigation('/team/video', 'team')).toEqual({
+      active: 'image',
+      showNav: true,
+    });
     expect(resolveMobileNavigation('/team/image', 'team')).toEqual({
       active: 'image',
       showNav: true,

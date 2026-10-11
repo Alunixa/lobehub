@@ -555,6 +555,32 @@ describe('ModelRuntime', () => {
     };
 
     describe('chat hooks', () => {
+      it('adds numeric provider preparation timing without changing completion text or usage', async () => {
+        const onCompletion = vi.fn();
+        const { runtime, mockRuntimeAI } = createMockRuntime({ beforeChat: vi.fn() });
+        mockRuntimeAI.chat.mockImplementation(
+          async (_payload: unknown, options: ChatMethodOptions) => {
+            await options.callback?.onCompletion?.({
+              text: 'ok',
+              speed: { ttft: 25, latency: 80 },
+              usage: { totalInputTokens: 10 },
+            });
+            return new Response('');
+          },
+        );
+        await runtime.chat(chatPayload, { callback: { onCompletion } });
+        expect(onCompletion).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text: 'ok',
+            usage: { totalInputTokens: 10 },
+            speed: expect.objectContaining({
+              ttft: 25,
+              latency: 80,
+              providerPreparationMs: expect.any(Number),
+            }),
+          }),
+        );
+      });
       it('beforeChat is called before runtime.chat', async () => {
         const beforeChat = vi.fn();
         const { runtime, mockRuntimeAI } = createMockRuntime({ beforeChat });

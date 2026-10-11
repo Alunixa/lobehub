@@ -1,4 +1,5 @@
 export default {
+  'studio.parameters': 'Output settings',
   'studio.adjustAndRetry': 'Adjust and regenerate',
   'studio.advanced': 'Advanced settings',
   'studio.backToCreate': 'Back to create',

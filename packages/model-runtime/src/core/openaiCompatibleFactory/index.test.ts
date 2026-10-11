@@ -1265,6 +1265,13 @@ describe('LobeOpenAICompatibleFactory', () => {
                   object: 'chat.completion.chunk',
                   system_fingerprint: 'fp_86156a94a0',
                 });
+                controller.enqueue({
+                  choices: [{ delta: {}, finish_reason: 'stop', index: 0, logprobs: null }],
+                  created: 1_709_125_675,
+                  id: 'chatcmpl-8xDx5AETP8mESQN7UB30GxTN2H1SO',
+                  model: 'mistralai/mistral-7b-instruct:free',
+                  object: 'chat.completion.chunk',
+                });
                 controller.close();
               },
             }) as any,
@@ -1290,9 +1297,12 @@ describe('LobeOpenAICompatibleFactory', () => {
         // Verify callback is called
         await result.text(); // Ensure stream is consumed
         expect(mockCallback.onStart).toHaveBeenCalled();
-        expect(mockCallback.onCompletion).toHaveBeenCalledWith({
-          text: 'hello',
-        });
+        expect(mockCallback.onCompletion).toHaveBeenCalledWith(
+          expect.objectContaining({
+            text: 'hello',
+            finishReason: 'stop',
+          }),
+        );
 
         // Verify headers are correctly passed
         expect(result.headers.get('Custom-Header')).toEqual('TestValue');

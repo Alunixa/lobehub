@@ -26,9 +26,7 @@ const isDeepSeekModel = (model: string | undefined) =>
   typeof model === 'string' && model.toLowerCase().includes('deepseek');
 
 type OpenAICompatibleContentPart =
-  | ExtendedChatCompletionContentPart
-  | OpenAI.ChatCompletionContentPart
-  | UserMessageContentPart;
+  ExtendedChatCompletionContentPart | OpenAI.ChatCompletionContentPart | UserMessageContentPart;
 
 const isInternalThinkingContentPart = (
   content: OpenAICompatibleContentPart,
@@ -133,6 +131,31 @@ export const convertOpenAIMessages = async (
       return result;
     }),
   )) as OpenAI.ChatCompletionMessageParam[];
+};
+
+/**
+ * Leading system text belongs in Responses instructions, rather than allowing
+ * compatible gateways to supply additional default instructions.
+ */
+export const extractResponseInstructions = (messages: OpenAIChatMessage[]) => {
+  const instructions: string[] = [];
+  let index = 0;
+  for (const message of messages) {
+    if (message.role !== 'system' && String(message.role) !== 'developer') break;
+    const text =
+      typeof message.content === 'string'
+        ? message.content
+        : Array.isArray(message.content) && message.content.every((part) => part.type === 'text')
+          ? message.content.map((part) => (part.type === 'text' ? part.text : '')).join('\n')
+          : undefined;
+    if (text === undefined) break;
+    instructions.push(text);
+    index += 1;
+  }
+  return {
+    instructions: index > 0 ? instructions.join('\n\n') : undefined,
+    messages: index > 0 ? messages.slice(index) : messages,
+  };
 };
 
 export const convertOpenAIResponseInputs = async (
@@ -260,6 +283,9 @@ export const convertOpenAIResponseInputs = async (
                   return undefined;
                 }
                 return {
+                  ...(c.type === 'image_url' && c.image_url.detail
+                    ? { detail: c.image_url.detail }
+                    : {}),
                   image_url: (image as OpenAI.ChatCompletionContentPartImage).image_url?.url,
                   type: 'input_image',
                 };

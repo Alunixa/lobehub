@@ -251,7 +251,7 @@ export class ModelRuntime {
     payload: ChatStreamPayload,
     options?: ChatMethodOptions,
   ): Promise<ChatMethodOptions | undefined> {
-    const hookOptions = this._hooks?.beforeChat && !options ? {} : options;
+    let hookOptions = this._hooks?.beforeChat && !options ? {} : options;
     const metadata = getLobeHubTimingMetadata(options);
     const beforeChatStartedAt = Date.now();
     if (metadata) {
@@ -284,6 +284,21 @@ export class ModelRuntime {
       );
     }
 
+    const providerPreparationMs = getDurationMs(beforeChatStartedAt);
+    const existingCompletion = hookOptions?.callback?.onCompletion;
+    if (existingCompletion) {
+      hookOptions = {
+        ...hookOptions,
+        callback: {
+          ...hookOptions?.callback,
+          onCompletion: (data) =>
+            existingCompletion({
+              ...data,
+              speed: data.speed ? { ...data.speed, providerPreparationMs } : undefined,
+            }),
+        },
+      };
+    }
     if (!this._hooks?.onChatFinal) return hookOptions;
 
     const hookFn = this._hooks.onChatFinal;

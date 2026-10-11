@@ -85,6 +85,7 @@
   "studio.new": "新建项目",
   "studio.noMatches": "没有找到相关项目",
   "studio.noModel": "请先启用一个生图模型，再开始创作",
+  "studio.parameters": "输出设置",
   "studio.prompt": "描述画面",
   "studio.readOnly": "你没有在这个空间中创作图片的权限",
   "studio.referenceHint": "可选 · 最多 {{count}} 张参考图，左右滑动可查看全部",

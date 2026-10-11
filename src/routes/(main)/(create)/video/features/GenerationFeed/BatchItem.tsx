@@ -29,6 +29,10 @@ const styles = createStaticStyles(({ css, cssVar, cx }) => ({
     css`
       opacity: 0;
       transition: opacity 0.1s ${cssVar.motionEaseInOut};
+
+      @media (hover: none), (pointer: coarse) {
+        opacity: 1;
+      }
     `,
   ),
   container: css`

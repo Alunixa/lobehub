@@ -2,12 +2,13 @@
 
 import { Center, Flexbox } from '@lobehub/ui';
 import { ActionIcon, Alert, Button, Text } from '@lobehub/ui/base-ui';
-import { Images, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import AsyncError from '@/components/AsyncError';
 import NeuralNetworkLoading from '@/components/NeuralNetworkLoading';
+import { MediaStudioEmpty } from '@/features/MediaStudio';
 import { GenerationBatchItem } from '@/routes/(main)/(create)/image/features/GenerationFeed/BatchItem';
 import { useImageStore } from '@/store/image';
 
@@ -112,18 +113,7 @@ export const StudioResults = ({ onCreate, studio }: StudioResultsProps) => {
             !isCreating &&
             !batchesQuery.isLoading &&
             !batchesQuery.error &&
-            !submitError && (
-              <Center className={styles.empty} gap={16}>
-                <div className={styles.emptyIcon}>
-                  <Images size={40} strokeWidth={1.25} />
-                </div>
-                <Text as={'h2'} fontSize={22} style={{ margin: 0 }} weight={600}>
-                  {t('studio.emptyTitle')}
-                </Text>
-                <Text type={'secondary'}>{t('studio.emptyDescription')}</Text>
-                <Button onClick={onCreate}>{t('studio.backToCreate')}</Button>
-              </Center>
-            )}
+            !submitError && <MediaStudioEmpty mode={'image'} onCreate={onCreate} />}
           {orderedBatches.map((batch) => (
             <GenerationBatchItem batch={batch} key={batch.id} onReuse={onCreate} />
           ))}

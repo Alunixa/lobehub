@@ -10,6 +10,7 @@ import {
   convertOpenAIMessages,
   convertOpenAIResponseInputs,
   type ExtendedChatCompletionContentPart,
+  extractResponseInstructions,
 } from './openai';
 
 // 模拟依赖
@@ -18,6 +19,59 @@ vi.mock('@lobechat/utils', () => ({
   videoUrlToBase64: vi.fn(),
 }));
 vi.mock('../../utils/uriParser');
+
+describe('Responses instructions preserve caller context', () => {
+  it('lifts only leading system text without mutating history', () => {
+    const messages: OpenAIChatMessage[] = [
+      { role: 'system', content: 'persona' },
+      { role: 'system', content: 'tool guidance' },
+      { role: 'user', content: 'question' },
+      { role: 'system', content: 'late context' },
+    ];
+    expect(extractResponseInstructions(messages)).toEqual({
+      instructions: 'persona\n\ntool guidance',
+      messages: messages.slice(2),
+    });
+    expect(messages).toHaveLength(4);
+  });
+  it('preserves explicitly empty instructions', () => {
+    expect(
+      extractResponseInstructions([
+        { role: 'system', content: '' },
+        { role: 'user', content: 'hello' },
+      ]),
+    ).toMatchObject({
+      instructions: '',
+      messages: [{ role: 'user', content: 'hello' }],
+    });
+  });
+  it('does not turn media into instruction text', () => {
+    const messages: OpenAIChatMessage[] = [
+      {
+        role: 'system',
+        content: [{ type: 'image_url', image_url: { url: 'https://example.com/ref.png' } }],
+      },
+      { role: 'user', content: 'hello' },
+    ];
+    expect(extractResponseInstructions(messages)).toEqual({ instructions: undefined, messages });
+  });
+  it('retains explicitly selected image detail in Responses inputs', async () => {
+    vi.mocked(parseDataUri).mockReturnValue({ type: 'data' } as ReturnType<typeof parseDataUri>);
+    const input = await convertOpenAIResponseInputs([
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA', detail: 'low' } },
+        ],
+      },
+    ]);
+    expect(input).toEqual([
+      expect.objectContaining({
+        content: [expect.objectContaining({ type: 'input_image', detail: 'low' })],
+      }),
+    ]);
+  });
+});
 
 describe('convertMessageContent', () => {
   beforeEach(() => {

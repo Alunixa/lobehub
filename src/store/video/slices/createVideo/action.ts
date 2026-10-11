@@ -1,10 +1,13 @@
 import { t } from 'i18next';
+import type { RuntimeVideoGenParams } from 'model-bank';
 
 import { handleGenerationPromptModerationError } from '@/business/client/handleGenerationPromptModerationError';
 import { handleLobeHubModelDeprecatedError } from '@/business/client/handleLobeHubModelDeprecatedError';
 import { message } from '@/components/AntdStaticMethods';
 import { videoService } from '@/services/video';
 import { type StoreSetter } from '@/store/types';
+import { AsyncTaskStatus } from '@/types/asyncTask';
+import type { GenerationConfig } from '@/types/generation';
 
 import { type VideoStore } from '../../store';
 import { generationBatchSelectors } from '../generationBatch/selectors';
@@ -12,6 +15,44 @@ import { videoGenerationConfigSelectors } from '../generationConfig/selectors';
 import { generationTopicSelectors } from '../generationTopic';
 
 type Setter = StoreSetter<VideoStore>;
+
+const publishAcceptedVideoTasks = (
+  store: VideoStore,
+  topicId: string,
+  result: Awaited<ReturnType<typeof videoService.createVideo>>,
+  fallback: { model: string; prompt: string; provider: string },
+) => {
+  if (!result.success || !result.data)
+    throw new Error(t('generation.status.failed', { ns: 'video' }));
+  const { batch, generations } = result.data;
+  if (!batch.id || store.generationBatchesMap[topicId]?.some((item) => item.id === batch.id))
+    return;
+  store.internal_dispatchGenerationBatch(topicId, {
+    type: 'addBatch',
+    value: {
+      ...batch,
+      config: batch.config as GenerationConfig,
+      createdAt: batch.createdAt ?? new Date(),
+      generations: generations.flatMap((generation) =>
+        !generation.id || !generation.asyncTaskId
+          ? []
+          : [
+              {
+                ...generation,
+                asyncTaskId: generation.asyncTaskId,
+                createdAt: generation.createdAt ?? new Date(),
+                id: generation.id,
+                task: { id: generation.asyncTaskId, status: AsyncTaskStatus.Pending },
+              },
+            ],
+      ),
+      id: batch.id,
+      model: batch.model ?? fallback.model,
+      prompt: batch.prompt ?? fallback.prompt,
+      provider: batch.provider ?? fallback.provider,
+    },
+  });
+};
 
 export const createCreateVideoSlice = (set: Setter, get: () => VideoStore, _api?: unknown) =>
   new CreateVideoActionImpl(set, get, _api);
@@ -27,6 +68,7 @@ export class CreateVideoActionImpl {
   }
 
   createVideo = async (): Promise<void> => {
+    if (this.#get().isCreating) return;
     this.#set({ isCreating: true }, false, 'createVideo/startCreateVideo');
 
     const store = this.#get();
@@ -36,124 +78,99 @@ export class CreateVideoActionImpl {
     const activeGenerationTopicId = generationTopicSelectors.activeGenerationTopicId(store);
     const { createGenerationTopic, switchGenerationTopic, setTopicBatchLoaded } = store;
 
-    if (!parameters) {
-      throw new TypeError('parameters is not initialized');
-    }
-
-    if (!parameters.prompt) {
-      throw new TypeError('prompt is empty');
-    }
-
-    // Validate: end frame requires start frame (driven by model schema)
-    const parametersSchema = videoGenerationConfigSelectors.parametersSchema(store);
-    const endImageUrlSchema = parametersSchema?.endImageUrl;
-    if (
-      endImageUrlSchema &&
-      'requiresImageUrl' in endImageUrlSchema &&
-      endImageUrlSchema.requiresImageUrl &&
-      parameters.endImageUrl &&
-      !parameters.imageUrl &&
-      !parameters.imageUrls?.length
-    ) {
-      message.warning({
-        content: t('generation.validation.endFrameRequiresStartFrame', { ns: 'video' }),
-        duration: 3,
-      });
-      this.#set({ isCreating: false }, false, 'createVideo/endCreateVideo');
-      return;
-    }
-
     let finalTopicId = activeGenerationTopicId;
-
-    // 1. Create generation topic if not exists
-    const generationTopicId = activeGenerationTopicId;
-    let isNewTopic = false;
-
-    if (!generationTopicId) {
-      isNewTopic = true;
-      const prompts = [parameters.prompt];
-      const newGenerationTopicId = await createGenerationTopic(prompts);
-      finalTopicId = newGenerationTopicId;
-
-      // 2. Initialize empty batch array to avoid skeleton screen
-      setTopicBatchLoaded(newGenerationTopicId);
-
-      // 3. Switch to the new topic (now it has empty data, so no skeleton screen)
-      switchGenerationTopic(newGenerationTopicId);
-    }
-
     try {
-      // 3. If it's a new topic, set the creating state after topic creation
-      if (isNewTopic) {
+      if (!parameters) throw new TypeError('parameters is not initialized');
+      if (!parameters.prompt?.trim()) throw new TypeError('prompt is empty');
+      const schema = videoGenerationConfigSelectors.parametersSchema(store);
+      const end = schema?.endImageUrl;
+      if (
+        end &&
+        'requiresImageUrl' in end &&
+        end.requiresImageUrl &&
+        parameters.endImageUrl &&
+        !parameters.imageUrl &&
+        !parameters.imageUrls?.length
+      ) {
+        message.warning({
+          content: t('generation.validation.endFrameRequiresStartFrame', { ns: 'video' }),
+          duration: 3,
+        });
+        return;
+      }
+      if (!finalTopicId) {
         this.#set(
           { isCreatingWithNewTopic: true },
           false,
           'createVideo/startCreateVideoWithNewTopic',
         );
+        finalTopicId = await createGenerationTopic([parameters.prompt]);
+        setTopicBatchLoaded(finalTopicId);
+        switchGenerationTopic(finalTopicId);
       }
-
-      // 4. Create video via service
-      await videoService.createVideo({
+      const result = await videoService.createVideo({
         generationTopicId: finalTopicId!,
         model,
-        params: parameters as any,
+        params: parameters as RuntimeVideoGenParams,
         provider,
       });
-
-      // 5. Refresh generation batches to show the new batch
-      if (!isNewTopic) {
-        await this.#get().refreshGenerationBatches();
-      }
-
-      // 6. Clear the prompt input after successful video creation
+      publishAcceptedVideoTasks(this.#get(), finalTopicId!, result, {
+        model,
+        prompt: parameters.prompt,
+        provider,
+      });
       this.#set(
-        (state) => ({
-          parameters: { ...state.parameters, prompt: '' },
-        }),
+        (state) =>
+          state.parameters.prompt === parameters.prompt
+            ? { parameters: { ...state.parameters, prompt: '' } }
+            : {},
         false,
         'createVideo/clearPrompt',
       );
+      try {
+        await this.#get().refreshGenerationBatches(finalTopicId!);
+      } catch (error) {
+        console.error('Failed to refresh accepted video tasks:', error);
+      }
     } catch (error) {
       handleGenerationPromptModerationError(error);
       handleLobeHubModelDeprecatedError(error);
       throw error;
     } finally {
-      // 7. Reset all creating states
-      if (isNewTopic) {
-        this.#set(
-          { isCreating: false, isCreatingWithNewTopic: false },
-          false,
-          'createVideo/endCreateVideoWithNewTopic',
-        );
-      } else {
-        this.#set({ isCreating: false }, false, 'createVideo/endCreateVideo');
-      }
+      this.#set(
+        { isCreating: false, isCreatingWithNewTopic: false },
+        false,
+        'createVideo/endCreateVideo',
+      );
     }
   };
 
   recreateVideo = async (generationBatchId: string): Promise<void> => {
+    if (this.#get().isCreating) return;
     this.#set({ isCreating: true }, false, 'recreateVideo/start');
 
     const store = this.#get();
     const activeGenerationTopicId = generationTopicSelectors.activeGenerationTopicId(store);
-    if (!activeGenerationTopicId) {
-      throw new Error('No active generation topic');
-    }
-
-    const { removeGenerationBatch } = store;
-    const batch = generationBatchSelectors.getGenerationBatchByBatchId(generationBatchId)(store)!;
-
     try {
-      await removeGenerationBatch(generationBatchId, activeGenerationTopicId);
-
-      await videoService.createVideo({
+      if (!activeGenerationTopicId) throw new Error('No active generation topic');
+      const batch = generationBatchSelectors.getGenerationBatchByBatchId(generationBatchId)(store);
+      if (!batch) throw new Error('Generation batch not found');
+      const result = await videoService.createVideo({
         generationTopicId: activeGenerationTopicId,
         model: batch.model,
-        params: batch.config as any,
+        params: batch.config as RuntimeVideoGenParams,
         provider: batch.provider,
       });
-
-      await store.refreshGenerationBatches();
+      publishAcceptedVideoTasks(this.#get(), activeGenerationTopicId, result, {
+        model: batch.model,
+        prompt: batch.prompt,
+        provider: batch.provider,
+      });
+      try {
+        await this.#get().refreshGenerationBatches(activeGenerationTopicId);
+      } catch (error) {
+        console.error('Failed to refresh regenerated video tasks:', error);
+      }
     } catch (error) {
       handleGenerationPromptModerationError(error);
       handleLobeHubModelDeprecatedError(error);

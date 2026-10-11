@@ -2,7 +2,15 @@
 
 import { Flexbox, Icon } from '@lobehub/ui';
 import { Button, Text } from '@lobehub/ui/base-ui';
-import { Brain, BrainCircuit, ClipboardList, Compass, ImagePlus, Settings2 } from 'lucide-react';
+import {
+  Brain,
+  BrainCircuit,
+  ClipboardList,
+  Compass,
+  Film,
+  ImagePlus,
+  Settings2,
+} from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { useWorkspaceAwareNavigate } from '@/features/Workspace/useWorkspaceAwareNavigate';
@@ -27,6 +35,12 @@ export const MobileWorkbench = () => {
       icon: ImagePlus,
       path: '/image',
       title: t('mobile.createImage'),
+    },
+    {
+      description: t('mediaStudio.videoDescription'),
+      icon: Film,
+      path: '/video',
+      title: t('mediaStudio.generateVideo'),
     },
     ...(showProvider
       ? [

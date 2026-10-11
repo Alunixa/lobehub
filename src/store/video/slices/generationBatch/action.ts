@@ -97,10 +97,11 @@ export class GenerationBatchActionImpl {
     );
   };
 
-  refreshGenerationBatches = async (): Promise<void> => {
+  refreshGenerationBatches = async (topicId?: string): Promise<void> => {
     const { activeGenerationTopicId } = this.#get();
-    if (activeGenerationTopicId) {
-      await mutate(videoKeys.generationBatches(activeGenerationTopicId));
+    const targetTopicId = topicId ?? activeGenerationTopicId;
+    if (targetTopicId) {
+      await mutate(videoKeys.generationBatches(targetTopicId));
     }
   };
 

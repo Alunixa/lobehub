@@ -1,9 +1,5 @@
 'use client';
 
-import GenerationLayout from '@/routes/(main)/(create)/features/GenerationLayout';
+import { VideoStudioLayout } from '@/features/VideoStudio';
 
-import Sidebar from './Sidebar';
-
-const VideoLayout = () => <GenerationLayout sidebar={<Sidebar />} />;
-
-export default VideoLayout;
+export default VideoStudioLayout;

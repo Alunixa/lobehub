@@ -69,6 +69,7 @@ export const StudioSettings = ({ disabled }: { disabled: boolean }) => {
 
   return (
     <>
+      <Text className={styles.sectionLabel}>{t('studio.parameters')}</Text>
       {'size' in schema && (
         <StudioField label={t('studio.size')}>
           <SizeSelect />

@@ -5,8 +5,8 @@ import VideoLayout from './index';
 
 const generationLayoutMock = vi.fn((_props: unknown) => null);
 
-vi.mock('@/routes/(main)/(create)/features/GenerationLayout', () => ({
-  default: (props: unknown) => generationLayoutMock(props),
+vi.mock('@/features/VideoStudio', () => ({
+  VideoStudioLayout: (props: unknown) => generationLayoutMock(props),
 }));
 
 vi.mock('./Sidebar', () => ({
@@ -14,13 +14,9 @@ vi.mock('./Sidebar', () => ({
 }));
 
 describe('VideoLayout', () => {
-  it('passes a video sidebar to the generation layout', () => {
+  it('delegates to the shared video studio lifecycle and layout', () => {
     render(<VideoLayout />);
 
-    expect(generationLayoutMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sidebar: expect.anything(),
-      }),
-    );
+    expect(generationLayoutMock).toHaveBeenCalled();
   });
 });

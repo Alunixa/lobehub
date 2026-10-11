@@ -9,7 +9,7 @@ export const resolveMobileNavigation = (pathname: string, workspaceSlug?: string
   const path = scopedPath.replace(/\/+$/, '') || '/';
   const active: MobileDestination = path.startsWith('/community')
     ? 'community'
-    : path === '/image'
+    : path === '/image' || path === '/video'
       ? 'image'
       : path.startsWith('/me')
         ? 'me'
@@ -18,7 +18,7 @@ export const resolveMobileNavigation = (pathname: string, workspaceSlug?: string
           : 'chat';
 
   const showNav =
-    ['/', '/image', '/tools', '/tasks', '/me'].includes(path) ||
+    ['/', '/image', '/video', '/tools', '/tasks', '/me'].includes(path) ||
     /^\/community(?:\/(?:agent|model|provider|mcp|plugin))?$/.test(path);
 
   return { active, showNav };
