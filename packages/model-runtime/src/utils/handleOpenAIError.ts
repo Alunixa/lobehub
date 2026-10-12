@@ -1,3 +1,5 @@
+import { serializeErrorCause } from '@lobechat/utils/error';
+import { toRecord } from '@lobechat/utils/object';
 import OpenAI from 'openai';
 
 import type { ILobeAgentRuntimeErrorType } from '../types/error';
@@ -5,7 +7,7 @@ import { AgentRuntimeErrorType } from '../types/error';
 import { isErrorCausedByContentFilter } from './isErrorCausedByContentFilter';
 
 export const handleOpenAIError = (
-  error: any,
+  error: unknown,
 ): { RuntimeError?: ILobeAgentRuntimeErrorType; errorResult: any; message?: string } => {
   let errorResult: any;
 
@@ -18,7 +20,7 @@ export const handleOpenAIError = (
     // Or if there is a cause, we use error cause
     // This often happened when there is a bug of the `openai` package.
     else if (error.cause) {
-      errorResult = error.cause;
+      errorResult = error.cause instanceof Error ? serializeErrorCause(error.cause) : error.cause;
     }
     // if there is no other request error, the error object is a Response like object
     else {
@@ -33,14 +35,18 @@ export const handleOpenAIError = (
         : undefined,
     };
   } else {
-    const err = error as Error;
+    const err = toRecord(error);
 
-    errorResult = { cause: err.cause, message: err.message, name: err.name };
+    errorResult = {
+      cause: err?.cause instanceof Error ? serializeErrorCause(err.cause) : err?.cause,
+      message: err?.message,
+      name: err?.name,
+    };
 
     return {
       RuntimeError: AgentRuntimeErrorType.AgentRuntimeError,
       errorResult,
-      message: err.message,
+      message: typeof err?.message === 'string' ? err.message : undefined,
     };
   }
 };

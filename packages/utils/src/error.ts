@@ -1,6 +1,6 @@
 // Source copied from: https://github.com/moeru-ai/std/blob/72279973ff997b65672a9c85555c3736554bd9b9/packages/std/src/error/index.ts#L41-L46
 
-import { isRecord, pickTrimmedString } from './object';
+import { isRecord, pickString, pickTrimmedString } from './object';
 
 type Nullable<T> = {
   [P in keyof T]: null | T[P];
@@ -66,6 +66,52 @@ export const errorCauseFrom = <C>(err: null | undefined | unknown): C | undefine
   if (!isErrorLike(err) || err.cause == null) return undefined;
 
   return err.cause as C | undefined;
+};
+
+export interface SerializedErrorCause {
+  cause?: SerializedErrorCause | string;
+  code?: number | string;
+  errno?: number | string;
+  message?: string;
+  name?: string;
+  syscall?: string;
+}
+
+const MAX_ERROR_CAUSE_DEPTH = 6;
+
+/**
+ * Preserve non-enumerable transport diagnostics across JSON and object spreads.
+ * Do not copy headers, request bodies, stack traces, or socket addresses.
+ */
+export const serializeErrorCause = (error: unknown): SerializedErrorCause | string | undefined => {
+  const seen = new WeakSet<object>();
+
+  const visit = (value: unknown, depth: number): SerializedErrorCause | string | undefined => {
+    if (typeof value === 'string') return value;
+    if (!isRecord(value)) return undefined;
+    if (seen.has(value)) return '[Circular]';
+    if (depth >= MAX_ERROR_CAUSE_DEPTH) return '[Cause depth exceeded]';
+    seen.add(value);
+
+    const result: SerializedErrorCause = {};
+    for (const key of ['message', 'name', 'syscall'] as const) {
+      const text = pickString(value[key]);
+      if (text !== undefined) result[key] = text;
+    }
+    for (const key of ['code', 'errno'] as const) {
+      const field = value[key];
+      if (typeof field === 'string' || (typeof field === 'number' && Number.isFinite(field))) {
+        result[key] = field;
+      }
+    }
+
+    const cause = visit(value.cause, depth + 1);
+    if (cause !== undefined) result.cause = cause;
+
+    return result;
+  };
+
+  return visit(error, 0);
 };
 
 /**

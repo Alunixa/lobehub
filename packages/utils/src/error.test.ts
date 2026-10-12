@@ -8,6 +8,7 @@ import {
   getErrorMessage,
   isError,
   isErrorLike,
+  serializeErrorCause,
 } from './error';
 
 describe('isError', () => {
@@ -231,5 +232,91 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage({ error: undefined, errorType: 'InvalidProviderAPIKey' })).toBe(
       'InvalidProviderAPIKey',
     );
+  });
+});
+
+describe('serializeErrorCause', () => {
+  it('preserves non-enumerable names and messages through JSON', () => {
+    const serialized = JSON.stringify(serializeErrorCause(new TypeError('fetch failed')));
+    expect(JSON.parse(serialized)).toEqual({
+      message: 'fetch failed',
+      name: 'TypeError',
+    });
+  });
+
+  it('preserves nested network causes and primitive diagnostics', () => {
+    const socketError = Object.assign(new Error('other side closed'), {
+      code: 'UND_ERR_SOCKET',
+      errno: -104,
+      name: 'SocketError',
+      syscall: 'read',
+    });
+    const error = new TypeError('fetch failed', { cause: socketError });
+
+    const serialized = JSON.stringify(serializeErrorCause(error));
+    expect(JSON.parse(serialized)).toEqual({
+      cause: {
+        code: 'UND_ERR_SOCKET',
+        errno: -104,
+        message: 'other side closed',
+        name: 'SocketError',
+        syscall: 'read',
+      },
+      message: 'fetch failed',
+      name: 'TypeError',
+    });
+  });
+
+  it('does not copy headers, request bodies, credentials, stacks, or socket addresses', () => {
+    const error = Object.assign(new Error('fetch failed'), {
+      apiKey: 'private-fixture',
+      headers: { authorization: 'private-fixture' },
+      request: { body: 'private-fixture' },
+      socket: { remoteAddress: 'private-fixture' },
+    });
+
+    expect(serializeErrorCause(error)).toEqual({ message: 'fetch failed', name: 'Error' });
+    expect(JSON.stringify(serializeErrorCause(error))).not.toContain('private-fixture');
+    expect(JSON.stringify(serializeErrorCause(error))).not.toContain('stack');
+  });
+
+  it('breaks circular cause chains', () => {
+    const error = new Error('circular');
+    error.cause = error;
+
+    expect(serializeErrorCause(error)).toEqual({
+      cause: '[Circular]',
+      message: 'circular',
+      name: 'Error',
+    });
+  });
+
+  it('bounds deeply nested cause chains', () => {
+    let error = new Error('root');
+    for (let index = 0; index < 100; index++) {
+      error = new Error('wrapper', { cause: error });
+    }
+
+    const payload = JSON.stringify(serializeErrorCause(error));
+    expect(payload).toContain('[Cause depth exceeded]');
+    expect(payload.length).toBeLessThan(500);
+  });
+
+  it('handles non-Error causes without copying unrelated fields', () => {
+    expect(
+      serializeErrorCause(
+        new Error('fetch failed', {
+          cause: { code: 'ECONNRESET', headers: { cookie: 'private-fixture' }, message: 'reset' },
+        }),
+      ),
+    ).toEqual({
+      cause: { code: 'ECONNRESET', message: 'reset' },
+      message: 'fetch failed',
+      name: 'Error',
+    });
+    expect(serializeErrorCause(null)).toBeUndefined();
+    expect(serializeErrorCause(42)).toBeUndefined();
+    expect(serializeErrorCause('socket closed')).toBe('socket closed');
+    expect(serializeErrorCause({ code: Infinity, errno: NaN })).toEqual({});
   });
 });

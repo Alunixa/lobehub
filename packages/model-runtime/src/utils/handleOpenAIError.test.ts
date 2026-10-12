@@ -6,6 +6,26 @@ import { handleOpenAIError } from './handleOpenAIError';
 
 describe('handleOpenAIError', () => {
   describe('OpenAI APIError handling', () => {
+    it('preserves the fetch/socket cause of APIConnectionError across JSON persistence', () => {
+      const socketError = Object.assign(new Error('other side closed'), {
+        code: 'UND_ERR_SOCKET',
+        name: 'SocketError',
+      });
+      const fetchError = new TypeError('fetch failed', { cause: socketError });
+      const apiError = new OpenAI.APIConnectionError({ cause: fetchError });
+
+      const serialized = JSON.stringify(handleOpenAIError(apiError));
+      const result = JSON.parse(serialized);
+
+      expect(result.message).toBe('Connection error.');
+      expect(result.errorResult).toEqual({
+        cause: { code: 'UND_ERR_SOCKET', message: 'other side closed', name: 'SocketError' },
+        message: 'fetch failed',
+        name: 'TypeError',
+      });
+      expect(result.RuntimeError).toBeUndefined();
+    });
+
     it('should handle OpenAI APIError with error object', () => {
       const apiError = new OpenAI.APIError(
         472,
@@ -91,6 +111,21 @@ describe('handleOpenAIError', () => {
   });
 
   describe('Non-OpenAI error handling', () => {
+    it('preserves native nested causes for generic transport errors', () => {
+      const cause = Object.assign(new Error('connection reset'), { code: 'ECONNRESET' });
+      const serialized = JSON.stringify(
+        handleOpenAIError(new TypeError('fetch failed', { cause })),
+      );
+      const result = JSON.parse(serialized);
+
+      expect(result.errorResult).toEqual({
+        cause: { code: 'ECONNRESET', message: 'connection reset', name: 'Error' },
+        message: 'fetch failed',
+        name: 'TypeError',
+      });
+      expect(result.RuntimeError).toBe(AgentRuntimeErrorType.AgentRuntimeError);
+    });
+
     it('should handle generic Error', () => {
       const error = new Error('Generic error');
       error.cause = { details: 'Error details' };

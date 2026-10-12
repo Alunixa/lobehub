@@ -392,6 +392,8 @@ export const initModelRuntimeWithUserPayload = (
     {
       ...getParamsFromPayload(runtimeProvider, payload),
       ...params,
+      // Keep the configured provider identity even when it uses another SDK.
+      id: provider,
     },
     hooks,
   );
