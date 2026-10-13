@@ -70,6 +70,7 @@ jobs:
             'Codex Chat and Media Regression',
             'Codex Mobile Regression',
             'Codex Current Time Regression',
+            'Codex Message Content Regression',
           ]);
           const checks = {};
           (async () => {
