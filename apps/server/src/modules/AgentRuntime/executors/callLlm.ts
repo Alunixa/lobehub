@@ -101,6 +101,7 @@ import { formatErrorEventData } from '../formatErrorEventData';
 import { formatErrorForState } from '../formatErrorForState';
 import { prepareInferenceMessages } from '../inferenceMessages';
 import { classifyLLMError } from '../llmErrorClassification';
+import { createLlmRequestTiming } from '../llmRequestTiming';
 import { createConversationParentMissingError } from '../messagePersistErrors';
 import { watchOperationInterruption } from '../operationInterruption';
 import { VISIBLE_OUTPUT_END_PUBLISHED_STEP_INDEX_METADATA_KEY } from '../visibleOutputEnd';
@@ -1198,6 +1199,7 @@ export const callLlm =
               reasoningBuffer = '';
             };
             const interruption = watchOperationInterruption(ctx);
+            const requestTiming = createLlmRequestTiming();
 
             try {
               log(
@@ -1210,7 +1212,8 @@ export const callLlm =
               );
 
               // Call model-runtime chat
-              const response = await modelRuntime.chat(chatPayload, {
+              const observedChat = requestTiming.bind(modelRuntime.chat.bind(modelRuntime));
+              const response = await observedChat(chatPayload, {
                 callback: {
                   onCompletion: async (data) => {
                     if (data.error) streamError = data.error;
@@ -1220,7 +1223,11 @@ export const callLlm =
                     }
                     // Capture performance metrics (tps / ttft / duration / latency)
                     if (data.speed) {
-                      currentStepSpeed = data.speed;
+                      const networkTiming = requestTiming.snapshot();
+                      currentStepSpeed = {
+                        ...data.speed,
+                        ...(networkTiming && { requestTiming: networkTiming }),
+                      };
                     }
                     // Capture provider's terminal finishReason so soft interrupts
                     // (e.g. Gemini RECITATION / MAX_TOKENS with empty content)
@@ -1420,6 +1427,13 @@ export const callLlm =
 
               // Consume stream to ensure all callbacks complete execution
               await consumeStreamUntilDone(response);
+              const networkTiming = requestTiming.snapshot();
+              if (networkTiming) {
+                currentStepSpeed = {
+                  ...currentStepSpeed,
+                  requestTiming: networkTiming,
+                };
+              }
               if (interruption.signal.aborted || (await isOperationInterrupted(ctx))) {
                 throw new DOMException('Operation interrupted', 'AbortError');
               }
@@ -1547,6 +1561,7 @@ export const callLlm =
                   reasoning: thinkingContent,
                   tool_calls,
                   usage: currentStepUsage,
+                  ...(currentStepSpeed && { performance: currentStepSpeed }),
                 },
                 type: 'llm_result',
               });
@@ -1845,9 +1860,10 @@ export const callLlm =
                 }
               }
 
-              throw error;
+              throw requestTiming.enrichError(error);
             } finally {
               interruption.dispose();
+              requestTiming.dispose();
             }
           }
 

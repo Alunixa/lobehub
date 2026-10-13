@@ -39,6 +39,14 @@ jobs:
         run: node node_modules/vitest/vitest.mjs run --config tests/stream-reliability/vitest.config.mts --silent=passed-only
       - name: Request history and failure-state regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/chat-diagnostics/vitest.config.mts --silent=passed-only
+      - name: Native request timing and connection diagnostics
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            apps/server/src/modules/AgentRuntime/llmRequestTiming.test.ts \
+            apps/server/src/modules/ModelRuntime/connectionError.test.ts
+      - name: Serializable transport cause regressions
+        working-directory: packages/utils
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/error.test.ts
       - name: Browser responsiveness and stream replay regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/browser-responsiveness/vitest.config.mts --silent=passed-only
       - name: Context usage and cross-device recovery regressions
@@ -69,7 +77,8 @@ jobs:
           node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
             src/core/ModelRuntime.test.ts \
             src/core/contextBuilders/openai.test.ts \
-            src/core/openaiCompatibleFactory/index.test.ts
+            src/core/openaiCompatibleFactory/index.test.ts \
+            src/utils/handleOpenAIError.test.ts
       - name: Topic operation ownership and cleanup regressions
         working-directory: packages/database
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts

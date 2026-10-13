@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { describe, expect, it } from 'vitest';
 
 import { formatErrorForState } from '../AgentRuntime/formatErrorForState';
+import { createLlmRequestTiming } from '../AgentRuntime/llmRequestTiming';
 import { initModelRuntimeWithUserPayload } from './index';
 
 describe('completed upstream work with a disconnected response', () => {
@@ -11,6 +12,7 @@ describe('completed upstream work with a disconnected response', () => {
     'preserves the %s network failure and configured provider without repeating work',
     async (apiMode) => {
       let processedRequests = 0;
+      const requestTiming = createLlmRequestTiming();
       const server = createServer((request) => {
         request.resume();
         request.once('end', () => {
@@ -39,14 +41,16 @@ describe('completed upstream work with a disconnected response', () => {
         );
         let failure: unknown;
         try {
-          await runtime.chat({
-            apiMode,
-            messages: [{ content: 'local connection fixture', role: 'user' }],
-            model: 'gemini-3.8-flash',
-            stream: true,
-          });
+          await requestTiming.run(() =>
+            runtime.chat({
+              apiMode,
+              messages: [{ content: 'local connection fixture', role: 'user' }],
+              model: 'gemini-3.8-flash',
+              stream: true,
+            }),
+          );
         } catch (error) {
-          failure = error;
+          failure = requestTiming.enrichError(error);
         }
 
         expect(failure).toBeDefined();
@@ -60,9 +64,15 @@ describe('completed upstream work with a disconnected response', () => {
           message: 'fetch failed',
           name: 'TypeError',
           provider: 'custom-channel',
+          requestTiming: {
+            phase: 'awaiting_headers',
+            requestCount: 1,
+            transportErrorCode: 'UND_ERR_SOCKET',
+          },
         });
         expect(JSON.stringify(persisted)).not.toContain('local-fixture-key');
       } finally {
+        requestTiming.dispose();
         server.closeAllConnections();
         await new Promise<void>((resolve, reject) => {
           server.close((error) => (error ? reject(error) : resolve()));

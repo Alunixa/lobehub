@@ -221,6 +221,22 @@ export interface ModelUsage extends ModelTokensUsage {
   cost?: number;
 }
 
+export interface ModelRequestTiming {
+  /** Relative times begin before the SDK/hooks execute, in milliseconds. */
+  firstResponseByteMs?: number;
+  httpStatus?: number;
+  phase: 'sending_request' | 'awaiting_headers' | 'receiving_response' | 'completed';
+  /** Content-Length when available; no body, headers or attachment URLs are retained. */
+  requestBodyBytes?: number;
+  /** The body was handed to the transport; this is not a remote TCP acknowledgement. */
+  requestBodySentMs?: number;
+  requestCount: number;
+  requestCreatedMs: number;
+  responseEndedMs?: number;
+  responseHeadersMs?: number;
+  transportErrorCode?: string;
+}
+
 export interface ModelPerformance {
   /**
    * from output start to output finish (ms)
@@ -232,6 +248,8 @@ export interface ModelPerformance {
   latency?: number;
   /** Auth/preferences/media hooks before entering the provider adapter (ms). */
   providerPreparationMs?: number;
+  /** Per-attempt native transport milestones; absent when the SDK uses another transport. */
+  requestTiming?: ModelRequestTiming;
   /**
    * tokens per second
    */
