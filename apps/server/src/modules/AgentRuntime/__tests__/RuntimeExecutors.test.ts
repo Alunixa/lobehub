@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as ContextEngineering from '@/server/modules/Mecha/ContextEngineering';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import * as proactivePlans from '@/server/services/proactiveConversation/plan';
 
 import { createRuntimeExecutors, type RuntimeExecutorContext } from '../RuntimeExecutors';
 import type { StreamEvent } from '../StreamEventManager';
@@ -1020,6 +1021,167 @@ describe('RuntimeExecutors', () => {
           data: expect.objectContaining({ errorType: 'ModelEmptyCompletion' }),
         }),
       );
+    });
+
+    describe('optional hidden context and autonomous scheduling', () => {
+      it('streams and stores only the visible answer while persisting an AI-chosen private deadline', async () => {
+        const persist = vi
+          .spyOn(proactivePlans, 'persistProactiveDecision')
+          .mockResolvedValueOnce(true);
+        const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+          for (const text of [
+            'Visible answer.',
+            '<lobe_pro',
+            'active_plan>{"idleForSeconds":731}</lobe_proactive_plan>',
+          ])
+            await options?.callback?.onText?.(text);
+          return new Response('done');
+        });
+        vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as never);
+        vi.spyOn(ContextEngineering, 'serverMessagesEngine').mockImplementationOnce(
+          async (input: any) => input.messages,
+        );
+        const executors = createRuntimeExecutors({
+          ...ctx,
+          topicId: 'topic-aware',
+          agentConfig: {
+            chatConfig: {
+              enableAgentMode: false,
+              conversationFeatures: {
+                proactiveMessages: true,
+                compressImages: true,
+                compressRequests: true,
+              },
+            },
+            plugins: [],
+          },
+        });
+        await executors.call_llm!(
+          {
+            type: 'call_llm',
+            payload: {
+              model: 'gpt-4',
+              provider: 'openai',
+              tools: [],
+              messages: [{ id: 'human-aware', role: 'user', content: 'hello' }],
+            },
+          },
+          createMockState(),
+        );
+        expect(mockMessageModel.update).toHaveBeenCalledWith(
+          'msg-123',
+          expect.objectContaining({ content: 'Visible answer.' }),
+        );
+        expect(persist).toHaveBeenCalledWith(
+          expect.anything(),
+          'user-123',
+          'topic-aware',
+          'msg-123',
+          'human-aware',
+          { idleForSeconds: 731 },
+          'thread-123',
+          0,
+        );
+        expect(JSON.stringify(mockStreamManager.publishStreamChunk.mock.calls)).not.toContain(
+          'lobe_proactive',
+        );
+        expect(chat).toHaveBeenCalledTimes(1);
+        expect(initModelRuntimeFromDB).toHaveBeenCalledWith(
+          expect.anything(),
+          'user-123',
+          'openai',
+          undefined,
+          { maxRetries: 0, compressImages: true, compressRequests: true },
+        );
+      });
+      it('puts awareness only into inference and metadata, not chat content', async () => {
+        const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+          await options?.callback?.onText?.('Visible reply');
+          return new Response('done');
+        });
+        vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as never);
+        vi.spyOn(ContextEngineering, 'serverMessagesEngine').mockImplementationOnce(
+          async (input: any) => input.messages,
+        );
+        const executors = createRuntimeExecutors({
+          ...ctx,
+          agentConfig: {
+            chatConfig: {
+              enableAgentMode: false,
+              conversationFeatures: {
+                typingAwareness: true,
+                inputTimestamps: true,
+                outputTimestamps: true,
+              },
+            },
+            plugins: [],
+          },
+        });
+        const original = {
+          id: 'human',
+          role: 'user',
+          content: 'Hello',
+          metadata: {
+            awareness: {
+              composedForMs: 12000,
+              sentAt: new Date(Date.now() - 1000).toISOString(),
+            },
+          },
+        };
+        await executors.call_llm!(
+          {
+            type: 'call_llm',
+            payload: { model: 'gpt-4', provider: 'openai', tools: [], messages: [original] },
+          },
+          createMockState(),
+        );
+        expect(chat.mock.calls[0][0].messages[0].content).toContain('composed_ms=12000');
+        expect(original.content).toBe('Hello');
+        expect(mockMessageModel.update).toHaveBeenCalledWith(
+          'msg-123',
+          expect.objectContaining({
+            content: 'Visible reply',
+            metadata: expect.objectContaining({
+              awareness: expect.objectContaining({ outputFinishedAt: expect.any(String) }),
+            }),
+          }),
+        );
+      });
+      it('allows an opted-in proactive wake to explicitly remain silent without an error bubble or retry', async () => {
+        const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+          await options?.callback?.onText?.('\n<lobe_proactive_plan>null</lobe_proactive_plan>');
+          return new Response('done');
+        });
+        vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as never);
+        vi.spyOn(ContextEngineering, 'serverMessagesEngine').mockResolvedValueOnce([]);
+        const executors = createRuntimeExecutors({
+          ...ctx,
+          topicId: 'topic-aware',
+          agentConfig: {
+            chatConfig: {
+              enableAgentMode: false,
+              conversationFeatures: { proactiveMessages: true },
+            },
+            plugins: [],
+          },
+        });
+        const state = createMockState();
+        state.metadata = { ...state.metadata, proactivePlanId: 'plan-fixture' };
+        await executors.call_llm!(
+          {
+            type: 'call_llm',
+            payload: { model: 'gpt-4', provider: 'openai', tools: [], messages: [] },
+          },
+          state,
+        );
+        expect(mockMessageModel.deleteMessage).toHaveBeenCalledWith('msg-123');
+        expect(chat).toHaveBeenCalledTimes(1);
+        expect(
+          mockStreamManager.publishStreamEvent.mock.calls.some(
+            (call: any[]) => call[1].type === 'error',
+          ),
+        ).toBe(false);
+      });
     });
 
     it('persists partial text and original request error when the chat stream fails', async () => {

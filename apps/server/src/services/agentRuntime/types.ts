@@ -325,6 +325,8 @@ export interface OperationCreationParams {
    */
   agentGroup?: AgentGroupConfig;
   appContext: {
+    proactivePlanId?: string;
+    proactiveActivitySequence?: number;
     agentId?: string;
     /**
      * Run-scoped Agent Signal marker. Stamped at dispatch for background

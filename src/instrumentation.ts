@@ -31,6 +31,9 @@ export async function register() {
     !process.env.VERCEL_ENV &&
     (!isDev || process.env.ENABLE_TASKS_IN_DEV === '1')
   ) {
+    const { startProactiveConversationDispatcher } =
+      await import('@/server/services/proactiveConversation/dispatch');
+    startProactiveConversationDispatcher();
     const { startLocalTaskDispatcher } =
       await import('@/server/services/taskScheduler/localDispatcher');
     startLocalTaskDispatcher().catch((error) => {

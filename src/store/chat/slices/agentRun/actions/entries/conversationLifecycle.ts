@@ -32,6 +32,7 @@ import { aiChatService } from '@/services/aiChat';
 import { chatService } from '@/services/chat';
 import { resolveSelectedSkillsWithContent } from '@/services/chat/mecha/skillPreload';
 import { resolveSelectedToolsWithContent } from '@/services/chat/mecha/toolPreload';
+import { conversationFeatureService } from '@/services/conversationFeatures';
 import { messageService } from '@/services/message';
 import { getAgentStoreState, useAgentStore } from '@/store/agent';
 import {
@@ -404,7 +405,10 @@ export class ConversationLifecycleActionImpl {
       selectedTools,
     });
     const requestTrigger = (metadata as Pick<MessageMetadata, 'trigger'> | undefined)?.trigger;
-    const requestMetadata = requestTrigger ? { trigger: requestTrigger } : undefined;
+    const requestMetadata =
+      requestTrigger || metadata?.awareness
+        ? { ...(requestTrigger && { trigger: requestTrigger }), awareness: metadata?.awareness }
+        : undefined;
 
     const hasFile = !!fileIdList && fileIdList.length > 0;
 
@@ -425,6 +429,21 @@ export class ConversationLifecycleActionImpl {
       .find((op) => op && QUEUE_BLOCKING_OPERATION_TYPES.has(op.type) && op.status === 'running');
 
     if (runningQueueBlockingOp) {
+      const featureSnapshot = operationContext.topicId
+        ? this.#get().conversationFeatureDetailMap[operationContext.topicId]?.features
+        : undefined;
+      if (
+        operationContext.topicId &&
+        (featureSnapshot?.proactiveMessages ??
+          agentConfig?.chatConfig?.conversationFeatures?.proactiveMessages)
+      ) {
+        void conversationFeatureService.noteActivity(operationContext.topicId).catch((error) => {
+          console.error(
+            '[ProactiveConversation] Queued activity was not recorded:',
+            (error as Error).name,
+          );
+        });
+      }
       // Snapshot file previews so the tray can render thumbnails AND the
       // resumed sendMessage can rebuild imageList/videoList — by the time
       // we drain, chatUploadFileList has long been cleared.

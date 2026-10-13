@@ -39,6 +39,7 @@ vi.mock('@/services/topic', () => ({
     updateTopicFavorite: vi.fn(),
     updateTopicTitle: vi.fn(),
     updateTopic: vi.fn(),
+    updateTopicMetadata: vi.fn(),
     batchRemoveTopics: vi.fn(),
     getTopics: vi.fn(),
     getTopicDetail: vi.fn(),
@@ -78,6 +79,7 @@ beforeEach(() => {
       agentTopicsViewMap: {},
       searchTopics: [],
       topicDataMap: {},
+      conversationFeatureDetailMap: {},
       topicLoadingIdCounts: {},
       topicLoadingIds: [],
       // ... initial state
@@ -1892,5 +1894,74 @@ describe('topic action', () => {
       expect(next.excludeTriggers).toEqual(['cron', 'eval']);
       expect(next.items.map((i) => i.id)).toEqual(['topic-2']);
     });
+  });
+});
+
+describe('per-conversation feature metadata', () => {
+  it('saves to the owning conversation even after switching the active agent', async () => {
+    const context = { agentId: 'feature-owner', topicId: 'feature-topic', scope: 'main' as const };
+    const key = topicMapKey({ agentId: context.agentId });
+    useChatStore.setState({
+      activeAgentId: 'different-agent',
+      topicDataMap: {
+        [key]: {
+          currentPage: 1,
+          hasMore: false,
+          pageSize: 20,
+          total: 1,
+          items: [{ id: context.topicId, title: 'Fixture', metadata: {} } as ChatTopic],
+        },
+      },
+    });
+    vi.mocked(topicService.updateTopicMetadata).mockResolvedValueOnce([
+      {
+        id: context.topicId,
+        metadata: { conversationFeatures: { typingAwareness: true } },
+        updatedAt: new Date('2026-10-13T10:00:00Z'),
+      },
+    ] as never);
+    await useChatStore.getState().updateConversationFeatures(context, { typingAwareness: true });
+    expect(
+      useChatStore.getState().conversationFeatureDetailMap[context.topicId].features
+        .typingAwareness,
+    ).toBe(true);
+    expect(
+      useChatStore.getState().topicDataMap[key].items[0].metadata?.conversationFeatures
+        ?.typingAwareness,
+    ).toBe(true);
+    expect(useChatStore.getState().topicLoadingIds).not.toContain(context.topicId);
+  });
+  it('releases loading and reports a rejected save without forging success', async () => {
+    vi.mocked(topicService.updateTopicMetadata).mockRejectedValueOnce(new Error('fixture failure'));
+    await expect(
+      useChatStore
+        .getState()
+        .updateConversationFeatures(
+          { agentId: 'a', topicId: 'topic-failure', scope: 'main' },
+          { compressImages: true },
+        ),
+    ).rejects.toThrow('fixture failure');
+    expect(useChatStore.getState().topicLoadingIds).not.toContain('topic-failure');
+    expect(useChatStore.getState().conversationFeatureDetailMap['topic-failure']).toBeUndefined();
+  });
+  it('rejects an empty ownership-scoped write result', async () => {
+    vi.mocked(topicService.updateTopicMetadata).mockResolvedValueOnce([]);
+    await expect(
+      useChatStore
+        .getState()
+        .updateConversationFeatures(
+          { agentId: 'a', topicId: 'missing-topic', scope: 'main' },
+          { outputTimestamps: true },
+        ),
+    ).rejects.toThrow('not saved');
+  });
+  it('does not overwrite a newer option version with a stale revalidation', () => {
+    const action = useChatStore.getState().internal_setConversationFeatureDetail;
+    action('feature-topic', { conversationFeatures: { typingAwareness: true } }, 2000);
+    action('feature-topic', { conversationFeatures: { typingAwareness: false } }, 1000);
+    expect(
+      useChatStore.getState().conversationFeatureDetailMap['feature-topic'].features
+        .typingAwareness,
+    ).toBe(true);
   });
 });

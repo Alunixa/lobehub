@@ -1,6 +1,10 @@
 import { and, count, desc, eq, inArray, lt, or } from 'drizzle-orm';
 
-import type { NewNotification, NewNotificationDelivery } from '../schemas/notification';
+import type {
+  NewNotification,
+  NewNotificationDelivery,
+  NotificationItem,
+} from '../schemas/notification';
 import { notificationDeliveries, notifications } from '../schemas/notification';
 import type { LobeChatDatabase } from '../type';
 
@@ -102,7 +106,7 @@ export class NotificationModel {
 
   // ─── Write-side (used by NotificationService in cloud) ─────────
 
-  async create(data: Omit<NewNotification, 'userId'>) {
+  async create(data: Omit<NewNotification, 'userId'>): Promise<NotificationItem | null> {
     const [result] = await this.db
       .insert(notifications)
       .values({ ...data, userId: this.userId })

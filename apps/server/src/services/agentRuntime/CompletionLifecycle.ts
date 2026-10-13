@@ -13,6 +13,7 @@ import { buildFinalSnapshotKey } from '@/server/modules/AgentTracing';
 import { emitAgentSignalSourceEvent } from '@/server/services/agentSignal';
 import { toAgentSignalTraceEvents } from '@/server/services/agentSignal/observability/traceEvents';
 import { extractSelfIterationCompletionPayload } from '@/server/services/agentSignal/services/selfIteration/completion';
+import { completeProactiveConversation } from '@/server/services/proactiveConversation/completion';
 import { instantiateVerifyPlanOnStart, runVerifyOnCompletion } from '@/server/services/verify';
 
 import { hookDispatcher, type SerializedHook } from './hooks';
@@ -481,6 +482,30 @@ export class CompletionLifecycle {
       // Finalize the agent_operations row before user hooks fire so
       // downstream consumers see the row in its terminal shape.
       await this.persistCompletion(operationId, state, reason);
+      if (
+        metadata.proactivePlanId &&
+        metadata.topicId &&
+        metadata.agentId &&
+        ['done', 'error', 'interrupted'].includes(reason)
+      ) {
+        // Notification delivery must not delay SSE terminal state or the user's next send.
+        void completeProactiveConversation(
+          this.serverDB,
+          metadata.userId || this.userId,
+          metadata.topicId,
+          metadata.proactivePlanId,
+          operationId,
+          reason === 'done',
+          metadata.agentId,
+          this.workspaceId,
+          metadata.proactiveActivitySequence,
+        ).catch((error) => {
+          console.error(
+            '[ProactiveConversation] Notification not delivered:',
+            (error as Error).name,
+          );
+        });
+      }
 
       if (isAsyncToolPark) return;
 

@@ -2,6 +2,7 @@ import { type AgentStreamEvent } from '@lobechat/agent-gateway-client';
 import { parse } from '@lobechat/conversation-flow';
 import { type TaskCurrentActivity, type TaskStatusResult } from '@lobechat/types';
 import {
+  MessageAwarenessSchema,
   RequestTrigger,
   ThreadStatus,
   ThreadType,
@@ -134,6 +135,7 @@ const StartExecutionSchema = z.object({
  */
 const ExecAgentSchema = z
   .object({
+    awareness: MessageAwarenessSchema.optional(),
     /** The agent ID to run (either agentId or slug is required) */
     agentId: z.string().optional(),
     /** Application context for message storage */
@@ -732,6 +734,7 @@ export const aiAgentRouter = router({
 
     try {
       return await ctx.aiAgentService.execAgent({
+        awareness: input.awareness,
         agentId,
         appContext,
         autoStart,

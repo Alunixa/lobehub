@@ -19,6 +19,7 @@ const StoreUpdater = memo<StoreUpdaterProps>(
     agentId,
     chatInputEditorRef,
     contextWindowMessages,
+    conversationContext,
     draftKey,
     feature = DEFAULT_CHAT_INPUT_FEATURE,
     mobile,
@@ -39,6 +40,9 @@ const StoreUpdater = memo<StoreUpdaterProps>(
 
     useStoreUpdater('agentId', agentId);
     useStoreUpdater('contextWindowMessages', contextWindowMessages);
+    useEffect(() => {
+      storeApi.setState({ conversationContext });
+    }, [conversationContext, storeApi]);
     useStoreUpdater('draftKey', draftKey);
     useStoreUpdater('mobile', mobile!);
     useStoreUpdater('mentionItems', mentionItems);

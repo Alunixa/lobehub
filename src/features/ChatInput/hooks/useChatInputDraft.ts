@@ -2,7 +2,7 @@ import type { IEditor } from '@lobehub/editor';
 import { debounce } from 'es-toolkit/compat';
 import { useCallback, useEffect, useMemo } from 'react';
 
-import { getDraft, removeDraft, saveDraft } from '../draftStorage';
+import { getDraft, getDraftCompositionStart, removeDraft, saveDraft } from '../draftStorage';
 import { useStoreApi } from '../store';
 
 const SAVE_DEBOUNCE_MS = 500;
@@ -13,7 +13,8 @@ export const useChatInputDraft = () => {
   const saveDraftDebounced = useMemo(
     () =>
       debounce(() => {
-        const { draftKey, editor, getMarkdownContent, getJSONState } = storeApi.getState();
+        const { compositionClock, draftKey, editor, getMarkdownContent, getJSONState } =
+          storeApi.getState();
         if (!draftKey || !editor) return;
 
         if (getMarkdownContent().trim().length === 0) {
@@ -22,7 +23,7 @@ export const useChatInputDraft = () => {
         }
 
         const json = getJSONState();
-        if (json) saveDraft(draftKey, json);
+        if (json) saveDraft(draftKey, json, compositionClock.start);
       }, SAVE_DEBOUNCE_MS),
     [storeApi],
   );
@@ -37,7 +38,10 @@ export const useChatInputDraft = () => {
       if (!editor.isEmpty) return;
 
       const draft = getDraft(draftKey);
-      if (draft) editor.setDocument('json', draft);
+      if (draft) {
+        editor.setDocument('json', draft);
+        storeApi.getState().compositionClock.restore(getDraftCompositionStart(draftKey));
+      }
     },
     [storeApi],
   );

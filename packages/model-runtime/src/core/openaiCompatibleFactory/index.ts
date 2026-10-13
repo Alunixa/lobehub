@@ -336,6 +336,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
   };
 
   return class LobeOpenAICompatibleAI implements LobeRuntimeAI {
+    static supportsRequestCompression = true;
     client!: OpenAI;
 
     private id: string;

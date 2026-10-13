@@ -10,12 +10,19 @@ on:
       - apps/server/src/**
       - packages/database/src/models/topic.ts
       - packages/database/src/models/__tests__/topic.test.ts
+      - packages/database/src/models/notification.ts
+      - packages/database/src/models/__tests__/notification.test.ts
+      - packages/database/src/models/proactiveConversation.ts
+      - packages/database/src/models/__tests__/proactiveConversation.test.ts
       - packages/fetch-sse/**
       - packages/model-runtime/**
       - packages/types/**
       - packages/utils/src/currentTime*
+      - packages/utils/src/conversationAwareness*
       - packages/utils/src/client/**
       - src/**
+      - public/proactive-push-sw.js
+      - package.json
       - scripts/serverLauncher/**
       - tests/stream-reliability/**
       - tests/browser-responsiveness/**
@@ -47,6 +54,24 @@ jobs:
       - name: Serializable transport cause regressions
         working-directory: packages/utils
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/error.test.ts
+      - name: Optional conversation awareness, compression and autonomous follow-ups
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/features/ChatInput/compositionClock.test.ts \
+            src/features/ChatInput/draftStorage.test.ts \
+            src/features/ChatInput/store/action.test.ts \
+            src/store/chat/slices/topic/action.test.ts \
+            apps/server/src/modules/AgentRuntime/proactiveFooter.test.ts \
+            apps/server/src/modules/ModelRuntime/compressImage.test.ts \
+            apps/server/src/modules/ModelRuntime/compressTransport.test.ts \
+            apps/server/src/services/proactiveConversation/plan.test.ts \
+            apps/server/src/services/proactiveConversation/dispatch.test.ts \
+            apps/server/src/services/proactiveConversation/completion.test.ts \
+            apps/server/src/services/proactiveConversation/WebPushService.test.ts \
+            apps/server/src/services/proactiveConversation/pushWorker.test.ts
+      - name: Model-only timing context regressions
+        working-directory: packages/utils
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/conversationAwareness.test.ts
       - name: Browser responsiveness and stream replay regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/browser-responsiveness/vitest.config.mts --silent=passed-only
       - name: Context usage and cross-device recovery regressions
@@ -81,4 +106,8 @@ jobs:
             src/utils/handleOpenAIError.test.ts
       - name: Topic operation ownership and cleanup regressions
         working-directory: packages/database
-        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topic.test.ts
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/models/__tests__/topic.test.ts \
+            src/models/__tests__/proactiveConversation.test.ts \
+            src/models/__tests__/notification.test.ts

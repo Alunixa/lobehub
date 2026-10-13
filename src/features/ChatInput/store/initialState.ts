@@ -1,11 +1,19 @@
-import type { OpenAIChatMessage, UIChatMessage } from '@lobechat/types';
+import type {
+  ConversationContext,
+  MessageAwareness,
+  OpenAIChatMessage,
+  UIChatMessage,
+} from '@lobechat/types';
 import { type IEditor, type SlashOptions } from '@lobehub/editor';
 import { type ChatInputProps } from '@lobehub/editor/react';
 import { type MenuProps } from '@lobehub/ui';
 
 import { type ActionKeys } from '@/features/ChatInput';
 
+import { CompositionClock } from '../compositionClock';
+
 export type SendButtonHandler = (params: {
+  awareness?: MessageAwareness;
   clearContent: () => void;
   editor: IEditor;
   getEditorData: () => Record<string, any> | undefined;
@@ -62,6 +70,7 @@ export interface PublicState {
   agentId?: string;
   allowExpand?: boolean;
   contextWindowMessages?: ContextWindowMessage[];
+  conversationContext?: ConversationContext;
   draftKey?: string;
   expand?: boolean;
   feature?: ChatInputFeature;
@@ -83,6 +92,7 @@ export interface PublicState {
 
 export interface State extends PublicState {
   _savedEditorState?: Record<string, any>;
+  compositionClock: CompositionClock;
   editor?: IEditor;
   inputCompletionError?: InputCompletionError;
   inputCompletionErrorDismissed: boolean;
@@ -92,6 +102,7 @@ export interface State extends PublicState {
 }
 
 export const initialState: State = {
+  compositionClock: new CompositionClock(),
   allowExpand: true,
   expand: false,
   feature: DEFAULT_CHAT_INPUT_FEATURE,

@@ -24,6 +24,7 @@ import type { LobeAgentConfig } from '@/types/agent';
 
 import { useAgentId } from '../../hooks/useAgentId';
 import { useUpdateAgentConfig } from '../../hooks/useUpdateAgentConfig';
+import ConversationFeaturesControls from './ConversationFeaturesControls';
 
 interface ControlsProps {
   setUpdating: (updating: boolean) => void;
@@ -254,10 +255,12 @@ const styles = createStaticStyles(({ css }) => ({
        overscroll containment traps touch gestures instead of reaching the page. */
     &[data-variant='page'] {
       overflow: visible;
+
       width: 100%;
       max-height: none;
       border: none;
       border-radius: 0;
+
       background: transparent;
       box-shadow: none;
     }
@@ -889,6 +892,17 @@ const Controls = memo<ControlsProps>(({ setUpdating, updating, variant = 'popove
               )}
             </>
           )}
+          {enableAgentMode && (
+            <>
+              <div className={styles.divider} />
+              <SectionHeader
+                open={advancedOpen}
+                title={t('settingModel.params.panel.advanced')}
+                onToggle={handleAdvancedOpenChange}
+              />
+              {advancedOpen && <ConversationFeaturesControls disabled={!canCreate} />}
+            </>
+          )}
           {!enableAgentMode && (
             <>
               <div className={styles.divider} />
@@ -899,6 +913,7 @@ const Controls = memo<ControlsProps>(({ setUpdating, updating, variant = 'popove
               />
               {advancedOpen && (
                 <div className={styles.advancedContent}>
+                  <ConversationFeaturesControls disabled={!canCreate} />
                   {PARAM_ORDER.filter((key) => !disabledParams?.includes(key)).map((key) => {
                     const meta = PARAM_CONFIG[key];
                     const enabled = enabledMap[key];

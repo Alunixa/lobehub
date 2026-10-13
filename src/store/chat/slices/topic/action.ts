@@ -9,6 +9,7 @@ import {
 import {
   type ChatTopicMetadata,
   type ConversationContext,
+  type ConversationFeatures,
   type MessageMapScope,
   type UIChatMessage,
 } from '@lobechat/types';
@@ -19,9 +20,10 @@ import useSWR from 'swr';
 
 import { message } from '@/components/AntdStaticMethods';
 import { LOADING_FLAT } from '@/const/message';
-import { mutate, useClientDataSWRWithSync } from '@/libs/swr';
+import { mutate, useClientDataSWR, useClientDataSWRWithSync } from '@/libs/swr';
 import { cronKeys, topicKeys } from '@/libs/swr/keys';
 import { aiChatService } from '@/services/aiChat';
+import { conversationFeatureService } from '@/services/conversationFeatures';
 import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
 import { type ChatStore } from '@/store/chat';
@@ -410,6 +412,77 @@ export class ChatTopicActionImpl {
 
     await summaryTopicTitle(id, messages);
     internal_updateTopicLoading(id, false);
+  };
+
+  useFetchConversationFeatureCapabilities = (providerId?: string) =>
+    useClientDataSWR(['conversation-feature-capabilities', providerId ?? 'openai'], () =>
+      conversationFeatureService.getCapabilities(providerId),
+    );
+
+  internal_setConversationFeatureDetail = (
+    id: string,
+    metadata: ChatTopicMetadata | null | undefined,
+    updatedAt: unknown,
+  ) => {
+    const stamp =
+      updatedAt instanceof Date
+        ? updatedAt.getTime()
+        : typeof updatedAt === 'number'
+          ? updatedAt
+          : typeof updatedAt === 'string'
+            ? Date.parse(updatedAt)
+            : Date.now();
+    const previous = this.#get().conversationFeatureDetailMap[id];
+    if (previous && previous.updatedAt > stamp) return;
+    this.#set((state) => ({
+      conversationFeatureDetailMap: {
+        ...state.conversationFeatureDetailMap,
+        [id]: {
+          features: metadata?.conversationFeatures ?? {},
+          plan: metadata?.proactivePlan,
+          updatedAt: Number.isFinite(stamp) ? stamp : Date.now(),
+        },
+      },
+    }));
+  };
+
+  useFetchConversationFeatureDetail = (id?: string) =>
+    useClientDataSWR(id ? ['conversation-feature-detail', id] : null, async () => {
+      const detail = await topicService.getTopicDetail(id!);
+      if (!detail) throw new Error('Conversation not found');
+      this.internal_setConversationFeatureDetail(id!, detail.metadata, detail.updatedAt);
+      return detail;
+    });
+
+  updateConversationFeatures = async (
+    context: ConversationContext,
+    features: ConversationFeatures,
+  ) => {
+    if (!context.topicId) throw new Error('Conversation has no topic');
+    this.#get().internal_updateTopicLoading(context.topicId, true);
+    try {
+      const rows = await topicService.updateTopicMetadata(context.topicId, {
+        conversationFeatures: features,
+      });
+      const detail = rows?.[0];
+      if (!detail) throw new Error('Conversation settings were not saved');
+      this.internal_setConversationFeatureDetail(
+        context.topicId,
+        detail.metadata,
+        detail.updatedAt,
+      );
+      this.#get().internal_dispatchTopic({
+        agentId: context.agentId,
+        groupId: context.groupId ?? undefined,
+        id: context.topicId,
+        scope: context.groupId ? 'group' : 'agent',
+        type: 'updateTopic',
+        value: { metadata: detail.metadata ?? {} },
+      });
+      await mutate(['conversation-feature-detail', context.topicId]);
+    } finally {
+      this.#get().internal_updateTopicLoading(context.topicId, false);
+    }
   };
 
   useFetchTopics = (
@@ -1006,6 +1079,7 @@ export class ChatTopicActionImpl {
     if (!context.topicId) return;
     const topic = await topicService.getTopicDetail(context.topicId);
     if (!topic) return;
+    this.internal_setConversationFeatureDetail(context.topicId, topic.metadata, topic.updatedAt);
     this.#get().internal_dispatchTopic(
       {
         agentId: context.agentId,

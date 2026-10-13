@@ -60,6 +60,7 @@ import {
 } from '@lobechat/observability-otel/modules/agent-runtime';
 import { type ChatToolPayload, type MessageToolCall, type UIChatMessage } from '@lobechat/types';
 import { sanitizeToolCallArguments, serializePartsForStorage } from '@lobechat/utils';
+import { appendConversationAwareness } from '@lobechat/utils/conversationAwareness';
 import { type ExtendParamsType, ModelProvider } from 'model-bank';
 
 import { composioEnv } from '@/config/composio';
@@ -80,6 +81,7 @@ import { type DeviceAccessReason } from '@/server/services/aiAgent/deviceToolAud
 import { FileService } from '@/server/services/file';
 import { MarketService } from '@/server/services/market';
 import { OnboardingService } from '@/server/services/onboarding';
+import { persistProactiveDecision } from '@/server/services/proactiveConversation/plan';
 import { toAgentContextDocuments } from '@/utils/agentDocumentContextMapping';
 import { nanoid } from '@/utils/uuid';
 
@@ -104,6 +106,7 @@ import { classifyLLMError } from '../llmErrorClassification';
 import { createLlmRequestTiming } from '../llmRequestTiming';
 import { createConversationParentMissingError } from '../messagePersistErrors';
 import { watchOperationInterruption } from '../operationInterruption';
+import { ProactiveFooterStream, proactiveSchedulingPrompt } from '../proactiveFooter';
 import { VISIBLE_OUTPUT_END_PUBLISHED_STEP_INDEX_METADATA_KEY } from '../visibleOutputEnd';
 import { routeInstructions } from './instructions';
 
@@ -266,6 +269,13 @@ export const callLlm =
       // Process messages through serverMessagesEngine to inject system role, knowledge, etc.
       // Rebuild params from agentConfig at execution time (capabilities built dynamically)
       const agentConfig = ctx.agentConfig;
+      const conversationFeatures = agentConfig?.chatConfig?.conversationFeatures ?? {};
+      const canScheduleProactive =
+        conversationFeatures.proactiveMessages && ctx.topicId && !state.metadata?.groupId;
+      const awareInferenceMessages = appendConversationAwareness(
+        inferenceMessages,
+        conversationFeatures,
+      );
       let processedMessages: ChatStreamPayload['messages'];
       if (agentConfig) {
         const { loadModels } = await import('@/business/client/model-bank/loadModels');
@@ -400,8 +410,8 @@ export const callLlm =
         }
 
         const messagesForContext = shouldReplayAssistantReasoning
-          ? inferenceMessages
-          : stripAssistantReasoningForReplay(inferenceMessages);
+          ? awareInferenceMessages
+          : stripAssistantReasoningForReplay(awareInferenceMessages);
 
         // Extract <refer_topic> tags from messages and fetch summaries.
         // Skip if messages already contain injected topic_reference_context
@@ -987,7 +997,20 @@ export const callLlm =
           processedMessages,
         );
       } else {
-        processedMessages = inferenceMessages as unknown as ChatStreamPayload['messages'];
+        processedMessages = awareInferenceMessages as unknown as ChatStreamPayload['messages'];
+      }
+      if (canScheduleProactive) {
+        processedMessages = [
+          ...processedMessages,
+          {
+            content:
+              proactiveSchedulingPrompt(new Date().toISOString()) +
+              (state.metadata?.proactivePlanId && !conversationFeatures.proactiveRepeats
+                ? '\nThis is a one-shot follow-up. Do not schedule another message until a new user interaction; use the null footer.'
+                : ''),
+            role: 'system',
+          },
+        ];
       }
 
       // Initialize ModelRuntime (read user's keyVaults from database)
@@ -996,7 +1019,11 @@ export const callLlm =
         ctx.userId!,
         provider,
         ctx.workspaceId,
-        { maxRetries: 0 },
+        {
+          compressImages: conversationFeatures.compressImages,
+          compressRequests: conversationFeatures.compressRequests,
+          maxRetries: 0,
+        },
       );
 
       // Construct ChatStreamPayload
@@ -1162,6 +1189,9 @@ export const callLlm =
         return await otelContext.with(chatCtx, async () => {
           for (let attempt = 1; attempt <= maxAttempts; attempt++) {
             let content = '';
+            let lastVisibleOutputAt: number | undefined;
+            let completionAwareness: Record<string, unknown> | undefined;
+            const proactiveFooter = canScheduleProactive ? new ProactiveFooterStream() : undefined;
             let toolsCalling: ChatToolPayload[] = [];
             let tool_calls: MessageToolCall[] = [];
             let thinkingContent = '';
@@ -1245,7 +1275,12 @@ export const callLlm =
                       grounding: groundingData,
                     });
                   },
-                  onText: async (text) => {
+                  onText: async (incomingText) => {
+                    const text = proactiveFooter
+                      ? proactiveFooter.append(incomingText)
+                      : incomingText;
+                    if (!text) return;
+                    if (text) lastVisibleOutputAt = Date.now();
                     if (firstChunkAt === undefined) {
                       firstChunkAt = Date.now() - llmStartTime;
                     }
@@ -1427,6 +1462,12 @@ export const callLlm =
 
               // Consume stream to ensure all callbacks complete execution
               await consumeStreamUntilDone(response);
+              const footer = proactiveFooter?.finish();
+              if (footer?.visibleTail) {
+                content += footer.visibleTail;
+                textBuffer += footer.visibleTail;
+                lastVisibleOutputAt = Date.now();
+              }
               const networkTiming = requestTiming.snapshot();
               if (networkTiming) {
                 currentStepSpeed = {
@@ -1494,6 +1535,15 @@ export const callLlm =
               // above) which sharply reduces how often the model does this.
               const isTerminalNaturalStop =
                 currentStepFinishReason === 'end_turn' || currentStepFinishReason === 'stop';
+              const silentProactive = Boolean(
+                state.metadata?.proactivePlanId &&
+                footer?.declined &&
+                !content.trim() &&
+                toolsCalling.length === 0 &&
+                tool_calls.length === 0 &&
+                imageList.length === 0 &&
+                !hasContentImages,
+              );
               if (
                 isDeepSeekThinkingEligibleModel(model) &&
                 isTerminalNaturalStop &&
@@ -1514,6 +1564,7 @@ export const callLlm =
               }
 
               if (
+                !silentProactive &&
                 isEmptyModelCompletion({
                   content,
                   imageCount:
@@ -1635,6 +1686,22 @@ export const callLlm =
               try {
                 // Build metadata object
                 const metadata: Record<string, any> = {};
+                if (conversationFeatures.outputTimestamps) {
+                  const finishedAt = lastVisibleOutputAt ?? Date.now();
+                  const lastUser = [...inferenceMessages].reverse().find((m) => m.role === 'user');
+                  const sentAt = lastUser?.metadata?.awareness?.sentAt;
+                  const startedAt = typeof sentAt === 'string' ? Date.parse(sentAt) : llmStartTime;
+                  completionAwareness = {
+                    outputFinishedAt: new Date(finishedAt).toISOString(),
+                    responseElapsedMs: Math.max(
+                      0,
+                      finishedAt - (Number.isFinite(startedAt) ? startedAt : llmStartTime),
+                    ),
+                  };
+                  metadata.awareness = completionAwareness;
+                }
+                if (state.metadata?.proactivePlanId)
+                  metadata.proactivePlanId = state.metadata.proactivePlanId;
                 if (currentStepUsage && typeof currentStepUsage === 'object') {
                   // Flat fields are kept for backward-compatible readers; `usage`
                   // is the canonical nested shape new readers should consume.
@@ -1663,14 +1730,17 @@ export const callLlm =
                       }))
                     : undefined;
 
-                await ctx.messageModel.update(assistantMessageItem.id, {
-                  content: finalContent,
-                  imageList: imageList.length > 0 ? imageList : undefined,
-                  metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
-                  reasoning: finalReasoning,
-                  search: grounding,
-                  tools: persistedTools,
-                });
+                if (silentProactive) {
+                  await ctx.messageModel.deleteMessage(assistantMessageItem.id);
+                } else
+                  await ctx.messageModel.update(assistantMessageItem.id, {
+                    content: finalContent,
+                    imageList: imageList.length > 0 ? imageList : undefined,
+                    metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+                    reasoning: finalReasoning,
+                    search: grounding,
+                    tools: persistedTools,
+                  });
               } catch (error) {
                 console.error('[call_llm] Failed to update message:', error);
               }
@@ -1697,13 +1767,44 @@ export const callLlm =
                   : [];
               const stateToolCalls = sanitizedToolCalls.length > 0 ? sanitizedToolCalls : undefined;
 
-              newState.messages.push({
-                content,
-                id: assistantMessageItem.id,
-                reasoning: replayedReasoning,
-                role: 'assistant',
-                tool_calls: stateToolCalls,
-              });
+              if (!silentProactive)
+                newState.messages.push({
+                  content,
+                  id: assistantMessageItem.id,
+                  ...(completionAwareness && { metadata: { awareness: completionAwareness } }),
+                  reasoning: replayedReasoning,
+                  role: 'assistant',
+                  tool_calls: stateToolCalls,
+                });
+              if (
+                footer?.decision &&
+                toolsCalling.length === 0 &&
+                tool_calls.length === 0 &&
+                content.trim() &&
+                ctx.topicId &&
+                ctx.userId
+              ) {
+                const lastUser = [...inferenceMessages]
+                  .reverse()
+                  .find((m) => m.role === 'user' && m.id);
+                try {
+                  await persistProactiveDecision(
+                    ctx.serverDB,
+                    ctx.userId,
+                    ctx.topicId,
+                    assistantMessageItem.id,
+                    lastUser?.id,
+                    footer.decision,
+                    state.metadata?.threadId,
+                    state.metadata?.proactiveActivitySequence ?? 0,
+                  );
+                } catch (error) {
+                  console.error(
+                    '[ProactiveConversation] Plan not persisted:',
+                    (error as Error).name,
+                  );
+                }
+              }
 
               if (currentStepUsage) {
                 // Use UsageCounter to uniformly accumulate usage and cost

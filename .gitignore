@@ -95,6 +95,7 @@ public/swe-worker*
 src/app/spa/[variants]/[[...path]]/spaHtmlTemplates.ts
 src/app/spa-auth/authHtmlTemplate.ts
 public/*.js
+!public/proactive-push-sw.js
 robots.txt
 
 # Git hooks

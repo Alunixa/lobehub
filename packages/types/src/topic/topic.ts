@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import type { SerializedAgentHook } from '../agentHook';
+import type { ConversationFeatures, ProactiveConversationPlan } from '../conversationFeatures';
 import type { WorkingDirConfig } from '../device';
 import type { BaseDataModel } from '../meta';
 
@@ -107,6 +108,7 @@ export interface OnboardingSessionSnapshot {
 export interface ChatTopicMetadata {
   bot?: ChatTopicBotContext;
   boundDeviceId?: string;
+  conversationFeatures?: ConversationFeatures;
   cronJobId?: string;
   /**
    * Scoped pointer to the currently active assistant message for a running
@@ -149,6 +151,8 @@ export interface ChatTopicMetadata {
    */
   onboardingFeedback?: OnboardingFeedbackEntry;
   onboardingSession?: OnboardingSessionSnapshot;
+  proactiveActivitySequence?: number;
+  proactivePlan?: ProactiveConversationPlan | null;
   provider?: string;
   /**
    * Web (cloud) only. Ordered list of GitHub repos selected for this topic.

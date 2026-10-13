@@ -16,6 +16,7 @@ import {
 import { useBusinessInputCompletionErrorAlert } from '@/business/client/hooks/useBusinessInputCompletionErrorAlert';
 import type { ActionKeys, ChatInputFeature } from '@/features/ChatInput';
 import { ChatInputProvider, DesktopChatInput, MobileChatInput } from '@/features/ChatInput';
+import { useConversationFeatures } from '@/features/ChatInput/hooks/useConversationFeatures';
 import { selectors as chatInputSelectors, useChatInputStore } from '@/features/ChatInput/store';
 import {
   type InputCompletionError,
@@ -23,7 +24,7 @@ import {
   type SendButtonProps,
 } from '@/features/ChatInput/store/initialState';
 import { useAgentStore } from '@/store/agent';
-import { chatConfigByIdSelectors } from '@/store/agent/selectors';
+import { agentByIdSelectors, chatConfigByIdSelectors } from '@/store/agent/selectors';
 import { useChatStore } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/selectors';
 import { selectCurrentTurnTodosFromMessages } from '@/store/chat/slices/message/selectors/dbMessage';
@@ -235,6 +236,17 @@ const ChatInput = memo<ChatInputProps>(
       s.sendMessage,
       s.stopGenerating,
     ]);
+    const conversationFeatures = useConversationFeatures(agentId || '', context);
+    const useFetchConversationFeatureDetail = useChatStore(
+      (state) => state.useFetchConversationFeatureDetail,
+    );
+    useFetchConversationFeatureDetail(context.isNew ? undefined : (context.topicId ?? undefined));
+    const isCliAgent = useAgentStore((state) =>
+      Boolean(
+        agentByIdSelectors.getAgentConfigById(agentId || '')(state)?.agencyConfig
+          ?.heterogeneousProvider?.type,
+      ),
+    );
     const [enableHistoryCount, historyCount] = useAgentStore((s) => [
       chatConfigByIdSelectors.getEnableHistoryCountById(agentId || '')(s),
       chatConfigByIdSelectors.getHistoryCountById(agentId || '')(s),
@@ -329,7 +341,7 @@ const ChatInput = memo<ChatInputProps>(
 
     // Send handler - gets message, clears editor immediately, then sends
     const handleSend: SendButtonHandler = useCallback(
-      async ({ clearContent, getMarkdownContent, getEditorData }) => {
+      async ({ awareness, clearContent, getMarkdownContent, getEditorData }) => {
         // Host surface is read-only (e.g. page locked) — block Enter too, not
         // just the grayed-out button.
         if (disableSend) return;
@@ -368,9 +380,37 @@ const ChatInput = memo<ChatInputProps>(
         }));
 
         // Fire and forget - send with captured message
-        await sendMessage({ editorData, files: currentFileList, message, pageSelections });
+        await sendMessage({
+          editorData,
+          files: currentFileList,
+          message,
+          forceRuntime:
+            !isCliAgent && Object.values(conversationFeatures).some(Boolean)
+              ? 'gateway'
+              : undefined,
+          metadata:
+            awareness &&
+            (conversationFeatures.typingAwareness || conversationFeatures.inputTimestamps)
+              ? {
+                  awareness: {
+                    ...(conversationFeatures.typingAwareness && {
+                      composedForMs: awareness.composedForMs,
+                    }),
+                    ...(conversationFeatures.inputTimestamps && { sentAt: awareness.sentAt }),
+                  },
+                }
+              : undefined,
+          pageSelections,
+        });
       },
-      [sendMessage, disableQueue, disableSend, isInputQueueBlocked],
+      [
+        sendMessage,
+        disableQueue,
+        disableSend,
+        isInputQueueBlocked,
+        conversationFeatures,
+        isCliAgent,
+      ],
     );
 
     const sendButtonProps: SendButtonProps = {
@@ -447,6 +487,7 @@ const ChatInput = memo<ChatInputProps>(
         agentId={agentId}
         allowExpand={isMobile ? false : allowExpand}
         contextWindowMessages={contextWindowMessages}
+        conversationContext={context}
         draftKey={draftKey}
         feature={feature}
         getMessages={getMessages}

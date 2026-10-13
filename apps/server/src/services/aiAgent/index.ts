@@ -67,6 +67,7 @@ import { DeviceModel } from '@/database/models/device';
 import { FileModel } from '@/database/models/file';
 import { MessageModel } from '@/database/models/message';
 import { PluginModel } from '@/database/models/plugin';
+import { ProactiveConversationModel } from '@/database/models/proactiveConversation';
 import { TaskModel } from '@/database/models/task';
 import { ThreadModel } from '@/database/models/thread';
 import { TopicModel } from '@/database/models/topic';
@@ -937,6 +938,7 @@ export class AiAgentService {
    */
   async execAgent(params: InternalExecAgentParams): Promise<ExecAgentResult> {
     const {
+      awareness,
       additionalPluginIds,
       agentId,
       slug,
@@ -1485,6 +1487,67 @@ export class AiAgentService {
             threadId: appContext?.threadId ?? null,
             topicId,
           });
+    const topicFeatureSnapshot = await this.topicModel.findById(topicId);
+    if (appContext?.proactivePlanId) {
+      if (isHeteroAgent) throw new Error('Autonomous replies require a standard server chat model');
+      if (
+        topicFeatureSnapshot?.metadata?.proactivePlan?.id !== appContext.proactivePlanId ||
+        topicFeatureSnapshot.metadata.proactivePlan.status !== 'running' ||
+        !topicFeatureSnapshot.metadata.conversationFeatures?.proactiveMessages
+      )
+        throw new Error('Autonomous conversation plan was cancelled');
+      agentConfig = {
+        ...agentConfig,
+        chatConfig: { ...agentConfig.chatConfig, enableAgentMode: false, toolMode: 'chat' },
+      };
+    } else if (
+      topicFeatureSnapshot?.metadata?.conversationFeatures?.proactiveMessages ||
+      topicFeatureSnapshot?.metadata?.proactivePlan?.status === 'scheduled' ||
+      topicFeatureSnapshot?.metadata?.proactivePlan?.status === 'running'
+    ) {
+      const activity = await new ProactiveConversationModel(this.db, this.userId).noteActivity(
+        topicId,
+      );
+      if (activity && topicFeatureSnapshot) topicFeatureSnapshot.metadata = activity.metadata;
+      const cancelledPlan = activity?.cancelledPlan;
+      const cancelledOperation = cancelledPlan
+        ? (cancelledPlan.operationId ??
+          (await new ProactiveConversationModel(this.db, this.userId).runningOperation(
+            topicId,
+            cancelledPlan.id,
+          )))
+        : undefined;
+      if (cancelledOperation) {
+        await this.interruptTask({ operationId: cancelledOperation }).catch((error) => {
+          console.error(
+            '[ProactiveConversation] Cancel active follow-up failed:',
+            (error as Error).name,
+          );
+        });
+      }
+    }
+    const conversationFeatures = {
+      ...agentConfig.chatConfig?.conversationFeatures,
+      ...topicFeatureSnapshot?.metadata?.conversationFeatures,
+    };
+    if (
+      !topicFeatureSnapshot?.metadata?.conversationFeatures &&
+      Object.keys(conversationFeatures).length > 0
+    ) {
+      await this.topicModel.updateMetadata(topicId, { conversationFeatures });
+    }
+    const messageAwareness =
+      conversationFeatures.typingAwareness ||
+      conversationFeatures.inputTimestamps ||
+      conversationFeatures.outputTimestamps
+        ? {
+            ...(conversationFeatures.typingAwareness &&
+              awareness?.composedForMs !== undefined && {
+                composedForMs: awareness.composedForMs,
+              }),
+            sentAt: awareness?.sentAt ?? new Date().toISOString(),
+          }
+        : undefined;
     const userMessageRecord = runFromHistory
       ? undefined
       : await this.messageModel.create({
@@ -1496,7 +1559,13 @@ export class AiAgentService {
           // branch), so a group turn must stamp groupId or the message never
           // shows when the topic is reopened (group topic sidebar + ownership fix).
           groupId: appContext?.groupId ?? undefined,
-          metadata: requestTriggerMetadata,
+          metadata:
+            requestTriggerMetadata || messageAwareness
+              ? {
+                  ...requestTriggerMetadata,
+                  ...(messageAwareness && { awareness: messageAwareness }),
+                }
+              : undefined,
           parentId: userMessageParentId,
           role: 'user',
           threadId: appContext?.threadId ?? undefined,
@@ -1531,7 +1600,9 @@ export class AiAgentService {
       // Stamp groupId so the assistant turn is visible in the group read path
       // (MessageModel.query filters group chats by messages.groupId).
       groupId: appContext?.groupId ?? undefined,
-      metadata: orchestrationMetadata,
+      metadata: appContext?.proactivePlanId
+        ? { ...orchestrationMetadata, proactivePlanId: appContext.proactivePlanId }
+        : orchestrationMetadata,
       model: isHeteroAgent ? undefined : model,
       parentId: parentMessageId ?? userMessageRecord?.id,
       provider: isHeteroAgent ? heteroType : provider,
@@ -3106,6 +3177,7 @@ export class AiAgentService {
       id: userMessageRecord?.id,
       imageList: runAttachments.imageList,
       role: 'user' as const,
+      metadata: messageAwareness ? { awareness: messageAwareness } : undefined,
       videoList: runAttachments.videoList,
     };
 
@@ -3441,7 +3513,14 @@ export class AiAgentService {
     try {
       const result = await this.agentRuntimeService.createOperation({
         activeDeviceId,
-        agentConfig,
+        agentConfig: {
+          ...agentConfig,
+          chatConfig: {
+            ...agentConfig.chatConfig,
+            conversationFeatures,
+            ...(appContext?.proactivePlanId && { enableAgentMode: false, toolMode: 'chat' }),
+          },
+        },
         agentGroup: operationAgentGroup,
         deviceSystemInfo: Object.keys(deviceSystemInfo).length > 0 ? deviceSystemInfo : undefined,
         executionPlan,
@@ -3476,6 +3555,8 @@ export class AiAgentService {
           scope: appContext?.scope,
           sandboxProvider,
           sourceMessageId: userMessageRecord?.id ?? parentMessageId ?? undefined,
+          ...(appContext?.proactivePlanId && { proactivePlanId: appContext.proactivePlanId }),
+          proactiveActivitySequence: topicFeatureSnapshot?.metadata?.proactiveActivitySequence ?? 0,
           taskId: operationTaskId,
           threadId: appContext?.threadId,
           topicId,

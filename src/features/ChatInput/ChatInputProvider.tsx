@@ -16,6 +16,7 @@ export const ChatInputProvider = memo<ChatInputProviderProps>(
     agentId,
     children,
     contextWindowMessages,
+    conversationContext,
     draftKey,
     feature = DEFAULT_CHAT_INPUT_FEATURE,
     leftActions,
@@ -40,6 +41,7 @@ export const ChatInputProvider = memo<ChatInputProviderProps>(
           createStore({
             allowExpand,
             contextWindowMessages,
+            conversationContext,
             draftKey,
             editor,
             feature,
@@ -59,6 +61,7 @@ export const ChatInputProvider = memo<ChatInputProviderProps>(
           allowExpand={allowExpand}
           chatInputEditorRef={chatInputEditorRef}
           contextWindowMessages={contextWindowMessages}
+          conversationContext={conversationContext}
           draftKey={draftKey}
           feature={feature}
           getMessages={getMessages}

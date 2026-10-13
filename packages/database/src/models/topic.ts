@@ -819,6 +819,11 @@ export class TopicModel {
             {
               ...originalTopic,
               clientId: null,
+              metadata: { ...originalTopic.metadata, proactivePlan: null, runningOperation: null },
+              status:
+                originalTopic.status === 'running' || originalTopic.status === 'waitingForHuman'
+                  ? 'active'
+                  : originalTopic.status,
               id: this.genId(),
               title: newTitle || originalTopic?.title,
             },
@@ -1170,8 +1175,24 @@ export class TopicModel {
       const mergedMetadata = {
         ...existing.metadata,
         ...metadata,
+        ...(metadata.conversationFeatures && {
+          conversationFeatures: {
+            ...existing.metadata?.conversationFeatures,
+            ...metadata.conversationFeatures,
+          },
+        }),
         ...(mergedOnboardingSession && { onboardingSession: mergedOnboardingSession }),
       } as ChatTopicMetadata;
+      if (
+        metadata.conversationFeatures?.proactiveMessages === false &&
+        mergedMetadata.proactivePlan &&
+        ['scheduled', 'running'].includes(mergedMetadata.proactivePlan.status)
+      ) {
+        mergedMetadata.proactivePlan = {
+          ...mergedMetadata.proactivePlan,
+          status: 'cancelled',
+        };
+      }
 
       return tx
         .update(topics)

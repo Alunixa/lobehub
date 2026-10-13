@@ -1,3 +1,5 @@
+import type { ConversationFeatureDetail } from '@lobechat/types';
+
 import { type ChatTopic } from '@/types/topic';
 
 /**
@@ -48,6 +50,7 @@ export interface ChatTopicState {
    * whether all topics drawer is open
    */
   allTopicsDrawerOpen: boolean;
+  conversationFeatureDetailMap: Record<string, ConversationFeatureDetail>;
   creatingTopic: boolean;
   inSearchingMode?: boolean;
   isSearchingTopic: boolean;
@@ -68,6 +71,7 @@ export interface ChatTopicState {
 }
 
 export const initialTopicState: ChatTopicState = {
+  conversationFeatureDetailMap: {},
   activeTopicId: null as any,
   agentTopicsViewMap: {},
   allTopicsDrawerOpen: false,

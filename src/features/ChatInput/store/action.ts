@@ -5,6 +5,7 @@ import { useAgentStore } from '@/store/agent';
 import { useUserStore } from '@/store/user';
 import { systemAgentSelectors, userProfileSelectors } from '@/store/user/selectors';
 
+import { CompositionClock } from '../compositionClock';
 import { removeDraft } from '../draftStorage';
 import { addInputHistory } from '../inputHistoryStorage';
 import { type PublicState, type State } from './initialState';
@@ -40,6 +41,7 @@ const getEffectiveAgentId = (agentId?: string): string => {
 export const store: CreateStore = (publicState) => (set, get) => ({
   ...initialState,
   ...publicState,
+  compositionClock: new CompositionClock(),
 
   clearInputCompletionError: () => {
     set({ inputCompletionError: undefined, inputCompletionErrorDismissed: false });
@@ -84,7 +86,11 @@ export const store: CreateStore = (publicState) => (set, get) => ({
       : undefined;
 
     onSend?.({
-      clearContent: () => editor?.cleanDocument(),
+      awareness: get().compositionClock.snapshot(),
+      clearContent: () => {
+        editor?.cleanDocument();
+        get().compositionClock.reset();
+      },
       editor: editor!,
       getEditorData: get().getJSONState,
       getMarkdownContent: get().getMarkdownContent,

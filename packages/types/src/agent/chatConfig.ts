@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { ConversationFeatures } from '../conversationFeatures';
+import { ConversationFeaturesSchema } from '../conversationFeatures';
 import type { SearchMode } from '../search';
 import type { TopicGroupMode } from '../topic';
 import type { UserMemoryEffort } from '../user/settings/memory';
@@ -30,6 +32,8 @@ export interface LobeAgentChatConfig extends AgentMemoryChatConfig, AgentSelfIte
    * Model ID to use for generating compression summaries
    */
   compressionModelId?: string;
+  /** Defaults for optional per-conversation context and transport features. */
+  conversationFeatures?: ConversationFeatures;
   deepseekV4ReasoningEffort?: 'none' | 'high' | 'max';
 
   /**
@@ -217,6 +221,7 @@ export const SelfIterationChatConfigSchema = z.object({
 
 export const AgentChatConfigSchema = z
   .object({
+    conversationFeatures: ConversationFeaturesSchema.optional(),
     codexMaxReasoningEffort: z.enum(['low', 'medium', 'high', 'xhigh']).optional(),
     deepseekV4ReasoningEffort: z.enum(['none', 'high', 'max']).optional(),
     compressionModelId: z.string().optional(),

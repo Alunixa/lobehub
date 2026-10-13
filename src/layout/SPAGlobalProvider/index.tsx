@@ -9,6 +9,7 @@ import { LobeAnalyticsProviderWrapper } from '@/components/Analytics/LobeAnalyti
 import { DragUploadProvider } from '@/components/DragUploadZone/DragUploadProvider';
 import { isDesktop } from '@/const/version';
 import AgentMockDevtools from '@/features/AgentMockDevtools';
+import ProactiveNotificationObserver from '@/features/Conversation/ProactiveNotificationObserver';
 import DevFeatureFlagPanel from '@/features/DevFeatureFlagPanel';
 import AuthProvider from '@/layout/AuthProvider';
 import { MarketAuthProvider } from '@/layout/AuthProvider/MarketAuth';
@@ -53,6 +54,7 @@ const SPAGlobalProvider = memo<PropsWithChildren>(({ children }) => {
             <AuthProvider>
               <MarketAuthProvider isDesktop={isDesktop}>
                 <StoreInitialization />
+                <ProactiveNotificationObserver />
 
                 {isDesktop && <ServerVersionOutdatedAlert />}
                 <FaviconProvider>

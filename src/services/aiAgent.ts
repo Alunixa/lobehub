@@ -1,6 +1,7 @@
 import type {
   ExecAgentAppContext,
   ExecAgentResult,
+  MessageAwareness,
   RuntimeMentionedAgent,
   UserInterventionConfig,
 } from '@lobechat/types';
@@ -55,6 +56,7 @@ export interface ExecAgentTaskParams {
   agentId?: string;
   appContext?: ExecAgentAppContext;
   autoStart?: boolean;
+  awareness?: MessageAwareness;
   deviceId?: string;
   editorData?: Record<string, unknown> | null;
   existingMessageIds?: string[];

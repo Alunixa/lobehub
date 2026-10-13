@@ -139,6 +139,11 @@ export interface ModelRuntimeHooks {
 }
 
 export class ModelRuntime {
+  static supportsRequestCompression(provider: string): boolean {
+    if (provider === 'vertexai') return false;
+    const Runtime = providerRuntimeMap[provider as keyof typeof providerRuntimeMap] ?? LobeOpenAI;
+    return 'supportsRequestCompression' in Runtime && Runtime.supportsRequestCompression === true;
+  }
   private _hooks?: ModelRuntimeHooks;
   private _runtime: LobeRuntimeAI;
 

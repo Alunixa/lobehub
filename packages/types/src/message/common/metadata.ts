@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { RequestTrigger } from '../../agentRuntime';
+import type { MessageAwareness } from '../../conversationFeatures';
 import type { PageSelection } from './pageSelection';
 import { PageSelectionSchema } from './pageSelection';
 
@@ -277,6 +278,8 @@ export interface MessageMetadata {
    * AgentCouncil: its member responses render as one parallel-streaming block.
    */
   agentCouncil?: boolean;
+  /** Model-only timing context; never appended to the stored display content. */
+  awareness?: MessageAwareness;
   /**
    * Message collapse state
    * true: collapsed, false/undefined: expanded
@@ -356,7 +359,6 @@ export interface MessageMetadata {
    * Local-system tool snapshots materialized when the user sent @file mentions.
    */
   localSystemToolSnapshots?: LocalSystemToolSnapshot[];
-
   /**
    * Orchestration role of the message author within a group conversation.
    * `'supervisor'` = the group's coordinating agent, `'member'` = a delegated
@@ -366,6 +368,7 @@ export interface MessageMetadata {
    * Supersedes the boolean {@link isSupervisor}, which is kept for back-compat.
    */
   orchestrationRole?: 'supervisor' | 'member';
+
   /** @deprecated use the top-level message `usage` field instead */
   outputAudioTokens?: number;
   /** @deprecated use the top-level message `usage` field instead */
@@ -384,6 +387,8 @@ export interface MessageMetadata {
    * Flag indicating if message is pinned (excluded from compression)
    */
   pinned?: boolean;
+  /** Identifies an autonomous reply for unread state and deduplicated notifications. */
+  proactivePlanId?: string;
   /**
    * Emoji reactions on this message
    */

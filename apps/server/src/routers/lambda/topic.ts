@@ -1,5 +1,6 @@
 import {
   chatTopicStatusSchema,
+  ConversationFeaturesSchema,
   type RecentTopic,
   type RecentTopicGroup,
   type RecentTopicGroupMember,
@@ -16,6 +17,7 @@ import { AgentModel } from '@/database/models/agent';
 import { AgentOperationModel } from '@/database/models/agentOperation';
 import { ChatGroupModel } from '@/database/models/chatGroup';
 import { MessageModel } from '@/database/models/message';
+import { ProactiveConversationModel } from '@/database/models/proactiveConversation';
 import { TopicModel } from '@/database/models/topic';
 import { TopicShareModel } from '@/database/models/topicShare';
 import { AgentMigrationRepo } from '@/database/repositories/agentMigration';
@@ -23,6 +25,8 @@ import { TopicImporterRepo } from '@/database/repositories/topicImporter';
 import { chatGroups } from '@/database/schemas';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { AiAgentService } from '@/server/services/aiAgent';
+import { publishMessageRealtimeUpdate } from '@/server/services/message/realtime';
 import { type BatchTaskResult } from '@/types/service';
 
 import {
@@ -45,12 +49,36 @@ const topicProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
       chatGroupModel: new ChatGroupModel(ctx.serverDB, ctx.userId, wsId),
       topicImporterRepo: new TopicImporterRepo(ctx.serverDB, ctx.userId, wsId),
       topicModel: new TopicModel(ctx.serverDB, ctx.userId, wsId),
+      proactiveModel: new ProactiveConversationModel(ctx.serverDB, ctx.userId),
       topicShareModel: new TopicShareModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
 });
 
 export const topicRouter = router({
+  noteConversationActivity: topicProcedure
+    .use(withScopedPermission('message:create'))
+    .input(z.object({ id: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const activity = await ctx.proactiveModel.noteActivity(input.id);
+      const plan = activity?.cancelledPlan;
+      if (plan) {
+        const operationId =
+          plan.operationId ?? (await ctx.proactiveModel.runningOperation(input.id, plan.id));
+        if (operationId)
+          await new AiAgentService(ctx.serverDB, ctx.userId, {
+            workspaceId: ctx.workspaceId ?? undefined,
+          })
+            .interruptTask({ operationId })
+            .catch((error) => {
+              console.error(
+                '[ProactiveConversation] Active cancellation failed:',
+                (error as Error).name,
+              );
+            });
+      }
+      return { success: Boolean(activity) };
+    }),
   clearRunningOperation: topicProcedure
     .use(withScopedPermission('topic:update'))
     .input(z.object({ id: z.string(), operationId: z.string() }))
@@ -653,6 +681,7 @@ export const topicRouter = router({
       z.object({
         id: z.string(),
         metadata: z.object({
+          conversationFeatures: ConversationFeaturesSchema.optional(),
           boundDeviceId: z.string().optional(),
           heteroSessionId: z.string().optional(),
           heteroSessionIdByWorkingDirectory: z.record(z.string()).optional(),
@@ -707,7 +736,35 @@ export const topicRouter = router({
       }),
     )
     .mutation(async ({ input, ctx }) => {
-      return ctx.topicModel.updateMetadata(input.id, input.metadata);
+      const rows = await ctx.topicModel.updateMetadata(input.id, input.metadata);
+      if (input.metadata.conversationFeatures && rows[0]) {
+        const plan = rows[0].metadata?.proactivePlan;
+        if (
+          input.metadata.conversationFeatures.proactiveMessages === false &&
+          plan?.status === 'cancelled'
+        ) {
+          const operationId =
+            plan.operationId ?? (await ctx.proactiveModel.runningOperation(input.id, plan.id));
+          if (operationId) {
+            await new AiAgentService(ctx.serverDB, ctx.userId, {
+              workspaceId: ctx.workspaceId ?? undefined,
+            })
+              .interruptTask({ operationId })
+              .catch((error) => {
+                console.error(
+                  '[ProactiveConversation] Active cancellation failed:',
+                  (error as Error).name,
+                );
+              });
+          }
+        }
+        void publishMessageRealtimeUpdate(
+          { userId: ctx.userId, workspaceId: ctx.workspaceId },
+          { agentId: rows[0].agentId, groupId: rows[0].groupId, topicId: input.id },
+          'update',
+        );
+      }
+      return rows;
     }),
 });
 

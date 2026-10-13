@@ -510,3 +510,9 @@
 - **Situation**: a read-only working-tree studio preview uses an authenticated production backend, while the installed UI package differs from the repository pin.
 - **Doesn't work**: loading desktop HTML at a phone viewport; assuming a selected default video model is enabled; importing a directory service as `/src/services/chat.ts`; using non-relative TS path aliases or the removed `baseUrl` option; screenshotting only after leaving the failure/empty state.
 - **Works**: serve `index.mobile.html` for the mobile browser, render against an isolated copy of the pinned UI, use relative alias paths, and resolve the actual service entry (`/src/services/chat/index.ts`). First verify the real no-model guard; inject enabled models and billable-service fixtures only in the disposable browser context. Keep production writes blocked. Capture empty/error evidence before the return action, assert Escape hides the menu, wait for upload state and rendered buttons to settle, and inspect the screenshots. A fixture video playback is not provider-generation evidence.
+
+### E9. An isolated Base UI harness needs the complete LobeHub provider stack
+
+- **Situation**: the live conversation-option controls render and respond in a disposable Windows Vite harness, but Flexbox children have no gaps and the failure-state Button throws a MotionProvider error.
+- **Doesn't work**: wrapping the controls in only Ant Design ConfigProvider and `antd-style` ThemeProvider. DOM switch counts and successful saves do not prove that the layout CSS or motion context was initialized.
+- **Works**: use `@lobehub/ui` ThemeProvider, which includes the essential Flexbox styles, plus the app's `LazyMotion` and LobeHub ConfigProvider with its `motion` prop. Disable remote custom-font loading in the isolated fixture. Assert computed `display: flex`, `flex-direction: column`, and the expected gap before interacting, then inspect fresh desktop/mobile and failure/recovery screenshots.

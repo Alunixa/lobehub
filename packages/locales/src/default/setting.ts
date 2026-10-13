@@ -1,4 +1,46 @@
 export default {
+  'conversationFeatures.proactiveRepeats.title': 'Allow AI to plan another proactive message',
+  'conversationFeatures.proactiveRepeats.desc':
+    'Off by default: one proactive reply per user interaction. Enable to let AI choose subsequent follow-ups itself; each generation uses the configured model.',
+  'conversationFeatures.enrollPush': 'Enable system notifications on this device',
+  'conversationFeatures.typingAwareness.title': 'Share composition duration with AI',
+  'conversationFeatures.typingAwareness.desc':
+    'Pass elapsed editing time, including pauses and paste, as model-only context. The chat bubble stays unchanged.',
+  'conversationFeatures.inputTimestamps.title': 'Hidden input timestamps',
+  'conversationFeatures.inputTimestamps.desc':
+    'AI can read when this message was submitted; the timestamp is not added to visible text.',
+  'conversationFeatures.outputTimestamps.title': 'Hidden reply timestamps',
+  'conversationFeatures.outputTimestamps.desc':
+    'AI can read when earlier replies ended and the elapsed response time, including tools and network delays, not pure reasoning time.',
+  'conversationFeatures.proactiveMessages.title': 'AI-decided proactive messages',
+  'conversationFeatures.proactiveMessages.desc':
+    'After a reply, AI may choose one future time or idle duration, or choose silence. No fixed sending interval. New input or switching this off cancels pending plans. Uses the configured model.',
+  'conversationFeatures.proactiveNotifications.title': 'Notify for proactive messages',
+  'conversationFeatures.proactiveNotifications.desc':
+    'Create an inbox notification and, with browser permission, a system push notification. Supported browsers can receive it after the page is closed.',
+  'conversationFeatures.compressImages.title': 'Lightweight image transmission',
+  'conversationFeatures.compressImages.desc':
+    'Re-encode only the model-bound image copy at high quality, preserving dimensions and transparency. Originals and animated/vector formats stay unchanged.',
+  'conversationFeatures.compressRequests.title': 'Lossless file/request compression',
+  'conversationFeatures.compressRequests.desc':
+    'Gzip the JSON request, including complete extracted file contents. Requires a compatible upstream supporting gzip. No text is removed and unsupported requests are not automatically repeated.',
+  'conversationFeatures.scope.current':
+    'Only this conversation. All options are off by default; enabling them uses standard server-side chat.',
+  'conversationFeatures.scope.defaults':
+    'Defaults for new conversations of this assistant. All options are off by default.',
+  'conversationFeatures.cliUnavailable':
+    'These options require standard server-side chat, not an external coding agent.',
+  'conversationFeatures.groupUnavailable':
+    'Autonomous follow-ups currently apply to one-to-one conversations.',
+  'conversationFeatures.readFailed':
+    'Could not load conversation options. Existing settings are preserved.',
+  'conversationFeatures.nextPlan': 'AI planned the next follow-up for {{time}}.',
+  'conversationFeatures.pushUnavailable':
+    'Inbox notifications are enabled. System push is not authorized or unavailable on this device.',
+  'conversationFeatures.retry': 'Retry',
+  'conversationFeatures.save.saving': 'Saving…',
+  'conversationFeatures.save.saved': 'Saved',
+  'conversationFeatures.save.failed': 'Save failed. Your change is retained for retry.',
   'settingCommon.currentTime.title': 'Include current date and time in every AI request',
   'settingCommon.currentTime.desc':
     'Off by default. When enabled, every model request includes a fresh date, weekday and time to the minute, with timezone {{timezone}}. The current-time skill can query live seconds independently.',

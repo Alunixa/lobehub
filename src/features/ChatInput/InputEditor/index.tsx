@@ -37,6 +37,7 @@ import {
 import { useAgentId } from '../hooks/useAgentId';
 import { useChatInputDraft } from '../hooks/useChatInputDraft';
 import { useChatInputHistory } from '../hooks/useChatInputHistory';
+import { useConversationFeatures } from '../hooks/useConversationFeatures';
 import { useChatInputStore, useStoreApi } from '../store';
 import {
   INSERT_ACTION_TAG_COMMAND,
@@ -78,6 +79,9 @@ const InputEditor = memo<{
   placeholder?: ReactNode;
   placeholderVariant?: PlaceholderVariant;
 }>(({ defaultRows = 2, placeholder, placeholderVariant }) => {
+  const timingAgentId = useAgentId();
+  const timingContext = useChatInputStore((state) => state.conversationContext);
+  const conversationFeatures = useConversationFeatures(timingAgentId, timingContext);
   const { t } = useTranslation('chat');
   const [
     editor,
@@ -571,6 +575,10 @@ const InputEditor = memo<{
           saveDraftDebounced.flush();
         }}
         onChange={() => {
+          const input = storeApi.getState();
+          if (conversationFeatures.typingAwareness)
+            input.compositionClock.change(Boolean(input.getMarkdownContent().trim()));
+          else input.compositionClock.reset();
           updateMarkdownContent();
           inputHistory.handleEditorChange();
           saveDraftDebounced();

@@ -192,8 +192,7 @@ export const buildDefaultAnthropicPayload = async (
   }
 
   let postTools = buildAnthropicTools(tools, { enabledContextCaching }) as
-    | AnthropicTools[]
-    | undefined;
+    AnthropicTools[] | undefined;
 
   if (enabledSearch) {
     const webSearchTool = buildSearchTool();
@@ -455,6 +454,7 @@ export const createAnthropicCompatibleRuntime = <T extends Record<string, any> =
   };
 
   return class LobeAnthropicCompatibleAI implements LobeRuntimeAI {
+    static supportsRequestCompression = true;
     client!: Anthropic;
 
     private id: string;

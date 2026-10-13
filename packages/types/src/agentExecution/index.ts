@@ -1,3 +1,4 @@
+import type { MessageAwareness } from '../conversationFeatures';
 import type { WorkingDirConfig } from '../device';
 import type { TaskDetail, UIChatMessage } from '../message';
 import type { ChatTopic } from '../topic';
@@ -91,6 +92,9 @@ export interface ExecAgentAppContext {
    * `metadata.orchestrationRole` so the role snapshot persists for rendering.
    */
   orchestrationRole?: 'supervisor' | 'member';
+  proactiveActivitySequence?: number;
+  /** Server-owned autonomous reply marker; not accepted from public execAgent input. */
+  proactivePlanId?: string;
   /** Scope identifier */
   scope?: string | null;
   /** Session ID */
@@ -122,6 +126,7 @@ export interface ExecAgentParams {
   appContext?: ExecAgentAppContext;
   /** Whether to auto-start execution after creating operation (default: true) */
   autoStart?: boolean;
+  awareness?: MessageAwareness;
   /** Explicit device ID to bind to the topic and activate for this run */
   deviceId?: string;
   /** Rich user-message data, preserved by the server-owned execution path. */

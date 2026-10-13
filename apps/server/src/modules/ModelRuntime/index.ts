@@ -28,6 +28,7 @@ import { createLLMGenerationTracingHook } from '@/server/services/llmGenerationT
 
 import { KeyVaultsGateKeeper } from '../KeyVaultsEncrypt';
 import apiKeyManager from './apiKeyManager';
+import { createCompressedFetch } from './compressTransport';
 import { createCurrentTimeHook } from './currentTimeHook';
 import { createOwnedMediaHook } from './ownedMediaHook';
 import { createProviderConfigHook } from './providerConfigHook';
@@ -56,7 +57,7 @@ type ProviderKeyVaults = OpenAICompatibleKeyVault &
  * @param sdkType - The sdkType from provider settings
  * @returns The resolved runtime provider
  */
-const resolveRuntimeProvider = (provider: string, sdkType?: string): string => {
+export const resolveRuntimeProvider = (provider: string, sdkType?: string): string => {
   const isBuiltin = Object.values(ModelProvider).includes(provider as ModelProvider);
   if (isBuiltin) return provider;
 
@@ -422,7 +423,7 @@ export const initModelRuntimeFromDB = async (
   userId: string,
   provider: string,
   workspaceId?: string,
-  runtimeOptions?: { maxRetries?: number },
+  runtimeOptions?: { compressImages?: boolean; compressRequests?: boolean; maxRetries?: number },
 ): Promise<ModelRuntime> => {
   // 1. Get user's provider configuration from database
   const aiProviderModel = new AiProviderModel(db, userId, workspaceId);
@@ -437,6 +438,14 @@ export const initModelRuntimeFromDB = async (
   // For custom providers, use sdkType from settings (defaults to 'openai')
   const sdkType = providerConfig?.settings?.sdkType;
   const runtimeProvider = resolveRuntimeProvider(provider, sdkType);
+  if (
+    runtimeOptions?.compressRequests &&
+    !ModelRuntime.supportsRequestCompression(runtimeProvider)
+  ) {
+    throw new Error(
+      'This provider does not support gzip request compression. Disable lossless request compression or use a compatible provider.',
+    );
+  }
 
   // 3. Build ClientSecretPayload from keyVaults based on runtimeProvider
   // This ensures provider-specific fields (e.g., cloudflareBaseURLOrAccountID) are included
@@ -467,11 +476,22 @@ export const initModelRuntimeFromDB = async (
           typeof responseApiPreference === 'boolean' ? responseApiPreference : undefined,
         ),
       ),
-      createOwnedMediaHook(db, userId, workspaceId),
+      createOwnedMediaHook(db, userId, workspaceId, runtimeOptions?.compressImages),
     ),
     tracingHooks,
   );
 
   // 6. Initialize ModelRuntime with the payload and hooks
-  return initModelRuntimeWithUserPayload(provider, payload, { ...runtimeOptions, userId }, hooks);
+  return initModelRuntimeWithUserPayload(
+    provider,
+    payload,
+    {
+      ...(runtimeOptions?.maxRetries === undefined
+        ? {}
+        : { maxRetries: runtimeOptions.maxRetries }),
+      ...(runtimeOptions?.compressRequests ? { fetch: createCompressedFetch() } : {}),
+      userId,
+    },
+    hooks,
+  );
 };

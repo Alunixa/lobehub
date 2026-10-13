@@ -375,7 +375,7 @@ export class GatewayActionImpl {
     editorData?: Record<string, unknown> | null;
     message: string;
     /** Request metadata carried from the originating user message. */
-    metadata?: Pick<MessageMetadata, 'trigger'>;
+    metadata?: Pick<MessageMetadata, 'awareness' | 'trigger'>;
     /** Called when the gateway session completes (agent finished running) */
     onComplete?: () => void;
     /** Temporary sidebar topic inserted by sendMessage before the server creates the real topic. */
@@ -517,6 +517,7 @@ export class GatewayActionImpl {
         mentionedAgents,
         parentMessageId,
         prompt: message,
+        awareness: metadata?.awareness,
         resumeApproval,
         resumeToolResult,
         selectedToolIds,

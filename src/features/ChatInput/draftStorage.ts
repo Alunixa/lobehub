@@ -5,6 +5,7 @@ export const CHAT_INPUT_DRAFTS_STORAGE_KEY = 'lobechat:chat-input-drafts:v1';
 const MAX_DRAFTS = 50;
 
 export interface ChatInputDraftEntry {
+  compositionStartedAt?: number;
   json: Record<string, unknown>;
   updatedAt: number;
 }
@@ -105,11 +106,18 @@ export const getDraft = (key: string): Record<string, unknown> | undefined => {
   return readAll()[key]?.json;
 };
 
-export const saveDraft = (key: string, json: Record<string, unknown>): void => {
+export const getDraftCompositionStart = (key: string): number | undefined =>
+  readAll()[key]?.compositionStartedAt;
+
+export const saveDraft = (
+  key: string,
+  json: Record<string, unknown>,
+  compositionStartedAt?: number,
+): void => {
   if (!key) return;
 
   const map = readAll();
-  map[key] = { json, updatedAt: Date.now() };
+  map[key] = { compositionStartedAt, json, updatedAt: Date.now() };
 
   const keys = Object.keys(map);
   if (keys.length > MAX_DRAFTS) {

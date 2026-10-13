@@ -6,6 +6,8 @@ import type { LobeChatDatabase } from '@/database/type';
 import { appEnv } from '@/envs/app';
 import { FileService } from '@/server/services/file';
 
+import { compressModelImage } from './compressImage';
+
 const MAX_CACHE_BYTES = 64 * 1024 * 1024;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const images = new Map<string, { expiresAt: number; value: string }>();
@@ -16,6 +18,7 @@ export const createOwnedMediaHook = (
   db: LobeChatDatabase,
   userId: string,
   workspaceId?: string,
+  compressImages = false,
 ): ModelRuntimeHooks => ({
   beforeChat: async (payload) => {
     const fileUrls = new Map<string, string>();
@@ -59,7 +62,7 @@ export const createOwnedMediaHook = (
           if (!file?.url || !/^(?:image|video|audio)\//.test(file.fileType ?? '')) {
             throw new Error('Media attachment not found or inaccessible');
           }
-          const key = `${userId}:${workspaceId ?? ''}:${id}:${file.fileHash ?? file.url}:${file.updatedAt}`;
+          const key = `${userId}:${workspaceId ?? ''}:${id}:${file.fileHash ?? file.url}:${file.updatedAt}:${compressImages ? 'webp88' : 'original'}`;
           const cached = images.get(key);
           if (cached && cached.expiresAt > Date.now()) {
             images.delete(key);
@@ -73,7 +76,11 @@ export const createOwnedMediaHook = (
           }
           // No HTTP request to /f, no public DNS hairpin, no forwarded credentials.
           const bytes = await service.getFileByteArray(file.url);
-          const value = `data:${file.fileType};base64,${Buffer.from(bytes).toString('base64')}`;
+          const media =
+            compressImages && file.fileType.startsWith('image/')
+              ? await compressModelImage(bytes, file.fileType)
+              : { bytes, mimeType: file.fileType };
+          const value = `data:${media.mimeType};base64,${Buffer.from(media.bytes).toString('base64')}`;
           const concurrent = images.get(key);
           if (concurrent) {
             images.delete(key);

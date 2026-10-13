@@ -4,7 +4,8 @@ import { createdAt, timestamptz } from './_helpers';
 import { users } from './user';
 
 /**
- * Stores Expo push notification tokens registered by mobile clients.
+ * Stores push registrations. Mobile clients use Expo tokens; web clients store
+ * encrypted Web Push subscriptions with the `webpush:v1:` prefix.
  *
  * One row per (userId, deviceId) — a single user may have multiple devices
  * (e.g. iPhone + Android tablet), each receiving its own notifications.
@@ -22,13 +23,13 @@ export const pushTokens = pgTable(
       .references(() => users.id, { onDelete: 'cascade' })
       .notNull(),
 
-    /** Expo push token, format `ExponentPushToken[xxx]` */
+    /** Expo token, or encrypted `webpush:v1:` subscription for platform `web`. */
     expoToken: text('expo_token').notNull(),
 
     /** Stable device id persisted on the client (expo-secure-store) */
     deviceId: text('device_id').notNull(),
 
-    /** `ios` | `android` */
+    /** `ios` | `android` | `web` */
     platform: text('platform').notNull(),
 
     appVersion: text('app_version'),
