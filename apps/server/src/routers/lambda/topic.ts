@@ -263,7 +263,11 @@ export const topicRouter = router({
         ctx.workspaceId ?? undefined,
       );
 
-      const data = await ctx.topicModel.create({ ...rest, sessionId: resolved.sessionId });
+      const data = await ctx.topicModel.create({
+        ...rest,
+        agentId: resolved.agentId,
+        sessionId: resolved.sessionId,
+      });
 
       return data.id;
     }),

@@ -1,3 +1,4 @@
+import { MessageModel } from '@/database/models/message';
 import { ProactiveConversationModel } from '@/database/models/proactiveConversation';
 import { TopicModel } from '@/database/models/topic';
 import { getServerDB } from '@/database/server';
@@ -15,14 +16,23 @@ export async function dispatchProactiveConversations() {
       const topic = await new TopicModel(db, item.userId, item.workspaceId ?? undefined).findById(
         item.id,
       );
-      if (!topic?.agentId) {
+      const source =
+        topic && !topic.agentId
+          ? await new MessageModel(db, item.userId, item.workspaceId ?? undefined).findById(
+              plan.sourceMessageId,
+            )
+          : undefined;
+      const agentId =
+        topic?.agentId ??
+        (source?.topicId === item.id && source.role === 'assistant' ? source.agentId : undefined);
+      if (!agentId) {
         await model.mark(item.id, plan.id, 'failed');
         continue;
       }
       const result = await new AiAgentService(db, item.userId, {
         workspaceId: item.workspaceId ?? undefined,
       }).execAgent({
-        agentId: topic.agentId,
+        agentId,
         appContext: {
           proactivePlanId: plan.id,
           scope: plan.threadId ? 'thread' : 'main',
