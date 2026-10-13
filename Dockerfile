@@ -118,6 +118,8 @@ COPY --from=builder /app/.next/standalone /app/
 COPY --from=builder /app/.next/static /app/.next/static
 # Copy SPA assets (Vite build output)
 COPY --from=builder /app/public/_spa /app/public/_spa
+# The standalone output does not include this browser notification worker.
+COPY --from=builder /app/public/proactive-push-sw.js /app/public/proactive-push-sw.js
 # Copy database migrations
 COPY --from=builder /app/packages/database/migrations /app/migrations
 COPY --from=builder /app/scripts/migrateServerDB/docker.cjs /app/docker.cjs

@@ -1024,6 +1024,56 @@ describe('RuntimeExecutors', () => {
     });
 
     describe('optional hidden context and autonomous scheduling', () => {
+      it('keeps the prior reply model in inference and the current reply model in subsequent runtime history', async () => {
+        const chat = vi.fn(async (_payload: ChatStreamPayload, options?: ChatMethodOptions) => {
+          await options?.callback?.onText?.('Visible current reply');
+          return new Response('done');
+        });
+        vi.mocked(initModelRuntimeFromDB).mockResolvedValueOnce({ chat } as never);
+        vi.spyOn(ContextEngineering, 'serverMessagesEngine').mockImplementationOnce(
+          async ({ messages }) => messages as never,
+        );
+        const executors = createRuntimeExecutors({
+          ...ctx,
+          agentConfig: {
+            chatConfig: { enableAgentMode: false, conversationFeatures: { modelIdentity: true } },
+            plugins: [],
+          },
+        });
+        const previous = {
+          id: 'previous-reply',
+          role: 'assistant',
+          content: 'Visible previous reply',
+          model: 'previous-model',
+          provider: 'previous-provider',
+        };
+        const result = await executors.call_llm!(
+          {
+            type: 'call_llm',
+            payload: {
+              model: 'gpt-4',
+              provider: 'openai',
+              tools: [],
+              messages: [previous, { id: 'human', role: 'user', content: 'Continue' }],
+            },
+          },
+          createMockState(),
+        );
+        expect(chat.mock.calls[0][0].messages[0].content).toContain('"model":"previous-model"');
+        expect(previous.content).toBe('Visible previous reply');
+        expect(result.newState.messages.at(-1)).toMatchObject({
+          content: 'Visible current reply',
+          model: 'gpt-4',
+          provider: 'openai',
+        });
+        expect(mockMessageModel.update).toHaveBeenCalledWith(
+          'msg-123',
+          expect.objectContaining({ content: 'Visible current reply' }),
+        );
+        expect(JSON.stringify(mockStreamManager.publishStreamChunk.mock.calls)).not.toContain(
+          'reply_model',
+        );
+      });
       it('streams and stores only the visible answer while persisting an AI-chosen private deadline', async () => {
         const persist = vi
           .spyOn(proactivePlans, 'persistProactiveDecision')

@@ -1771,6 +1771,7 @@ export const callLlm =
                 newState.messages.push({
                   content,
                   id: assistantMessageItem.id,
+                  ...(conversationFeatures.modelIdentity && { model, provider }),
                   ...(completionAwareness && { metadata: { awareness: completionAwareness } }),
                   reasoning: replayedReasoning,
                   role: 'assistant',

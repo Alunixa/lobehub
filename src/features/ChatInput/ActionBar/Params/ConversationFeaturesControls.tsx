@@ -11,6 +11,7 @@ const OPTIONS = [
   'typingAwareness',
   'inputTimestamps',
   'outputTimestamps',
+  'modelIdentity',
   'proactiveMessages',
   'proactiveNotifications',
   'proactiveRepeats',

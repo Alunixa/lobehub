@@ -209,6 +209,8 @@
   "conversationFeatures.groupUnavailable": "Autonomous follow-ups currently apply to one-to-one conversations.",
   "conversationFeatures.inputTimestamps.desc": "AI can read when this message was submitted; the timestamp is not added to visible text.",
   "conversationFeatures.inputTimestamps.title": "Hidden input timestamps",
+  "conversationFeatures.modelIdentity.desc": "Add each earlier reply’s recorded model ID and provider to model-only context. Switching the current model does not rewrite earlier identities; chat text stays unchanged.",
+  "conversationFeatures.modelIdentity.title": "Share reply model identity with AI",
   "conversationFeatures.nextPlan": "AI planned the next follow-up for {{time}}.",
   "conversationFeatures.outputTimestamps.desc": "AI can read when earlier replies ended and the elapsed response time, including tools and network delays, not pure reasoning time.",
   "conversationFeatures.outputTimestamps.title": "Hidden reply timestamps",

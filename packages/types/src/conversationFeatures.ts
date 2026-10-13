@@ -4,6 +4,7 @@ export const ConversationFeaturesSchema = z.object({
   compressImages: z.boolean().optional(),
   compressRequests: z.boolean().optional(),
   inputTimestamps: z.boolean().optional(),
+  modelIdentity: z.boolean().optional(),
   outputTimestamps: z.boolean().optional(),
   proactiveMessages: z.boolean().optional(),
   proactiveNotifications: z.boolean().optional(),

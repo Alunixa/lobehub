@@ -23,6 +23,10 @@ name: Codex Publish Verified Server Artifact
         description: Code changes and verification notes
         required: true
         type: string
+      release_name:
+        description: Optional release display name
+        required: false
+        type: string
       backup_directory:
         description: Independent deployment backup directory
         required: true
@@ -50,6 +54,7 @@ jobs:
       RELEASE_TAG: ${{ inputs.release_tag }}
       REGRESSION_RUNS: ${{ inputs.regression_runs }}
       RELEASE_NOTES: ${{ inputs.release_notes }}
+      RELEASE_NAME: ${{ inputs.release_name }}
       BACKUP_DIRECTORY: ${{ inputs.backup_directory }}
     steps:
       - name: Validate immutable build and regression provenance
@@ -119,14 +124,9 @@ jobs:
               backupDirectory: process.env.BACKUP_DIRECTORY,
               guardSeconds: 240,
             },
-            changes: [
-              'Exclude generating assistant placeholders from inference history',
-              'Respect configured API mode and model reasoning parameters',
-              'Surface provider errors, empty output and premature EOF without stacked silent chat retries',
-              'Persist current assistant failure before stream errors and terminal snapshots',
-              'Preserve partial text, reasoning and media without overwriting previous turns',
-              'Keep authorized historical media and cooperative ordered browser replay',
-            ],
+            changes: process.env.RELEASE_NOTES.split(/\r?\n/)
+              .filter(line => line.startsWith('- '))
+              .map(line => line.slice(2)),
           };
           fs.writeFileSync(`${dir}/release-manifest.json`, JSON.stringify(manifest, null, 2));
           fs.writeFileSync(`${dir}/SHA256SUMS`, ['lobehub-server-image.tar', 'release-manifest.json']
@@ -135,7 +135,7 @@ jobs:
           fs.writeFileSync(`${dir}/release-body.json`, JSON.stringify({
             tag_name: process.env.RELEASE_TAG,
             target_commitish: process.env.SOURCE_SHA,
-            name: `${process.env.RELEASE_TAG} · 对话可靠性与页面响应修复`,
+            name: process.env.RELEASE_NAME || `${process.env.RELEASE_TAG} · Verified LobeHub server`,
             body: process.env.RELEASE_NOTES,
             draft: true,
             prerelease: false,

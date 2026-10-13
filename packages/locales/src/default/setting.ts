@@ -12,6 +12,9 @@ export default {
   'conversationFeatures.outputTimestamps.title': 'Hidden reply timestamps',
   'conversationFeatures.outputTimestamps.desc':
     'AI can read when earlier replies ended and the elapsed response time, including tools and network delays, not pure reasoning time.',
+  'conversationFeatures.modelIdentity.title': 'Share reply model identity with AI',
+  'conversationFeatures.modelIdentity.desc':
+    'Add each earlier reply’s recorded model ID and provider to model-only context. Switching the current model does not rewrite earlier identities; chat text stays unchanged.',
   'conversationFeatures.proactiveMessages.title': 'AI-decided proactive messages',
   'conversationFeatures.proactiveMessages.desc':
     'After a reply, AI may choose one future time or idle duration, or choose silence. No fixed sending interval. New input or switching this off cancels pending plans. Uses the configured model.',
