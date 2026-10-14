@@ -120,14 +120,19 @@ describe('private model transmission storage', () => {
   ])('rejects an unsuitable configured proxy %s', (url) =>
     expect(() => new ModelMediaStorage(url, createStore())).toThrow('configured HTTPS'),
   );
-  it('performs one short public HEAD preflight and never retries a model request', async () => {
-    const fetcher = vi
-      .fn()
-      .mockResolvedValue(new Response(null, { headers: { 'content-type': 'image/webp' } }));
+  it('probes a GET signature with a one-byte range and reuses its successful availability', async () => {
+    const fetcher = vi.fn(async (_input: string, init?: RequestInit) =>
+      init?.method === 'GET'
+        ? new Response(new Uint8Array([1]), {
+            headers: { 'content-type': 'image/webp', 'content-range': 'bytes 0-0/500' },
+            status: 206,
+          })
+        : new Response(null, { status: 403 }),
+    );
     vi.stubGlobal('fetch', fetcher);
     const service = new ModelMediaStorage('https://media.example/reachable-test', createStore());
     const reference = {
-      value: 'https://media.example/reachable-test/signed',
+      value: signed('cached.webp'),
       expiresAt: Date.now() + 3600000,
     };
     expect(await service.isReachable(reference)).toBe(true);
@@ -135,7 +140,53 @@ describe('private model transmission storage', () => {
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(fetcher).toHaveBeenCalledWith(
       reference.value,
-      expect.objectContaining({ method: 'HEAD', redirect: 'error' }),
+      expect.objectContaining({
+        headers: { Range: 'bytes=0-0' },
+        method: 'GET',
+        redirect: 'error',
+      }),
     );
+  });
+  it('cancels the response body if the proxy ignores the requested range', async () => {
+    const cancel = vi.fn();
+    const body = new ReadableStream({ cancel });
+    const fetcher = vi.fn(
+      async () => new Response(body, { headers: { 'content-type': 'image/png' } }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const service = new ModelMediaStorage('https://media.example/ignored-range', createStore());
+    expect(
+      await service.isReachable({ value: signed('large.png'), expiresAt: Date.now() + 60_000 }),
+    ).toBe(true);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+  it.each([
+    { status: 403, mime: 'application/xml' },
+    { status: 200, mime: 'text/html' },
+    { status: 204, mime: 'image/webp' },
+  ])('does not treat $status $mime as an available image', async ({ status, mime }) => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response(null, { headers: { 'content-type': mime }, status })),
+    );
+    const service = new ModelMediaStorage(
+      `https://media.example/unavailable-${status}`,
+      createStore(),
+    );
+    expect(
+      await service.isReachable({ value: signed('cached.webp'), expiresAt: Date.now() + 60_000 }),
+    ).toBe(false);
+  });
+  it('rejects an expired reference even when the endpoint was just reachable', async () => {
+    const fetcher = vi.fn(
+      async () => new Response(null, { headers: { 'content-type': 'image/webp' } }),
+    );
+    vi.stubGlobal('fetch', fetcher);
+    const service = new ModelMediaStorage('https://media.example/expired-test', createStore());
+    const reference = { value: signed('cached.webp'), expiresAt: Date.now() + 1000 };
+    expect(await service.isReachable(reference)).toBe(true);
+    vi.advanceTimersByTime(1000);
+    expect(await service.isReachable(reference)).toBe(false);
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 });

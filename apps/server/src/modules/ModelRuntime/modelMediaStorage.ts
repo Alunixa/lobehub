@@ -132,22 +132,41 @@ export class ModelMediaStorage {
 
   async isReachable(reference: ModelMediaReference): Promise<boolean> {
     const now = Date.now();
+    if (reference.expiresAt <= now) return false;
     const cache = availability.get(this.proxy.href);
     if (cache && cache.expiresAt > now) return cache.value;
     const value = (async () => {
+      let response: Response | undefined;
       try {
-        const response = await fetch(reference.value, {
-          method: 'HEAD',
+        // The preview signature authorizes GET, so HEAD would fail SigV4 validation.
+        response = await fetch(reference.value, {
+          headers: { Range: 'bytes=0-0' },
+          method: 'GET',
           redirect: 'error',
           signal: AbortSignal.timeout(5000),
         });
-        return response.ok && response.headers.get('content-type')?.startsWith('image/') === true;
+        return (
+          [200, 206].includes(response.status) &&
+          response.headers.get('content-type')?.startsWith('image/') === true
+        );
       } catch (error) {
         console.error('[ModelMedia] Public preflight unavailable:', (error as Error).name);
         return false;
+      } finally {
+        // A proxy can ignore Range; release the stream without downloading the whole image.
+        if (response?.body) {
+          try {
+            await response.body.cancel();
+          } catch (error) {
+            console.error('[ModelMedia] Public preflight cleanup failed:', (error as Error).name);
+          }
+        }
       }
     })();
-    availability.set(this.proxy.href, { expiresAt: now + 30_000, value });
+    availability.set(this.proxy.href, {
+      expiresAt: Math.min(now + 30_000, reference.expiresAt),
+      value,
+    });
     if (availability.size > 20) availability.delete(availability.keys().next().value!);
     return value;
   }
