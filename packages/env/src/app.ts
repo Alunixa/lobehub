@@ -50,6 +50,7 @@ export const getAppConfig = () => {
 
       APP_URL: z.string(),
       INTERNAL_APP_URL: z.string().optional(),
+      MODEL_MEDIA_PROXY_URL: z.string().url().optional(),
       VERCEL_EDGE_CONFIG: z.string().optional(),
       MIDDLEWARE_REWRITE_THROUGH_LOCAL: z.boolean().optional(),
 
@@ -108,6 +109,7 @@ export const getAppConfig = () => {
 
       APP_URL,
       INTERNAL_APP_URL,
+      MODEL_MEDIA_PROXY_URL: process.env.MODEL_MEDIA_PROXY_URL,
       MIDDLEWARE_REWRITE_THROUGH_LOCAL: process.env.MIDDLEWARE_REWRITE_THROUGH_LOCAL === '1',
 
       CUSTOM_FONT_FAMILY: process.env.CUSTOM_FONT_FAMILY,

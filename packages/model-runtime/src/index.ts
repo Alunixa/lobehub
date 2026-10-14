@@ -1,4 +1,5 @@
 export * from './core/BaseAI';
+export { registerModelHostedMedia } from './core/contextBuilders/modelHostedMedia';
 export { pruneReasoningPayload } from './core/contextBuilders/openai';
 export { mergeModelRuntimeHooks } from './core/mergeHooks';
 export type { ModelRuntimeHooks } from './core/ModelRuntime';

@@ -58,6 +58,24 @@ describe('S3', () => {
     (getSignedUrl as unknown as ReturnType<typeof vi.fn>).mockImplementation(mockGetSignedUrl);
   });
 
+  it('does not publish model-only derivatives through the configured public upload ACL', async () => {
+    const storage = new S3('access', 'secret', 'https://storage.example', {
+      bucket: 'private',
+      setAcl: true,
+    });
+    const buffer = Buffer.from('model-only-copy');
+    await storage.uploadPrivateBuffer('model-media/copy.webp', buffer, 'image/webp');
+    expect(PutObjectCommand).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ACL: 'private',
+        CacheControl: 'private, max-age=3600',
+        ContentType: 'image/webp',
+        Key: 'model-media/copy.webp',
+        Body: buffer,
+      }),
+    );
+  });
+
   describe('constructor', () => {
     it('should initialize S3 client with correct configuration', () => {
       const testFileEnv = {

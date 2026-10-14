@@ -23,6 +23,7 @@ import { getBusinessModelRuntimeHooks } from '@/business/server/model-runtime';
 import { AiProviderModel } from '@/database/models/aiProvider';
 import { UserModel } from '@/database/models/user';
 import { type LobeChatDatabase } from '@/database/type';
+import { appEnv } from '@/envs/app';
 import { getLLMConfig } from '@/envs/llm';
 import { createLLMGenerationTracingHook } from '@/server/services/llmGenerationTracing/hook';
 
@@ -476,7 +477,13 @@ export const initModelRuntimeFromDB = async (
           typeof responseApiPreference === 'boolean' ? responseApiPreference : undefined,
         ),
       ),
-      createOwnedMediaHook(db, userId, workspaceId, runtimeOptions?.compressImages),
+      createOwnedMediaHook(
+        db,
+        userId,
+        workspaceId,
+        runtimeOptions?.compressImages,
+        runtimeProvider === 'openai' ? appEnv.MODEL_MEDIA_PROXY_URL : undefined,
+      ),
     ),
     tracingHooks,
   );

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { OpenAIChatMessage } from '../../types';
 import { parseDataUri } from '../../utils/uriParser';
+import { registerModelHostedMedia } from './modelHostedMedia';
 import {
   convertImageUrlToFile,
   convertMessageContent,
@@ -12,6 +13,53 @@ import {
   type ExtendedChatCompletionContentPart,
   extractResponseInstructions,
 } from './openai';
+
+describe('authorized hosted image transmission', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubEnv('LLM_VISION_IMAGE_USE_BASE64', '1');
+    vi.mocked(parseDataUri).mockReturnValue({ type: 'url', base64: '', mimeType: 'image/webp' });
+    vi.mocked(imageUrlToBase64).mockResolvedValue({ base64: 'AAAA', mimeType: 'image/webp' });
+  });
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('retains authorized URLs and image detail in Chat Completions and Responses', async () => {
+    const image = {
+      type: 'image_url' as const,
+      image_url: registerModelHostedMedia({
+        url: 'https://media.example/private-signed.webp',
+        detail: 'high' as const,
+      }),
+    };
+    const messages: OpenAIChatMessage[] = [
+      { role: 'user', content: [{ type: 'text', text: 'Read the image' }, image] },
+    ];
+    const chat = await convertOpenAIMessages(messages as OpenAI.ChatCompletionMessageParam[]);
+    const responses = await convertOpenAIResponseInputs(messages);
+    expect(JSON.stringify(chat)).toContain('https://media.example/private-signed.webp');
+    expect(JSON.stringify(responses)).toContain(
+      '"image_url":"https://media.example/private-signed.webp"',
+    );
+    expect(JSON.stringify(responses)).toContain('"detail":"high"');
+    expect(imageUrlToBase64).not.toHaveBeenCalled();
+  });
+  it('keeps normal inline conversion for unmarked or client-serialized copies', async () => {
+    const marked = registerModelHostedMedia({ url: 'https://media.example/private-signed.webp' });
+    const serialized = JSON.stringify(marked);
+    const image = { type: 'image_url' as const, image_url: JSON.parse(serialized) };
+    const result = await convertMessageContent(image);
+    expect(result).toMatchObject({ image_url: { url: 'data:image/webp;base64,AAAA' } });
+    expect(imageUrlToBase64).toHaveBeenCalledTimes(1);
+  });
+  it('respects an explicit provider requirement for inline images', async () => {
+    const image = {
+      type: 'image_url' as const,
+      image_url: registerModelHostedMedia({ url: 'https://media.example/private-signed.webp' }),
+    };
+    await convertMessageContent(image, { forceImageBase64: true });
+    expect(imageUrlToBase64).toHaveBeenCalledTimes(1);
+  });
+});
 
 // 模拟依赖
 vi.mock('@lobechat/utils', () => ({

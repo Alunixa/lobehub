@@ -17,6 +17,7 @@ on:
       - packages/fetch-sse/**
       - packages/model-runtime/**
       - packages/types/**
+      - packages/env/src/app.ts
       - packages/utils/src/currentTime*
       - packages/utils/src/conversationAwareness*
       - packages/utils/src/client/**
@@ -63,6 +64,8 @@ jobs:
             src/store/chat/slices/topic/action.test.ts \
             apps/server/src/modules/AgentRuntime/proactiveFooter.test.ts \
             apps/server/src/modules/ModelRuntime/compressImage.test.ts \
+            apps/server/src/modules/ModelRuntime/modelMediaStorage.test.ts \
+            apps/server/src/modules/S3/index.test.ts \
             apps/server/src/modules/ModelRuntime/compressTransport.test.ts \
             apps/server/src/modules/ModelRuntime/ownedMediaHook.test.ts \
             apps/server/src/services/proactiveConversation/plan.test.ts \
@@ -104,6 +107,7 @@ jobs:
           node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
             src/core/ModelRuntime.test.ts \
             src/core/contextBuilders/openai.test.ts \
+            src/core/contextBuilders/modelHostedMedia.test.ts \
             src/core/openaiCompatibleFactory/index.test.ts \
             src/utils/handleOpenAIError.test.ts
       - name: Topic operation ownership and cleanup regressions

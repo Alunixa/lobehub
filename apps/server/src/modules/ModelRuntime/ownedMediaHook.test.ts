@@ -1,11 +1,20 @@
 // @vitest-environment node
 import type { ChatStreamPayload } from '@lobechat/model-runtime';
+import { ModelRuntime } from '@lobechat/model-runtime';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createOwnedMediaHook } from './ownedMediaHook';
 
 const authorize = vi.hoisted(() => vi.fn());
 const download = vi.hoisted(() => vi.fn());
+const publicResolve = vi.hoisted(() => vi.fn());
+const publicReachable = vi.hoisted(() => vi.fn());
+vi.mock('./modelMediaStorage', () => ({
+  ModelMediaStorage: class {
+    resolve = publicResolve;
+    isReachable = publicReachable;
+  },
+}));
 vi.mock('@/database/models/file', () => ({
   FileModel: class {
     constructor(
@@ -66,6 +75,81 @@ beforeEach(() => {
       : [],
   );
   download.mockResolvedValue(new TextEncoder().encode('original-image-bytes'));
+  publicResolve.mockImplementation(async () => ({
+    value: `https://media.example/objects/${id}.webp?signed=fixture`,
+    expiresAt: Date.now() + 3600000,
+  }));
+  publicReachable.mockResolvedValue(true);
+});
+
+describe('optional public transmission after ownership checks', () => {
+  const runPublic = async () => {
+    const payload = imagePayload();
+    await createOwnedMediaHook(
+      {} as never,
+      'owner',
+      undefined,
+      true,
+      'https://media.example/objects',
+    ).beforeChat?.(payload);
+    return payload.messages[0].content;
+  };
+  it('is inactive when compression is off and preserves all content and image detail when enabled', async () => {
+    const disabled = imagePayload();
+    await createOwnedMediaHook(
+      {} as never,
+      'owner',
+      undefined,
+      false,
+      'https://media.example/objects',
+    ).beforeChat?.(disabled);
+    expect(publicResolve).not.toHaveBeenCalled();
+    const result = await runPublic();
+    expect(result).toEqual([
+      {
+        type: 'image_url',
+        image_url: {
+          url: `https://media.example/objects/${id}.webp?signed=fixture`,
+          detail: 'high',
+        },
+      },
+    ]);
+    expect(authorize).toHaveBeenCalledTimes(2);
+  });
+  it('does not return a cached link when file access has been revoked', async () => {
+    await runPublic();
+    accessible = false;
+    await expect(runPublic()).rejects.toThrow('not found or inaccessible');
+  });
+  it('never extends cached signatures past their absolute expiration', async () => {
+    const now = Date.now();
+    publicResolve.mockResolvedValueOnce({
+      value: 'https://media.example/one.webp',
+      expiresAt: now + 120000,
+    });
+    await runPublic();
+    vi.setSystemTime(now + 60000);
+    await runPublic();
+    expect(publicResolve).toHaveBeenCalledTimes(1);
+    vi.setSystemTime(now + 130000);
+    await runPublic();
+    expect(publicResolve).toHaveBeenCalledTimes(2);
+  });
+  it('falls back to an intact inline copy before sending the single model request', async () => {
+    publicReachable.mockResolvedValue(false);
+    const chat = vi.fn().mockResolvedValue(new Response('reply'));
+    const runtime = new ModelRuntime(
+        { chat },
+      createOwnedMediaHook({} as never, 'owner', undefined, true, 'https://media.example/objects'),
+    );
+    const payload = imagePayload();
+    await runtime.chat(payload);
+    expect(chat).toHaveBeenCalledTimes(1);
+    expect(payload.messages[0].content).toMatchObject([
+      { image_url: { url: expect.stringContaining('data:image/png;base64,') } },
+    ]);
+    expect(download).toHaveBeenCalledTimes(1);
+  });
 });
 afterEach(() => {
   vi.useRealTimers();

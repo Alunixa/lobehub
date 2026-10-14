@@ -7,6 +7,7 @@ import { disableStreamModels, systemToUserModels } from '../../providers/openai/
 import type { ChatStreamPayload, OpenAIChatMessage, UserMessageContentPart } from '../../types';
 import { isDeepSeekThinkingEligibleModel } from '../../utils/modelParse';
 import { parseDataUri } from '../../utils/uriParser';
+import { isModelHostedMedia } from './modelHostedMedia';
 
 export type ExtendedChatCompletionContentPart = {
   type: 'video_url';
@@ -40,7 +41,8 @@ export const convertMessageContent = async (
     const { type } = parseDataUri(content.image_url.url);
 
     const shouldUseBase64 =
-      options?.forceImageBase64 || process.env.LLM_VISION_IMAGE_USE_BASE64 === '1';
+      options?.forceImageBase64 ||
+      (process.env.LLM_VISION_IMAGE_USE_BASE64 === '1' && !isModelHostedMedia(content.image_url));
 
     if (type === 'url' && shouldUseBase64) {
       const { base64, mimeType } = await imageUrlToBase64(content.image_url.url);

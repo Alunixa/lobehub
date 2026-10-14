@@ -190,6 +190,20 @@ export class S3 {
     return this.client.send(command);
   }
 
+  /** Model-only derivatives must not inherit the public upload ACL. */
+  public async uploadPrivateBuffer(path: string, buffer: Buffer, contentType: string) {
+    return this.client.send(
+      new PutObjectCommand({
+        ACL: this.setAcl ? 'private' : undefined,
+        Body: buffer,
+        Bucket: this.bucket,
+        CacheControl: 'private, max-age=3600',
+        ContentType: contentType,
+        Key: path,
+      }),
+    );
+  }
+
   public async uploadContent(path: string, content: string) {
     const command = new PutObjectCommand({
       ACL: this.setAcl ? 'public-read' : undefined,
