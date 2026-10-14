@@ -9,8 +9,9 @@ import { FileService } from '@/server/services/file';
 import { compressModelImage } from './compressImage';
 
 const MAX_CACHE_BYTES = 64 * 1024 * 1024;
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 30 * 60 * 1000;
 const images = new Map<string, { expiresAt: number; value: string }>();
+const pendingImages = new Map<string, Promise<string>>();
 let cacheBytes = 0;
 
 /** Resolve only our own authenticated file IDs; external URLs retain SSRF-safe fetching. */
@@ -66,6 +67,7 @@ export const createOwnedMediaHook = (
           const cached = images.get(key);
           if (cached && cached.expiresAt > Date.now()) {
             images.delete(key);
+            cached.expiresAt = Date.now() + CACHE_TTL_MS;
             images.set(key, cached);
             resolved.set(url, cached.value);
             return;
@@ -74,13 +76,25 @@ export const createOwnedMediaHook = (
             images.delete(key);
             cacheBytes -= cached.value.length;
           }
-          // No HTTP request to /f, no public DNS hairpin, no forwarded credentials.
-          const bytes = await service.getFileByteArray(file.url);
-          const media =
-            compressImages && file.fileType.startsWith('image/')
-              ? await compressModelImage(bytes, file.fileType)
-              : { bytes, mimeType: file.fileType };
-          const value = `data:${media.mimeType};base64,${Buffer.from(media.bytes).toString('base64')}`;
+          let loading = pendingImages.get(key);
+          if (!loading) {
+            loading = (async () => {
+              // No HTTP request to /f and no forwarded browser credentials.
+              const bytes = await service.getFileByteArray(file.url);
+              const media =
+                compressImages && file.fileType.startsWith('image/')
+                  ? await compressModelImage(bytes, file.fileType)
+                  : { bytes, mimeType: file.fileType };
+              return `data:${media.mimeType};base64,${Buffer.from(media.bytes).toString('base64')}`;
+            })();
+            pendingImages.set(key, loading);
+          }
+          let value: string;
+          try {
+            value = await loading;
+          } finally {
+            if (pendingImages.get(key) === loading) pendingImages.delete(key);
+          }
           const concurrent = images.get(key);
           if (concurrent) {
             images.delete(key);

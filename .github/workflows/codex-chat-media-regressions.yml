@@ -64,6 +64,7 @@ jobs:
             apps/server/src/modules/AgentRuntime/proactiveFooter.test.ts \
             apps/server/src/modules/ModelRuntime/compressImage.test.ts \
             apps/server/src/modules/ModelRuntime/compressTransport.test.ts \
+            apps/server/src/modules/ModelRuntime/ownedMediaHook.test.ts \
             apps/server/src/services/proactiveConversation/plan.test.ts \
             apps/server/src/services/proactiveConversation/dispatch.test.ts \
             apps/server/src/routers/lambda/topicCreation.test.ts \
