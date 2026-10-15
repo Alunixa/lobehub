@@ -182,7 +182,12 @@ const transformOpenAIStream = (
       return { data: chunk, id: chunk.id, type: 'data' };
     }
 
-    const item = chunk.choices[0];
+    const choice = chunk.choices[0] as OpenAI.ChatCompletionChunk.Choice & {
+      message?: OpenAI.ChatCompletionChunk.Choice.Delta;
+    };
+    // Compatible gateways sometimes send a complete ChatCompletion as one SSE
+    // frame (or JSON despite stream:true). Its answer is in message, not delta.
+    const item = choice.message && !choice.delta ? { ...choice, delta: choice.message } : choice;
     if (item.finish_reason) streamContext.terminalReason = item.finish_reason;
 
     if (item && typeof item.delta?.tool_calls === 'object' && item.delta.tool_calls?.length > 0) {

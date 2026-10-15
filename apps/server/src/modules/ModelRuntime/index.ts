@@ -439,14 +439,10 @@ export const initModelRuntimeFromDB = async (
   // For custom providers, use sdkType from settings (defaults to 'openai')
   const sdkType = providerConfig?.settings?.sdkType;
   const runtimeProvider = resolveRuntimeProvider(provider, sdkType);
-  if (
-    runtimeOptions?.compressRequests &&
-    !ModelRuntime.supportsRequestCompression(runtimeProvider)
-  ) {
-    throw new Error(
-      'This provider does not support gzip request compression. Disable lossless request compression or use a compatible provider.',
-    );
-  }
+  // Compression is an optional transport optimization, not a prerequisite for
+  // using another SDK. Decide before sending; never probe by replaying a request.
+  const compressRequests =
+    runtimeOptions?.compressRequests && ModelRuntime.supportsRequestCompression(runtimeProvider);
 
   // 3. Build ClientSecretPayload from keyVaults based on runtimeProvider
   // This ensures provider-specific fields (e.g., cloudflareBaseURLOrAccountID) are included
@@ -496,7 +492,7 @@ export const initModelRuntimeFromDB = async (
       ...(runtimeOptions?.maxRetries === undefined
         ? {}
         : { maxRetries: runtimeOptions.maxRetries }),
-      ...(runtimeOptions?.compressRequests ? { fetch: createCompressedFetch() } : {}),
+      ...(compressRequests ? { fetch: createCompressedFetch() } : {}),
       userId,
     },
     hooks,

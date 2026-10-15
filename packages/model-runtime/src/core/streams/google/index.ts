@@ -111,9 +111,11 @@ const transformGoogleGenerativeAIStream = (
   }
 
   const usageChunks: StreamProtocolChunk[] = [];
+  if (candidate?.finishReason) {
+    usageChunks.push({ data: candidate.finishReason, id: context?.id, type: 'stop' });
+  }
   if (candidate?.finishReason && usageMetadata) {
     delete context.usageMissingDiagnostics;
-    usageChunks.push({ data: candidate.finishReason, id: context?.id, type: 'stop' });
 
     const convertedUsage = convertGoogleAIUsage(usageMetadata, payload?.pricing);
     if (convertedUsage) {
@@ -142,18 +144,16 @@ const transformGoogleGenerativeAIStream = (
   if (functionCalls.length > 0) {
     return [
       {
-        data: functionCalls.map(
-          (value, index: number): StreamToolCallChunkData => ({
-            function: {
-              arguments: JSON.stringify(value.args),
-              name: value.name,
-            },
-            id: generateToolCallId(index, value.name),
-            index,
-            thoughtSignature: value.thoughtSignature,
-            type: 'function',
-          }),
-        ),
+        data: functionCalls.map((value, index: number): StreamToolCallChunkData => ({
+          function: {
+            arguments: JSON.stringify(value.args),
+            name: value.name,
+          },
+          id: generateToolCallId(index, value.name),
+          index,
+          thoughtSignature: value.thoughtSignature,
+          type: 'function',
+        })),
         id: context.id,
         type: 'tool_calls',
       },
@@ -278,9 +278,7 @@ const transformGoogleGenerativeAIStream = (
 
       // If we found multimodal parts, return them with usage chunks
       if (results.length > 0) {
-        if (candidate.finishReason && usageMetadata) {
-          results.push(...usageChunks);
-        }
+        results.push(...usageChunks);
         return results;
       }
     }
@@ -374,11 +372,8 @@ const transformGoogleGenerativeAIStream = (
           ...usageChunks,
         ].filter(Boolean) as StreamProtocolChunk[];
       }
-      // When there is finishReason but no text content, send an empty text chunk to stop the loading animation
-      return [
-        { data: '', id: context?.id, type: 'text' },
-        { data: candidate.finishReason, id: context?.id, type: 'stop' },
-      ];
+      // A terminal frame may carry the entire answer even when usage is absent.
+      return [{ data: text, id: context?.id, type: 'text' }, ...usageChunks];
     }
 
     if (!!text?.trim()) return { data: text, id: context?.id, type: 'text' };

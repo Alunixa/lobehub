@@ -96,6 +96,7 @@ interface LobeGoogleAIParams extends ModelIdMappingOptions {
   defaultHeaders?: Record<string, any>;
   id?: string;
   isVertexAi?: boolean;
+  maxRetries?: number;
 }
 
 const isAbortError = (error: Error): boolean => {
@@ -125,16 +126,22 @@ export class LobeGoogleAI implements LobeRuntimeAI {
     id,
     defaultHeaders,
     modelIdMapping,
+    maxRetries,
   }: LobeGoogleAIParams = {}) {
     if (!apiKey) throw AgentRuntimeError.createError(AgentRuntimeErrorType.InvalidProviderAPIKey);
 
-    const httpOptions = baseURL
-      ? ({ baseUrl: baseURL, headers: defaultHeaders } as HttpOptions)
-      : undefined;
+    // A provider switched from OpenAI may retain its /v1 base URL. Google adds
+    // its own API version; avoid requesting /v1/v1beta/models/... on that relay.
+    const normalizedBaseURL = baseURL?.replace(/\/v1(?:beta)?\/?$/, '').replace(/\/$/, '');
+    const httpOptions: HttpOptions = {
+      ...(normalizedBaseURL ? { baseUrl: normalizedBaseURL } : {}),
+      headers: defaultHeaders,
+      ...(maxRetries === undefined ? {} : { retryOptions: { attempts: maxRetries + 1 } }),
+    };
 
     this.apiKey = apiKey;
     this.client = client ?? new GoogleGenAI({ apiKey, httpOptions });
-    this.baseURL = client ? undefined : baseURL || DEFAULT_BASE_URL;
+    this.baseURL = client ? undefined : normalizedBaseURL || DEFAULT_BASE_URL;
     this.isVertexAi = isVertexAi || false;
     this.modelIdMappingOptions = { modelIdMapping };
 
@@ -505,13 +512,25 @@ export class LobeGoogleAI implements LobeRuntimeAI {
   }
 
   private buildPayload(payload: ChatStreamPayload) {
-    const system_message = payload.messages.find((m) => m.role === 'system');
+    const systemMessages = payload.messages.filter((m) => m.role === 'system');
     const user_messages = payload.messages.filter((m) => m.role !== 'system');
 
     return {
       ...payload,
       messages: user_messages,
-      system: system_message?.content,
+      system: systemMessages.length
+        ? systemMessages
+            .map((message) =>
+              typeof message.content === 'string'
+                ? message.content
+                : Array.isArray(message.content)
+                  ? message.content
+                      .map((part) => (part.type === 'text' ? part.text : ''))
+                      .join('\n')
+                  : '',
+            )
+            .join('\n\n')
+        : undefined,
     };
   }
 

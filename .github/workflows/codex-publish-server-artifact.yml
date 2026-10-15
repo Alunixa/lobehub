@@ -64,7 +64,7 @@ jobs:
           const { BUILD_RUN_ID, SOURCE_SHA, RELEASE_TAG, REGRESSION_RUNS, BACKUP_DIRECTORY } = process.env;
           if (!/^\d+$/.test(BUILD_RUN_ID) || !/^[a-f0-9]{40}$/.test(SOURCE_SHA)) throw new Error('Invalid build identity');
           if (!/^v\d+\.\d+\.\d+-codex\.\d{8}\.\d+$/.test(RELEASE_TAG)) throw new Error('Invalid release tag');
-          if (!/^\/mnt\/sda1\/lobehub-backups\/[\w/-]+$/.test(BACKUP_DIRECTORY)) throw new Error('Invalid backup directory');
+          if (!/^\/(?:mnt\/sda1\/lobehub-backups|var\/backups\/lobehub-releases)\/[\w/-]+$/.test(BACKUP_DIRECTORY)) throw new Error('Invalid backup directory');
           const required = new Set([
             'Codex Build Server Image',
             'Codex Chat and Media Regression',

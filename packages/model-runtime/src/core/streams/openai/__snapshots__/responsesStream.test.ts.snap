@@ -55,13 +55,6 @@ exports[`OpenAIResponsesStream > Reasoning > summary 1`] = `
 ",
   "event: data
 ",
-  "data: {"type":"response.reasoning_summary_text.done","item_id":"rs_684313b9774481908ee856625f82fb8c0b502bf083132d0d","output_index":0,"summary_index":0,"text":"**Answering a numeric comparison**\\n\\nThe user is asking in Chinese which number is larger: 9.1 or 9.92. This is straightforward since 9.92 is clearly larger, as it's greater than 9.1. We can respond with \\"9.92大于9.1\\" without needing to search for more information. It's a simple comparison, but Iould also add a little explanation, noting that 9.92 is indeed 0.82 more than 9.1. However, keeping it simple with \\"9.92 > 9.1\\" is perfectly fine!"}
-
-",
-  "id: resp_684313b89200819087f27686e0c822260b502bf083132d0d
-",
-  "event: data
-",
   "data: {"type":"response.reasoning_summary_part.done","item_id":"rs_684313b9774481908ee856625f82fb8c0b502bf083132d0d","output_index":0,"summary_index":0,"part":{"type":"summary_text","text":"**Answering a numeric comparison**\\n\\nThe user is asking in Chinese which number is larger: 9.1 or 9.92. This is straightforward since 9.92 is clearly larger, as it's greater than 9.1. We can respond with \\"9.92大于9.1\\" without needing to search for more information. Is a simple comparison, but I could also add a little explanation, noting that 9.92 is indeed 0.82 more than 9.1. However, keeping it simple with \\"9.92 > 9.1\\" is perfectly fine!"}}
 
 ",
@@ -86,13 +79,6 @@ exports[`OpenAIResponsesStream > Reasoning > summary 1`] = `
   "data: " analyzing"
 
 ",
-  "id: rs_684313b9774481908ee856625f82fb8c0b502bf083132d0d
-",
-  "event: text
-",
-  "data: null
-
-",
   "id: resp_684313b89200819087f27686e0c822260b502bf083132d0d
 ",
   "event: data
@@ -112,27 +98,6 @@ exports[`OpenAIResponsesStream > Reasoning > summary 1`] = `
   "event: text
 ",
   "data: "9.92 比 9.1 大。"
-
-",
-  "id: resp_684313b89200819087f27686e0c822260b502bf083132d0d
-",
-  "event: data
-",
-  "data: {"type":"response.output_text.done","item_id":"msg_684313bee2c88190b0f4b09621ad7dc60b502bf083132d0d","output_index":1,"content_index":0,"text":"9.92 比 9.1 大。"}
-
-",
-  "id: resp_684313b89200819087f27686e0c822260b502bf083132d0d
-",
-  "event: data
-",
-  "data: {"type":"response.content_part.done","item_id":"msg_684313bee2c88190b0f4b09621ad7dc60b502bf083132d0d","output_index":1,"content_index":0,"part":{"type":"output_text","annotations":[],"text":"9.92 比 9.1 大。"}}
-
-",
-  "id: msg_684313bee2c88190b0f4b09621ad7dc60b502bf083132d0d
-",
-  "event: text
-",
-  "data: null
 
 ",
   "id: resp_684313b89200819087f27686e0c822260b502bf083132d0d
@@ -166,13 +131,6 @@ exports[`OpenAIResponsesStream > should handle chunks with undefined values grac
   "event: data
 ",
   "data: "in_progress"
-
-",
-  "id: undefined
-",
-  "event: reasoning
-",
-  "data: undefined
 
 ",
 ]
@@ -434,13 +392,6 @@ exports[`OpenAIResponsesStream > should handle response.output_item.done without
   "event: data
 ",
   "data: "in_progress"
-
-",
-  "id: msg_no_cite
-",
-  "event: text
-",
-  "data: null
 
 ",
 ]

@@ -406,7 +406,10 @@ describe('nonStreamToStream', () => {
       expect(events).toEqual([
         // First event: response.output_text.delta
         {
+          content_index: 0,
           delta: 'Hello! How can I help you today?',
+          item_id: 'msg_001',
+          output_index: 0,
           type: 'response.output_text.delta',
         },
         // Second event: response.completed
@@ -564,7 +567,10 @@ describe('nonStreamToStream', () => {
 
       expect(events).toEqual([
         {
+          content_index: 0,
           delta: 'Response without message ID',
+          item_id: undefined,
+          output_index: 0,
           type: 'response.output_text.delta',
         },
         {

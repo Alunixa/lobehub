@@ -26,7 +26,14 @@ import { type ClientSecretPayload } from '@lobechat/types';
 import { ModelProvider } from 'model-bank';
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildPayloadFromKeyVaults, initModelRuntimeWithUserPayload } from './index';
+import * as aiProviderModule from '@/database/models/aiProvider';
+import type { LobeChatDatabase } from '@/database/type';
+
+import {
+  buildPayloadFromKeyVaults,
+  initModelRuntimeFromDB,
+  initModelRuntimeWithUserPayload,
+} from './index';
 
 interface InspectableBedrockRuntime {
   client: {
@@ -74,6 +81,35 @@ vi.mock('@/envs/llm', () => ({
  * with user payload. Test case below will test both the methods
  */
 describe('initModelRuntimeWithUserPayload method', () => {
+  it('does not block a switch to Google when optional request compression was enabled', async () => {
+    const OriginalProvider = aiProviderModule.AiProviderModel;
+    const configuration = {
+      enabled: true,
+      id: 'custom-google',
+      keyVaults: { apiKey: 'test-google-key', baseURL: 'https://provider.example/v1' },
+      name: 'Custom Google',
+      settings: { sdkType: 'google' },
+      source: 'custom',
+    } satisfies Awaited<ReturnType<InstanceType<typeof OriginalProvider>['getAiProviderById']>>;
+    const provider = vi.spyOn(aiProviderModule, 'AiProviderModel').mockImplementation((...args) => {
+      const model = new OriginalProvider(...args);
+      vi.spyOn(model, 'getAiProviderById').mockResolvedValue(configuration);
+      return model;
+    });
+    try {
+      const runtime = await initModelRuntimeFromDB(
+        {} as LobeChatDatabase,
+        'user',
+        'custom-google',
+        undefined,
+        { compressRequests: true, maxRetries: 0 },
+      );
+      expect(runtime['_runtime']).toBeInstanceOf(LobeGoogleAI);
+      expect((runtime['_runtime'] as LobeGoogleAI).baseURL).toBe('https://provider.example');
+    } finally {
+      provider.mockRestore();
+    }
+  });
   describe('should initialize with options correctly', () => {
     it('OpenAI provider: with apikey and endpoint', async () => {
       const jwtPayload: ClientSecretPayload = {

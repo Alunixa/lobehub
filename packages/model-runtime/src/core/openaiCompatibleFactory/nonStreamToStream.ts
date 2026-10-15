@@ -97,18 +97,21 @@ export const transformResponseAPIToStream = (data: OpenAI.Responses.Response) =>
     start(controller) {
       // Check if output exists and is an array
       if (data.output && Array.isArray(data.output)) {
-        data.output.forEach((output) => {
+        data.output.forEach((output, output_index) => {
           switch (output.type) {
             case 'message': {
               // Check if content exists and is an array
               if (output.content && Array.isArray(output.content)) {
-                output.content.forEach((content) => {
+                output.content.forEach((content, content_index) => {
                   switch (content.type) {
                     case 'output_text': {
                       // Only emit delta if text exists
                       if (content.text) {
                         controller.enqueue({
+                          content_index,
                           delta: content.text,
+                          item_id: output.id,
+                          output_index,
                           type: 'response.output_text.delta',
                         });
                       }

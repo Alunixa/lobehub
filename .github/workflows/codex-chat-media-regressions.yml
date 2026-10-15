@@ -67,6 +67,7 @@ jobs:
             apps/server/src/modules/ModelRuntime/modelMediaStorage.test.ts \
             apps/server/src/modules/S3/index.test.ts \
             apps/server/src/modules/ModelRuntime/compressTransport.test.ts \
+            apps/server/src/modules/ModelRuntime/index.test.ts \
             apps/server/src/modules/ModelRuntime/ownedMediaHook.test.ts \
             apps/server/src/services/proactiveConversation/plan.test.ts \
             apps/server/src/services/proactiveConversation/dispatch.test.ts \
@@ -100,6 +101,7 @@ jobs:
             src/core/streams/openai/openai.test.ts \
             src/core/streams/openai/responsesStream.test.ts \
             src/core/streams/anthropic.test.ts \
+            src/core/streams/google/google-ai.test.ts \
             src/core/streams/protocol.test.ts
       - name: Provider request preparation regressions
         working-directory: packages/model-runtime
@@ -109,6 +111,9 @@ jobs:
             src/core/contextBuilders/openai.test.ts \
             src/core/contextBuilders/modelHostedMedia.test.ts \
             src/core/openaiCompatibleFactory/index.test.ts \
+            src/core/openaiCompatibleFactory/streamingFetch.test.ts \
+            src/core/openaiCompatibleFactory/nonStreamToStream.test.ts \
+            src/providers/google/transport.test.ts \
             src/utils/handleOpenAIError.test.ts
       - name: Topic operation ownership and cleanup regressions
         working-directory: packages/database

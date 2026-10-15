@@ -76,6 +76,7 @@ import { convertOpenAIResponseUsage, convertOpenAIUsage } from '../usageConverte
 import { createOpenAICompatibleImage } from './createImage';
 import { createOpenAICompatibleVideo, pollOpenAICompatibleVideoStatus } from './createVideo';
 import { transformResponseAPIToStream, transformResponseToStream } from './nonStreamToStream';
+import { createStreamingFetch } from './streamingFetch';
 
 export type { PollVideoStatusResult };
 export * from './createVideo';
@@ -362,6 +363,7 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
       if (!apiKey) throw AgentRuntimeError.createError(ErrorType?.invalidAPIKey);
 
       const initOptions = { apiKey, baseURL, ...constructorOptions, ...res };
+      initOptions.fetch = createStreamingFetch(initOptions.fetch ?? globalThis.fetch);
 
       // if the custom client is provided, use it as client
       if (customClient?.createClient) {

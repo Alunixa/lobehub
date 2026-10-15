@@ -8,8 +8,6 @@ import type {
   ChatPayloadForTransformStream,
   StreamContext,
   StreamProtocolChunk,
-  StreamProtocolToolCallChunk,
-  StreamToolCallChunkData,
 } from '../protocol';
 import {
   convertIterableToStream,
@@ -20,6 +18,7 @@ import {
   FIRST_CHUNK_ERROR_KEY,
 } from '../protocol';
 import type { OpenAIStreamOptions } from './openai';
+import { ResponsesOutput } from './responsesOutput';
 
 const transformOpenAIStream = (
   chunk:
@@ -41,6 +40,7 @@ const transformOpenAIStream = (
         type: 'response.output_text.annotation.added';
       },
   streamContext: StreamContext,
+  output: ResponsesOutput,
   payload?: ChatPayloadForTransformStream,
 ): StreamProtocolChunk | StreamProtocolChunk[] => {
   const createTerminalError = ({
@@ -155,26 +155,7 @@ const transformOpenAIStream = (
       case 'response.output_item.added': {
         switch (chunk.item.type) {
           case 'function_call': {
-            streamContext.toolIndex =
-              typeof streamContext.toolIndex === 'undefined' ? 0 : streamContext.toolIndex + 1;
-            streamContext.tool = {
-              id: chunk.item.call_id,
-              index: streamContext.toolIndex,
-              name: chunk.item.name,
-            };
-
-            return {
-              data: [
-                {
-                  function: { arguments: chunk.item.arguments, name: chunk.item.name },
-                  id: chunk.item.call_id,
-                  index: streamContext.toolIndex!,
-                  type: 'function',
-                } satisfies StreamToolCallChunkData,
-              ],
-              id: streamContext.id,
-              type: 'tool_calls',
-            } satisfies StreamProtocolToolCallChunk;
+            return output.item(chunk.item, chunk.output_index);
           }
         }
 
@@ -182,21 +163,25 @@ const transformOpenAIStream = (
       }
 
       case 'response.function_call_arguments.delta': {
-        return {
-          data: [
-            {
-              function: { arguments: chunk.delta, name: streamContext.tool?.name },
-              id: streamContext.tool?.id,
-              index: streamContext.toolIndex!,
-              type: 'function',
-            } satisfies StreamToolCallChunkData,
-          ],
-          id: streamContext.id,
-          type: 'tool_calls',
-        } satisfies StreamProtocolToolCallChunk;
+        return output.tool(chunk, { arguments: chunk.delta }, false);
+      }
+      case 'response.function_call_arguments.done': {
+        return output.tool(chunk, { arguments: chunk.arguments }, true);
       }
       case 'response.output_text.delta': {
-        return { data: chunk.delta, id: chunk.item_id, type: 'text' };
+        return output.text(chunk, chunk.delta, 'text');
+      }
+      case 'response.output_text.done': {
+        return output.text(chunk, chunk.text, 'text', true);
+      }
+      case 'response.refusal.delta': {
+        return output.text(chunk, chunk.delta, 'text');
+      }
+      case 'response.refusal.done': {
+        return output.text(chunk, chunk.refusal, 'text', true);
+      }
+      case 'response.content_part.done': {
+        return output.part(chunk, chunk.part);
       }
 
       case 'response.reasoning_summary_part.added': {
@@ -209,13 +194,16 @@ const transformOpenAIStream = (
       }
 
       case 'response.reasoning_summary_text.delta': {
-        return { data: chunk.delta, id: chunk.item_id, type: 'reasoning' };
+        return output.text(chunk, chunk.delta, 'reasoning', false, true);
+      }
+      case 'response.reasoning_summary_text.done': {
+        return output.text(chunk, chunk.text, 'reasoning', true, true);
       }
 
       // Some OpenAI-compatible endpoints stream raw reasoning rather than
       // a summary. It belongs in the thinking UI, never the visible answer.
       case 'response.reasoning_text.delta': {
-        return { data: chunk.delta, id: chunk.item_id, type: 'reasoning' };
+        return output.text(chunk, chunk.delta, 'reasoning');
       }
 
       case 'response.output_text.annotation.added': {
@@ -233,31 +221,37 @@ const transformOpenAIStream = (
       }
 
       case 'response.output_item.done': {
+        const chunks = output.item(chunk.item, chunk.output_index);
         if (streamContext.returnedCitationArray?.length) {
-          return {
+          chunks.push({
             data: { citations: streamContext.returnedCitationArray },
             id: chunk.item.id,
             type: 'grounding',
-          };
+          });
         }
-
-        return { data: null, id: chunk.item.id, type: 'text' };
+        return chunks;
       }
 
       case 'response.completed': {
-        return createTerminalChunks({
-          eventType: chunk.type,
-          finishReason: chunk.type,
-          response: chunk.response,
-        });
+        return [
+          ...(chunk.response.output ?? []).flatMap((item, index) => output.item(item, index)),
+          ...createTerminalChunks({
+            eventType: chunk.type,
+            finishReason: chunk.type,
+            response: chunk.response,
+          }),
+        ];
       }
 
       case 'response.incomplete': {
-        return createTerminalChunks({
-          eventType: chunk.type,
-          finishReason: chunk.response.incomplete_details?.reason || chunk.type,
-          response: chunk.response,
-        });
+        return [
+          ...(chunk.response.output ?? []).flatMap((item, index) => output.item(item, index)),
+          ...createTerminalChunks({
+            eventType: chunk.type,
+            finishReason: chunk.response.incomplete_details?.reason || chunk.type,
+            response: chunk.response,
+          }),
+        ];
       }
 
       case 'response.failed': {
@@ -312,6 +306,7 @@ export const OpenAIResponsesStream = (
   }: OpenAIStreamOptions = {},
 ) => {
   const streamStack: StreamContext = { id: '' };
+  const output = new ResponsesOutput(() => streamStack.id);
 
   const readableStream =
     stream instanceof ReadableStream
@@ -319,8 +314,10 @@ export const OpenAIResponsesStream = (
       : convertIterableToStream(stream, { model: payload?.model, provider: payload?.provider });
 
   // use closure to pass payload to transformOpenAIStream
-  const transformWithPayload: typeof transformOpenAIStream = (chunk, streamContext) =>
-    transformOpenAIStream(chunk, streamContext, payload);
+  const transformWithPayload = (
+    chunk: Parameters<typeof transformOpenAIStream>[0],
+    streamContext: StreamContext,
+  ) => transformOpenAIStream(chunk, streamContext, output, payload);
 
   return (
     readableStream
