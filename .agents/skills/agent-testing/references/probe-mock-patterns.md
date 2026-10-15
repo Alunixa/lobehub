@@ -516,3 +516,15 @@
 - **Situation**: the live conversation-option controls render and respond in a disposable Windows Vite harness, but Flexbox children have no gaps and the failure-state Button throws a MotionProvider error.
 - **Doesn't work**: wrapping the controls in only Ant Design ConfigProvider and `antd-style` ThemeProvider. DOM switch counts and successful saves do not prove that the layout CSS or motion context was initialized.
 - **Works**: use `@lobehub/ui` ThemeProvider, which includes the essential Flexbox styles, plus the app's `LazyMotion` and LobeHub ConfigProvider with its `motion` prop. Disable remote custom-font loading in the isolated fixture. Assert computed `display: flex`, `flex-direction: column`, and the expected gap before interacting, then inspect fresh desktop/mobile and failure/recovery screenshots.
+
+### E10. Count tool calls and multimodal callbacks in a stream probe
+
+- **Situation**: a complete provider stream returns a terminal marker, usage and a function call, while a probe reports zero visible characters.
+- **Does not work**: observing only `onText` / `onThinking` and labeling every zero-text stream a parser failure.
+- **Works**: collect `onCompletion.toolsCalling`, `onContentPart`, `onReasoningPart` and the terminal reason. Report protocol success separately from a complete user-visible answer. Replay the stored wire to correct measurements without another model request.
+
+### E11. Keep long-running remote model probes durable across SSH closure
+
+- **Situation**: the SSH channel closes before a large-context request settles.
+- **Does not work**: rely solely on console stdout for the result, restart the paid request to recover diagnostics, or assume JavaScript-assigned environment variables will identify the process in `/proc/*/environ`.
+- **Works**: use a unique per-case launch marker, a scoped detached container exec with explicit startup environment and process title, and mode-0600 response/result files in an owned directory. Inspect that same attempt after a disconnect; if evidence is missing, retain an uncertain verdict rather than retrying or inventing success.

@@ -300,3 +300,11 @@ to attach a file.
 assert the portal menu remains open after the complete tap, and verify the same flow in
 a real mobile viewport while the editor remains writable. A helper test may support
 that evidence, but it can never replace it.
+
+## Case 13 — Treating a protocol switch or a short prompt as proof of full conversation recovery
+
+**Wrong approach**: mark an intermittent empty-completion or unexpected-EOF defect fixed because another protocol answered one small prompt or the deployed health endpoint is green.
+
+**Why / what it breaks**: the failing call may be the tool-follow-up in a long multimodal history; a first-step tool call is not the final visible answer, and HTTP 200 alone proves neither.
+
+**Correct approach**: identify the failed step, preserve its full context and capabilities, reconcile real final snapshots, and distinguish valid tool output, final text, genuine empty output, and incomplete transport evidence. Report deployment health separately from model-answer and long-term stability evidence; never silently replay a paid request.
