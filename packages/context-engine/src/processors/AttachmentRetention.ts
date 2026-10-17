@@ -90,7 +90,9 @@ export class AttachmentRetentionProcessor extends BaseProcessor {
       };
       const serialized =
         toRecord(message.metadata)?.isMultimodal === true && typeof message.content === 'string';
-      const parts: unknown = serialized ? safeParseJSON<unknown>(message.content) : message.content;
+      const parts: unknown = serialized
+        ? safeParseJSON<unknown>(pickString(message.content))
+        : message.content;
       if (Array.isArray(parts)) {
         const retained = filter(parts, partKind);
         message.content = serialized ? JSON.stringify(retained) : retained;

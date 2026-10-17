@@ -180,7 +180,7 @@ describe('request attachment retention', () => {
       ],
       { imageRetentionCount: 1, limitImages: true },
     );
-    expect(JSON.parse(result.messages[0].content)).toEqual([text, { image: 'new', type: 'image' }]);
+    expect(result.messages[0].content).toBe(JSON.stringify([text, { image: 'new', type: 'image' }]));
   });
 
   it('removes extracted chunk references only for excluded files', async () => {
