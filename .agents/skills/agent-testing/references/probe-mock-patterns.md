@@ -528,3 +528,21 @@
 - **Situation**: the SSH channel closes before a large-context request settles.
 - **Does not work**: rely solely on console stdout for the result, restart the paid request to recover diagnostics, or assume JavaScript-assigned environment variables will identify the process in `/proc/*/environ`.
 - **Works**: use a unique per-case launch marker, a scoped detached container exec with explicit startup environment and process title, and mode-0600 response/result files in an owned directory. Inspect that same attempt after a disconnect; if evidence is missing, retain an uncertain verdict rather than retrying or inventing success.
+
+### E12. Keep a focused settings fixture out of the full application bootstrap
+
+- **Situation**: a settings-component fixture serves HTML but module evaluation never reaches DOMContentLoaded within the observation window.
+- **Does not work**: repeatedly increasing navigation timeouts while importing the full composer store, its editor graph, and the live RPC bootstrap into an otherwise isolated fixture; sharing Vite's dependency cache across unrelated preview servers also obscures which graph is active.
+- **Works**: use a dedicated cache and an explicitly allocated free port, keep the real component, persistence hook, locales and UI providers, and replace only the scoped store/service boundaries the fixture is supposed to isolate. Record that boundary honestly. Verify the production bundle separately before claiming application persistence or cross-client results.
+
+### E13. A missing SSH result is not proof that an image import failed
+
+- **Situation**: the SSH channel times out after uploading a release artifact and starting digest verification or image import.
+- **Does not work**: immediately uploading/importing again, or proceeding to recreate the application without checking the actual result.
+- **Works**: inspect the existing server-side staging receipt, artifact size and digest, source commit and loaded image ID. Resume from the verified receipt when it exists, leave the running application untouched until staging is proven, and preserve the transport failure as diagnostic evidence.
+
+### E14. Keep numeric settings numeric and wait for durable save in assertions
+
+- **Situation**: a switch-based settings hook gains numeric values, or an optimistic control disappears before its server write finishes.
+- **Does not work**: reusing Boolean(value) in retry, disabling a numeric field after its first typed digit, or reading persistence immediately after an optimistic switch click.
+- **Works**: retry the original typed patch, commit a numeric draft on blur/Enter/close, serialize merged setting writes, and wait for the backing store/API value before asserting persistence. Verify zero, partial updates, failed numeric save and reload separately from control visibility.
