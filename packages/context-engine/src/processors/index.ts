@@ -1,5 +1,6 @@
 // Transformer processors
 export { AgentCouncilFlattenProcessor } from './AgentCouncilFlatten';
+export { AttachmentRetentionProcessor } from './AttachmentRetention';
 export { CompressedGroupRoleTransformProcessor } from './CompressedGroupRoleTransform';
 export { DisabledToolCallFilter } from './DisabledToolCallFilter';
 export { GroupMessageFlattenProcessor } from './GroupMessageFlatten';

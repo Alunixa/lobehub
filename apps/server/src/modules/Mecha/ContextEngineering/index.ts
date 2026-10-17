@@ -49,6 +49,7 @@ const createServerVariableGenerators = (params: {
  * ```
  */
 export const serverMessagesEngine = async ({
+  attachmentRetention,
   messages = [],
   model,
   modelDisplayName,
@@ -83,6 +84,7 @@ export const serverMessagesEngine = async ({
   userTimezone,
 }: ServerMessagesEngineParams): Promise<OpenAIChatMessage[]> => {
   const engine = new MessagesEngine({
+    attachmentRetention,
     // Capability injection
     capabilities: {
       isCanUseAudio: capabilities?.isCanUseAudio,

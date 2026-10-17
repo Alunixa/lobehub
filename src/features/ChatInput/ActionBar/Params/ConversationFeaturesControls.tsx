@@ -1,10 +1,12 @@
 import type { ConversationFeatures } from '@lobechat/types';
+import { DEFAULT_ATTACHMENT_RETENTION_COUNT } from '@lobechat/types';
 import { Flexbox } from '@lobehub/ui';
 import { Button, Switch } from '@lobehub/ui/base-ui';
 import { cssVar } from 'antd-style';
 import { memo, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { AttachmentRetentionInput } from './AttachmentRetentionInput';
 import { useConversationFeatureControls } from './useConversationFeatureControls';
 
 const OPTIONS = [
@@ -17,6 +19,8 @@ const OPTIONS = [
   'proactiveRepeats',
   'compressImages',
   'compressRequests',
+  'limitImages',
+  'limitFiles',
 ] as const satisfies Array<keyof ConversationFeatures>;
 
 const ConversationFeaturesControls = memo<{ disabled?: boolean }>(({ disabled }) => {
@@ -71,9 +75,32 @@ const ConversationFeaturesControls = memo<{ disabled?: boolean }>(({ disabled })
               }}
             />
           </Flexbox>
-          <Flexbox style={{ color: cssVar.colorTextTertiary, fontSize: 12 }}>
-            {t(`conversationFeatures.${key}.desc`)}
-          </Flexbox>
+          {key !== 'limitImages' && key !== 'limitFiles' ? (
+            <Flexbox style={{ color: cssVar.colorTextTertiary, fontSize: 12 }}>
+              {t(`conversationFeatures.${key}.desc`)}
+            </Flexbox>
+          ) : current[key] ? (
+            <AttachmentRetentionInput
+              id={`${fieldId}-${key}-count`}
+              key={`${context?.agentId ?? ''}-${context?.topicId ?? 'default'}-${key}`}
+              label={t(`conversationFeatures.${key}.count`)}
+              disabled={
+                disabled ||
+                isCli ||
+                Boolean(failedRead) ||
+                detail.isLoading ||
+                saveState === 'saving'
+              }
+              value={
+                (key === 'limitImages'
+                  ? current.imageRetentionCount
+                  : current.fileRetentionCount) ?? DEFAULT_ATTACHMENT_RETENTION_COUNT
+              }
+              onSave={(value) =>
+                save(key === 'limitImages' ? 'imageRetentionCount' : 'fileRetentionCount', value)
+              }
+            />
+          ) : null}
         </Flexbox>
       ))}
       {current.proactiveMessages && plan?.status === 'scheduled' && (

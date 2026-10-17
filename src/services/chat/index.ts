@@ -283,6 +283,7 @@ class ChatService {
     // Apply context engineering with preprocessing configuration
     // Note: agentConfig.systemRole is already resolved by resolveAgentConfig for builtin agents
     const modelMessages = await contextEngineering({
+      attachmentRetention: chatConfig.conversationFeatures,
       agentBuilderContext,
       agentDocuments,
       agentId: targetAgentId,

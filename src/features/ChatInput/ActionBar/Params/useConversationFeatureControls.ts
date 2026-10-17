@@ -1,5 +1,5 @@
 import type { ConversationContext, ConversationFeatures } from '@lobechat/types';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { conversationFeatureService } from '@/services/conversationFeatures';
 import { useAgentStore } from '@/store/agent';
@@ -47,13 +47,27 @@ export const useConversationFeatureControls = () => {
   const [pending, setPending] = useState<Partial<ConversationFeatures>>({});
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'failed'>('idle');
   const [pushUnavailable, setPushUnavailable] = useState(false);
+  const pendingRef = useRef<Partial<ConversationFeatures>>({});
+  const sequence = useRef(0);
+  const writes = useRef(Promise.resolve());
+  const scope = `${agentId}:${context?.topicId ?? ''}`;
+  useEffect(() => {
+    sequence.current++;
+    pendingRef.current = {};
+    setPending({});
+    setSaveState('idle');
+  }, [scope]);
 
-  const save = async (key: keyof ConversationFeatures, checked: boolean) => {
-    setPending({ [key]: checked });
+  const savePatch = async (patch: Partial<ConversationFeatures>) => {
+    const version = ++sequence.current;
+    pendingRef.current = { ...pendingRef.current, ...patch };
+    const changes = { ...pendingRef.current };
+    const desired = { ...features, ...pendingRef.current };
+    setPending(pendingRef.current);
     setSaveState('saving');
     // Start permission enrollment inside the user's gesture, before any RPC awaits.
     const push =
-      key === 'proactiveNotifications' && checked
+      patch.proactiveNotifications === true
         ? capabilities.data?.webPushPublicKey
           ? conversationFeatureService.enableBrowserPush().then(
               () => true,
@@ -61,20 +75,31 @@ export const useConversationFeatureControls = () => {
             )
           : Promise.resolve(false)
         : undefined;
-    try {
-      if (context?.topicId && !context.isNew) {
-        await updateConversationFeatures(context, { [key]: checked });
-      } else {
-        await updateAgentChatConfig({ conversationFeatures: { ...features, [key]: checked } });
+    const write = async () => {
+      try {
+        if (context?.topicId && !context.isNew) {
+          await updateConversationFeatures(context, changes);
+        } else {
+          await updateAgentChatConfig({ conversationFeatures: desired });
+        }
+        const pushAvailable = push ? await push : undefined;
+        if (version === sequence.current) {
+          if (pushAvailable !== undefined) setPushUnavailable(!pushAvailable);
+          pendingRef.current = {};
+          setPending({});
+          setSaveState('saved');
+        }
+      } catch (error) {
+        console.error('[ConversationFeatures] Settings were not saved:', (error as Error).name);
+        if (version === sequence.current) setSaveState('failed');
       }
-      if (push) setPushUnavailable(!(await push));
-      setPending({});
-      setSaveState('saved');
-    } catch (error) {
-      console.error('[ConversationFeatures] Settings were not saved:', (error as Error).name);
-      setSaveState('failed');
-    }
+    };
+    const task = writes.current.then(write);
+    writes.current = task;
+    await task;
   };
+  const save = <K extends keyof ConversationFeatures>(key: K, value: ConversationFeatures[K]) =>
+    savePatch({ [key]: value });
   return {
     capabilities,
     context,
@@ -85,9 +110,6 @@ export const useConversationFeatureControls = () => {
     saveState,
     current: { ...features, ...pending },
     save,
-    retry: () => {
-      const [key, value] = Object.entries(pending)[0] ?? [];
-      if (key) void save(key as keyof ConversationFeatures, Boolean(value));
-    },
+    retry: () => void savePatch(pending),
   };
 };

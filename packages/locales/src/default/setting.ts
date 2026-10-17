@@ -1,4 +1,8 @@
 export default {
+  'conversationFeatures.limitImages.title': 'Limit images in each request',
+  'conversationFeatures.limitImages.count': 'Most recent images to keep',
+  'conversationFeatures.limitFiles.title': 'Limit non-image files in each request',
+  'conversationFeatures.limitFiles.count': 'Most recent non-image files to keep',
   'conversationFeatures.proactiveRepeats.title': 'Allow AI to plan another proactive message',
   'conversationFeatures.proactiveRepeats.desc':
     'Off by default: one proactive reply per user interaction. Enable to let AI choose subsequent follow-ups itself; each generation uses the configured model.',

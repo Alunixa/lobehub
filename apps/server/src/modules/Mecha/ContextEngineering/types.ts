@@ -17,7 +17,7 @@ import type {
   UserMemoryData,
 } from '@lobechat/context-engine';
 import type { PageContentContext } from '@lobechat/prompts';
-import type { RuntimeInitialContext, UIChatMessage } from '@lobechat/types';
+import type { ConversationFeatures, RuntimeInitialContext, UIChatMessage } from '@lobechat/types';
 
 /**
  * Model capability checker functions for server-side
@@ -72,6 +72,7 @@ export interface ServerUserMemoryConfig {
  * instead of fetching from stores
  */
 export interface ServerMessagesEngineParams {
+  attachmentRetention?: ConversationFeatures;
   /** Additional variable values to merge with defaults (e.g. device paths) */
   additionalVariables?: Record<string, string>;
   /** Agent documents to inject into context based on load rules and positions */

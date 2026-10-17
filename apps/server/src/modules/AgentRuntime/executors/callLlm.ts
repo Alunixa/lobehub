@@ -827,6 +827,7 @@ export const callLlm =
         }
 
         const contextEngineInput = {
+          attachmentRetention: conversationFeatures,
           agentDocuments,
           ...(agentBuilderContext && { agentBuilderContext }),
           // The group/bot member roster is resolved once at op creation

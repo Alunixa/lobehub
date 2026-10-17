@@ -37,6 +37,7 @@ import type {
 import { MessagesEngine, resolveTopicReferences } from '@lobechat/context-engine';
 import { historySummaryPrompt } from '@lobechat/prompts';
 import type {
+  ConversationFeatures,
   OpenAIChatMessage,
   RuntimeInitialContext,
   RuntimeStepContext,
@@ -90,6 +91,7 @@ interface ContextEngineeringContext {
   agentDocuments?: AgentContextDocument[];
   /** The agent ID that will respond (for group context injection) */
   agentId?: string;
+  attachmentRetention?: ConversationFeatures;
   /**
    * Runtime-resolved agent mode. Callers may force chat mode for models without
    * function calling while keeping the stored chatConfig unchanged.
@@ -130,6 +132,7 @@ interface ContextEngineeringContext {
 
 // REVIEW: Maybe we can constrain identity, preference, exp to reorder or trim the context instead of passing everything in
 export const contextEngineering = async ({
+  attachmentRetention,
   messages = [],
   manifests,
   tools,
@@ -713,6 +716,7 @@ export const contextEngineering = async ({
 
   // Create MessagesEngine with injected dependencies
   const engine = new MessagesEngine({
+    attachmentRetention,
     // Agent configuration
     enableHistoryCount,
     formatHistorySummary: historySummaryPrompt,

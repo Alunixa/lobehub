@@ -1,9 +1,15 @@
 import { z } from 'zod';
 
+export const DEFAULT_ATTACHMENT_RETENTION_COUNT = 10;
+
 export const ConversationFeaturesSchema = z.object({
   compressImages: z.boolean().optional(),
   compressRequests: z.boolean().optional(),
+  fileRetentionCount: z.number().int().nonnegative().optional(),
+  imageRetentionCount: z.number().int().nonnegative().optional(),
   inputTimestamps: z.boolean().optional(),
+  limitFiles: z.boolean().optional(),
+  limitImages: z.boolean().optional(),
   modelIdentity: z.boolean().optional(),
   outputTimestamps: z.boolean().optional(),
   proactiveMessages: z.boolean().optional(),

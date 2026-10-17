@@ -385,7 +385,7 @@ const ChatInput = memo<ChatInputProps>(
           files: currentFileList,
           message,
           forceRuntime:
-            !isCliAgent && Object.values(conversationFeatures).some(Boolean)
+            !isCliAgent && Object.values(conversationFeatures).includes(true)
               ? 'gateway'
               : undefined,
           metadata:

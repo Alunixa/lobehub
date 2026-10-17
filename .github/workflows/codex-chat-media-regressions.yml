@@ -122,3 +122,10 @@ jobs:
             src/models/__tests__/topic.test.ts \
             src/models/__tests__/proactiveConversation.test.ts \
             src/models/__tests__/notification.test.ts
+      - name: Attachment retention before model request encoding
+        working-directory: packages/context-engine
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/processors/__tests__/AttachmentRetention.test.ts \
+            src/processors/__tests__/MessageContent.test.ts \
+            src/engine/messages/__tests__/MessagesEngine.test.ts

@@ -5,6 +5,7 @@ import type { OpenAIChatMessage } from '@/types/index';
 import { ContextEngine } from '../../pipeline';
 import {
   AgentCouncilFlattenProcessor,
+  AttachmentRetentionProcessor,
   CompressedGroupRoleTransformProcessor,
   DisabledToolCallFilter,
   GroupMessageFlattenProcessor,
@@ -158,6 +159,7 @@ export class MessagesEngine {
       capabilities,
       variableGenerators,
       fileContext,
+      attachmentRetention,
       messages,
       agentBuilderContext,
       botPlatformContext,
@@ -212,8 +214,7 @@ export class MessagesEngine {
     const currentUserMessage = [...messages]
       .reverse()
       .find((m) => m.role === 'user' && typeof m.content === 'string')?.content as
-      | string
-      | undefined;
+      string | undefined;
 
     // Shared config for all agent document injectors
     const agentDocConfig = {
@@ -464,6 +465,9 @@ export class MessagesEngine {
       // Reaction feedback
       new ReactionFeedbackProcessor({ enabled: true }),
       // Message content processing (image encoding, multimodal)
+      ...(attachmentRetention?.limitImages || attachmentRetention?.limitFiles
+        ? [new AttachmentRetentionProcessor(attachmentRetention)]
+        : []),
       new MessageContentProcessor({
         fileContext: fileContext || { enabled: true, includeFileUrl: true },
         isCanUseAudio: capabilities?.isCanUseAudio || (() => false),
@@ -472,6 +476,10 @@ export class MessagesEngine {
         model,
         provider,
       }),
+      // Encoding can expose native image parts from assistant or tool history.
+      ...(attachmentRetention?.limitImages || attachmentRetention?.limitFiles
+        ? [new AttachmentRetentionProcessor(attachmentRetention, true)]
+        : []),
       // Tool call processing
       new ToolCallProcessor({
         genToolCallingName: this.toolNameResolver.generate.bind(this.toolNameResolver),

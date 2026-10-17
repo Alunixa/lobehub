@@ -1,6 +1,7 @@
 /* eslint-disable perfectionist/sort-interfaces */
 import type { FileContent, KnowledgeBaseInfo, PageContentContext } from '@lobechat/prompts';
 import type {
+  ConversationFeatures,
   RuntimeInitialContext,
   RuntimeSelectedSkill,
   RuntimeSelectedTool,
@@ -280,6 +281,8 @@ export interface MessagesEngineParams {
   toolsConfig?: ToolsConfig;
 
   // ========== File handling ==========
+  /** Optional request-only limits for images and other attachments. */
+  attachmentRetention?: ConversationFeatures;
   /** File context configuration */
   fileContext?: FileContextConfig;
 
