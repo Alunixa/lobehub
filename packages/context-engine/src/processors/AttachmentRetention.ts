@@ -73,9 +73,11 @@ export class AttachmentRetentionProcessor extends BaseProcessor {
       const message: Message = { ...result.messages[index] };
       const retainedFileIds = new Set<string>();
       const removedFileIds = new Set<string>();
+      let omitted = false;
       const keep = (value: unknown, kind: AttachmentKind) => {
         const retained = remaining[kind] > 0;
         if (retained) remaining[kind]--;
+        else omitted = true;
         const id = pickString(toRecord(value)?.id);
         if (id) (retained ? retainedFileIds : removedFileIds).add(id);
         return retained;
@@ -109,6 +111,15 @@ export class AttachmentRetentionProcessor extends BaseProcessor {
           const id = pickString(toRecord(chunk)?.fileId);
           return !id || !removedFileIds.has(id) || retainedFileIds.has(id);
         });
+      }
+      if (
+        omitted &&
+        message.role === 'user' &&
+        (message.content === '' ||
+          (Array.isArray(message.content) && message.content.length === 0)) &&
+        FIELDS.every((field) => !Array.isArray(message[field]) || message[field].length === 0)
+      ) {
+        message.content = '[Attachments omitted by request retention settings.]';
       }
       result.messages[index] = message;
     }

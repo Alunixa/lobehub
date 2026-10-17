@@ -180,7 +180,9 @@ describe('request attachment retention', () => {
       ],
       { imageRetentionCount: 1, limitImages: true },
     );
-    expect(result.messages[0].content).toBe(JSON.stringify([text, { image: 'new', type: 'image' }]));
+    expect(result.messages[0].content).toBe(
+      JSON.stringify([text, { image: 'new', type: 'image' }]),
+    );
   });
 
   it('removes extracted chunk references only for excluded files', async () => {
@@ -231,6 +233,18 @@ describe('request attachment retention', () => {
       limitImages: true,
     };
     expect(ConversationFeaturesSchema.parse(features)).toEqual(features);
+  });
+
+  it('does not turn an attachment-only user message into an empty prompt when the limit is zero', async () => {
+    const message = { content: '', imageList: [image('a')], role: 'user' };
+    const result = await run([message], { imageRetentionCount: 0, limitImages: true });
+    expect(result.messages[0]).toMatchObject({
+      content: '[Attachments omitted by request retention settings.]',
+      imageList: [],
+      role: 'user',
+    });
+    expect(message.imageList).toEqual([image('a')]);
+    expect(message.content).toBe('');
   });
 
   it('projects 134 historical images to ten and excludes old document extracts in the final model payload', async () => {
