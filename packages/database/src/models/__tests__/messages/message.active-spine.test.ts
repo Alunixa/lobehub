@@ -3,7 +3,6 @@ import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDB } from '../../../core/getTestDB';
-import type { NewMessage } from '../../../schemas';
 import { messages, threads, topics, users } from '../../../schemas';
 import { MessageModel } from '../../message';
 
@@ -18,7 +17,7 @@ const row = (
   role: string,
   seconds: number,
   parentId?: string,
-): NewMessage => ({
+): typeof messages.$inferInsert => ({
   content: id,
   createdAt: new Date(Date.UTC(2026, 0, 1, 0, 0, seconds)),
   id,
@@ -104,6 +103,36 @@ describe('MessageModel.getActiveSpineMessageId', () => {
     ]);
 
     expect(await model.getActiveSpineMessageId({ topicId })).toBe('main-answer');
+  });
+
+  it('uses a physical spine message behind an inline task card, not a virtual or tool id', async () => {
+    await db.insert(messages).values([
+      row('root', 'user', 0),
+      row('task-tool', 'tool', 1, 'root'),
+      row('async-task', 'task', 2, 'task-tool'),
+      row('async-task-2', 'task', 3, 'task-tool'),
+    ]);
+
+    const { flatList } = parse(await model.query({ topicId }));
+    expect(flatList.some((message) => message.role === 'tasks')).toBe(true);
+    expect(await model.getActiveSpineMessageId({ topicId })).toBe('root');
+  });
+
+  it('returns the actual assistant id when the selected tail is a tool-only group', async () => {
+    await db.insert(messages).values([
+      row('root', 'user', 0),
+      {
+        ...row('tool-only-assistant', 'assistant', 1, 'root'),
+        content: '',
+        tools: [{
+          apiName: 'search', arguments: '{}', id: 'tool-only-call', identifier: 'test',
+          result_msg_id: 'tool-only-result', type: 'builtin',
+        }],
+      },
+      row('tool-only-result', 'tool', 2, 'tool-only-assistant'),
+    ]);
+
+    expect(await model.getActiveSpineMessageId({ topicId })).toBe('tool-only-assistant');
   });
 
   it('isolates the main conversation from a newer thread and resolves the thread tail', async () => {

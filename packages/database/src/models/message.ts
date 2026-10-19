@@ -2626,12 +2626,33 @@ export class MessageModel {
         updatedAt: row.updatedAt.getTime(),
       })),
     );
-    const tail = flatList.findLast(
-      (message) =>
-        message.role !== 'tool' && !(message.metadata?.signal && !message.tools?.length),
-    );
-
-    return tail?.children?.at(-1)?.id ?? tail?.id;
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const resolvePhysicalId = (message: UIChatMessage): string | undefined => {
+      for (const member of message.members?.toReversed() ?? []) {
+        const id = resolvePhysicalId(member);
+        if (id) return id;
+      }
+      for (const child of message.children?.toReversed() ?? []) {
+        const row = byId.get(child.id);
+        if (row && !(row.metadata?.signal && !row.tools?.length)) return row.id;
+      }
+      const row = byId.get(message.id);
+      if (row && row.role !== 'tool' && !(row.metadata?.signal && !row.tools?.length))
+        return row.id;
+      const taskParentId = message.tasks?.[0]?.parentId;
+      if (message.role === 'tasks' && taskParentId) {
+        const parent = byId.get(taskParentId);
+        return parent?.role === 'tool' && parent.parentId
+          ? byId.get(parent.parentId)?.id
+          : parent?.id;
+      }
+      return undefined;
+    };
+    for (const message of flatList.toReversed()) {
+      const id = resolvePhysicalId(message);
+      if (id) return id;
+    }
+    return undefined;
   };
 
   /**
