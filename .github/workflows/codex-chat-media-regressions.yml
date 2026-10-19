@@ -9,6 +9,8 @@ on:
       - .github/workflows/codex-chat-media-regressions.yml
       - apps/server/src/**
       - packages/database/src/models/topic.ts
+      - packages/database/src/models/message.ts
+      - packages/database/src/models/__tests__/messages/**
       - packages/database/src/models/__tests__/topic.test.ts
       - packages/database/src/models/notification.ts
       - packages/database/src/models/__tests__/notification.test.ts
@@ -90,6 +92,8 @@ jobs:
             src/hooks/useTokenCount.test.tsx \
             src/store/chat/slices/message/action.test.ts \
             src/store/chat/slices/topic/action.test.ts \
+            apps/server/src/routers/lambda/__tests__/aiChat.test.ts \
+            apps/server/src/services/aiAgent/__tests__/execAgent.topicHistory.test.ts \
             apps/server/src/services/aiAgent/__tests__/execAgent.threadId.test.ts \
             scripts/serverLauncher/realtimeServer.test.mjs
       - name: Authenticated realtime bridge integration
@@ -122,6 +126,15 @@ jobs:
             src/models/__tests__/topic.test.ts \
             src/models/__tests__/proactiveConversation.test.ts \
             src/models/__tests__/notification.test.ts
+      - name: Active branch append and complete conversation reads
+        working-directory: packages/database
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/models/__tests__/messages/message.active-spine.test.ts \
+            src/models/__tests__/messages/message.query.test.ts \
+            src/models/__tests__/messages/message.thread-query.test.ts \
+            src/models/__tests__/messages/queryWithMessageGroup.test.ts \
+            src/models/__tests__/messages/regenerateBranchPrune.test.ts
       - name: Attachment retention before model request encoding
         working-directory: packages/context-engine
         run: |

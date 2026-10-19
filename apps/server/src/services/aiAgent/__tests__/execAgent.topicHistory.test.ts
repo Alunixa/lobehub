@@ -4,8 +4,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiAgentService } from '../index';
 
 // Use vi.hoisted to ensure mock functions are available before vi.mock runs
-const { mockMessageCreate, mockMessageQuery, mockCreateOperation } = vi.hoisted(() => ({
+const { mockMessageCreate, mockMessageQuery, mockCreateOperation, mockGetActiveSpine } = vi.hoisted(() => ({
   mockCreateOperation: vi.fn(),
+  mockGetActiveSpine: vi.fn(),
   mockMessageCreate: vi.fn(),
   mockMessageQuery: vi.fn(),
 }));
@@ -20,6 +21,7 @@ vi.mock('@/libs/trusted-client', () => ({
 vi.mock('@/database/models/message', () => ({
   MessageModel: vi.fn().mockImplementation(() => ({
     create: mockMessageCreate,
+    getActiveSpineMessageId: mockGetActiveSpine,
     query: mockMessageQuery,
     update: vi.fn().mockResolvedValue({}),
   })),
@@ -141,6 +143,7 @@ describe('AiAgentService.execAgent - topic history loading', () => {
     mockMessageCreate.mockClear();
     mockMessageQuery.mockClear();
     mockCreateOperation.mockClear();
+    mockGetActiveSpine.mockReset();
 
     mockMessageCreate.mockResolvedValue({ id: 'msg-1' });
     mockCreateOperation.mockResolvedValue({
@@ -160,6 +163,24 @@ describe('AiAgentService.execAgent - topic history loading', () => {
   });
 
   describe('when topicId is provided (follow-up message in existing thread)', () => {
+    it('persists the user turn after the selected branch rather than a newer inactive answer', async () => {
+      mockGetActiveSpine.mockResolvedValue('selected-branch-tail');
+      mockMessageQuery.mockResolvedValue([
+        { content: 'Question', id: 'root', role: 'user' },
+        { content: 'Selected answer', id: 'selected-branch-tail', role: 'assistant' },
+      ]);
+
+      await service.execAgent({
+        agentId: 'agent-1',
+        appContext: { topicId: 'topic-existing' },
+        prompt: 'Visible follow-up',
+      });
+
+      expect(mockMessageCreate).toHaveBeenCalledWith(expect.objectContaining({
+        content: 'Visible follow-up', parentId: 'selected-branch-tail', role: 'user',
+      }));
+    });
+
     it('should load history messages from the topic and include them in initialMessages', async () => {
       // Simulate existing conversation history in the topic
       const existingMessages = [

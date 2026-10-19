@@ -67,7 +67,7 @@ describe('aiChatRouter', () => {
           create: mockCreateMessage,
           createUserAndAssistantMessages: mockCreateUserAndAssistantMessages,
           // server-authoritative parentId resolution for existing-topic appends
-          getLatestSpineMessageId: vi.fn().mockResolvedValue(latestSpineMessageId),
+          getActiveSpineMessageId: vi.fn().mockResolvedValue(latestSpineMessageId),
           isMessageDescendantOf: vi.fn().mockResolvedValue(resolvedHeadDescendsFromClient),
         }) as any,
     );
@@ -248,6 +248,27 @@ describe('aiChatRouter', () => {
         role: 'user',
       }),
     );
+  });
+
+  it('uses the selected branch for callers without a client parent id', async () => {
+    const mockCreateMessage = vi.fn()
+      .mockResolvedValueOnce({ id: 'm-user' })
+      .mockResolvedValueOnce({ id: 'm-assistant' });
+    mockMessageModel(mockCreateMessage, 'selected-answer');
+    vi.mocked(AiChatService).mockImplementation(
+      () => ({ getMessagesAndTopics: vi.fn().mockResolvedValue({ messages: [] }) }) as any,
+    );
+
+    const caller = aiChatRouter.createCaller(mockCtx as any);
+    await caller.sendMessageInServer({
+      newAssistantMessage: { model: 'gpt-4o', provider: 'openai' },
+      newUserMessage: { content: 'Visible follow-up' },
+      topicId: 't1',
+    } as any);
+
+    expect(mockCreateMessage).toHaveBeenNthCalledWith(1, expect.objectContaining({
+      content: 'Visible follow-up', parentId: 'selected-answer', role: 'user',
+    }));
   });
 
   it('should keep the client parentId for a new thread (no server override)', async () => {

@@ -303,7 +303,7 @@ export const aiChatRouter = router({
         const resolvedParentId = await runTimedStage(
           timingContext,
           'lambda.aiChat.resolveParentId',
-          () => ctx.messageModel.getLatestSpineMessageId({ threadId, topicId }),
+          () => ctx.messageModel.getActiveSpineMessageId({ threadId, topicId }),
           { hasThreadId: !!threadId },
         );
         if (!parentId) {

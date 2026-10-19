@@ -336,7 +336,7 @@ export class MessageModel {
     {
       agentId,
       current = 0,
-      pageSize = 1000,
+      pageSize,
       sessionId,
       topicId,
       groupId,
@@ -490,16 +490,16 @@ export class MessageModel {
    * @returns Messages with all related data, including MessageGroup nodes
    */
   queryWithWhere = async (options: QueryMessagesOptions = {}): Promise<UIChatMessage[]> => {
-    const { where, current = 0, pageSize = 1000, postProcessUrl, topicId, timing } = options;
+    const { where, current = 0, pageSize, postProcessUrl, topicId, timing } = options;
     const totalStartedAt = Date.now();
-    const offset = current * pageSize;
+    const offset = current * (pageSize ?? 1000);
 
     // 1. get basic messages with joins, excluding messages that belong to MessageGroups
     const result = await runTimedStage(
       timing,
       'db.message.queryWithWhere.baseSelect',
-      () =>
-        this.db
+      () => {
+        const query = this.db
           .select({
             id: messages.id,
             role: messages.role,
@@ -571,9 +571,14 @@ export class MessageModel {
           .leftJoin(messageTranslates, eq(messageTranslates.id, messages.id))
           .leftJoin(messageTTS, eq(messageTTS.id, messages.id))
           .leftJoin(users, eq(users.id, messages.userId))
-          .orderBy(asc(messages.createdAt))
-          .limit(pageSize)
-          .offset(offset),
+          .orderBy(asc(messages.createdAt));
+
+        // A complete conversation read must include newly appended messages.
+        // Apply a limit only when the caller explicitly requests a page.
+        return pageSize === undefined && current === 0
+          ? query
+          : query.limit(pageSize ?? 1000).offset(offset);
+      },
       { current, pageSize },
     );
     logTiming(timing, 'db.message.queryWithWhere.baseSelect:rows', { rowCount: result.length });
@@ -2586,6 +2591,48 @@ export class MessageModel {
    */
   getLastMainThreadSpineMessageId = async (topicId: string): Promise<string | undefined> =>
     this.getLatestSpineMessageId({ topicId, threadId: null });
+
+  /**
+   * A new user turn must extend the selected branch, not a newer inactive
+   * regenerated answer. Keep the chronological getter for in-flight runtime steps.
+   */
+  getActiveSpineMessageId = async ({
+    threadId,
+    topicId,
+  }: {
+    threadId?: string | null;
+    topicId: string;
+  }): Promise<string | undefined> => {
+    const rows = await this.db
+      .select({
+        content: sql<string>`CASE WHEN ${messages.content} IS NULL OR ${messages.content} = '' THEN '' ELSE ' ' END`,
+        createdAt: messages.createdAt,
+        id: messages.id,
+        metadata: sql<UIChatMessage['metadata']>`${messages.metadata}`,
+        parentId: messages.parentId,
+        role: sql<UIChatMessage['role']>`${messages.role}`,
+        tools: sql<UIChatMessage['tools']>`${messages.tools}`,
+        updatedAt: messages.updatedAt,
+      })
+      .from(messages)
+      .where(and(this.ownership(), this.matchTopic(topicId), this.matchThread(threadId)))
+      .orderBy(asc(messages.createdAt), asc(messages.id));
+
+    const { flatList } = parse(
+      rows.map((row) => ({
+        ...row,
+        createdAt: row.createdAt.getTime(),
+        parentId: row.parentId ?? undefined,
+        updatedAt: row.updatedAt.getTime(),
+      })),
+    );
+    const tail = flatList.findLast(
+      (message) =>
+        message.role !== 'tool' && !(message.metadata?.signal && !message.tools?.length),
+    );
+
+    return tail?.children?.at(-1)?.id ?? tail?.id;
+  };
 
   /**
    * Whether `descendantId` belongs to the branch rooted at `ancestorId`.

@@ -1483,7 +1483,7 @@ export class AiAgentService {
     const userMessageParentId =
       runFromHistory || parentMessageId
         ? undefined
-        : await this.messageModel.getLatestSpineMessageId?.({
+        : await this.messageModel.getActiveSpineMessageId?.({
             threadId: appContext?.threadId ?? null,
             topicId,
           });
