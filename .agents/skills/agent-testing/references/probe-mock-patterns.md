@@ -546,3 +546,15 @@
 - **Situation**: a switch-based settings hook gains numeric values, or an optimistic control disappears before its server write finishes.
 - **Does not work**: reusing Boolean(value) in retry, disabling a numeric field after its first typed digit, or reading persistence immediately after an optimistic switch click.
 - **Works**: retry the original typed patch, commit a numeric draft on blur/Enter/close, serialize merged setting writes, and wait for the backing store/API value before asserting persistence. Verify zero, partial updates, failed numeric save and reload separately from control visibility.
+
+### E15. An intentionally unstarted operation can retain a stale SQL running projection
+
+- **Situation**: an isolated Gateway persistence test uses `autoStart=false`, then interrupts the held operation without executing an agent step.
+- **Does not work**: treating the SQL `agent_operations.status` alone as proof that a model is executing, or broadening teardown to arbitrary running operations.
+- **Works**: verify the exact created operation ID, `autoStarted=false`, authoritative metadata/state `interrupted`, and step count zero. Check the fixture marker and expected message count, remove only that fixture and its unique session/cache, and report that no model generation was tested.
+
+### E16. Resume a verified release asset instead of repeatedly downloading or importing it
+
+- **Situation**: a release client holds a zero-byte image file, or the server download reaches its transport timeout after receiving a substantial prefix.
+- **Does not work**: silently waiting indefinitely, deleting the partial download and starting over, or importing before the full digest matches.
+- **Works**: stop only the owned stalled client, use the same immutable release asset on the target server, preserve the matching manifest, resume the exact partial file with HTTP Range, and verify full size/source/SHA before importing once. Keep the successful staging receipt and inspect it after any missing SSH result.

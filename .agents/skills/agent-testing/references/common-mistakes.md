@@ -308,3 +308,11 @@ that evidence, but it can never replace it.
 **Why / what it breaks**: the failing call may be the tool-follow-up in a long multimodal history; a first-step tool call is not the final visible answer, and HTTP 200 alone proves neither.
 
 **Correct approach**: identify the failed step, preserve its full context and capabilities, reconcile real final snapshots, and distinguish valid tool output, final text, genuine empty output, and incomplete transport evidence. Report deployment health separately from model-answer and long-term stability evidence; never silently replay a paid request.
+
+## Case 14 — Explaining a vanished user turn as a slow or empty model response
+
+**Wrong approach**: start with a model timeout, empty-completion error, or generic draft-clear risk when the user says their submitted message disappears entirely.
+
+**Why / what it breaks**: a persisted user row can be absent from the API's oldest-page cap, the selected display branch, and the final model context at the same time. An upstream error does not explain those omissions.
+
+**Correct approach**: follow the same message IDs through persistence, complete query results, selected-branch parsing, and model context. Cover histories beyond the old page limit and a newer inactive regenerated branch with real database/RPC tests. Verify reload in both layouts, and preserve any user edits made while diagnosing instead of restoring a stale snapshot.
