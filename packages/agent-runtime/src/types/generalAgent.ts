@@ -102,6 +102,8 @@ export interface GeneralAgentConfig {
    */
   globalInterventionAudits?: GlobalInterventionAuditConfig[];
   modelRuntimeConfig?: {
+    /** Effective model context window resolved from the user's model configuration. */
+    contextWindowTokens?: number;
     /**
      * Compression model configuration
      * Used for context compression tasks

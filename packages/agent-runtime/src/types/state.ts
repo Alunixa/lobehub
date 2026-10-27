@@ -76,6 +76,8 @@ export interface AgentState {
    * Used as fallback when call_llm instruction doesn't specify model/provider
    */
   modelRuntimeConfig?: {
+    /** Effective model context window resolved from the user's model configuration. */
+    contextWindowTokens?: number;
     model: string;
     provider: string;
     /**

@@ -164,7 +164,7 @@ const Token = memo(() => {
     () => getRecordedContextUsage(contextWindowMessages, model, provider),
     [contextWindowMessages, model, provider],
   );
-  const capacity = getContextCapacity(recordedUsage?.inputTokens ?? totalToken, maxTokens);
+  const capacity = getContextCapacity(totalToken, maxTokens);
 
   const isDevMode = useUserStore((s) => userGeneralSettingsSelectors.config(s).isDevMode);
 
@@ -196,16 +196,18 @@ const Token = memo(() => {
       </Flexbox>
       <Flexbox gap={8}>
         <div style={{ color: cssVar.colorTextSecondary }}>
-          {t(
-            recordedUsage
-              ? 'tokenDetails.reportedDescription'
-              : 'tokenDetails.estimatedDescription',
-          )}
+          {t('tokenDetails.estimatedDescription')}
         </div>
         <Flexbox horizontal gap={8} justify={'space-between'}>
           <span>{t('tokenDetails.currentEstimate')}</span>
           <span>{numeral(totalToken).format('0,0')}</span>
         </Flexbox>
+        {recordedUsage && (
+          <Flexbox horizontal gap={8} justify={'space-between'}>
+            <span>{t('tokenDetails.lastRequest')}</span>
+            <span>{numeral(recordedUsage.inputTokens).format('0,0')}</span>
+          </Flexbox>
+        )}
         {recordedUsage && (
           <Flexbox horizontal gap={8} justify={'space-between'}>
             <span>{t('tokenDetails.cachedIncluded')}</span>
@@ -252,13 +254,13 @@ const Token = memo(() => {
           {
             color: cssVar.colorSuccess,
             id: 'used',
-            title: t(recordedUsage ? 'tokenDetails.lastRequest' : 'tokenDetails.estimatedUsed'),
+            title: t('tokenDetails.estimatedUsed'),
             value: capacity.used,
           },
           {
             color: cssVar.colorFill,
             id: 'rest',
-            title: t(recordedUsage ? 'tokenDetails.lastRequestRemaining' : 'tokenDetails.rest'),
+            title: t('tokenDetails.rest'),
             value: capacity.remaining,
           },
         ]}
@@ -280,7 +282,7 @@ const Token = memo(() => {
         text={{
           overload: t('tokenTag.overload'),
           remained: t('tokenTag.remained'),
-          used: t(recordedUsage ? 'tokenDetails.lastRequest' : 'tokenDetails.estimatedUsed'),
+          used: t('tokenDetails.estimatedUsed'),
         }}
       />
     </ActionPopover>

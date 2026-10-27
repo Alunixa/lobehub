@@ -36,6 +36,7 @@ import debug from 'debug';
 import urlJoin from 'url-join';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
+import { AiModelModel } from '@/database/models/aiModel';
 import { MessageModel } from '@/database/models/message';
 import { type LobeChatDatabase } from '@/database/type';
 import { appEnv } from '@/envs/app';
@@ -61,6 +62,7 @@ import { BuiltinToolsExecutor } from '@/server/services/toolExecution/builtin';
 
 import { isAbortError, throwIfAborted } from './abort';
 import { CompletionLifecycle } from './CompletionLifecycle';
+import { resolveContextWindowTokens } from './contextWindowTokens';
 import { hookDispatcher } from './hooks';
 import { HumanInterventionHandler } from './HumanInterventionHandler';
 import { OperationTraceRecorder } from './OperationTraceRecorder';
@@ -439,6 +441,15 @@ export class AgentRuntimeService {
       workspaceId,
     } = params;
 
+    const operationModelRuntimeConfig =
+      modelRuntimeConfig && !signal?.aborted
+        ? await this.resolveOperationModelRuntimeConfig(
+            modelRuntimeConfig,
+            userId ?? this.userId,
+            workspaceId ?? this.workspaceId,
+          )
+        : modelRuntimeConfig;
+
     // Persist initial agent_operations row. CompletionLifecycle owns both
     // ends of the persistence lifecycle (start row here, terminal update
     // in dispatchHooks) and swallows DB errors so runtime startup is never
@@ -458,11 +469,11 @@ export class AgentRuntimeService {
       // self-iteration tools can read it back (metadata.agentSignal) at tool-call
       // time — the trimmed appContext above intentionally drops it.
       ...(appContext?.agentSignal ? { metadata: { agentSignal: appContext.agentSignal } } : {}),
-      model: modelRuntimeConfig?.model,
-      modelRuntimeConfig,
+      model: operationModelRuntimeConfig?.model,
+      modelRuntimeConfig: operationModelRuntimeConfig,
       operationId,
       parentOperationId: parentOperationId ?? null,
-      provider: modelRuntimeConfig?.provider,
+      provider: operationModelRuntimeConfig?.provider,
       taskId: appContext?.taskId ?? null,
       threadId: appContext?.threadId ?? null,
       topicId: appContext?.topicId ?? null,
@@ -511,7 +522,7 @@ export class AgentRuntimeService {
           evalContext,
           executionPlan,
           // need be removed
-          modelRuntimeConfig,
+          modelRuntimeConfig: operationModelRuntimeConfig,
           queueRetries,
           queueRetryDelay,
           stream,
@@ -525,7 +536,7 @@ export class AgentRuntimeService {
         },
         maxSteps,
         // modelRuntimeConfig at state level for executor fallback
-        modelRuntimeConfig,
+        modelRuntimeConfig: operationModelRuntimeConfig,
         operationId,
         operationToolSet,
         status: 'idle',
@@ -549,7 +560,7 @@ export class AgentRuntimeService {
       await this.coordinator.createAgentOperation(operationId, {
         agentConfig,
         mirrorToOperationId,
-        modelRuntimeConfig,
+        modelRuntimeConfig: operationModelRuntimeConfig,
         userId,
         workspaceId: this.workspaceId,
       });
@@ -627,6 +638,39 @@ export class AgentRuntimeService {
 
       console.error('Failed to create operation %s: %O', operationId, error);
       throw error;
+    }
+  }
+
+  private async resolveOperationModelRuntimeConfig(
+    modelRuntimeConfig: Record<string, unknown>,
+    userId: string,
+    workspaceId?: string,
+  ) {
+    const { model, provider } = modelRuntimeConfig;
+    if (typeof model !== 'string' || typeof provider !== 'string') return modelRuntimeConfig;
+
+    try {
+      const userModel = await new AiModelModel(
+        this.serverDB,
+        userId,
+        workspaceId ?? this.workspaceId,
+      ).findByIdAndProvider(model, provider);
+      const contextWindowTokens = resolveContextWindowTokens(
+        userModel?.contextWindowTokens,
+        modelRuntimeConfig.contextWindowTokens,
+      );
+
+      if (contextWindowTokens === undefined) return modelRuntimeConfig;
+
+      return { ...modelRuntimeConfig, contextWindowTokens };
+    } catch (error) {
+      log(
+        'Failed to resolve user model context window for %s/%s; using model-bank fallback: %O',
+        provider,
+        model,
+        error,
+      );
+      return modelRuntimeConfig;
     }
   }
 
@@ -2488,14 +2532,23 @@ export class AgentRuntimeService {
     stepIndex: number;
     tracingContextEngine?: (input: unknown, output: unknown) => void;
   }) {
-    const contextWindowTokens =
-      metadata?.modelRuntimeConfig?.model && metadata?.modelRuntimeConfig?.provider
+    const configuredContextWindowTokens = resolveContextWindowTokens(
+      metadata?.modelRuntimeConfig?.contextWindowTokens,
+    );
+    const modelBankContextWindowTokens =
+      configuredContextWindowTokens === undefined &&
+      metadata?.modelRuntimeConfig?.model &&
+      metadata?.modelRuntimeConfig?.provider
         ? await getModelPropertyWithFallback<number | undefined>(
             metadata.modelRuntimeConfig.model,
             'contextWindowTokens',
             metadata.modelRuntimeConfig.provider,
           )
         : undefined;
+    const contextWindowTokens = resolveContextWindowTokens(
+      configuredContextWindowTokens,
+      modelBankContextWindowTokens,
+    );
 
     // Create Agent instance — use custom factory if provided, otherwise default to GeneralChatAgent
     const generalConfig = {

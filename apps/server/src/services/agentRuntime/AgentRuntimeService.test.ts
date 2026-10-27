@@ -7,6 +7,7 @@ import type { MockInstance } from 'vitest';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AgentOperationModel } from '@/database/models/agentOperation';
+import { AiModelModel } from '@/database/models/aiModel';
 
 import { AgentRuntimeService } from './AgentRuntimeService';
 import { hookDispatcher } from './hooks';
@@ -40,6 +41,12 @@ vi.mock('@/libs/trusted-client', () => ({
 vi.mock('@/database/models/message', () => ({
   MessageModel: vi.fn().mockImplementation(() => ({
     query: vi.fn().mockResolvedValue([]),
+  })),
+}));
+
+vi.mock('@/database/models/aiModel', () => ({
+  AiModelModel: vi.fn().mockImplementation(() => ({
+    findByIdAndProvider: vi.fn().mockResolvedValue(undefined),
   })),
 }));
 
@@ -291,6 +298,43 @@ describe('AgentRuntimeService', () => {
       expect(mockQueueService.scheduleMessage).not.toHaveBeenCalled();
     });
 
+    it("should persist the user's model context-window override for runtime compression", async () => {
+      const findByIdAndProvider = vi.fn().mockResolvedValue({ contextWindowTokens: 32_000 });
+      vi.mocked(AiModelModel).mockImplementationOnce(
+        () => ({ findByIdAndProvider }) as any,
+      );
+      const modelRuntimeConfig = {
+        contextWindowTokens: 128_000,
+        model: 'custom-model',
+        provider: 'custom-provider',
+      };
+
+      await service.createOperation({
+        ...mockParams,
+        autoStart: false,
+        modelRuntimeConfig,
+        workspaceId: 'workspace-1',
+      });
+
+      expect(AiModelModel).toHaveBeenCalledWith(mockDb, mockParams.userId, 'workspace-1');
+      expect(findByIdAndProvider).toHaveBeenCalledWith('custom-model', 'custom-provider');
+      expect(mockCoordinator.createAgentOperation).toHaveBeenCalledWith(
+        mockParams.operationId,
+        expect.objectContaining({
+          modelRuntimeConfig: { ...modelRuntimeConfig, contextWindowTokens: 32_000 },
+        }),
+      );
+      expect(mockCoordinator.saveAgentState).toHaveBeenCalledWith(
+        mockParams.operationId,
+        expect.objectContaining({
+          metadata: expect.objectContaining({
+            modelRuntimeConfig: { ...modelRuntimeConfig, contextWindowTokens: 32_000 },
+          }),
+          modelRuntimeConfig: { ...modelRuntimeConfig, contextWindowTokens: 32_000 },
+        }),
+      );
+    });
+
     it('should handle errors during operation creation', async () => {
       mockCoordinator.saveAgentState.mockRejectedValueOnce(new Error('Database error'));
 
@@ -449,6 +493,32 @@ describe('AgentRuntimeService', () => {
           }),
         }),
       );
+    });
+
+    it('should prefer a persisted user model window over the model-bank window', async () => {
+      let capturedConfig: any;
+      const serviceWithFactory = new AgentRuntimeService(mockDb, mockUserId, {
+        agentFactory: (config) => {
+          capturedConfig = config;
+          return { runner: vi.fn() } as any;
+        },
+      });
+
+      await (serviceWithFactory as any).createAgentRuntime({
+        metadata: {
+          agentConfig: { chatConfig: { enableContextCompression: true } },
+          modelRuntimeConfig: {
+            contextWindowTokens: 32_000,
+            model: 'custom-model',
+            provider: 'custom-provider',
+          },
+        },
+        operationId: 'test-operation-1',
+        stepIndex: 1,
+      });
+
+      expect(getModelPropertyWithFallback).not.toHaveBeenCalled();
+      expect(capturedConfig.compressionConfig.maxWindowToken).toBe(32_000);
     });
 
     it('should fall back to undefined maxWindowToken when model lookup misses', async () => {
