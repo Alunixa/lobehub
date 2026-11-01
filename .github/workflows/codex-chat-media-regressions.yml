@@ -95,6 +95,7 @@ jobs:
             apps/server/src/modules/AgentRuntime/__tests__/RuntimeExecutors.test.ts \
             apps/server/src/services/agentRuntime/AgentRuntimeService.test.ts \
             apps/server/src/services/agentRuntime/contextWindowTokens.test.ts \
+            src/hooks/useTokenCount.test.ts \
             src/hooks/useTokenCount.test.tsx \
             src/store/chat/slices/message/action.test.ts \
             src/store/chat/slices/topic/action.test.ts \
