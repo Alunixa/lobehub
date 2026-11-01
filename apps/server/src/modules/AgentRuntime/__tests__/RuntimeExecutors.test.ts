@@ -5154,6 +5154,44 @@ describe('RuntimeExecutors', () => {
       }
     });
 
+    it('preserves a partial answer without retrying an interrupted stream', async () => {
+      const mockChat = vi.fn().mockImplementation(async (_payload: any, options: any) => {
+        await options.callback.onText?.('Preserved partial answer');
+        throw new Error('network timeout');
+      });
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValue({ chat: mockChat } as any);
+      const executors = createRuntimeExecutors(ctx);
+      await expect(
+        executors.call_llm!(
+          {
+            payload: {
+              messages: [{ content: 'Hello', role: 'user' }],
+              model: 'gpt-4',
+              parentMessageId: 'parent-msg-123',
+              provider: 'openai',
+              tools: [],
+            },
+            type: 'call_llm',
+          },
+          createMockState(),
+        ),
+      ).rejects.toThrow('network timeout');
+      expect(mockChat).toHaveBeenCalledTimes(1);
+      expect(mockMessageModel.update).toHaveBeenCalledWith(
+        'msg-123',
+        expect.objectContaining({ content: 'Preserved partial answer' }),
+      );
+      expect(mockMessageModel.update).toHaveBeenCalledWith(
+        'msg-123',
+        expect.objectContaining({ error: expect.anything() }),
+      );
+      expect(
+        mockStreamManager.publishStreamEvent.mock.calls.some(
+          ([, event]: [string, { type: string }]) => event.type === 'stream_retry',
+        ),
+      ).toBe(false);
+    });
+
     it('should not retry llm execution after operation is interrupted', async () => {
       const mockChat = vi.fn().mockRejectedValue(new Error('network timeout'));
       vi.mocked(initModelRuntimeFromDB).mockResolvedValue({ chat: mockChat } as any);

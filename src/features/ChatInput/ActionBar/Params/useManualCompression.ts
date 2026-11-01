@@ -69,19 +69,21 @@ export const useManualCompression = (context: ConversationContext | undefined) =
     if (!context) return;
     for (const operation of Object.values(operations)) {
       if (hasRunningCompressionOperation([operation], context)) {
-        useChatStore.getState().cancelOperation(operation.id, 'Manual compression cancelled');
+        // Keep the input locked until executeCompression finishes restoring history.
+        operation.abortController.abort('Manual compression cancelled');
       }
     }
     cancelled.current = true;
   };
   return {
     busy,
+    canCancel: state === 'compressing' || Boolean(running),
     canCompress,
     cancel,
     compress,
     generating,
     hasSummary: Boolean(lastGroup),
-    state,
+    state: running && state === 'idle' ? 'compressing' : state,
     undo,
   };
 };

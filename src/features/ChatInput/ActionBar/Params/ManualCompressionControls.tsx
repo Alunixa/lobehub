@@ -10,7 +10,7 @@ import { useManualCompression } from './useManualCompression';
 const ManualCompressionControls = memo<{ context?: ConversationContext; disabled?: boolean }>(
   ({ context, disabled }) => {
     const { t } = useTranslation('setting');
-    const { busy, canCompress, cancel, compress, generating, hasSummary, state, undo } =
+    const { busy, canCancel, canCompress, cancel, compress, generating, hasSummary, state, undo } =
       useManualCompression(context);
     return (
       <Flexbox data-testid="manual-compression-controls" gap={6}>
@@ -31,7 +31,7 @@ const ManualCompressionControls = memo<{ context?: ConversationContext; disabled
           {state !== 'idle' && (
             <span role={'status'}>{t(`manualCompression.status.${state}`)}</span>
           )}
-          {busy && state === 'compressing' && (
+          {canCancel && (
             <Button size={'small'} onClick={cancel}>
               {t('manualCompression.cancel')}
             </Button>

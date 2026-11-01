@@ -1,3 +1,5 @@
+import { isRecord } from './object';
+
 /** Count semantic content, never the base64/URL used to transport a media part. */
 export const getContextContentEstimate = (
   content: unknown,
@@ -15,8 +17,8 @@ export const getContextContentEstimate = (
   const texts: string[] = [];
   let mediaTokens = 0;
   for (const value of content) {
-    if (!value || typeof value !== 'object') continue;
-    const part = value as Record<string, unknown>;
+    if (!isRecord(value)) continue;
+    const part = value;
     if (part.type === 'text' || part.type === 'input_text' || part.type === 'output_text') {
       if (typeof part.text === 'string') texts.push(part.text);
     } else if (part.type === 'thinking' || part.type === 'reasoning') {

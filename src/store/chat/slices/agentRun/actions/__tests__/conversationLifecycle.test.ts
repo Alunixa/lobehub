@@ -159,6 +159,38 @@ describe('ConversationLifecycle actions', () => {
       expect(messageService.cancelCompression).toHaveBeenCalledOnce();
       expect(messageService.finalizeCompression).not.toHaveBeenCalled();
     });
+    it('restores a group cancelled while creation is in flight without calling the model', async () => {
+      vi.spyOn(messageService, 'createCompressionGroup').mockImplementation(async () => {
+        const operation = Object.values(useChatStore.getState().operations).find(
+          (item) => item.type === 'contextCompression',
+        )!;
+        operation.abortController.abort('cancel during create');
+        return { messageGroupId: 'summary-group', messages: [], messagesToSummarize: originals };
+      });
+      const generate = vi.spyOn(chatService, 'fetchPresetTaskResult');
+      await useChatStore.getState().executeCompression(context, '');
+      expect(generate).not.toHaveBeenCalled();
+      expect(messageService.finalizeCompression).not.toHaveBeenCalled();
+      expect(messageService.cancelCompression).toHaveBeenCalledOnce();
+      expect(Object.values(useChatStore.getState().operations)[0].status).toBe('cancelled');
+    });
+    it('restores history when cancellation races the final summary write', async () => {
+      vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(
+        async ({ onMessageHandle }) => {
+          onMessageHandle?.({ type: 'text', text: 'Summary' } as any);
+        },
+      );
+      vi.spyOn(messageService, 'finalizeCompression').mockImplementation(async () => {
+        const operation = Object.values(useChatStore.getState().operations).find(
+          (item) => item.type === 'contextCompression',
+        )!;
+        operation.abortController.abort('cancel during finalize');
+        return { messages: [] };
+      });
+      await useChatStore.getState().executeCompression(context, '');
+      expect(messageService.cancelCompression).toHaveBeenCalledOnce();
+      expect(Object.values(useChatStore.getState().operations)[0].status).toBe('cancelled');
+    });
   });
   describe('sendMessage', () => {
     describe('validation', () => {
@@ -238,9 +270,11 @@ describe('ConversationLifecycle actions', () => {
             ],
             messagesToSummarize: existingMessages,
           });
-        vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(async ({ onMessageHandle }) => {
-          onMessageHandle?.({ type: 'text', text: 'summary' } as any);
-        });
+        vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(
+          async ({ onMessageHandle }) => {
+            onMessageHandle?.({ type: 'text', text: 'summary' } as any);
+          },
+        );
         vi.spyOn(messageService, 'finalizeCompression').mockResolvedValue({
           messages: [
             {

@@ -1654,6 +1654,7 @@ export class ConversationLifecycleActionImpl {
       });
       const { messageGroupId, messages: serverMessages, messagesToSummarize } = result;
       createdGroupId = messageGroupId;
+      if (abortController.signal.aborted) throw createAbortError();
 
       // Replace local pending group with server compression group
       this.#get().replaceMessages(serverMessages, { context: context as any });
@@ -1695,6 +1696,7 @@ export class ConversationLifecycleActionImpl {
         threadId: context.threadId,
         topicId,
       });
+      if (abortController.signal.aborted) throw createAbortError();
 
       if (finalResult.messages) {
         this.#get().replaceMessages(finalResult.messages, { context: context as any });

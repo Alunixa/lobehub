@@ -21,6 +21,8 @@ on:
       - packages/types/**
       - packages/env/src/app.ts
       - packages/utils/src/currentTime*
+      - packages/utils/src/contextContent*
+      - packages/context-engine/**
       - packages/utils/src/conversationAwareness*
       - packages/utils/src/client/**
       - src/**
@@ -89,6 +91,10 @@ jobs:
             src/features/Conversation/MessageRealtimeSync.test.tsx \
             src/features/Conversation/ChatInput/utils.test.ts \
             src/features/ChatInput/ActionBar/Token/contextUsage.test.ts \
+            src/store/chat/slices/agentRun/actions/__tests__/conversationLifecycle.test.ts \
+            apps/server/src/modules/AgentRuntime/__tests__/RuntimeExecutors.test.ts \
+            apps/server/src/services/agentRuntime/AgentRuntimeService.test.ts \
+            apps/server/src/services/agentRuntime/contextWindowTokens.test.ts \
             src/hooks/useTokenCount.test.tsx \
             src/store/chat/slices/message/action.test.ts \
             src/store/chat/slices/topic/action.test.ts \
@@ -106,7 +112,11 @@ jobs:
             src/core/streams/openai/responsesStream.test.ts \
             src/core/streams/anthropic.test.ts \
             src/core/streams/google/google-ai.test.ts \
-            src/core/streams/protocol.test.ts
+            src/core/streams/protocol.test.ts \
+            src/utils/resolveSafeMaxTokens.test.ts
+      - name: Semantic media token estimates
+        working-directory: packages/utils
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/contextContent.test.ts
       - name: Provider request preparation regressions
         working-directory: packages/model-runtime
         run: |
