@@ -27,6 +27,7 @@ import { useChatInputStore } from '../../store';
 import ActionPopover from '../components/ActionPopover';
 import {
   getContextCapacity,
+  getContextMediaTokenEstimate,
   getContextTextEstimateInput,
   getRecordedContextUsage,
 } from './contextUsage';
@@ -152,7 +153,11 @@ const Token = memo(() => {
     () => getContextTextEstimateInput(deferredMessages, preserveThinking),
     [deferredMessages, preserveThinking],
   );
-  const chatsToken = useTokenCount(messageString) + inputTokenCount;
+  const mediaTokens = useMemo(
+    () => getContextMediaTokenEstimate(deferredMessages),
+    [deferredMessages],
+  );
+  const chatsToken = useTokenCount(messageString) + inputTokenCount + mediaTokens;
 
   // SystemRole token
   const systemRoleToken = useTokenCount(systemRole);

@@ -169,6 +169,25 @@ describe('resolveSafeMaxTokens', () => {
 });
 
 describe('assertContextWithinWindow', () => {
+  it('does not mistake a large inline image for prompt text or reject it after transport changes', () => {
+    const payload = (url: string) => ({
+      messages: [
+        {
+          role: 'user' as const,
+          content: [
+            { type: 'text' as const, text: 'describe' },
+            { type: 'image_url' as const, image_url: { url } },
+          ],
+        },
+      ],
+      model: 'test-model',
+    });
+    const models = [baseModel({ contextWindowTokens: 8000, maxOutput: 4096 })];
+    const inline = payload('data:image/png;base64,' + 'a'.repeat(100_000));
+    const hosted = payload('https://owned.example/image.webp');
+    expect(() => assertContextWithinWindow(inline, models)).not.toThrow();
+    expect(resolveSafeMaxTokens(inline, models)).toBe(resolveSafeMaxTokens(hosted, models));
+  });
   it('is a no-op when input fits comfortably', () => {
     expect(() =>
       assertContextWithinWindow(

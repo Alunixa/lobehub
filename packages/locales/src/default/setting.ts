@@ -1,4 +1,16 @@
 export default {
+  'manualCompression.title': 'Manual context compression',
+  'manualCompression.action': 'Compress now',
+  'manualCompression.desc':
+    'Summarize this conversation once without enabling automatic compression. Original messages and attachments are retained and can be restored.',
+  'manualCompression.undo': 'Undo latest compression',
+  'manualCompression.cancel': 'Cancel',
+  'manualCompression.status.compressing': 'Generating summary…',
+  'manualCompression.status.undoing': 'Restoring history…',
+  'manualCompression.status.failed':
+    'Compression or restore failed. Your history is retained; retry or undo the summary.',
+  'manualCompression.status.done': 'Context compressed. You can undo it at any time.',
+  'manualCompression.status.restored': 'Original history restored.',
   'conversationFeatures.limitImages.title': 'Limit images in each request',
   'conversationFeatures.limitImages.count': 'Most recent images to keep',
   'conversationFeatures.limitFiles.title': 'Limit non-image files in each request',

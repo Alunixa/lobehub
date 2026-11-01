@@ -410,6 +410,7 @@ export const AI_RUNTIME_OPERATION_TYPES: OperationType[] = [
  */
 export const INPUT_LOADING_OPERATION_TYPES: OperationType[] = [
   ...AI_RUNTIME_OPERATION_TYPES,
+  'contextCompression',
   'sendMessage',
   // The auto-retry waiting period is part of the same in-progress turn — keep
   // the input in loading state (and let Stop target it) across the countdown.

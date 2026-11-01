@@ -1,3 +1,5 @@
+import { getContextContentEstimate } from '@lobechat/utils/contextContent';
+
 import { LOADING_FLAT } from '@/const/message';
 import type { ContextWindowMessage } from '@/features/ChatInput/store/initialState';
 
@@ -31,7 +33,17 @@ export const getContextTextEstimateInput = (
   (messages ?? [])
     .map((message) => {
       const parts: string[] = [];
-      if (message.content !== LOADING_FLAT || message.role === 'user') parts.push(message.content);
+      if (message.content !== LOADING_FLAT || message.role === 'user') {
+        parts.push(
+          getContextContentEstimate(message.content, message.metadata?.isMultimodal === true).text,
+        );
+      }
+      for (const file of message.fileList ?? []) {
+        if (file.content) parts.push(file.content);
+      }
+      for (const chunk of message.chunksList ?? []) {
+        if (chunk.text) parts.push(chunk.text);
+      }
       for (const tool of message.tools ?? []) {
         parts.push(JSON.stringify({ arguments: tool.arguments, id: tool.id, name: tool.apiName }));
         if (tool.thoughtSignature) parts.push(tool.thoughtSignature);
@@ -40,6 +52,22 @@ export const getContextTextEstimateInput = (
       return parts.join('\n');
     })
     .join('\n\n');
+
+export const getContextMediaTokenEstimate = (messages: ContextWindowMessage[] | undefined) =>
+  (messages ?? []).reduce((total, message) => {
+    const native = getContextContentEstimate(
+      message.content,
+      message.metadata?.isMultimodal === true,
+    );
+    return (
+      total +
+      native.mediaTokens +
+      1000 *
+        ((message.imageList?.length ?? 0) +
+          (message.audioList?.length ?? 0) +
+          (message.videoList?.length ?? 0))
+    );
+  }, 0);
 
 export const getContextCapacity = (used: number, maximum: number) => ({
   maximum: Number.isFinite(maximum) ? Math.max(0, maximum) : 0,

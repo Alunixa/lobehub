@@ -91,6 +91,75 @@ const createTestContext = (agentId: string = TEST_IDS.SESSION_ID) => ({
 });
 
 describe('ConversationLifecycle actions', () => {
+  describe('manual context compression', () => {
+    const context = {
+      agentId: 'manual-agent',
+      topicId: 'manual-topic',
+      threadId: 'manual-thread',
+      groupId: 'manual-group',
+    };
+    const originals = [
+      createMockMessage({ id: 'original-user', role: 'user', content: 'Original history' }),
+    ];
+    beforeEach(() => {
+      useChatStore.setState({
+        operations: {},
+        dbMessagesMap: { [messageMapKey(context)]: originals },
+      });
+      vi.spyOn(messageService, 'createCompressionGroup').mockResolvedValue({
+        messageGroupId: 'summary-group',
+        messages: [],
+        messagesToSummarize: originals,
+      });
+      vi.spyOn(messageService, 'finalizeCompression').mockResolvedValue({ messages: [] });
+      vi.spyOn(messageService, 'cancelCompression').mockResolvedValue({ messages: originals });
+      vi.spyOn(useChatStore.getState(), 'replaceMessages').mockImplementation(() => {});
+    });
+    it('compresses once in the exact topic/thread without changing automatic compression', async () => {
+      vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(
+        async ({ onMessageHandle }) => {
+          onMessageHandle?.({ type: 'text', text: 'Summary' } as any);
+        },
+      );
+      await useChatStore.getState().executeCompression(context, '');
+      expect(messageService.createCompressionGroup).toHaveBeenCalledWith(
+        expect.objectContaining({ ...context, messageIds: ['original-user'] }),
+      );
+      expect(messageService.finalizeCompression).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ...context,
+          content: 'Summary',
+          messageGroupId: 'summary-group',
+        }),
+      );
+      expect(messageService.cancelCompression).not.toHaveBeenCalled();
+    });
+    it('restores original messages when the summary stream fails after partial text', async () => {
+      vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(
+        async ({ onMessageHandle, onError }) => {
+          onMessageHandle?.({ type: 'text', text: 'Partial' } as any);
+          onError?.(new Error('incomplete_response'));
+        },
+      );
+      await expect(useChatStore.getState().executeCompression(context, '')).rejects.toThrow(
+        'incomplete_response',
+      );
+      expect(messageService.finalizeCompression).not.toHaveBeenCalled();
+      expect(messageService.cancelCompression).toHaveBeenCalledWith({
+        ...context,
+        messageGroupId: 'summary-group',
+      });
+      expect(useChatStore.getState().replaceMessages).toHaveBeenCalledWith(originals, { context });
+    });
+    it('rolls back an empty or cancelled summary rather than hiding history', async () => {
+      vi.spyOn(chatService, 'fetchPresetTaskResult').mockResolvedValue(undefined);
+      await expect(useChatStore.getState().executeCompression(context, '')).rejects.toThrow(
+        'empty summary',
+      );
+      expect(messageService.cancelCompression).toHaveBeenCalledOnce();
+      expect(messageService.finalizeCompression).not.toHaveBeenCalled();
+    });
+  });
   describe('sendMessage', () => {
     describe('validation', () => {
       it('should not send when sessionId is empty', async () => {
@@ -169,7 +238,9 @@ describe('ConversationLifecycle actions', () => {
             ],
             messagesToSummarize: existingMessages,
           });
-        vi.spyOn(chatService, 'fetchPresetTaskResult').mockResolvedValue(undefined);
+        vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(async ({ onMessageHandle }) => {
+          onMessageHandle?.({ type: 'text', text: 'summary' } as any);
+        });
         vi.spyOn(messageService, 'finalizeCompression').mockResolvedValue({
           messages: [
             {
@@ -228,7 +299,9 @@ describe('ConversationLifecycle actions', () => {
         );
         expect(createCompressionGroupSpy).toHaveBeenCalledWith({
           agentId,
+          groupId: undefined,
           messageIds: ['user-1', 'assistant-1'],
+          threadId: null,
           topicId,
         });
       });

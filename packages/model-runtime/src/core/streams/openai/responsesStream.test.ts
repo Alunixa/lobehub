@@ -795,7 +795,7 @@ describe('OpenAIResponsesStream', () => {
     );
   });
 
-  it('should convert response.incomplete into stop, optional usage, and done events', async () => {
+  it('should preserve usage but surface incomplete output as an error instead of done', async () => {
     const mockOpenAIStream = createReadableStream([
       {
         type: 'response.created',
@@ -828,7 +828,53 @@ describe('OpenAIResponsesStream', () => {
     expect(chunks.some((c) => c.includes('event: stop'))).toBe(true);
     expect(chunks.some((c) => c.includes('max_output_tokens'))).toBe(true);
     expect(chunks.some((c) => c.includes('event: usage'))).toBe(true);
-    expect(chunks.some((c) => c.includes('event: done'))).toBe(true);
+    expect(chunks.some((c) => c.includes('event: done'))).toBe(false);
+    expect(chunks.some((c) => c.includes('event: error'))).toBe(true);
+  });
+
+  it('preserves partial text and final-snapshot suffix on a filtered Responses completion', async () => {
+    const onError = vi.fn();
+    const onCompletion = vi.fn();
+    const chunks = await readStreamChunk(
+      OpenAIResponsesStream(
+        createReadableStream([
+          {
+            type: 'response.output_text.delta',
+            item_id: 'm1',
+            output_index: 0,
+            content_index: 0,
+            delta: 'partial',
+          },
+          {
+            type: 'response.incomplete',
+            response: {
+              id: 'filtered',
+              status: 'incomplete',
+              incomplete_details: { reason: 'content_filter' },
+              output: [
+                {
+                  id: 'm1',
+                  type: 'message',
+                  role: 'assistant',
+                  content: [{ type: 'output_text', text: 'partial tail', annotations: [] }],
+                },
+              ],
+            },
+          },
+        ]),
+        { callbacks: { onError, onCompletion } },
+      ),
+    );
+    expect(onError).toHaveBeenCalledOnce();
+    expect(onCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'partial tail',
+        error: expect.objectContaining({
+          type: AgentRuntimeErrorType.ProviderContentPolicyViolation,
+        }),
+      }),
+    );
+    expect(chunks.some((chunk) => chunk.includes('event: done'))).toBe(false);
   });
 
   it('should convert response.failed into a terminal protocol error', async () => {

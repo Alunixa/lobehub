@@ -1,5 +1,5 @@
 import { debounce } from 'es-toolkit/compat';
-import { startTransition, useCallback, useEffect, useRef, useState } from 'react';
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { estimateTokenCount } from 'tokenx';
 
 import { encodeAsync } from '@/utils/tokenizer';
@@ -36,5 +36,6 @@ export const useTokenCount = (input: string = '') => {
     };
   }, [input, debouncedEncode]);
 
-  return value.input === input ? value.count : 0;
+  const fallback = useMemo(() => estimateTokenCount(input || ''), [input]);
+  return value.input === input ? value.count : fallback;
 };

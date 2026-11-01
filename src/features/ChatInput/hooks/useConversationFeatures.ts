@@ -1,5 +1,6 @@
 import type { ConversationContext, ConversationFeatures } from '@lobechat/types';
 import isEqual from 'fast-deep-equal';
+import { useMemo } from 'react';
 
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
@@ -25,5 +26,5 @@ export const useConversationFeatures = (agentId: string, context?: ConversationC
         ?.conversationFeatures ?? EMPTY_FEATURES
     );
   }, isEqual);
-  return { ...defaults, ...overrides };
+  return useMemo(() => ({ ...defaults, ...overrides }), [defaults, overrides]);
 };

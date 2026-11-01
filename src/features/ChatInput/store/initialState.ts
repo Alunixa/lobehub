@@ -39,7 +39,20 @@ export type SlashPlacement = 'top' | 'bottom';
 export interface ContextWindowMessage extends Partial<
   Pick<
     UIChatMessage,
-    'error' | 'id' | 'metadata' | 'model' | 'provider' | 'reasoning' | 'role' | 'tools' | 'usage'
+    | 'audioList'
+    | 'chunksList'
+    | 'error'
+    | 'fileList'
+    | 'id'
+    | 'imageList'
+    | 'metadata'
+    | 'model'
+    | 'provider'
+    | 'reasoning'
+    | 'role'
+    | 'tools'
+    | 'usage'
+    | 'videoList'
   >
 > {
   content: string;

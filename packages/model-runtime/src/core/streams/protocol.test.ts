@@ -680,6 +680,32 @@ describe('createCallbacksTransformer', () => {
     return results;
   };
 
+  it.each(['content_filter', 'length', 'MAX_TOKENS', 'SAFETY'])(
+    'keeps partial text and reports %s as incomplete rather than silently succeeding',
+    async (reason) => {
+      const onError = vi.fn();
+      const onCompletion = vi.fn();
+      const chunks = await processChunks(createCallbacksTransformer({ onError, onCompletion }), [
+        'event: text\n',
+        'data: "partial answer"\n\n',
+        'event: stop\n',
+        `data: ${JSON.stringify(reason)}\n\n`,
+      ]);
+      expect(onError).toHaveBeenCalledOnce();
+      expect(onCompletion).toHaveBeenCalledWith(
+        expect.objectContaining({
+          text: 'partial answer',
+          error: expect.objectContaining({
+            body: { finishReason: reason, reason: 'incomplete_response' },
+          }),
+        }),
+      );
+      expect(chunks.map((chunk) => new TextDecoder().decode(chunk)).join('')).toContain(
+        'event: error',
+      );
+    },
+  );
+
   it('should call onStart callback when stream starts', async () => {
     const onStart = vi.fn();
     const transformer = createCallbacksTransformer({ onStart });

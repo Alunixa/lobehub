@@ -469,7 +469,40 @@ export function createCallbacksTransformer(
   const callbacks = cb || {};
 
   return new TransformStream<string, Uint8Array>({
-    async flush(): Promise<void> {
+    async flush(controller): Promise<void> {
+      const terminalReason = finishReason || options?.streamStack?.terminalReason;
+      if (
+        !streamError &&
+        terminalReason &&
+        [
+          'content_filter',
+          'length',
+          'max_tokens',
+          'max_output_tokens',
+          'safety',
+          'recitation',
+          'blocklist',
+          'prohibited_content',
+        ].includes(terminalReason.toLowerCase())
+      ) {
+        streamError = {
+          body: { finishReason: terminalReason, reason: 'incomplete_response' },
+          message: `Provider stopped before completing the response (${terminalReason}). The partial answer has been preserved.`,
+          type: [
+            'content_filter',
+            'safety',
+            'recitation',
+            'blocklist',
+            'prohibited_content',
+          ].includes(terminalReason.toLowerCase())
+            ? AgentRuntimeErrorType.ProviderContentPolicyViolation
+            : AgentRuntimeErrorType.StreamChunkError,
+        };
+        controller.enqueue(
+          textEncoder.encode(`event: error\ndata: ${JSON.stringify(streamError)}\n\n`),
+        );
+        await callbacks.onError?.(streamError);
+      }
       const data: OnFinishData = {
         error: streamError,
         finishReason: finishReason || options?.streamStack?.terminalReason,

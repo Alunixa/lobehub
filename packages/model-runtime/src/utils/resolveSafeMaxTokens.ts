@@ -1,3 +1,4 @@
+import { getContextContentEstimate } from '@lobechat/utils/contextContent';
 import { type AiFullModelCard } from 'model-bank';
 import { estimateTokenCount } from 'tokenx';
 
@@ -91,9 +92,15 @@ export class ContextExceededPreFlightError extends Error {
 
 const estimatePayloadInputTokens = (payload: Pick<ChatStreamPayload, 'messages' | 'tools'>) => {
   const { messages = [], tools } = payload;
-  const messagesText = JSON.stringify(messages);
   const toolsText = tools && tools.length > 0 ? JSON.stringify(tools) : '';
-  return estimateTokenCount(messagesText) + (toolsText ? estimateTokenCount(toolsText) : 0);
+  const messageTokens = messages.reduce((total, message) => {
+    const { mediaTokens, text } = getContextContentEstimate(message.content);
+    const { content: _content, ...envelope } = message;
+    return (
+      total + mediaTokens + estimateTokenCount(text) + estimateTokenCount(JSON.stringify(envelope))
+    );
+  }, 0);
+  return messageTokens + (toolsText ? estimateTokenCount(toolsText) : 0);
 };
 
 /**

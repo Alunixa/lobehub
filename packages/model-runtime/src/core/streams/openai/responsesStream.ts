@@ -244,13 +244,33 @@ const transformOpenAIStream = (
       }
 
       case 'response.incomplete': {
+        const finishReason = chunk.response.incomplete_details?.reason || chunk.type;
         return [
           ...(chunk.response.output ?? []).flatMap((item, index) => output.item(item, index)),
           ...createTerminalChunks({
             eventType: chunk.type,
-            finishReason: chunk.response.incomplete_details?.reason || chunk.type,
+            finishReason,
             response: chunk.response,
-          }),
+          }).filter((event) => event.type !== 'done'),
+          {
+            data: {
+              body: {
+                eventType: chunk.type,
+                finishReason,
+                model: payload?.model,
+                provider: payload?.provider,
+                reason: 'incomplete_response',
+                responseId: chunk.response.id,
+              },
+              message: `Provider stopped before completing the response (${finishReason}). The partial answer has been preserved.`,
+              type:
+                finishReason === 'content_filter'
+                  ? AgentRuntimeErrorType.ProviderContentPolicyViolation
+                  : AgentRuntimeErrorType.StreamChunkError,
+            } satisfies ChatMessageError,
+            id: chunk.response.id,
+            type: 'error',
+          },
         ];
       }
 

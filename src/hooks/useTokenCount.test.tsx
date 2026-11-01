@@ -1,4 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
+import { estimateTokenCount } from 'tokenx';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import * as tokenizer from '@/utils/tokenizer';
@@ -44,7 +45,7 @@ describe('token estimation request lifecycle', () => {
     await act(() => vi.advanceTimersByTimeAsync(300));
     expect(result.current).toBe(4000);
     rerender({ text: 'different topic' });
-    expect(result.current).toBe(0);
+    expect(result.current).toBe(estimateTokenCount('different topic'));
   });
 
   it('cancels a queued count when unmounted', async () => {

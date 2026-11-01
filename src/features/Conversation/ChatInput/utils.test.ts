@@ -57,6 +57,29 @@ describe('toChatInputMessages', () => {
 });
 
 describe('getContextWindowMessages', () => {
+  it('counts a compressed summary rather than losing it from the estimate', () => {
+    const result = getContextWindowMessages(
+      [{ content: 'history summary', role: 'compressedGroup', id: 'group' } as UIChatMessage],
+      {},
+    );
+    expect(result[0].content).toContain('history summary');
+  });
+  it('applies request retention while leaving original attachments and transport switches intact', () => {
+    const input = [
+      {
+        ...tokenMessages[0],
+        imageList: [
+          { alt: 'old image', id: 'old', url: 'data:image/png;base64,aaa' },
+          { alt: 'new image', id: 'new', url: 'https://owned.example/a.webp' },
+        ],
+      },
+    ];
+    const result = getContextWindowMessages(input, {
+      conversationFeatures: { limitImages: true, imageRetentionCount: 1 },
+    });
+    expect(result[0].imageList?.map((image) => image.id)).toEqual(['new']);
+    expect(input[0].imageList).toHaveLength(2);
+  });
   it('preserves the provider usage and tool fields needed for context accounting', () => {
     const message = {
       ...tokenMessages[1],

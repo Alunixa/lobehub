@@ -38,6 +38,7 @@ export {
 // Processors
 export type { PlaceholderValue, PlaceholderValueMap } from './processors';
 export {
+  AttachmentRetentionProcessor,
   buildPlaceholderGenerators,
   formatPlaceholderValues,
   getSlicedMessages,

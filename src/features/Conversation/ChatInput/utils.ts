@@ -1,7 +1,7 @@
-import type { OpenAIChatMessage, UIChatMessage } from '@lobechat/types';
+import { AttachmentRetentionProcessor, getSlicedMessages } from '@lobechat/context-engine';
+import type { ConversationFeatures, OpenAIChatMessage, UIChatMessage } from '@lobechat/types';
 
 import type { PlaceholderVariant } from '@/features/ChatInput/InputEditor/Placeholder';
-import { chatHelpers } from '@/store/chat/helpers';
 
 type SupportedChatInputRole = Extract<OpenAIChatMessage['role'], 'assistant' | 'tool' | 'user'>;
 
@@ -24,17 +24,33 @@ export const toChatInputMessages = (messages: UIChatMessage[]): ChatInputMessage
 export const getContextWindowMessages = (
   messages: UIChatMessage[],
   options: {
+    conversationFeatures?: ConversationFeatures;
     enableHistoryCount?: boolean;
     historyCount?: number;
   },
 ) =>
-  chatHelpers
-    .getSlicedMessages(messages, options)
+  new AttachmentRetentionProcessor(options.conversationFeatures ?? {})
+    .project(getSlicedMessages(messages, options))
+    .map((message: UIChatMessage) =>
+      message.role === 'compressedGroup'
+        ? {
+            ...message,
+            role: 'user' as const,
+            content: message.content
+              ? `<compressed_history_summary>\n${message.content}\n</compressed_history_summary>`
+              : '',
+          }
+        : message,
+    )
     .filter(isSupportedChatInputMessage)
     .map((message) => ({
+      audioList: message.audioList,
+      chunksList: message.chunksList,
       content: typeof message.content === 'string' ? message.content : '',
       error: message.error,
+      fileList: message.fileList,
       id: message.id,
+      imageList: message.imageList,
       metadata: message.metadata,
       model: message.model,
       provider: message.provider,
@@ -42,6 +58,7 @@ export const getContextWindowMessages = (
       role: message.role,
       tools: message.tools,
       usage: message.usage,
+      videoList: message.videoList,
     }));
 
 export interface ConversationChatInputUiState {

@@ -1887,6 +1887,9 @@ export const callLlm =
               if (
                 !isPlainChat &&
                 !interrupted &&
+                !content &&
+                !thinkingContent &&
+                toolsCalling.length === 0 &&
                 shouldRetryLLM(classified.kind, attempt, retryBudget)
               ) {
                 const delayMs = getLLMRetryDelayMs(attempt);

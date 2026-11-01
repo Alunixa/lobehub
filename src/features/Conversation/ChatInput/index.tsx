@@ -255,10 +255,11 @@ const ChatInput = memo<ChatInputProps>(
     const contextWindowMessages = useMemo(
       () =>
         getContextWindowMessages(dbMessages, {
+          conversationFeatures,
           enableHistoryCount,
           historyCount,
         }),
-      [dbMessages, enableHistoryCount, historyCount],
+      [dbMessages, enableHistoryCount, historyCount, conversationFeatures],
     );
     const getMessages = useCallback(
       () => chatInputMessages.slice(-MAX_CONTEXT_MESSAGES),

@@ -7,6 +7,7 @@ import { memo, useId } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { AttachmentRetentionInput } from './AttachmentRetentionInput';
+import ManualCompressionControls from './ManualCompressionControls';
 import { useConversationFeatureControls } from './useConversationFeatureControls';
 
 const OPTIONS = [
@@ -48,6 +49,7 @@ const ConversationFeaturesControls = memo<{ disabled?: boolean }>(({ disabled })
             : 'conversationFeatures.scope.defaults',
         )}
       </Flexbox>
+      <ManualCompressionControls context={context} disabled={disabled || isCli} />
       {OPTIONS.map((key) => (
         <Flexbox gap={4} key={key}>
           <Flexbox horizontal align={'center'} gap={12} justify={'space-between'}>

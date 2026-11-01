@@ -63,12 +63,20 @@ export class AttachmentRetentionProcessor extends BaseProcessor {
   }
 
   protected async doProcess(context: PipelineContext): Promise<PipelineContext> {
+    if (!this.features.limitFiles && !this.features.limitImages) return context;
+    const result = this.cloneContext(context);
+    result.messages = this.project(result.messages);
+    return result;
+  }
+
+  /** Synchronous request-only projection shared by payload assembly and the token UI. */
+  project<T extends Message>(messages: T[]): T[] {
     const remaining = {
       file: getCount(this.features.limitFiles, this.features.fileRetentionCount),
       image: getCount(this.features.limitImages, this.features.imageRetentionCount),
     };
-    if (remaining.file === Infinity && remaining.image === Infinity) return context;
-    const result = this.cloneContext(context);
+    if (remaining.file === Infinity && remaining.image === Infinity) return messages;
+    const result = { messages: [...messages] };
     for (let index = result.messages.length - 1; index >= 0; index--) {
       const message: Message = { ...result.messages[index] };
       const retainedFileIds = new Set<string>();
@@ -121,8 +129,8 @@ export class AttachmentRetentionProcessor extends BaseProcessor {
       ) {
         message.content = '[Attachments omitted by request retention settings.]';
       }
-      result.messages[index] = message;
+      result.messages[index] = message as T;
     }
-    return result;
+    return result.messages;
   }
 }

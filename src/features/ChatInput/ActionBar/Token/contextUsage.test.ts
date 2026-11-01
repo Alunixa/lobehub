@@ -4,6 +4,7 @@ import type { ContextWindowMessage } from '@/features/ChatInput/store/initialSta
 
 import {
   getContextCapacity,
+  getContextMediaTokenEstimate,
   getContextTextEstimateInput,
   getRecordedContextUsage,
 } from './contextUsage';
@@ -21,6 +22,31 @@ const answer = (
 });
 
 describe('context window usage semantics', () => {
+  it('counts retained file contents and media but never image transport bytes', () => {
+    const messages: ContextWindowMessage[] = [
+      {
+        role: 'user',
+        content: JSON.stringify([
+          { type: 'text', text: 'question' },
+          { type: 'image', image: 'a'.repeat(100_000) },
+        ]),
+        metadata: { isMultimodal: true },
+        fileList: [
+          {
+            id: 'file',
+            name: 'notes.txt',
+            fileType: 'text/plain',
+            size: 20,
+            url: '',
+            content: 'file contents',
+          },
+        ],
+      },
+    ];
+    expect(getContextTextEstimateInput(messages, false)).toContain('file contents');
+    expect(getContextTextEstimateInput(messages, false)).not.toContain('aaaaaaa');
+    expect(getContextMediaTokenEstimate(messages)).toBe(1000);
+  });
   it('uses the latest single request total, including cached input, rather than summing turns', () => {
     expect(getRecordedContextUsage([answer(100), answer(300)], 'model-1', 'provider-1')).toEqual({
       cachedTokens: 80,

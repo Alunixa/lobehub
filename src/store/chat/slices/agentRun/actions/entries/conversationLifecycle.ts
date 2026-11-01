@@ -1604,7 +1604,14 @@ export class ConversationLifecycleActionImpl {
     parentOperationId: string,
   ): Promise<void> => {
     const { agentId, topicId } = context;
-    if (!topicId) return;
+    if (!agentId || !topicId) return;
+    if (
+      hasRunningCompressionOperation(
+        Object.values(this.#get().operations),
+        context as ConversationContext,
+      )
+    )
+      return;
 
     const contextKey = messageMapKey(context as any);
     const dbMessages = dbMessageSelectors.getDbMessagesByKey(contextKey)(this.#get()) || [];
@@ -1635,14 +1642,18 @@ export class ConversationLifecycleActionImpl {
       { operationId },
     );
 
+    let createdGroupId: string | undefined;
     try {
       // 1. Create compression group on server
       const result = await messageService.createCompressionGroup({
         agentId,
+        groupId: context.groupId,
         messageIds,
+        threadId: context.threadId,
         topicId,
       });
       const { messageGroupId, messages: serverMessages, messagesToSummarize } = result;
+      createdGroupId = messageGroupId;
 
       // Replace local pending group with server compression group
       this.#get().replaceMessages(serverMessages, { context: context as any });
@@ -1652,9 +1663,13 @@ export class ConversationLifecycleActionImpl {
       const { model, provider } = agentSelectors.getAgentConfigById(agentId)(getAgentStoreState());
       const compressionPayload = chainCompressContext(messagesToSummarize);
       let summaryContent = '';
+      let summaryError: Error | undefined;
 
       await chatService.fetchPresetTaskResult({
         abortController,
+        onError: (error) => {
+          summaryError = error;
+        },
         onMessageHandle: (chunk) => {
           if (chunk.type === 'text') {
             summaryContent += chunk.text || '';
@@ -1668,12 +1683,16 @@ export class ConversationLifecycleActionImpl {
       });
 
       if (abortController.signal.aborted) throw createAbortError();
+      if (summaryError) throw summaryError;
+      if (!summaryContent.trim()) throw new Error('Compression returned an empty summary');
 
       // 3. Finalize compression
       const finalResult = await messageService.finalizeCompression({
         agentId,
         content: summaryContent,
+        groupId: context.groupId,
         messageGroupId,
+        threadId: context.threadId,
         topicId,
       });
 
@@ -1683,7 +1702,25 @@ export class ConversationLifecycleActionImpl {
 
       this.#get().completeOperation(operationId);
     } catch (error) {
+      // A failed/cancelled summary must not leave a placeholder hiding real history.
+      if (createdGroupId) {
+        try {
+          const restored = await messageService.cancelCompression({
+            agentId,
+            groupId: context.groupId,
+            messageGroupId: createdGroupId,
+            threadId: context.threadId,
+            topicId,
+          });
+          this.#get().replaceMessages(restored.messages, {
+            context: context as ConversationContext,
+          });
+        } catch (restoreError) {
+          console.error('[/compact] Failed to restore compression group:', restoreError);
+        }
+      }
       if (isAbortError(error, abortController)) {
+        this.#get().cancelOperation(operationId, 'Compression cancelled');
         this.#get().internal_dispatchMessage(
           { type: 'deleteMessages', ids: [tempId] },
           { operationId },
@@ -1700,6 +1737,7 @@ export class ConversationLifecycleActionImpl {
         message: error instanceof Error ? error.message : String(error),
         type: 'compression_failed',
       });
+      throw error;
     }
   };
 }
