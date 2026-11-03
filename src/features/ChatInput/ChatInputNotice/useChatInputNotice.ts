@@ -1,6 +1,7 @@
 import { isDesktop } from '@lobechat/const';
 
 import { useAgentId } from '@/features/ChatInput/hooks/useAgentId';
+import { useEffectiveModel } from '@/features/ChatInput/hooks/useEffectiveModel';
 import { resolveExecutionTarget } from '@/helpers/executionTarget';
 import { useEnabledChatModels } from '@/hooks/useEnabledChatModels';
 import { useAgentStore } from '@/store/agent';
@@ -58,10 +59,9 @@ export type ChatInputNotice = NonNullable<ReturnType<typeof resolveChatInputNoti
 export const useChatInputNotice = (): ChatInputNotice | undefined => {
   const agentId = useAgentId();
 
-  const [isHeterogeneousAgent, model, provider, agencyConfig] = useAgentStore((s) => [
+  const { model, provider } = useEffectiveModel(agentId);
+  const [isHeterogeneousAgent, agencyConfig] = useAgentStore((s) => [
     agentByIdSelectors.isAgentHeterogeneousById(agentId)(s),
-    agentByIdSelectors.getAgentModelById(agentId)(s),
-    agentByIdSelectors.getAgentModelProviderById(agentId)(s),
     agentByIdSelectors.getAgencyConfigById(agentId)(s),
   ]);
 

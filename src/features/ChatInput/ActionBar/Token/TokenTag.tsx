@@ -23,6 +23,7 @@ import { useUserStore } from '@/store/user';
 import { settingsSelectors, userGeneralSettingsSelectors } from '@/store/user/selectors';
 
 import { useAgentId } from '../../hooks/useAgentId';
+import { useEffectiveModel } from '../../hooks/useEffectiveModel';
 import { useChatInputStore } from '../../store';
 import ActionPopover from '../components/ActionPopover';
 import {
@@ -48,11 +49,10 @@ const Token = memo(() => {
   );
 
   const agentId = useAgentId();
+  const { model, provider } = useEffectiveModel(agentId);
   const [
     activeAgentId,
     systemRole,
-    model,
-    provider,
     enableAgentMode,
     searchMode,
     useModelBuiltinSearch,
@@ -67,8 +67,6 @@ const Token = memo(() => {
     return [
       s.activeAgentId,
       agentByIdSelectors.getAgentSystemRoleById(agentId)(s),
-      agentByIdSelectors.getAgentModelById(agentId)(s),
-      agentByIdSelectors.getAgentModelProviderById(agentId)(s),
       chatConfig.enableAgentMode,
       chatConfig.searchMode,
       chatConfig.useModelBuiltinSearch,

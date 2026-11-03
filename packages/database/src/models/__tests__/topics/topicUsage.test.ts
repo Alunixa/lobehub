@@ -72,7 +72,7 @@ beforeEach(async () => {
   msgSeq = 0;
   await serverDB.delete(users);
   await serverDB.insert(users).values([{ id: userId }, { id: otherUserId }]);
-  await serverDB.insert(topics).values({ id: topicId, userId });
+  await serverDB.insert(topics).values({ id: topicId, userId, model: 'pinned-model', provider: 'pinned-provider' });
 });
 
 afterEach(async () => {
@@ -102,8 +102,8 @@ describe('recomputeTopicUsage', () => {
     expect(topic.totalOutputTokens).toBe(50);
     expect(topic.totalTokens).toBe(150);
     expect(topic.totalCost).toBeCloseTo(0.0021, 6);
-    expect(topic.model).toBe('gpt-4o');
-    expect(topic.provider).toBe('openai');
+    expect(topic.model).toBe('pinned-model');
+    expect(topic.provider).toBe('pinned-provider');
 
     expect(topic.usage).toEqual({
       humanInteraction: {
@@ -182,9 +182,9 @@ describe('recomputeTopicUsage', () => {
     expect(usage.llm.processingTimeMs).toBe(600);
     expect(usage.llm.tokens).toEqual({ input: 330, output: 170, total: 500 });
 
-    // dominant model = largest token volume (claude 300 > gpt-4o 200)
-    expect(topic.model).toBe('claude-3-5-sonnet');
-    expect(topic.provider).toBe('anthropic');
+    // Usage analytics must not overwrite the independently selected topic model.
+    expect(topic.model).toBe('pinned-model');
+    expect(topic.provider).toBe('pinned-provider');
 
     const byModel = (topic.cost as any).llm.byModel as any[];
     expect(byModel).toHaveLength(2);
@@ -315,7 +315,7 @@ describe('recomputeTopicUsage', () => {
     expect(topic.totalCost).toBeNull();
     expect(topic.usage).toBeNull();
     expect(topic.cost).toBeNull();
-    expect(topic.model).toBeNull();
-    expect(topic.provider).toBeNull();
+    expect(topic.model).toBe('pinned-model');
+    expect(topic.provider).toBe('pinned-provider');
   });
 });

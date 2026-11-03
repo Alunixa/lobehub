@@ -46,7 +46,7 @@ const num = (v: unknown): number => (v == null ? 0 : Number(v));
  *   - scalar columns : total_input_tokens / total_output_tokens / total_tokens / total_cost
  *   - `usage` jsonb  : flat aggregate { llm: { apiCalls, processingTimeMs, tokens }, tools, humanInteraction }
  *   - `cost`  jsonb  : { total, currency, llm: { total, currency, byModel[] }, tools } — or NULL when no model reported cost
- *   - model/provider : the dominant model by total_tokens
+ * Model/provider columns are topic configuration; usage never overwrites them.
  *
  * Idempotent and non-cumulative: when the topic has no measurable assistant
  * usage (e.g. after deletions), the columns are reset to NULL ("not measured"),
@@ -106,8 +106,6 @@ export const recomputeTopicUsage = async (
       .set({
         accessedAt: topics.accessedAt,
         cost: null,
-        model: null,
-        provider: null,
         totalCost: null,
         totalInputTokens: null,
         totalOutputTokens: null,
@@ -127,7 +125,6 @@ export const recomputeTopicUsage = async (
   let apiCalls = 0;
   let processingTimeMs = 0;
   const byModel: Array<Record<string, unknown>> = [];
-  let primary: { model: string | null; provider: string | null; tokens: number } | null = null;
 
   for (const g of groups) {
     const rowTotalTokens = num(g.totalTokens);
@@ -143,14 +140,6 @@ export const recomputeTopicUsage = async (
       hasCost = true;
     }
 
-    // Dominant model = largest token volume.
-    if (!primary || rowTotalTokens > primary.tokens) {
-      primary = {
-        model: (g.model as string) ?? null,
-        provider: (g.provider as string) ?? null,
-        tokens: rowTotalTokens,
-      };
-    }
 
     // cost.llm.byModel mirrors the operation shape: cost-bearing models only,
     // each carrying its merged ModelUsage breakdown.
@@ -200,8 +189,6 @@ export const recomputeTopicUsage = async (
     .set({
       accessedAt: topics.accessedAt,
       cost,
-      model: primary?.model ?? null,
-      provider: primary?.provider ?? null,
       totalCost: hasCost ? totalCost : null,
       totalInputTokens,
       totalOutputTokens,

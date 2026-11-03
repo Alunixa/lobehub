@@ -249,6 +249,10 @@ export const topicRouter = router({
           favorite: z.boolean().optional(),
           groupId: z.string().nullish(),
           messages: z.array(z.string()).optional(),
+          // The topic's pinned model snapshot, persisted to the top-level
+          // `topics.model`/`provider` columns (config source of truth).
+          model: z.string().optional(),
+          provider: z.string().optional(),
           title: z.string(),
           trigger: z.string().optional(),
         })
@@ -649,12 +653,13 @@ export const topicRouter = router({
           favorite: z.boolean().optional(),
           historySummary: z.string().optional(),
           messages: z.array(z.string()).optional(),
-          metadata: z
-            .object({
-              model: z.string().optional(),
-              provider: z.string().optional(),
-            })
-            .optional(),
+          // Retain the legacy summary metadata contract for existing clients.
+          metadata: z.object({ model: z.string().optional(), provider: z.string().optional() }).optional(),
+          // The topic's pinned model (top-level columns) — written when the user
+          // switches model while the topic is active (see updateTopicModel).
+          // Nullish to match `Partial<ChatTopic>` whose model/provider are `string | null`.
+          model: z.string().nullish(),
+          provider: z.string().nullish(),
           sessionId: z.string().optional(),
           status: chatTopicStatusSchema.nullish(),
           title: z.string().optional(),

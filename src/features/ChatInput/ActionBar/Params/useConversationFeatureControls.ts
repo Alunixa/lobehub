@@ -8,6 +8,7 @@ import { useChatStore } from '@/store/chat';
 
 import { useAgentId } from '../../hooks/useAgentId';
 import { useConversationFeatures } from '../../hooks/useConversationFeatures';
+import { useEffectiveModel } from '../../hooks/useEffectiveModel';
 import { useUpdateAgentConfig } from '../../hooks/useUpdateAgentConfig';
 import { useChatInputStore } from '../../store';
 
@@ -32,7 +33,7 @@ export const useConversationFeatureControls = () => {
     (state) => state.useFetchConversationFeatureCapabilities,
   );
   const useFetchDetail = useChatStore((state) => state.useFetchConversationFeatureDetail);
-  const providerId = useAgentStore(agentByIdSelectors.getAgentModelProviderById(agentId));
+  const { provider: providerId } = useEffectiveModel(agentId);
   const capabilities = useFetchCapabilities(providerId ?? undefined);
   const detail = useFetchDetail(context?.isNew ? undefined : (context?.topicId ?? undefined));
   const plan = useChatStore((state) =>

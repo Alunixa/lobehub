@@ -28,6 +28,7 @@ import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
 import { type ChatStore } from '@/store/chat';
 import { evictMessageCache } from '@/store/chat/utils/evictMessageCache';
+import { snapshotAgentModel } from '@/store/chat/utils/snapshotAgentModel';
 import { topicMapKey } from '@/store/chat/utils/topicMapKey';
 import { useGlobalStore } from '@/store/global';
 import { type StoreSetter } from '@/store/types';
@@ -124,6 +125,7 @@ export class ChatTopicActionImpl {
 
     this.#set({ creatingTopic: true }, false, n('creatingTopic/start'));
     const topicId = await internal_createTopic({
+      ...snapshotAgentModel(sessionId || activeAgentId, this.#get()),
       title: t('defaultTitle', { ns: 'topic' }),
       messages: messages.map((m) => m.id),
       sessionId: sessionId || activeAgentId,
@@ -142,6 +144,7 @@ export class ChatTopicActionImpl {
 
     // 1. create topic and bind these messages
     const topicId = await internal_createTopic({
+      ...snapshotAgentModel(sessionId || activeAgentId, this.#get()),
       title: t('defaultTitle', { ns: 'topic' }),
       messages: messages.map((m) => m.id),
       sessionId: sessionId || activeAgentId,
@@ -923,6 +926,14 @@ export class ChatTopicActionImpl {
     const epoch = ++this.#switchTopicEpoch;
 
     const { activeAgentId, activeGroupId } = this.#get();
+    // A blank chat inherits the conversation being left, not a shared Agent mutation.
+    if (!id && activeAgentId && this.#get().activeTopicId) {
+      const inherited = topicSelectors.activeTopicModel(this.#get()) ??
+        snapshotAgentModel(activeAgentId, this.#get());
+      if (inherited.model && inherited.provider) {
+        this.#get().setNewTopicModel(activeAgentId, { model: inherited.model, provider: inherited.provider });
+      }
+    }
 
     // Clear the _new key data in the following cases:
     // 1. When id is null or undefined (switching to empty topic state)

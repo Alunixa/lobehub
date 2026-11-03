@@ -28,6 +28,7 @@ import { type ChatThreadAction } from './slices/thread/action';
 import { ChatThreadActionImpl } from './slices/thread/action';
 import { type ChatTopicAction } from './slices/topic/action';
 import { ChatTopicActionImpl } from './slices/topic/action';
+import { type TopicModelAction,TopicModelActionImpl } from './slices/topic/model';
 import { type ChatTranslateAction } from './slices/translate/action';
 import { ChatTranslateActionImpl } from './slices/translate/action';
 import { type ChatTTSAction } from './slices/tts/action';
@@ -37,6 +38,7 @@ export type ChatStoreAction = ChatMessageAction &
   ChatThreadAction &
   ChatAgentRunAction &
   ChatTopicAction &
+  TopicModelAction &
   ChatTranslateAction &
   ChatTTSAction &
   ChatPluginAction &
@@ -64,6 +66,7 @@ const createStore: StateCreator<ChatStore, [['zustand/devtools', never]]> = (
       new ChatThreadActionImpl(...params),
       chatAgentRun(...params),
       new ChatTopicActionImpl(...params),
+      new TopicModelActionImpl(params[0], params[1]),
       new ChatTranslateActionImpl(...params),
       new ChatTTSActionImpl(...params),
       chatToolSlice(...params),

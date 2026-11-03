@@ -28,6 +28,7 @@ import { consumePendingTopicRepos, getPendingTopicRepos } from '@/store/chat/pen
 import { topicSelectors } from '@/store/chat/selectors';
 import type { ChatStore } from '@/store/chat/store';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
+import { snapshotAgentModel } from '@/store/chat/utils/snapshotAgentModel';
 import type { StoreSetter } from '@/store/types';
 import { useUserStore } from '@/store/user';
 import { settingsSelectors, toolInterventionSelectors } from '@/store/user/selectors';
@@ -451,6 +452,8 @@ export class GatewayActionImpl {
       window.global_serverConfigStore?.getState()?.serverConfig.agentGatewayUrl ?? '';
 
     const isCreateNewTopic = !context.topicId;
+    if (context.topicId) await this.#get().ensureTopicModel(context.topicId);
+    const newTopicModel = isCreateNewTopic ? snapshotAgentModel(context.agentId, this.#get()) : {};
     const taskId = context.viewedTask?.type === 'detail' ? context.viewedTask.taskId : undefined;
 
     // If this is a new topic, read any repos the user pre-selected before
@@ -487,6 +490,7 @@ export class GatewayActionImpl {
 
     const result = await aiAgentService.execAgentTask(
       {
+        ...newTopicModel,
         agentId: context.agentId,
         appContext: {
           agentDocumentId: context.agentDocumentId,

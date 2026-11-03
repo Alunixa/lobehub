@@ -67,7 +67,7 @@ export const topics = pgTable(
     // Full per-model cost / usage breakdowns for slice-and-dice analytics.
     cost: jsonb('cost').$type<Record<string, unknown>>(),
     usage: jsonb('usage').$type<Record<string, unknown>>(),
-    // Primary model / provider snapshot, promoted from metadata so it is indexable for GROUP BY.
+    // Topic-owned model/provider configuration; usage analytics live in cost.llm.byModel.
     model: text('model'),
     provider: text('provider'),
 

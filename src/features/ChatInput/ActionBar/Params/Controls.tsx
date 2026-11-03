@@ -23,6 +23,7 @@ import { systemAgentSelectors } from '@/store/user/selectors';
 import type { LobeAgentConfig } from '@/types/agent';
 
 import { useAgentId } from '../../hooks/useAgentId';
+import { useEffectiveModel } from '../../hooks/useEffectiveModel';
 import { useUpdateAgentConfig } from '../../hooks/useUpdateAgentConfig';
 import ConversationFeaturesControls from './ConversationFeaturesControls';
 
@@ -548,10 +549,7 @@ const Controls = memo<ControlsProps>(({ setUpdating, updating, variant = 'popove
     (s) => agentByIdSelectors.getAgentConfigById(agentId)(s) || DEFAULT_AGENT_CONFIG,
     isEqual,
   );
-  const agentModel = useAgentStore((s) => agentByIdSelectors.getAgentModelById(agentId)(s));
-  const agentProvider = useAgentStore((s) =>
-    agentByIdSelectors.getAgentModelProviderById(agentId)(s),
-  );
+  const { model: agentModel, provider: agentProvider } = useEffectiveModel(agentId);
   const enableAgentMode = useAgentStore(agentByIdSelectors.getAgentEnableModeById(agentId));
   const hasModelConfig = useAiInfraStore(
     aiModelSelectors.isModelHasExtendParams(agentModel ?? '', agentProvider ?? ''),

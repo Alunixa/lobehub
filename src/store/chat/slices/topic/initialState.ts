@@ -54,6 +54,7 @@ export interface ChatTopicState {
   creatingTopic: boolean;
   inSearchingMode?: boolean;
   isSearchingTopic: boolean;
+  newTopicModelMap: Record<string, { model: string; provider: string }>;
   searchTopics: ChatTopic[];
   /**
    * Unified topic data map for each agent
@@ -66,6 +67,7 @@ export interface ChatTopicState {
    */
   topicLoadingIdCounts: Record<string, number>;
   topicLoadingIds: string[];
+  topicModelDetailMap: Record<string, { model?: string | null; provider?: string | null }>;
   topicRenamingId?: string;
   topicSearchKeywords: string;
 }
@@ -76,6 +78,8 @@ export const initialTopicState: ChatTopicState = {
   agentTopicsViewMap: {},
   allTopicsDrawerOpen: false,
   creatingTopic: false,
+  newTopicModelMap: {},
+  topicModelDetailMap: {},
   isSearchingTopic: false,
   searchTopics: [],
   topicDataMap: {},

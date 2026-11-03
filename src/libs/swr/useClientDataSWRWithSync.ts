@@ -33,7 +33,7 @@ interface UseClientDataSWRWithSyncOptions<T> extends SWRConfiguration<T> {
    * Data sync callback, called when data is available (both cached and fresh data)
    * Used to sync data to Zustand store
    */
-  onData?: (data: T) => void;
+  onData?: (data: T, info?: { source: 'cache' | 'network' }) => void;
   /**
    * Whether to skip sync (optional, for conditional skipping)
    */
@@ -64,7 +64,7 @@ export function useClientDataSWRWithSync<T>(
   options?: UseClientDataSWRWithSyncOptions<T>,
 ): SWRResponse<T> {
   const { hydrateFromIndexedDB, onData, skipSync, onSuccess, ...swrOptions } = options || {};
-  const hasSyncedRef = useRef(false);
+  const syncedKeyRef = useRef<string | undefined>(undefined);
   const workspaceId = useActiveWorkspaceId();
   const scope = useCacheScope();
   const augmentedKey = augmentKey(key, workspaceId);
@@ -92,8 +92,8 @@ export function useClientDataSWRWithSync<T>(
       onSuccess?.(data, key, config);
       // Also sync via onData
       if (onData && !skipSync) {
-        onData(data);
-        hasSyncedRef.current = true;
+        onData(data, { source: 'network' });
+        syncedKeyRef.current = serializedKey;
       }
     },
   });
@@ -128,16 +128,11 @@ export function useClientDataSWRWithSync<T>(
 
   // When cached data is available, sync to store immediately
   useEffect(() => {
-    if (data && onData && !skipSync && !hasSyncedRef.current) {
-      onData(data);
-      hasSyncedRef.current = true;
+    if (data && onData && !skipSync && serializedKey && syncedKeyRef.current !== serializedKey) {
+      onData(data, { source: 'cache' });
+      syncedKeyRef.current = serializedKey;
     }
-  }, [data, onData, skipSync]);
-
-  // Reset sync state when key changes
-  useEffect(() => {
-    hasSyncedRef.current = false;
-  }, [serializedKey]);
+  }, [data, onData, skipSync, serializedKey]);
 
   return response;
 }

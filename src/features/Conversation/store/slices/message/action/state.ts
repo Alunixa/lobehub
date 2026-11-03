@@ -82,7 +82,7 @@ export const messageStateSlice: StateCreator<
     });
 
     // Replace messages with restored original messages
-    replaceMessages(messages);
+    replaceMessages(messages, context);
   },
 
   copyMessage: async (id, content) => {
@@ -160,7 +160,7 @@ export const messageStateSlice: StateCreator<
     });
 
     // Sync with server data
-    replaceMessages(messages);
+    replaceMessages(messages, context);
   },
 
   toggleInspectExpanded: async (id, expanded) => {

@@ -4,8 +4,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiAgentService } from '../index';
 
 // Use vi.hoisted to ensure mock functions are available before vi.mock runs
-const { mockMessageCreate, mockMessageQuery, mockCreateOperation, mockGetActiveSpine } = vi.hoisted(() => ({
+const { mockMessageCreate, mockMessageQuery, mockCreateOperation, mockGetActiveSpine, mockTopicFind, mockTopicCreate } = vi.hoisted(() => ({
   mockCreateOperation: vi.fn(),
+  mockTopicFind: vi.fn(),
+  mockTopicCreate: vi.fn(),
   mockGetActiveSpine: vi.fn(),
   mockMessageCreate: vi.fn(),
   mockMessageQuery: vi.fn(),
@@ -66,8 +68,8 @@ vi.mock('@/database/models/plugin', () => ({
 
 vi.mock('@/database/models/topic', () => ({
   TopicModel: vi.fn().mockImplementation(() => ({
-    create: vi.fn().mockResolvedValue({ id: 'topic-new' }),
-    findById: vi.fn().mockResolvedValue(undefined),
+    create: mockTopicCreate,
+    findById: mockTopicFind,
     updateMetadata: vi.fn().mockResolvedValue(undefined),
   })),
 }));
@@ -144,6 +146,8 @@ describe('AiAgentService.execAgent - topic history loading', () => {
     mockMessageQuery.mockClear();
     mockCreateOperation.mockClear();
     mockGetActiveSpine.mockReset();
+    mockTopicFind.mockReset().mockResolvedValue(undefined);
+    mockTopicCreate.mockReset().mockResolvedValue({ id: 'topic-new' });
 
     mockMessageCreate.mockResolvedValue({ id: 'msg-1' });
     mockCreateOperation.mockResolvedValue({
@@ -217,6 +221,28 @@ describe('AiAgentService.execAgent - topic history loading', () => {
         content: '你能复述我说的第一句话吗',
         role: 'user',
       });
+    });
+  });
+
+  describe('topic-scoped model configuration', () => {
+    it('executes an existing topic on its pinned model, not the shared agent default', async () => {
+      mockTopicFind.mockResolvedValue({ id: 'topic-existing', agentId: 'agent-1', model: 'topic-model', provider: 'topic-provider' });
+      mockMessageQuery.mockResolvedValue([]);
+      await service.execAgent({ agentId: 'agent-1', appContext: { topicId: 'topic-existing' }, prompt: 'Hello' });
+      expect(mockCreateOperation.mock.calls[0][0].agentConfig).toMatchObject({ model: 'topic-model', provider: 'topic-provider' });
+    });
+
+    it('does not borrow another agent topic pin for a delegated execution', async () => {
+      mockTopicFind.mockResolvedValue({ id: 'topic-existing', agentId: 'other-agent', model: 'caller-model', provider: 'caller-provider' });
+      mockMessageQuery.mockResolvedValue([]);
+      await service.execAgent({ agentId: 'agent-1', appContext: { topicId: 'topic-existing' }, prompt: 'Hello' });
+      expect(mockCreateOperation.mock.calls[0][0].agentConfig).toMatchObject({ model: 'gpt-4', provider: 'openai' });
+    });
+
+    it('pins the inherited draft model when the gateway creates a new topic', async () => {
+      await service.execAgent({ agentId: 'agent-1', prompt: 'Hello', model: 'inherited-model', provider: 'inherited-provider' });
+      expect(mockTopicCreate).toHaveBeenCalledWith(expect.objectContaining({ model: 'inherited-model', provider: 'inherited-provider' }));
+      expect(mockCreateOperation.mock.calls[0][0].agentConfig).toMatchObject({ model: 'inherited-model', provider: 'inherited-provider' });
     });
   });
 

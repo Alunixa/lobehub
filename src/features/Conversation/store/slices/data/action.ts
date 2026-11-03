@@ -8,8 +8,9 @@ import { useClientDataSWRWithSync } from '@/libs/swr';
 import { messageKeys } from '@/libs/swr/keys';
 import { messageService } from '@/services/message';
 import { getChatStoreState } from '@/store/chat';
-import { operationSelectors } from '@/store/chat/selectors';
+import { operationSelectors } from '@/store/chat/slices/operation/selectors';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
+import { mergeMessageRead, readMessagesWithBoundary } from '@/store/chat/utils/messageReadConsistency';
 
 import { type Store as ConversationStore } from '../../action';
 import { type MessageDispatch } from './reducer';
@@ -18,28 +19,6 @@ import { dataSelectors } from './selectors';
 import { stabilizeReferences } from './stabilizeReferences';
 
 const log = debug('lobe-render:features:Conversation');
-
-const mergeFetchedMessagesWithLocalState = (
-  fetchedMessages: UIChatMessage[],
-  localMessages: UIChatMessage[],
-): UIChatMessage[] => {
-  if (localMessages.length === 0 || fetchedMessages.length === 0) return fetchedMessages;
-
-  const localById = new Map(localMessages.map((message) => [message.id, message]));
-  let changed = false;
-
-  const mergedMessages = fetchedMessages.map((message) => {
-    const localMessage = localById.get(message.id);
-
-    if (!localMessage) return message;
-    if (localMessage.updatedAt <= message.updatedAt) return message;
-
-    changed = true;
-    return localMessage;
-  });
-
-  return changed ? mergedMessages : fetchedMessages;
-};
 
 /**
  * Data Actions
@@ -59,7 +38,7 @@ export interface DataAction {
    *
    * @param messages - New messages array from database
    */
-  replaceMessages: (messages: UIChatMessage[]) => void;
+  replaceMessages: (messages: UIChatMessage[], context?: ConversationContext) => void;
 
   /**
    * Switch message branch by updating the parent's activeBranchIndex
@@ -154,7 +133,13 @@ export const dataSlice: StateCreator<
     get().onMessagesChange?.(newDbMessages, get().context);
   },
 
-  replaceMessages: (messages) => {
+  replaceMessages: (messages, context) => {
+    if (context && messageMapKey(context) !== messageMapKey(get().context)) {
+      const chat = getChatStoreState();
+      // Settle the original bucket, but never recreate an evicted/deleted conversation.
+      if (chat.dbMessagesMap[messageMapKey(context)]) chat.replaceMessages(messages, { context });
+      return;
+    }
     const contextKey = messageMapKey(get().context);
     const prevDbMessages = get().dbMessages;
 
@@ -211,13 +196,25 @@ export const dataSlice: StateCreator<
     return useClientDataSWRWithSync<UIChatMessage[]>(
       shouldFetch ? messageKeys.list(context) : null,
 
-      () => messageService.getMessages(context),
+      () => {
+        const chat = getChatStoreState();
+        const messages = contextKey === messageMapKey(get().context) ? get().dbMessages : [];
+        const running = operationSelectors.isAgentRuntimeRunningByContext(context)(chat);
+        return readMessagesWithBoundary({
+          key: contextKey, messages,
+          protectedIds: new Set(messages.filter((m) => running ||
+            get().messageLoadingIds?.includes(m.id) ||
+            operationSelectors.isMessageCreating(m.id)(chat)).map((m) => m.id)),
+        }, () => messageService.getMessages(context));
+      },
       {
         hydrateFromIndexedDB: true,
         ...(revalidateOnFocus !== undefined && { revalidateOnFocus }),
-        onData: (data) => {
+        onData: (data, info) => {
           if (!data) return;
           if (!context.topicId) return;
+          // A late fetch belongs to its captured conversation, never the new screen.
+          if (contextKey !== messageMapKey(get().context)) return;
 
           // Defense-in-depth gate: drop any SWR onData while the
           // topic is streaming. DB fan-out for chunk writes is async and lags
@@ -236,7 +233,14 @@ export const dataSlice: StateCreator<
             return;
 
           const prevDbMessages = get().dbMessages;
-          const mergedMessages = mergeFetchedMessagesWithLocalState(data, prevDbMessages);
+          const chat = getChatStoreState();
+          const mergedMessages = mergeMessageRead(data, prevDbMessages, {
+            key: contextKey,
+            cache: info?.source === 'cache',
+            protectedIds: new Set(prevDbMessages.filter((m) =>
+              get().messageLoadingIds?.includes(m.id) ||
+              operationSelectors.isMessageCreating(m.id)(chat)).map((m) => m.id)),
+          });
           const storeContextKey = messageMapKey(get().context);
 
           // Parse messages using conversation-flow

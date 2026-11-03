@@ -12,6 +12,7 @@ import { type StoreSetter } from '@/store/types';
 
 import { type MessageMapKeyInput } from '../../../utils/messageMapKey';
 import { messageMapKey } from '../../../utils/messageMapKey';
+import { mergeMessageRead, readMessagesWithBoundary } from '../../../utils/messageReadConsistency';
 import { reconcileAssistantToolLinks } from '../utils/reconcileTools';
 
 /**
@@ -214,7 +215,16 @@ export class MessageQueryActionImpl {
 
     return useClientDataSWRWithSync<UIChatMessage[]>(
       shouldFetch ? messageKeys.list(context) : null,
-      () => messageService.getMessages(context),
+      () => {
+        const state = this.#get();
+        const messages = state.dbMessagesMap[messageMapKey(context)] ?? [];
+        const running = operationSelectors.isAgentRuntimeRunningByContext(context)(state);
+        return readMessagesWithBoundary({
+          key: messageMapKey(context), messages,
+          protectedIds: new Set(messages.filter((m) => running ||
+            operationSelectors.isMessageCreating(m.id)(state)).map((m) => m.id)),
+        }, () => messageService.getMessages(context));
+      },
       {
         // Skip the redundant switch-back refetch within this window — the cache
         // is kept current by mutation write-through, so a remount hydrates from
@@ -222,11 +232,20 @@ export class MessageQueryActionImpl {
         dedupingInterval: MESSAGE_LIST_DEDUPING_INTERVAL,
         focusThrottleInterval: 1000,
         hydrateFromIndexedDB: true,
-        onData: (data) => {
+        onData: (data, info) => {
           if (!data || !context.topicId) return;
+          const state = this.#get();
+          if (operationSelectors.isAgentRuntimeRunningByContext(context)(state)) return;
+          const key = messageMapKey(context);
+          const local = state.dbMessagesMap[key] ?? [];
+          const merged = mergeMessageRead(data, local, {
+            cache: info?.source === 'cache', key,
+            protectedIds: new Set(local.filter((m) =>
+              operationSelectors.isMessageCreating(m.id)(state)).map((m) => m.id)),
+          });
 
           // Use replaceMessages to store the fetched messages
-          this.#get().replaceMessages(data, { action: 'useFetchMessages', context });
+          this.#get().replaceMessages(merged, { action: 'useFetchMessages', context });
         },
         ...(revalidateOnFocus !== undefined && { revalidateOnFocus }),
       },

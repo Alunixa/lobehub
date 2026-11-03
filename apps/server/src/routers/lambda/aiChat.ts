@@ -214,6 +214,8 @@ export const aiChatRouter = router({
               groupId: input.groupId,
               messages: input.newTopic!.topicMessageIds,
               metadata: input.newTopic!.metadata,
+              model: input.newTopic!.model,
+              provider: input.newTopic!.provider,
               sessionId,
               title: input.newTopic!.title,
               trigger: input.newTopic!.trigger,

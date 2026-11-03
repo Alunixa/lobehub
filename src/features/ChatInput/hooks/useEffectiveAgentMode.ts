@@ -3,6 +3,8 @@ import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
 import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 
+import { useEffectiveModel } from './useEffectiveModel';
+
 export type ChatInputMode = 'agent' | 'chat';
 
 interface ResolveEffectiveAgentModeParams {
@@ -43,11 +45,8 @@ export const resolveEffectiveAgentMode = ({
 };
 
 export const useEffectiveAgentMode = (agentId: string) => {
-  const [enableAgentMode, model, provider] = useAgentStore((s) => [
-    agentByIdSelectors.getAgentEnableModeById(agentId)(s),
-    agentByIdSelectors.getAgentModelById(agentId)(s),
-    agentByIdSelectors.getAgentModelProviderById(agentId)(s),
-  ]);
+  const enableAgentMode = useAgentStore(agentByIdSelectors.getAgentEnableModeById(agentId));
+  const { model, provider } = useEffectiveModel(agentId);
   const supportToolUse = useModelSupportToolUse(model, provider);
   const isModelListReady = useAiInfraStore(aiProviderSelectors.isInitAiProviderRuntimeState);
 

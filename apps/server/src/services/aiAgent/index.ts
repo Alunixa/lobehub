@@ -1061,6 +1061,18 @@ export class AiAgentService {
     // documents stay keyed on `resolvedAgentId`.
     const persistAgentId = appContext?.agentSignal?.agentId ?? resolvedAgentId;
 
+    // Backport upstream #15933/#20385: resolve before building runtime tools/prompts.
+    // A subagent running on another agent's topic must keep its own model.
+    const pinnedTopic = appContext?.topicId
+      ? await this.topicModel.findById(appContext.topicId)
+      : undefined;
+    if (
+      pinnedTopic?.model && pinnedTopic.provider &&
+      (!pinnedTopic.agentId || pinnedTopic.agentId === resolvedAgentId)
+    ) {
+      agentConfig = { ...agentConfig, model: pinnedTopic.model, provider: pinnedTopic.provider };
+    }
+
     // Apply per-call model/provider overrides (e.g. from task.config)
     if (modelOverride) agentConfig.model = modelOverride;
     if (providerOverride) agentConfig.provider = providerOverride;
@@ -1400,6 +1412,8 @@ export class AiAgentService {
         // must carry the groupId through too (group topic sidebar + ownership fix).
         groupId: appContext?.groupId,
         metadata,
+        model: agentConfig.model,
+        provider: agentConfig.provider,
         title:
           title !== undefined
             ? title

@@ -58,6 +58,8 @@ export interface CreateTopicParams {
   groupId?: string | null;
   messages?: string[];
   metadata?: ChatTopicMetadata;
+  model?: string | null;
+  provider?: string | null;
   sessionId?: string | null;
   title?: string;
   trigger?: string | null;
@@ -304,6 +306,8 @@ export class TopicModel {
                 historySummary: topics.historySummary,
                 id: topics.id,
                 metadata: topics.metadata,
+                model: topics.model,
+                provider: topics.provider,
                 status: topics.status,
                 title: topics.title,
                 updatedAt: topics.updatedAt,
@@ -366,6 +370,8 @@ export class TopicModel {
                 historySummary: topics.historySummary,
                 id: topics.id,
                 metadata: topics.metadata,
+                model: topics.model,
+                provider: topics.provider,
                 status: topics.status,
                 title: topics.title,
                 updatedAt: topics.updatedAt,
@@ -423,6 +429,8 @@ export class TopicModel {
               historySummary: topics.historySummary,
               id: topics.id,
               metadata: topics.metadata,
+              model: topics.model,
+              provider: topics.provider,
               sessionId: topics.sessionId,
               status: topics.status,
               title: topics.title,

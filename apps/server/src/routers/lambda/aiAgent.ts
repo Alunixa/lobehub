@@ -135,6 +135,8 @@ const StartExecutionSchema = z.object({
  */
 const ExecAgentSchema = z
   .object({
+    model: z.string().min(1).optional(),
+    provider: z.string().min(1).optional(),
     awareness: MessageAwarenessSchema.optional(),
     /** The agent ID to run (either agentId or slug is required) */
     agentId: z.string().optional(),
@@ -734,6 +736,8 @@ export const aiAgentRouter = router({
 
     try {
       return await ctx.aiAgentService.execAgent({
+        model: input.model,
+        provider: input.provider,
         awareness: input.awareness,
         agentId,
         appContext,

@@ -80,6 +80,17 @@ const currentActiveTopicSummary = (s: ChatStoreState): ChatTopicSummary | undefi
 
 const currentTopicMetadata = (s: ChatStoreState) => currentActiveTopic(s)?.metadata;
 
+// Resolve by topic identity, not the currently selected agent's sidebar bucket.
+const getTopicModelById = (id: string) => (s: ChatStoreState) => {
+  const topic = s.topicModelDetailMap[id] ??
+    Object.values(s.topicDataMap).flatMap((data) => data.items).find((item) => item.id === id);
+  if (!topic?.model || !topic.provider) return undefined;
+  return { model: topic.model, provider: topic.provider };
+};
+
+const activeTopicModel = (s: ChatStoreState) =>
+  s.activeTopicId ? getTopicModelById(s.activeTopicId)(s) : undefined;
+
 /**
  * Get current active topic's working directory.
  * On desktop: local filesystem path.
@@ -240,6 +251,8 @@ const agentTopicsViewLoadMoreError = (s: ChatStoreState): unknown =>
   agentTopicsViewData(s)?.loadMoreError;
 
 export const topicSelectors = {
+  activeTopicModel,
+  getTopicModelById,
   agentTopicsViewHasMore,
   agentTopicsViewIsLoadingMore,
   agentTopicsViewLoadMoreError,

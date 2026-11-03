@@ -253,6 +253,9 @@ export interface ChatTopic extends Omit<BaseDataModel, 'meta'> {
   /** Total message count for the topic. */
   messageCount?: number | null;
   metadata?: ChatTopicMetadata;
+  /** Topic-owned model configuration, independent of the agent default and usage rollups. */
+  model?: string | null;
+  provider?: string | null;
   sessionId?: string;
   status?: ChatTopicStatus | null;
   title: string;
@@ -302,6 +305,9 @@ export interface CreateTopicParams {
   favorite?: boolean;
   groupId?: string | null;
   messages?: string[];
+  metadata?: ChatTopicMetadata;
+  model?: string;
+  provider?: string;
   sessionId?: string | null;
   title: string;
   trigger?: string;

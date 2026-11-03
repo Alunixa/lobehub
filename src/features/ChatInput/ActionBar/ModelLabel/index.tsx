@@ -3,14 +3,11 @@ import { createStaticStyles, cx } from 'antd-style';
 import { ChevronDownIcon } from 'lucide-react';
 import { memo, useCallback } from 'react';
 
-import { useBusinessModelModeConfig } from '@/business/client/hooks/useBusinessAgentMode';
 import ModelSwitchPanel from '@/features/ModelSwitchPanel';
 import { usePermission } from '@/hooks/usePermission';
-import { useAgentStore } from '@/store/agent';
-import { agentByIdSelectors } from '@/store/agent/selectors';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 
-import { useAgentId } from '../../hooks/useAgentId';
+import { useTopicModelSwitch } from '../../hooks/useTopicModelSwitch';
 import { useActionBarContext } from '../context';
 
 const styles = createStaticStyles(({ css, cssVar }) => ({
@@ -49,13 +46,7 @@ const ModelLabel = memo(() => {
   const { dropdownPlacement } = useActionBarContext();
   const { allowed: canCreateContent, reason } = usePermission('create_content');
 
-  const agentId = useAgentId();
-  const [model, provider, updateAgentConfigById] = useAgentStore((s) => [
-    agentByIdSelectors.getAgentModelById(agentId)(s),
-    agentByIdSelectors.getAgentModelProviderById(agentId)(s),
-    s.updateAgentConfigById,
-  ]);
-  const applyBusinessModelModeConfig = useBusinessModelModeConfig();
+  const { model, provider, switchModel } = useTopicModelSwitch();
 
   const enabledModel = useAiInfraStore(aiModelSelectors.getEnabledModelById(model, provider));
   const displayName = enabledModel?.displayName || model;
@@ -64,9 +55,9 @@ const ModelLabel = memo(() => {
     async (params: { model: string; provider: string }) => {
       if (!canCreateContent) return;
 
-      await updateAgentConfigById(agentId, applyBusinessModelModeConfig(params));
+      await switchModel(params);
     },
-    [agentId, applyBusinessModelModeConfig, canCreateContent, updateAgentConfigById],
+    [canCreateContent, switchModel],
   );
 
   const trigger = (
