@@ -82,8 +82,16 @@ const currentTopicMetadata = (s: ChatStoreState) => currentActiveTopic(s)?.metad
 
 // Resolve by topic identity, not the currently selected agent's sidebar bucket.
 const getTopicModelById = (id: string) => (s: ChatStoreState) => {
-  const topic = s.topicModelDetailMap[id] ??
-    Object.values(s.topicDataMap).flatMap((data) => data.items).find((item) => item.id === id);
+  let topic = s.topicModelDetailMap[id];
+  if (!topic) {
+    for (const data of Object.values(s.topicDataMap)) {
+      const match = data.items.find((item) => item.id === id);
+      if (match) {
+        topic = match;
+        break;
+      }
+    }
+  }
   if (!topic?.model || !topic.provider) return undefined;
   return { model: topic.model, provider: topic.provider };
 };

@@ -99,6 +99,14 @@ jobs:
             src/hooks/useTokenCount.test.tsx \
             src/store/chat/slices/message/action.test.ts \
             src/store/chat/slices/topic/action.test.ts \
+            src/store/chat/slices/topic/model.test.ts \
+            src/store/chat/slices/topic/selectors.test.ts \
+            src/store/chat/utils/messageReadConsistency.test.ts \
+            src/features/Conversation/store/slices/data/action.race.test.ts \
+            src/features/Conversation/store/slices/message/action/crud.test.ts \
+            src/features/Conversation/store/slices/message/action/state.test.ts \
+            src/libs/swr/cacheProvider.integration.test.tsx \
+            src/store/chat/slices/agentRun/actions/__tests__/streamingExecutor.test.ts \
             apps/server/src/routers/lambda/__tests__/aiChat.test.ts \
             apps/server/src/services/aiAgent/__tests__/execAgent.topicHistory.test.ts \
             apps/server/src/services/aiAgent/__tests__/execAgent.threadId.test.ts \
@@ -135,6 +143,8 @@ jobs:
         run: |
           node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
             src/models/__tests__/topic.test.ts \
+            src/models/__tests__/topics/topic.update.test.ts \
+            src/models/__tests__/topics/topicUsage.test.ts \
             src/models/__tests__/proactiveConversation.test.ts \
             src/models/__tests__/notification.test.ts
       - name: Active branch append and complete conversation reads

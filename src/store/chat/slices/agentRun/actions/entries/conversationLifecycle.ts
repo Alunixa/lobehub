@@ -22,7 +22,6 @@ import type {
 } from '@lobechat/types';
 import { getWorkingDirEffectivePath, getWorkingDirSourcePath } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
-import { TRPCClientError } from '@trpc/client';
 import { t } from 'i18next';
 
 import { message as antdMessage } from '@/components/AntdStaticMethods';
@@ -324,6 +323,9 @@ export class ConversationLifecycleActionImpl {
       }
 
       if (context.topicId) {
+        await this.#get().ensureTopicModel(context.topicId);
+        const inherited = topicSelectors.getTopicModelById(context.topicId)(this.#get());
+        if (inherited) this.#get().setNewTopicModel(agentId, inherited);
         const originalTopic = topicSelectors.getTopicById(context.topicId)(this.#get());
         const topicTitle = originalTopic?.title || '';
         // Inject referTopic into content for LLM context
@@ -420,9 +422,6 @@ export class ConversationLifecycleActionImpl {
     if (!message && !hasFile) return;
 
     const newTopicTitle = markdownToTxt(message).slice(0, 80) || t('defaultTitle', { ns: 'topic' });
-    // Resolve unlisted topics and wait for model writes before creating a run.
-    if (operationContext.topicId) await this.#get().ensureTopicModel(operationContext.topicId);
-
     // ━━━ Message Queue: enqueue if this context is already busy ━━━
     // Include the initial `sendMessage` persist/create-topic phase. Example:
     // first send from a blank chat is still creating topic A (`topicId=null`);
@@ -1080,11 +1079,15 @@ export class ConversationLifecycleActionImpl {
       );
 
     try {
-      await this.#get().ensureTopicModel(topicId);
-      const { model, provider } = topicSelectors.getTopicModelById(topicId)(this.#get()) ??
-        agentSelectors.getAgentConfigById(agentId)(getAgentStoreState());
-
       const topicId = operationContext.topicId;
+      if (topicId) await this.#get().ensureTopicModel(topicId);
+      const selection = topicId
+        ? topicSelectors.getTopicModelById(topicId)(this.#get())
+        : newTopicModelSnapshot;
+      const { model, provider } = {
+        ...agentSelectors.getAgentConfigById(agentId)(getAgentStoreState()),
+        ...selection,
+      };
 
       // Persist selected skill/tool context into user message content so it survives across turns.
       // Deduplicate: skip skills/tools already @mentioned in earlier messages (via editorData).
@@ -1163,6 +1166,9 @@ export class ConversationLifecycleActionImpl {
       let finalTopicId = data.topicId ?? operationContext.topicId;
       const finalThreadId = data.createdThreadId ?? operationContext.threadId;
       const isCreateNewTopic = isCreatedTopicResponse(data);
+      if (isCreateNewTopic && data.topicId && model && provider) {
+        this.#get().internal_seedTopicModel(data.topicId, { model, provider });
+      }
 
       // refresh the total data
       if (data?.topics) {
@@ -1272,7 +1278,7 @@ export class ConversationLifecycleActionImpl {
         message: e instanceof Error ? e.message : 'Unknown error',
       });
 
-      if (e instanceof TRPCClientError) {
+      if (e instanceof Error) {
         const isAbort = e.message.includes('aborted') || e.name === 'AbortError';
         // Check if error is due to cancellation
         if (!isAbort) {
@@ -1675,6 +1681,11 @@ export class ConversationLifecycleActionImpl {
 
     let createdGroupId: string | undefined;
     try {
+      await this.#get().ensureTopicModel(topicId);
+      if (abortController.signal.aborted) throw createAbortError();
+      const { model, provider } =
+        topicSelectors.getTopicModelById(topicId)(this.#get()) ??
+        agentSelectors.getAgentConfigById(agentId)(getAgentStoreState());
       // 1. Create compression group on server
       const result = await messageService.createCompressionGroup({
         agentId,
@@ -1692,7 +1703,6 @@ export class ConversationLifecycleActionImpl {
       this.#get().associateMessageWithOperation(messageGroupId, operationId);
 
       // 2. Generate summary via LLM
-      const { model, provider } = agentSelectors.getAgentConfigById(agentId)(getAgentStoreState());
       const compressionPayload = chainCompressContext(messagesToSummarize);
       let summaryContent = '';
       let summaryError: Error | undefined;

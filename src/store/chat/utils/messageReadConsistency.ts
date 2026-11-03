@@ -15,7 +15,7 @@ export const readMessagesWithBoundary = async (
   boundary: ReadBoundary,
   fetcher: () => Promise<UIChatMessage[]>,
 ): Promise<UIChatMessage[]> => {
-  const data = [...await fetcher()];
+  const data = [...(await fetcher())];
   boundaries.set(data, boundary);
   return data;
 };
@@ -42,13 +42,17 @@ export const mergeMessageRead = (
     // An old read cannot resurrect a row removed after it started.
     if (before?.has(message.id) && !currentMessage) return [];
     if (!currentMessage) return [message];
-    if (protectedId(message.id) || changedSinceRead(currentMessage) ||
-        currentMessage.updatedAt > message.updatedAt) return [currentMessage];
+    if (
+      protectedId(message.id) ||
+      changedSinceRead(currentMessage) ||
+      currentMessage.updatedAt > message.updatedAt
+    )
+      return [currentMessage];
     return [message];
   });
   for (const message of local) {
-    if (!fetchedIds.has(message.id) &&
-        (protectedId(message.id) || changedSinceRead(message))) merged.push(message);
+    if (!fetchedIds.has(message.id) && (protectedId(message.id) || changedSinceRead(message)))
+      merged.push(message);
   }
   // A later, fresh read remains authoritative about remote deletion. No permanent ghosts.
   merged.sort((a, b) => a.createdAt - b.createdAt);

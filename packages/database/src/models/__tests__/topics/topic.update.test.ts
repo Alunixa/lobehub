@@ -128,7 +128,15 @@ describe('TopicModel - Update', () => {
   describe('recomputeUsage', () => {
     it('rolls the topic assistant messages into the denormalized usage/cost columns', async () => {
       const topicId = 'usage-recompute-1';
-      await serverDB.insert(topics).values({ id: topicId, sessionId, userId, model: 'pinned-model', provider: 'pinned-provider' });
+      await serverDB
+        .insert(topics)
+        .values({
+          id: topicId,
+          sessionId,
+          userId,
+          model: 'pinned-model',
+          provider: 'pinned-provider',
+        });
       await serverDB.insert(messages).values([
         {
           id: 'usage-msg-1',

@@ -78,8 +78,7 @@ export function useClientDataSWRWithSync<T>(
     !hydrateFromIndexedDB ||
     !serializedKey ||
     (localHydration.key === serializedKey && localHydration.ready);
-  const hydratedData =
-    localHydration.key === serializedKey ? localHydration.data : undefined;
+  const hydratedData = localHydration.key === serializedKey ? localHydration.data : undefined;
   const effectiveKey = isLocalHydrationReady ? key : null;
 
   const response = useClientDataSWR<T>(effectiveKey, isLocalHydrationReady ? fetcher : null, {
@@ -118,11 +117,7 @@ export function useClientDataSWRWithSync<T>(
     return () => {
       cancelled = true;
     };
-  }, [
-    hydrateFromIndexedDB,
-    scope,
-    serializedKey,
-  ]);
+  }, [hydrateFromIndexedDB, scope, serializedKey]);
 
   const { data } = response;
 

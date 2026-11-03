@@ -80,6 +80,8 @@ beforeEach(() => {
       searchTopics: [],
       topicDataMap: {},
       conversationFeatureDetailMap: {},
+      newTopicModelMap: {},
+      topicModelDetailMap: {},
       topicLoadingIdCounts: {},
       topicLoadingIds: [],
       // ... initial state
@@ -1767,6 +1769,22 @@ describe('topic action', () => {
     });
   });
   describe('createTopic', () => {
+    it('inherits the model of the conversation being left without changing another conversation', async () => {
+      const a = { model: 'model-a', provider: 'provider-a' };
+      const b = { model: 'model-b', provider: 'provider-b' };
+      useChatStore.setState({
+        activeAgentId: 'agent-a',
+        activeTopicId: 'topic-a',
+        topicModelDetailMap: { 'topic-a': a, 'topic-b': b },
+      });
+      await useChatStore.getState().switchTopic(null, { skipRefreshMessage: true });
+      expect(useChatStore.getState().newTopicModelMap['agent-a']).toEqual(a);
+      expect(useChatStore.getState().topicModelDetailMap['topic-b']).toEqual(b);
+      await useChatStore.getState().switchTopic('topic-b', { skipRefreshMessage: true });
+      await useChatStore.getState().switchTopic(null, { skipRefreshMessage: true });
+      expect(useChatStore.getState().newTopicModelMap['agent-a']).toEqual(b);
+      expect(useChatStore.getState().topicModelDetailMap['topic-a']).toEqual(a);
+    });
     it('should create a new topic and update the store', async () => {
       const { result } = renderHook(() => useChatStore());
       const activeAgentId = 'test-session-id';
@@ -1776,6 +1794,9 @@ describe('topic action', () => {
       await act(async () => {
         useChatStore.setState({
           activeAgentId,
+          newTopicModelMap: {
+            [activeAgentId]: { model: 'test-pinned-model', provider: 'test-provider' },
+          },
           messagesMap: {
             [messageMapKey({ agentId: activeAgentId })]: messages,
           },
@@ -1794,6 +1815,8 @@ describe('topic action', () => {
         sessionId: activeAgentId,
         messages: messages.map((m) => m.id),
         title: 'defaultTitle',
+        model: 'test-pinned-model',
+        provider: 'test-provider',
       });
       expect(refreshTopicSpy).toHaveBeenCalled();
     });

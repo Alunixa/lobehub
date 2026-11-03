@@ -219,11 +219,18 @@ export class MessageQueryActionImpl {
         const state = this.#get();
         const messages = state.dbMessagesMap[messageMapKey(context)] ?? [];
         const running = operationSelectors.isAgentRuntimeRunningByContext(context)(state);
-        return readMessagesWithBoundary({
-          key: messageMapKey(context), messages,
-          protectedIds: new Set(messages.filter((m) => running ||
-            operationSelectors.isMessageCreating(m.id)(state)).map((m) => m.id)),
-        }, () => messageService.getMessages(context));
+        return readMessagesWithBoundary(
+          {
+            key: messageMapKey(context),
+            messages,
+            protectedIds: new Set(
+              messages
+                .filter((m) => running || operationSelectors.isMessageCreating(m.id)(state))
+                .map((m) => m.id),
+            ),
+          },
+          () => messageService.getMessages(context),
+        );
       },
       {
         // Skip the redundant switch-back refetch within this window — the cache
@@ -239,9 +246,13 @@ export class MessageQueryActionImpl {
           const key = messageMapKey(context);
           const local = state.dbMessagesMap[key] ?? [];
           const merged = mergeMessageRead(data, local, {
-            cache: info?.source === 'cache', key,
-            protectedIds: new Set(local.filter((m) =>
-              operationSelectors.isMessageCreating(m.id)(state)).map((m) => m.id)),
+            cache: info?.source === 'cache',
+            key,
+            protectedIds: new Set(
+              local
+                .filter((m) => operationSelectors.isMessageCreating(m.id)(state))
+                .map((m) => m.id),
+            ),
           });
 
           // Use replaceMessages to store the fetched messages

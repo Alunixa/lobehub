@@ -72,7 +72,9 @@ beforeEach(async () => {
   msgSeq = 0;
   await serverDB.delete(users);
   await serverDB.insert(users).values([{ id: userId }, { id: otherUserId }]);
-  await serverDB.insert(topics).values({ id: topicId, userId, model: 'pinned-model', provider: 'pinned-provider' });
+  await serverDB
+    .insert(topics)
+    .values({ id: topicId, userId, model: 'pinned-model', provider: 'pinned-provider' });
 });
 
 afterEach(async () => {

@@ -10,18 +10,34 @@ import { dataSlice } from './action';
 const { chat } = vi.hoisted(() => ({ chat: { dbMessagesMap: {}, replaceMessages: vi.fn() } }));
 vi.mock('@/store/chat', () => ({ getChatStoreState: () => chat }));
 vi.mock('@/store/chat/slices/operation/selectors', () => ({
-  operationSelectors: { isAgentRuntimeRunningByContext: () => () => false, isMessageCreating: () => () => false },
+  operationSelectors: {
+    isAgentRuntimeRunningByContext: () => () => false,
+    isMessageCreating: () => () => false,
+  },
 }));
 vi.mock('@/libs/swr', () => ({ useClientDataSWRWithSync: vi.fn(() => ({})) }));
 vi.mock('@/services/message', () => ({ messageService: { getMessages: vi.fn() } }));
 
 const context: ConversationContext = { agentId: 'agent-a', topicId: 'topic-a', scope: 'main' };
-const row = (id: string, content = id): UIChatMessage => ({
-  id, content, createdAt: 1, updatedAt: 1, role: 'user',
-}) as UIChatMessage;
+const row = (id: string, content = id): UIChatMessage =>
+  ({
+    id,
+    content,
+    createdAt: 1,
+    updatedAt: 1,
+    role: 'user',
+  }) as UIChatMessage;
 const setup = () => {
-  let state = { context, dbMessages: [], displayMessages: [], messageLoadingIds: [], onMessagesChange: vi.fn() } as unknown as Store;
-  const set = ((patch: Partial<Store>) => { state = { ...state, ...patch }; }) as Parameters<typeof dataSlice>[0];
+  let state = {
+    context,
+    dbMessages: [],
+    displayMessages: [],
+    messageLoadingIds: [],
+    onMessagesChange: vi.fn(),
+  } as unknown as Store;
+  const set = ((patch: Partial<Store>) => {
+    state = { ...state, ...patch };
+  }) as Parameters<typeof dataSlice>[0];
   const get = () => state;
   state = { ...state, ...dataSlice(set, get, {} as Parameters<typeof dataSlice>[2]) };
   state.useFetchMessages(context);
@@ -29,12 +45,20 @@ const setup = () => {
   return { get, set, fetch: call[1]!, onData: call[2]!.onData! };
 };
 
-beforeEach(() => { vi.clearAllMocks(); chat.dbMessagesMap = {}; });
+beforeEach(() => {
+  vi.clearAllMocks();
+  chat.dbMessagesMap = {};
+});
 
 describe('conversation read races', () => {
   it('keeps a newly displayed message when an earlier empty read resolves', async () => {
     let resolve!: (rows: UIChatMessage[]) => void;
-    vi.mocked(messageService.getMessages).mockImplementation(() => new Promise((done) => { resolve = done; }));
+    vi.mocked(messageService.getMessages).mockImplementation(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
     const f = setup();
     const reading = f.fetch();
     f.get().replaceMessages([row('new')]);

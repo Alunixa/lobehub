@@ -10,7 +10,10 @@ import { messageService } from '@/services/message';
 import { getChatStoreState } from '@/store/chat';
 import { operationSelectors } from '@/store/chat/slices/operation/selectors';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
-import { mergeMessageRead, readMessagesWithBoundary } from '@/store/chat/utils/messageReadConsistency';
+import {
+  mergeMessageRead,
+  readMessagesWithBoundary,
+} from '@/store/chat/utils/messageReadConsistency';
 
 import { type Store as ConversationStore } from '../../action';
 import { type MessageDispatch } from './reducer';
@@ -200,12 +203,23 @@ export const dataSlice: StateCreator<
         const chat = getChatStoreState();
         const messages = contextKey === messageMapKey(get().context) ? get().dbMessages : [];
         const running = operationSelectors.isAgentRuntimeRunningByContext(context)(chat);
-        return readMessagesWithBoundary({
-          key: contextKey, messages,
-          protectedIds: new Set(messages.filter((m) => running ||
-            get().messageLoadingIds?.includes(m.id) ||
-            operationSelectors.isMessageCreating(m.id)(chat)).map((m) => m.id)),
-        }, () => messageService.getMessages(context));
+        return readMessagesWithBoundary(
+          {
+            key: contextKey,
+            messages,
+            protectedIds: new Set(
+              messages
+                .filter(
+                  (m) =>
+                    running ||
+                    get().messageLoadingIds?.includes(m.id) ||
+                    operationSelectors.isMessageCreating(m.id)(chat),
+                )
+                .map((m) => m.id),
+            ),
+          },
+          () => messageService.getMessages(context),
+        );
       },
       {
         hydrateFromIndexedDB: true,
@@ -237,9 +251,15 @@ export const dataSlice: StateCreator<
           const mergedMessages = mergeMessageRead(data, prevDbMessages, {
             key: contextKey,
             cache: info?.source === 'cache',
-            protectedIds: new Set(prevDbMessages.filter((m) =>
-              get().messageLoadingIds?.includes(m.id) ||
-              operationSelectors.isMessageCreating(m.id)(chat)).map((m) => m.id)),
+            protectedIds: new Set(
+              prevDbMessages
+                .filter(
+                  (m) =>
+                    get().messageLoadingIds?.includes(m.id) ||
+                    operationSelectors.isMessageCreating(m.id)(chat),
+                )
+                .map((m) => m.id),
+            ),
           });
           const storeContextKey = messageMapKey(get().context);
 

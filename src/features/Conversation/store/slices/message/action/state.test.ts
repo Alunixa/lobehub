@@ -97,7 +97,7 @@ describe('MessageStateAction', () => {
         threadId: null,
         topicId: 'test-topic',
       });
-      expect(replaceMessagesSpy).toHaveBeenCalledWith(restoredMessages);
+      expect(replaceMessagesSpy).toHaveBeenCalledWith(restoredMessages, store.getState().context);
     });
   });
 
@@ -328,7 +328,7 @@ describe('MessageStateAction', () => {
       await store.getState().toggleCompressedGroupExpanded('group-1');
 
       // Assert
-      expect(replaceMessagesSpy).toHaveBeenCalledWith(updatedMessages);
+      expect(replaceMessagesSpy).toHaveBeenCalledWith(updatedMessages, store.getState().context);
     });
   });
 });

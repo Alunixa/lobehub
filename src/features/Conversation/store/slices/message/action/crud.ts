@@ -229,9 +229,22 @@ export const messageCRUDSlice: StateCreator<
       if (messageMapKey(get().context) !== messageMapKey(context)) {
         const chat = getChatStoreState();
         const rows = chat.dbMessagesMap[messageMapKey(context)];
-        if (rows) chat.replaceMessages(rows.map((row) => row.id === tempId ? {
-          ...row, error: { body: e, message: (e as Error).message, type: ChatErrorType.CreateMessageError },
-        } : row), { context });
+        if (rows)
+          chat.replaceMessages(
+            rows.map((row) =>
+              row.id === tempId
+                ? {
+                    ...row,
+                    error: {
+                      body: e,
+                      message: (e as Error).message,
+                      type: ChatErrorType.CreateMessageError,
+                    },
+                  }
+                : row,
+            ),
+            { context },
+          );
         return undefined;
       }
       // Update temp message with error

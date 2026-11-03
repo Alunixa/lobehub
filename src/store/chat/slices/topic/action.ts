@@ -928,10 +928,14 @@ export class ChatTopicActionImpl {
     const { activeAgentId, activeGroupId } = this.#get();
     // A blank chat inherits the conversation being left, not a shared Agent mutation.
     if (!id && activeAgentId && this.#get().activeTopicId) {
-      const inherited = topicSelectors.activeTopicModel(this.#get()) ??
+      const inherited =
+        topicSelectors.activeTopicModel(this.#get()) ??
         snapshotAgentModel(activeAgentId, this.#get());
       if (inherited.model && inherited.provider) {
-        this.#get().setNewTopicModel(activeAgentId, { model: inherited.model, provider: inherited.provider });
+        this.#get().setNewTopicModel(activeAgentId, {
+          model: inherited.model,
+          provider: inherited.provider,
+        });
       }
     }
 

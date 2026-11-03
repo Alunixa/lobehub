@@ -7,6 +7,7 @@ import { agentService } from '@/services/agent';
 import { aiChatService } from '@/services/aiChat';
 import { chatService } from '@/services/chat';
 import { messageService } from '@/services/message';
+import { topicService } from '@/services/topic';
 import * as agentGroupStore from '@/store/agentGroup';
 import { setPendingTopicRepos } from '@/store/chat/pendingTopicRepos';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
@@ -65,6 +66,14 @@ beforeEach(() => {
   const sessionStore = getSessionStoreState();
   vi.spyOn(sessionStore, 'triggerSessionUpdate').mockResolvedValue(undefined);
   vi.spyOn(agentService, 'getAgentConfigById').mockResolvedValue(createMockAgentConfig() as any);
+  vi.spyOn(topicService, 'getTopicDetail').mockImplementation(
+    async (id) =>
+      ({
+        id,
+        model: null,
+        provider: null,
+      }) as any,
+  );
 
   act(() => {
     useChatStore.setState({
@@ -72,6 +81,8 @@ beforeEach(() => {
       refreshTopic: vi.fn(),
       executeClientAgent: vi.fn(),
       mainInputEditor: null,
+      newTopicModelMap: {},
+      topicModelDetailMap: {},
     });
   });
 });
@@ -91,6 +102,63 @@ const createTestContext = (agentId: string = TEST_IDS.SESSION_ID) => ({
 });
 
 describe('ConversationLifecycle actions', () => {
+  describe('conversation model isolation', () => {
+    const a = { model: 'topic-a-model', provider: 'topic-a-provider' };
+    const b = { model: 'topic-b-model', provider: 'topic-b-provider' };
+
+    it('sends using the addressed topic even when another topic is active', async () => {
+      useChatStore.setState({
+        activeTopicId: 'topic-b',
+        topicModelDetailMap: { 'topic-a': a, 'topic-b': b },
+      });
+      const send = vi.spyOn(aiChatService, 'sendMessageInServer').mockResolvedValue({
+        messages: [],
+        topicId: 'topic-a',
+        userMessageId: 'user-a',
+        assistantMessageId: 'assistant-a',
+      } as any);
+      await useChatStore.getState().sendMessage({
+        context: { ...createTestContext(), topicId: 'topic-a' },
+        message: 'Isolated model',
+      });
+      expect(send.mock.calls[0][0].newAssistantMessage).toMatchObject(a);
+      expect(useChatStore.getState().topicModelDetailMap['topic-b']).toEqual(b);
+    });
+
+    it('uses the inherited model for the first request and seeds an isolated new topic', async () => {
+      useChatStore.setState({ newTopicModelMap: { [TEST_IDS.SESSION_ID]: b } });
+      const send = vi.spyOn(aiChatService, 'sendMessageInServer').mockResolvedValue({
+        messages: [],
+        topicId: 'new-isolated-topic',
+        isCreateNewTopic: true,
+        userMessageId: 'new-user',
+        assistantMessageId: 'new-assistant',
+      } as any);
+      await useChatStore.getState().sendMessage({
+        context: { ...createTestContext(), isolatedTopic: true },
+        message: 'First turn',
+      });
+      expect(send.mock.calls[0][0].newTopic).toMatchObject(b);
+      expect(send.mock.calls[0][0].newAssistantMessage).toMatchObject(b);
+      expect(useChatStore.getState().topicModelDetailMap['new-isolated-topic']).toEqual(b);
+    });
+
+    it('restores unsent text if model resolution fails instead of silently losing the send', async () => {
+      const setDocument = vi.fn();
+      useChatStore.setState({ mainInputEditor: { getJSONState: vi.fn(), setDocument } as any });
+      vi.spyOn(topicService, 'getTopicDetail').mockRejectedValue(new Error('Offline model lookup'));
+      const send = vi.spyOn(aiChatService, 'sendMessageInServer');
+      await useChatStore.getState().sendMessage({
+        context: { ...createTestContext(), topicId: 'offline-topic' },
+        message: 'Keep this text',
+      });
+      expect(send).not.toHaveBeenCalled();
+      expect(setDocument).toHaveBeenCalledWith('markdown', 'Keep this text');
+      expect(
+        Object.values(useChatStore.getState().operations).some((op) => op.status === 'failed'),
+      ).toBe(true);
+    });
+  });
   describe('manual context compression', () => {
     const context = {
       agentId: 'manual-agent',
@@ -116,6 +184,11 @@ describe('ConversationLifecycle actions', () => {
       vi.spyOn(useChatStore.getState(), 'replaceMessages').mockImplementation(() => {});
     });
     it('compresses once in the exact topic/thread without changing automatic compression', async () => {
+      useChatStore.setState({
+        topicModelDetailMap: {
+          'manual-topic': { model: 'manual-pinned', provider: 'manual-provider' },
+        },
+      });
       vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(
         async ({ onMessageHandle }) => {
           onMessageHandle?.({ type: 'text', text: 'Summary' } as any);
@@ -133,6 +206,11 @@ describe('ConversationLifecycle actions', () => {
         }),
       );
       expect(messageService.cancelCompression).not.toHaveBeenCalled();
+      expect(chatService.fetchPresetTaskResult).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.objectContaining({ model: 'manual-pinned', provider: 'manual-provider' }),
+        }),
+      );
     });
     it('restores original messages when the summary stream fails after partial text', async () => {
       vi.spyOn(chatService, 'fetchPresetTaskResult').mockImplementation(

@@ -126,7 +126,7 @@ describe('local-first cache chain (SWR + tiered provider + IndexedDB)', () => {
     );
 
     await waitFor(() => expect(result.result.current.data).toEqual(cachedMessages));
-    expect(onData).toHaveBeenCalledWith(cachedMessages);
+    expect(onData).toHaveBeenCalledWith(cachedMessages, { source: 'cache' });
 
     const networkMessages = [{ id: 'network-message', text: 'fresh' }];
     resolveNetwork!(networkMessages);

@@ -170,11 +170,15 @@ export class StreamingExecutorActionImpl {
       scope, // Pass scope from operation context
     });
 
-    const topicModel = !isSubAgent && !paramSubAgentId && topicId
-      ? topicSelectors.getTopicModelById(topicId)(this.#get())
-      : undefined;
+    const topicModel =
+      !isSubAgent && !paramSubAgentId && topicId
+        ? topicSelectors.getTopicModelById(topicId)(this.#get())
+        : undefined;
     const agentConfig: ResolvedAgentConfig = topicModel
-      ? { ...resolvedAgentConfig, agentConfig: { ...resolvedAgentConfig.agentConfig, ...topicModel } }
+      ? {
+          ...resolvedAgentConfig,
+          agentConfig: { ...resolvedAgentConfig.agentConfig, ...topicModel },
+        }
       : resolvedAgentConfig;
 
     const { agentConfig: agentConfigData, plugins: pluginIds } = agentConfig;

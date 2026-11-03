@@ -140,7 +140,6 @@ export const recomputeTopicUsage = async (
       hasCost = true;
     }
 
-
     // cost.llm.byModel mirrors the operation shape: cost-bearing models only,
     // each carrying its merged ModelUsage breakdown.
     if (rowCost != null) {

@@ -28,7 +28,7 @@ import { type ChatThreadAction } from './slices/thread/action';
 import { ChatThreadActionImpl } from './slices/thread/action';
 import { type ChatTopicAction } from './slices/topic/action';
 import { ChatTopicActionImpl } from './slices/topic/action';
-import { type TopicModelAction,TopicModelActionImpl } from './slices/topic/model';
+import { type TopicModelAction, TopicModelActionImpl } from './slices/topic/model';
 import { type ChatTranslateAction } from './slices/translate/action';
 import { ChatTranslateActionImpl } from './slices/translate/action';
 import { type ChatTTSAction } from './slices/tts/action';

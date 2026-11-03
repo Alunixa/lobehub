@@ -1067,7 +1067,10 @@ export class AiAgentService {
       ? await this.topicModel.findById(appContext.topicId)
       : undefined;
     if (
-      pinnedTopic?.model && pinnedTopic.provider &&
+      !appContext?.isSubAgent &&
+      appContext?.scope !== 'sub_agent' &&
+      pinnedTopic?.model &&
+      pinnedTopic.provider &&
       (!pinnedTopic.agentId || pinnedTopic.agentId === resolvedAgentId)
     ) {
       agentConfig = { ...agentConfig, model: pinnedTopic.model, provider: pinnedTopic.provider };
