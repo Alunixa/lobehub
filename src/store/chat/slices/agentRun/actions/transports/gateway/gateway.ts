@@ -26,6 +26,7 @@ import { getAgentStoreState } from '@/store/agent';
 import { chatConfigByIdSelectors } from '@/store/agent/selectors';
 import { consumePendingTopicRepos, getPendingTopicRepos } from '@/store/chat/pendingTopicRepos';
 import { topicSelectors } from '@/store/chat/selectors';
+import { leaveBlankConversationBucket } from '@/store/chat/slices/agentRun/actions/clearBlankBucket';
 import type { ChatStore } from '@/store/chat/store';
 import { messageMapKey } from '@/store/chat/utils/messageMapKey';
 import { snapshotAgentModel } from '@/store/chat/utils/snapshotAgentModel';
@@ -569,9 +570,9 @@ export class GatewayActionImpl {
         /* non-critical */
       }
 
-      await this.#get().switchTopic(result.topicId, {
-        clearNewKey: true,
-        skipRefreshMessage: true,
+      await leaveBlankConversationBucket(this.#get, context, {
+        isolated: context.isolatedTopic,
+        topicId: result.topicId,
       });
 
       // Refresh the topic list so the new topic appears in topicDataMap (sidebar).

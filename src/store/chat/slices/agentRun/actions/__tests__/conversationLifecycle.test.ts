@@ -2638,6 +2638,7 @@ describe('ConversationLifecycle actions', () => {
         // switchTopic should be called with the new topicId and clearNewKey option
         expect(switchTopicSpy).toHaveBeenCalledWith(newTopicId, {
           clearNewKey: true,
+          scope: 'main',
           skipRefreshMessage: true,
         });
 

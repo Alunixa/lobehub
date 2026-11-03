@@ -660,8 +660,13 @@ describe('GatewayActionImpl', () => {
     });
 
     it('should move queued follow-ups from the new-topic key to the server-created topic key', async () => {
-      const { action, moveQueuedMessages } = createExecuteTestAction();
+      const { action, moveQueuedMessages, state, switchTopic } = createExecuteTestAction();
       const context = { agentId: 'agent-1', topicId: null, threadId: null };
+      Object.assign(state, {
+        activeAgentId: 'agent-1',
+        activeGroupId: undefined,
+        activeTopicId: null,
+      });
 
       vi.mocked(aiAgentService.execAgentTask).mockResolvedValue({
         agentId: 'agent-1',
@@ -687,6 +692,11 @@ describe('GatewayActionImpl', () => {
         messageMapKey(context),
         messageMapKey({ ...context, topicId: 'topic-created' }),
       );
+      expect(switchTopic).toHaveBeenCalledWith('topic-created', {
+        clearNewKey: true,
+        scope: 'main',
+        skipRefreshMessage: true,
+      });
     });
 
     it('forwards the selected draft model when starting a new gateway topic', async () => {

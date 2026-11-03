@@ -103,6 +103,43 @@ describe('TopicModel - Create', () => {
       expect(unassociatedMessage[0].topicId).toBeNull();
     });
 
+    it('does not move messages that already belong to another topic', async () => {
+      await serverDB.insert(topics).values({
+        id: 'existing-topic',
+        sessionId,
+        title: 'Existing Topic',
+        userId,
+      });
+      await serverDB.insert(messages).values([
+        { id: 'blank-message', role: 'user', sessionId, userId },
+        {
+          id: 'existing-topic-message',
+          role: 'user',
+          sessionId,
+          topicId: 'existing-topic',
+          userId,
+        },
+      ]);
+
+      await topicModel.create(
+        {
+          messages: ['blank-message', 'existing-topic-message'],
+          sessionId,
+          title: 'New Topic',
+        },
+        'new-topic',
+      );
+
+      const result = await serverDB
+        .select({ id: messages.id, topicId: messages.topicId })
+        .from(messages)
+        .where(inArray(messages.id, ['blank-message', 'existing-topic-message']));
+      const byId = new Map(result.map((message) => [message.id, message.topicId]));
+
+      expect(byId.get('blank-message')).toBe('new-topic');
+      expect(byId.get('existing-topic-message')).toBe('existing-topic');
+    });
+
     it('should associate workspace messages created by another member', async () => {
       const workspaceId = 'topic-create-workspace';
       const workspaceSessionId = 'topic-create-workspace-session';

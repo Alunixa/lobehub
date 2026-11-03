@@ -751,7 +751,15 @@ export class TopicModel {
               tx
                 .update(messages)
                 .set({ topicId: topic.id })
-                .where(and(this.messageOwnership(), inArray(messages.id, messageIds))),
+                // Upstream regression fix #22194: only blank-bucket messages may
+                // be adopted; a later send must not detach rows from an old topic.
+                .where(
+                  and(
+                    this.messageOwnership(),
+                    inArray(messages.id, messageIds),
+                    isNull(messages.topicId),
+                  ),
+                ),
             { messageCount: messageIds.length },
           );
 

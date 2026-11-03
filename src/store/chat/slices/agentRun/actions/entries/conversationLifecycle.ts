@@ -46,6 +46,7 @@ import {
   displayMessageSelectors,
   topicSelectors,
 } from '@/store/chat/selectors';
+import { leaveBlankConversationBucket } from '@/store/chat/slices/agentRun/actions/clearBlankBucket';
 import { selectRuntimeType } from '@/store/chat/slices/agentRun/actions/dispatch/agentDispatcher';
 import { dispatchNonHeteroSubAgent } from '@/store/chat/slices/agentRun/actions/dispatch/nonHeteroSubAgentDispatcher';
 import { buildRunLifecycle } from '@/store/chat/slices/agentRun/actions/lifecycle/buildRunLifecycle';
@@ -1261,13 +1262,12 @@ export class ConversationLifecycleActionImpl {
           // Notify the isolated caller immediately so its UI re-subscribes to
           // the new topic key and picks up the streaming AI response.
           await onTopicCreated?.(data.topicId);
-        } else {
-          // clearNewKey: true ensures the _new key data is cleared after topic creation
-          await this.#get().switchTopic(data.topicId, {
-            clearNewKey: true,
-            skipRefreshMessage: true,
-          });
         }
+
+        await leaveBlankConversationBucket(this.#get, operationContext, {
+          isolated: context.isolatedTopic,
+          topicId: data.topicId,
+        });
       }
     } catch (e) {
       console.error(e);
