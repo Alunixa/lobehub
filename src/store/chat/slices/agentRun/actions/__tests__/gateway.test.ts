@@ -86,6 +86,11 @@ vi.mock('@/services/electron/gatewayConnection', () => ({
 vi.mock('@/store/agent', () => ({ getAgentStoreState: () => mockAgentStore.state }));
 
 vi.mock('@/store/agent/selectors', () => ({
+  agentByIdSelectors: {
+    getAgentModelById: (agentId: string) => (state: any) => state.agentMap[agentId]?.model,
+    getAgentModelProviderById: (agentId: string) => (state: any) =>
+      state.agentMap[agentId]?.provider,
+  },
   agentSelectors: { currentAgentWorkingDirectory: () => () => undefined },
   chatConfigByIdSelectors: {
     getChatConfigById: (agentId: string) => (state: any) =>
@@ -128,7 +133,7 @@ function createMockClient(): GatewayConnection['client'] & {
 const TEST_TOPIC_ID = 'topic-test';
 
 function createTestAction() {
-  const state: Record<string, any> = { gatewayConnections: {} };
+  const state: Record<string, any> = { gatewayConnections: {}, newTopicModelMap: {} };
   const set = vi.fn((updater: any) => {
     if (typeof updater === 'function') {
       Object.assign(state, updater(state));
@@ -511,7 +516,12 @@ describe('GatewayActionImpl', () => {
     function createExecuteTestAction() {
       const mockClient = createMockClient();
       const moveQueuedMessages = vi.fn();
-      const state: Record<string, any> = { gatewayConnections: {}, topicDataMap: {} };
+      const state: Record<string, any> = {
+        ensureTopicModel: vi.fn().mockResolvedValue(undefined),
+        gatewayConnections: {},
+        newTopicModelMap: {},
+        topicDataMap: {},
+      };
       const associateMessageWithOperation = vi.fn();
       const connectToGateway = vi.fn();
       const internalDispatchTopic = vi.fn();
@@ -676,6 +686,40 @@ describe('GatewayActionImpl', () => {
       expect(moveQueuedMessages).toHaveBeenCalledWith(
         messageMapKey(context),
         messageMapKey({ ...context, topicId: 'topic-created' }),
+      );
+    });
+
+    it('forwards the selected draft model when starting a new gateway topic', async () => {
+      const { action, state } = createExecuteTestAction();
+      mockAgentStore.state = {
+        activeAgentId: 'agent-1',
+        agentMap: { 'agent-1': { model: 'agent-model', provider: 'agent-provider' } },
+      };
+      state.newTopicModelMap['agent-1'] = { model: 'draft-model', provider: 'draft-provider' };
+
+      vi.mocked(aiAgentService.execAgentTask).mockResolvedValue({
+        agentId: 'agent-1',
+        assistantMessageId: 'ast-1',
+        autoStarted: true,
+        createdAt: new Date().toISOString(),
+        message: 'ok',
+        operationId: 'server-op-1',
+        status: 'created',
+        success: true,
+        timestamp: new Date().toISOString(),
+        token: 'test-token',
+        topicId: 'topic-created',
+        userMessageId: 'usr-1',
+      });
+
+      await action.executeGatewayAgent({
+        context: { agentId: 'agent-1', topicId: null, threadId: null, scope: 'main' },
+        message: 'Hello',
+      });
+
+      expect(aiAgentService.execAgentTask).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'draft-model', provider: 'draft-provider' }),
+        expect.anything(),
       );
     });
 
@@ -924,7 +968,11 @@ describe('GatewayActionImpl', () => {
       controller.abort('user cancelled');
 
       const mockClient = createMockClient();
-      const state: Record<string, any> = { gatewayConnections: {} };
+      const state: Record<string, any> = {
+        ensureTopicModel: vi.fn().mockResolvedValue(undefined),
+        gatewayConnections: {},
+        newTopicModelMap: {},
+      };
       const set = vi.fn((updater: any) => {
         if (typeof updater === 'function') Object.assign(state, updater(state));
         else Object.assign(state, updater);
@@ -1001,7 +1049,12 @@ describe('GatewayActionImpl', () => {
       const startOperation = vi.fn(() => ({ operationId: 'gw-op-local' }));
 
       const mockClient = createMockClient();
-      const state: Record<string, any> = { gatewayConnections: {}, topicDataMap: {} };
+      const state: Record<string, any> = {
+        ensureTopicModel: vi.fn().mockResolvedValue(undefined),
+        gatewayConnections: {},
+        newTopicModelMap: {},
+        topicDataMap: {},
+      };
       const set = vi.fn((updater: any) => {
         if (typeof updater === 'function') Object.assign(state, updater(state));
         else Object.assign(state, updater);
