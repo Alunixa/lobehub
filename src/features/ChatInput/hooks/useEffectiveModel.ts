@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+
 import { useAgentStore } from '@/store/agent';
 import { agentByIdSelectors } from '@/store/agent/selectors';
 import { useChatStore } from '@/store/chat';
@@ -37,6 +39,20 @@ export const useEffectiveModel = (agentId: string): ModelAndProvider => {
   );
   const useFetchTopicModel = useChatStore((s) => s.useFetchTopicModel);
   useFetchTopicModel(topicId);
+
+  // Route hydration and browser back/forward can bypass switchTopic. Remember
+  // the active conversation's choice too, without modifying the shared Agent.
+  useEffect(() => {
+    const state = useChatStore.getState();
+    if (
+      topicId &&
+      topicModel &&
+      state.activeTopicId === topicId &&
+      state.activeAgentId === agentId
+    ) {
+      state.setNewTopicModel(agentId, topicModel);
+    }
+  }, [agentId, topicId, topicModel?.model, topicModel?.provider]);
 
   return {
     model: topicModel?.model || agentModel,

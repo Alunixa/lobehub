@@ -25,6 +25,8 @@ export class TopicModelActionImpl {
   }
 
   setNewTopicModel = (agentId: string, selection: TopicModelSelection): void => {
+    const previous = this.#get().newTopicModelMap[agentId];
+    if (previous?.model === selection.model && previous.provider === selection.provider) return;
     this.#set((s) => ({ newTopicModelMap: { ...s.newTopicModelMap, [agentId]: selection } }));
   };
 

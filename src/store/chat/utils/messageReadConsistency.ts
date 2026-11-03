@@ -23,10 +23,15 @@ export const readMessagesWithBoundary = async (
 export const mergeMessageRead = (
   fetched: UIChatMessage[],
   local: UIChatMessage[],
-  options: { cache?: boolean; key: string; protectedIds?: ReadonlySet<string> },
+  options: {
+    cache?: boolean;
+    initialized?: boolean;
+    key: string;
+    protectedIds?: ReadonlySet<string>;
+  },
 ): UIChatMessage[] => {
   // Storage is a first-paint fallback, never newer than an already loaded bucket.
-  if (options.cache && local.length > 0) return local;
+  if (options.cache && (options.initialized || local.length > 0)) return local;
   const read = boundaries.get(fetched);
   const boundary = read?.key === options.key ? read : undefined;
   const before = boundary ? new Map(boundary.messages.map((m) => [m.id, m])) : undefined;

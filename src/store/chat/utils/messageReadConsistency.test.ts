@@ -74,6 +74,12 @@ describe('message snapshot consistency (upstream #20891/#21083)', () => {
     expect(mergeMessageRead(result, [row('2')], { key: 'topic-b' })).toEqual([]);
   });
 
+  it('does not resurrect deleted history from cache after the bucket was cleared', () => {
+    expect(
+      mergeMessageRead([row('deleted')], [], { ...options, cache: true, initialized: true }),
+    ).toEqual([]);
+  });
+
   it('accepts unrelated new server rows while protecting the local send', async () => {
     const start = row('1');
     const result = await read([start], [start, row('3')]);

@@ -247,6 +247,7 @@ export class MessageQueryActionImpl {
           const local = state.dbMessagesMap[key] ?? [];
           const merged = mergeMessageRead(data, local, {
             cache: info?.source === 'cache',
+            initialized: Object.hasOwn(state.dbMessagesMap, key),
             key,
             protectedIds: new Set(
               local

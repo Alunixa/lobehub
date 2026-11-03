@@ -251,6 +251,7 @@ export const dataSlice: StateCreator<
           const mergedMessages = mergeMessageRead(data, prevDbMessages, {
             key: contextKey,
             cache: info?.source === 'cache',
+            initialized: get().messagesInit,
             protectedIds: new Set(
               prevDbMessages
                 .filter(
