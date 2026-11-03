@@ -1,11 +1,14 @@
 /**
  * @vitest-environment happy-dom
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
+import { createContext, use } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Nav from './Nav';
+
+const RouteContext = createContext(0);
 
 const mutateMock = vi.hoisted(() => vi.fn());
 const openNewTopicOrSaveTopicMock = vi.hoisted(() => vi.fn());
@@ -76,13 +79,17 @@ vi.mock('@/hooks/useQueryRoute', () => ({
 }));
 
 vi.mock('@/libs/router/navigation', () => ({
-  usePathname: usePathnameMock,
+  usePathname: () => {
+    use(RouteContext);
+    return usePathnameMock();
+  },
 }));
 
 vi.mock('@/libs/swr', () => ({
-  useActionSWR: () => ({
-    mutate: mutateMock,
-  }),
+  useActionSWR: (_key: unknown, fetcher: () => Promise<boolean>) => {
+    mutateMock.mockImplementation(fetcher);
+    return { mutate: mutateMock };
+  },
 }));
 
 vi.mock('@/hooks/usePermission', () => ({
@@ -105,7 +112,7 @@ vi.mock('@/store/agent/selectors', () => ({
 vi.mock('@/store/chat', () => ({
   useChatStore: (
     selector: (state: {
-      openNewTopicOrSaveTopic: () => void;
+      openNewTopicOrSaveTopic: (options?: unknown) => Promise<boolean>;
       switchTopic: (topicId: string | null, options?: unknown) => void;
     }) => unknown,
   ) =>
@@ -138,11 +145,12 @@ describe('Agent sidebar header nav', () => {
     useParamsMock.mockReset();
     usePathnameMock.mockReset();
     permissionMock.create_content = true;
+    openNewTopicOrSaveTopicMock.mockResolvedValue(true);
 
     useParamsMock.mockReturnValue({ aid: 'agt_eH4zL98zBx5u', topicId: 'tpc_2FCHvjS7d4CA' });
   });
 
-  it('returns to the agent chat route before opening a new topic from a topic page document route', () => {
+  it('resolves the source URL topic before returning from a document route to the bare chat', async () => {
     usePathnameMock.mockReturnValue(
       '/agent/agt_eH4zL98zBx5u/tpc_2FCHvjS7d4CA/page/docs_9B8hFkmEOZyPZb60',
     );
@@ -151,19 +159,73 @@ describe('Agent sidebar header nav', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.addNewTopic' }));
 
-    expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u');
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u'));
     expect(mutateMock).toHaveBeenCalledTimes(1);
+    expect(openNewTopicOrSaveTopicMock).toHaveBeenCalledWith({
+      source: { agentId: 'agt_eH4zL98zBx5u', topicId: 'tpc_2FCHvjS7d4CA' },
+      isCurrent: expect.any(Function),
+    });
+    expect(openNewTopicOrSaveTopicMock.mock.invocationCallOrder[0]).toBeLessThan(
+      pushMock.mock.invocationCallOrder[0],
+    );
   });
 
-  it('pushes the agent chat route even when already on it', () => {
+  it('pushes the agent chat route even when already on it', async () => {
+    useParamsMock.mockReturnValue({ aid: 'agt_eH4zL98zBx5u' });
     usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u');
 
     render(<Nav />);
 
     fireEvent.click(screen.getByRole('button', { name: 'actions.addNewTopic' }));
 
-    expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u');
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u'));
     expect(mutateMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['route', 'unmount'] as const)(
+    'does not navigate after a pending load is invalidated by %s',
+    async (kind) => {
+      usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u/tpc_2FCHvjS7d4CA');
+      let finish!: (value: boolean) => void;
+      openNewTopicOrSaveTopicMock.mockReturnValueOnce(
+        new Promise((r) => {
+          finish = r;
+        }),
+      );
+      const view = render(
+        <RouteContext value={0}>
+          <Nav />
+        </RouteContext>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'actions.addNewTopic' }));
+      const options = openNewTopicOrSaveTopicMock.mock.calls[0][0];
+      expect(options.isCurrent()).toBe(true);
+      expect(pushMock).not.toHaveBeenCalled();
+      if (kind === 'route') {
+        usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u/other-topic');
+        useParamsMock.mockReturnValue({ aid: 'agt_eH4zL98zBx5u', topicId: 'other-topic' });
+        view.rerender(
+          <RouteContext value={1}>
+            <Nav />
+          </RouteContext>,
+        );
+      } else view.unmount();
+      expect(options.isCurrent()).toBe(false);
+      await act(async () => {
+        finish(true);
+      });
+      expect(pushMock).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps the current route when a newer store operation cancelled creation', async () => {
+    usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u/tpc_2FCHvjS7d4CA');
+    openNewTopicOrSaveTopicMock.mockResolvedValueOnce(false);
+    render(<Nav />);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'actions.addNewTopic' }));
+    });
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
   it('disables starting a new topic for workspace viewers', () => {

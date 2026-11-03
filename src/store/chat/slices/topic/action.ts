@@ -22,10 +22,12 @@ import { message } from '@/components/AntdStaticMethods';
 import { LOADING_FLAT } from '@/const/message';
 import { mutate, useClientDataSWR, useClientDataSWRWithSync } from '@/libs/swr';
 import { cronKeys, topicKeys } from '@/libs/swr/keys';
+import { agentService } from '@/services/agent';
 import { aiChatService } from '@/services/aiChat';
 import { conversationFeatureService } from '@/services/conversationFeatures';
 import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
+import { getAgentStoreState } from '@/store/agent';
 import { type ChatStore } from '@/store/chat';
 import { evictMessageCache } from '@/store/chat/utils/evictMessageCache';
 import { snapshotAgentModel } from '@/store/chat/utils/snapshotAgentModel';
@@ -57,6 +59,13 @@ type CronTopicsGroupWithJobInfo = {
   topics: ChatTopic[];
 };
 
+export interface OpenNewTopicOptions {
+  /** A route change while loading must cancel the pending new-topic action. */
+  isCurrent?: () => boolean;
+  /** Route identity is available before ChatHydration has populated the store. */
+  source?: { agentId: string; topicId?: string | null };
+}
+
 /**
  * Options for switchTopic action
  */
@@ -67,6 +76,8 @@ export interface SwitchTopicOptions {
    * @default false
    */
   clearNewKey?: boolean;
+  /** A new-topic action may already have resolved the source model explicitly. */
+  inheritModel?: boolean;
   /**
    * Explicit scope for clearing new key data
    * If not provided, will be inferred from store state (activeGroupId)
@@ -107,15 +118,51 @@ export class ChatTopicActionImpl {
     this.#set({ allTopicsDrawerOpen: true }, false, n('openAllTopicsDrawer'));
   };
 
-  openNewTopicOrSaveTopic = async (): Promise<void> => {
-    const { switchTopic, saveToTopic, refreshMessages, activeTopicId } = this.#get();
-    const hasTopic = !!activeTopicId;
+  openNewTopicOrSaveTopic = async (options?: OpenNewTopicOptions): Promise<boolean> => {
+    const source = options?.source ?? {
+      agentId: this.#get().activeAgentId,
+      topicId: this.#get().activeTopicId,
+    };
+    const epoch = ++this.#switchTopicEpoch;
+    const isCurrent = () =>
+      epoch === this.#switchTopicEpoch &&
+      (options?.isCurrent
+        ? options.isCurrent()
+        : this.#get().activeAgentId === source.agentId &&
+          this.#get().activeTopicId === source.topicId);
 
-    if (hasTopic) switchTopic(null);
-    else {
-      await saveToTopic();
-      refreshMessages();
+    if (source.topicId && source.agentId) {
+      await this.#get().ensureTopicModel(source.topicId);
+      if (!isCurrent()) return false;
+      let inherited = topicSelectors.getTopicModelById(source.topicId)(this.#get());
+      if (!inherited) {
+        // Legacy topics have no saved selection. Never snapshot the global
+        // default merely because the owning Agent's config is still loading.
+        const config =
+          getAgentStoreState().agentMap[source.agentId] ??
+          (await agentService.getAgentConfigById(source.agentId));
+        if (!isCurrent()) return false;
+        const draft = this.#get().newTopicModelMap[source.agentId];
+        const selection = draft ?? config;
+        if (!selection?.model || !selection.provider) throw new Error('Agent model not available');
+        inherited = { model: selection.model, provider: selection.provider };
+      }
+      this.#get().setNewTopicModel(source.agentId, inherited);
+      // Preserve the explicitly resolved source, even if route hydration has
+      // not set activeTopicId yet. Generic deletion switches remain synchronous.
+      await this.#get().switchTopic(null, { inheritModel: false });
+      return true;
     }
+
+    if (!isCurrent()) return false;
+    if (source.topicId) {
+      await this.#get().switchTopic(null);
+    } else {
+      await this.#get().saveToTopic();
+      if (!isCurrent()) return false;
+      await this.#get().refreshMessages();
+    }
+    return true;
   };
 
   createTopic = async (sessionId?: string): Promise<string | undefined> => {
@@ -927,7 +974,7 @@ export class ChatTopicActionImpl {
 
     const { activeAgentId, activeGroupId } = this.#get();
     // A blank chat inherits the conversation being left, not a shared Agent mutation.
-    if (!id && activeAgentId && this.#get().activeTopicId) {
+    if (opts.inheritModel !== false && !id && activeAgentId && this.#get().activeTopicId) {
       const inherited =
         topicSelectors.activeTopicModel(this.#get()) ??
         snapshotAgentModel(activeAgentId, this.#get());

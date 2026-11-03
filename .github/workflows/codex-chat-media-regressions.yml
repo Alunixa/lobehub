@@ -102,6 +102,7 @@ jobs:
             src/store/chat/slices/message/action.test.ts \
             src/store/chat/slices/topic/action.test.ts \
             src/store/chat/slices/topic/model.test.ts \
+            'src/routes/(main)/agent/_layout/Sidebar/Header/Nav.test.tsx' \
             src/store/chat/slices/topic/selectors.test.ts \
             src/store/chat/utils/messageReadConsistency.test.ts \
             src/features/Conversation/store/slices/data/action.race.test.ts \

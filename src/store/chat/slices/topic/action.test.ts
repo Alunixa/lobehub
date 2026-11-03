@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOADING_FLAT } from '@/const/message';
 import { mutate } from '@/libs/swr';
+import { agentService } from '@/services/agent';
 import { aiChatService } from '@/services/aiChat';
 import { messageService } from '@/services/message';
 import { topicService } from '@/services/topic';
@@ -152,13 +153,19 @@ describe('topic action', () => {
     it('should call switchTopic if activeTopicId exists', async () => {
       const { result } = renderHook(() => useChatStore());
       await act(async () => {
-        useChatStore.setState({ activeTopicId: 'existing-topic-id' });
+        useChatStore.setState({
+          activeAgentId: 'existing-agent',
+          activeTopicId: 'existing-topic-id',
+          topicModelDetailMap: {
+            'existing-topic-id': { model: 'model-b', provider: 'provider-b' },
+          },
+        });
       });
 
       const switchTopicSpy = vi.spyOn(result.current, 'switchTopic');
 
       await act(async () => {
-        result.current.openNewTopicOrSaveTopic();
+        await result.current.openNewTopicOrSaveTopic();
       });
 
       expect(switchTopicSpy).toHaveBeenCalled();
@@ -177,6 +184,124 @@ describe('topic action', () => {
       });
 
       expect(saveToTopicSpy).toHaveBeenCalled();
+    });
+
+    it('loads the URL topic model before clearing a not-yet-hydrated conversation', async () => {
+      useChatStore.setState({ activeAgentId: 'cold-agent', activeTopicId: undefined });
+      let resolve!: (value: Awaited<ReturnType<typeof topicService.getTopicDetail>>) => void;
+      vi.mocked(topicService.getTopicDetail).mockReturnValueOnce(
+        new Promise((r) => {
+          resolve = r;
+        }),
+      );
+      const switchSpy = vi.spyOn(useChatStore.getState(), 'switchTopic');
+      const pending = useChatStore.getState().openNewTopicOrSaveTopic({
+        source: { agentId: 'cold-agent', topicId: 'cold-topic' },
+        isCurrent: () => true,
+      });
+      expect(topicService.getTopicDetail).toHaveBeenCalledWith('cold-topic');
+      expect(switchSpy).not.toHaveBeenCalled();
+      // Hydration may finish while the authoritative detail is still loading.
+      useChatStore.setState({ activeTopicId: 'cold-topic' });
+      resolve({ model: 'model-b', provider: 'provider-b' } as Awaited<
+        ReturnType<typeof topicService.getTopicDetail>
+      >);
+      expect(await pending).toBe(true);
+      expect(useChatStore.getState().newTopicModelMap['cold-agent']).toEqual({
+        model: 'model-b',
+        provider: 'provider-b',
+      });
+      expect(useChatStore.getState().activeTopicId).toBeNull();
+    });
+
+    it('waits for a pending selection save instead of inheriting its previous value', async () => {
+      const id = 'pending-save-new-topic';
+      useChatStore.setState({
+        activeAgentId: 'agent-save',
+        activeTopicId: id,
+        topicModelDetailMap: { [id]: { model: 'model-a', provider: 'provider-a' } },
+      });
+      let finish!: () => void;
+      vi.mocked(topicService.updateTopic).mockReturnValueOnce(
+        new Promise((r) => {
+          finish = () => r(undefined as never);
+        }),
+      );
+      const save = useChatStore
+        .getState()
+        .updateTopicModel(id, { model: 'model-b', provider: 'provider-b' });
+      const pending = useChatStore.getState().openNewTopicOrSaveTopic();
+      expect(useChatStore.getState().activeTopicId).toBe(id);
+      finish();
+      await save;
+      expect(await pending).toBe(true);
+      expect(useChatStore.getState().newTopicModelMap['agent-save']).toEqual({
+        model: 'model-b',
+        provider: 'provider-b',
+      });
+    });
+
+    it('does not switch or seed a draft when the source read fails', async () => {
+      useChatStore.setState({ activeAgentId: 'failure-agent', activeTopicId: 'failure-topic' });
+      vi.mocked(topicService.getTopicDetail).mockRejectedValueOnce(new Error('offline'));
+      await expect(useChatStore.getState().openNewTopicOrSaveTopic()).rejects.toThrow('offline');
+      expect(useChatStore.getState().activeTopicId).toBe('failure-topic');
+      expect(useChatStore.getState().newTopicModelMap).toEqual({});
+    });
+
+    it.each(['topic', 'agent', 'route', 'switch'] as const)(
+      'cancels the source load after a newer %s change',
+      async (kind) => {
+        const id = 'cancel-new-' + kind;
+        useChatStore.setState({ activeAgentId: 'cancel-agent', activeTopicId: id });
+        let resolve!: (value: Awaited<ReturnType<typeof topicService.getTopicDetail>>) => void;
+        vi.mocked(topicService.getTopicDetail).mockReturnValueOnce(
+          new Promise((r) => {
+            resolve = r;
+          }),
+        );
+        let current = true;
+        const pending = useChatStore.getState().openNewTopicOrSaveTopic(
+          kind === 'route'
+            ? {
+                source: { agentId: 'cancel-agent', topicId: id },
+                isCurrent: () => current,
+              }
+            : undefined,
+        );
+        if (kind === 'route') current = false;
+        if (kind === 'topic') useChatStore.setState({ activeTopicId: 'other-topic' });
+        if (kind === 'agent') useChatStore.setState({ activeAgentId: 'other-agent' });
+        if (kind === 'switch')
+          await useChatStore.getState().switchTopic('other-topic', { skipRefreshMessage: true });
+        const before = useChatStore.getState();
+        resolve({ model: 'model-b', provider: 'provider-b' } as Awaited<
+          ReturnType<typeof topicService.getTopicDetail>
+        >);
+        expect(await pending).toBe(false);
+        expect(useChatStore.getState().activeTopicId).toBe(before.activeTopicId);
+        expect(useChatStore.getState().activeAgentId).toBe(before.activeAgentId);
+        expect(useChatStore.getState().newTopicModelMap).toEqual({});
+      },
+    );
+
+    it('loads the owning Agent for a legacy topic without using the global fallback', async () => {
+      useAgentStore.setState({ agentMap: {} });
+      useChatStore.setState({
+        activeAgentId: 'legacy-agent',
+        activeTopicId: 'legacy-topic',
+        topicModelDetailMap: { 'legacy-topic': { model: null, provider: null } },
+      });
+      const config = vi.spyOn(agentService, 'getAgentConfigById').mockResolvedValueOnce({
+        model: 'configured-model',
+        provider: 'configured-provider',
+      } as Awaited<ReturnType<typeof agentService.getAgentConfigById>>);
+      expect(await useChatStore.getState().openNewTopicOrSaveTopic()).toBe(true);
+      expect(config).toHaveBeenCalledWith('legacy-agent');
+      expect(useChatStore.getState().newTopicModelMap['legacy-agent']).toEqual({
+        model: 'configured-model',
+        provider: 'configured-provider',
+      });
     });
   });
   describe('saveToTopic', () => {

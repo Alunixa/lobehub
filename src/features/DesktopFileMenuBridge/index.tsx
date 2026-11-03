@@ -27,7 +27,7 @@ const DesktopFileMenuBridge = () => {
   // If not in an agent page, navigate to inbox agent.
   const handleCreateNewTopic = useCallback(() => {
     if (activeAgentId) {
-      useChatStore.getState().switchTopic(null);
+      void useChatStore.getState().openNewTopicOrSaveTopic();
       return;
     }
     navigate(AGENT_CHAT_URL(inboxAgentId, false));

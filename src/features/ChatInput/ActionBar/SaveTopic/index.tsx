@@ -24,9 +24,8 @@ const SaveTopic = memo(() => {
 
   const mobile = useIsMobile();
 
-  const { mutate, isValidating } = useActionSWR(
-    topicActionKeys.openNewOrSave(),
-    openNewTopicOrSaveTopic,
+  const { mutate, isValidating } = useActionSWR(topicActionKeys.openNewOrSave(), () =>
+    openNewTopicOrSaveTopic(),
   );
 
   const [confirmOpened, setConfirmOpened] = useState(false);

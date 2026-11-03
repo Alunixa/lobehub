@@ -8,7 +8,7 @@ import {
   RadioTowerIcon,
   SearchIcon,
 } from 'lucide-react';
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import urlJoin from 'url-join';
@@ -49,24 +49,48 @@ const Nav = memo(() => {
     hideProfile || (!!heterogeneousProviderType && heterogeneousProviderType !== 'claude-code');
   const switchTopic = useChatStore((s) => s.switchTopic);
   const [openNewTopicOrSaveTopic] = useChatStore((s) => [s.openNewTopicOrSaveTopic]);
+  const routeRef = useRef({ agentId, pathname, topicId: params.topicId });
+  routeRef.current = { agentId, pathname, topicId: params.topicId };
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
-  const { mutate } = useActionSWR(topicActionKeys.openNewOrSave(), openNewTopicOrSaveTopic);
-  const handleNewTopic = () => {
+  const { mutate, isValidating } = useActionSWR(
+    // A shared action key can select another composer's fetcher, losing the
+    // source route before ChatHydration is ready. Keep this intent route-owned.
+    [...topicActionKeys.openNewOrSave(), 'sidebar', pathname],
+    () => {
+      const source = routeRef.current;
+      return openNewTopicOrSaveTopic({
+        source: source.agentId ? { agentId: source.agentId, topicId: source.topicId } : undefined,
+        isCurrent: () => mountedRef.current && routeRef.current.pathname === source.pathname,
+      });
+    },
+    { shouldRetryOnError: false },
+  );
+  const handleNewTopic = async () => {
     if (!canCreateTopic) return;
+    const source = routeRef.current;
+    const opened = await mutate();
+    if (!opened || !mountedRef.current || routeRef.current.pathname !== source.pathname) return;
     // Always navigate to the bare agent chat URL — drops any sub-route
     // (/profile, /channel, /page, /cron/:cronId, …) and any `:topicId`
     // segment so the new topic isn't conflated with the previous URL.
-    if (agentId) {
-      router.push(urlJoin('/agent', agentId));
+    if (source.agentId) {
+      router.push(urlJoin('/agent', source.agentId));
     }
-    mutate();
   };
 
   return (
     <Flexbox gap={1} paddingInline={4}>
       <NavItem
-        disabled={!canCreateTopic}
+        disabled={!canCreateTopic || isValidating}
         icon={MessageSquarePlusIcon}
+        loading={isValidating}
         title={tTopic('actions.addNewTopic')}
         onClick={handleNewTopic}
       />
