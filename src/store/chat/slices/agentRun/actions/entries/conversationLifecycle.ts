@@ -99,6 +99,8 @@ export interface SendMessageWithContextParams extends SendMessageParams {
    * Contains sessionId, topicId, and threadId
    */
   context: ConversationContext;
+  /** Restore the owning conversation's draft only if persistence failed. */
+  onSendError?: () => void;
   /**
    * Called as soon as the backend reports a newly created topic id, so callers
    * with an isolated topic scope (e.g. Task Manager) can switch their UI to the
@@ -246,6 +248,7 @@ export class ConversationLifecycleActionImpl {
     parentId: inputParentId,
     pageSelections,
     onTopicCreated,
+    onSendError,
   }: SendMessageWithContextParams): Promise<SendMessageResult | undefined> => {
     let editorData = inputEditorData;
     const { executeClientAgent, mainInputEditor } = this.#get();
@@ -771,6 +774,43 @@ export class ConversationLifecycleActionImpl {
       inputSendErrorMsg: undefined,
     });
 
+    const handleSendFailure = (error: unknown, type: string, persisted = false) => {
+      const operation = this.#get().operations[operationId];
+      const isAbort =
+        operation?.status === 'cancelled' ||
+        abortController.signal.aborted ||
+        (error instanceof Error && error.name === 'AbortError');
+      if (isAbort) {
+        // A transport AbortError can arrive before cancelOperation was called.
+        // Terminate the send so the input cannot remain stuck in a running state.
+        if (operation?.status === 'running') {
+          this.#get().cancelOperation(operationId, 'Send aborted');
+        }
+      } else {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        this.#get().failOperation(operationId, { message: errorMessage, type });
+        this.#get().updateOperationMetadata(operationId, { inputSendErrorMsg: errorMessage });
+        if (!persisted) {
+          if (onSendError) onSendError();
+          else if (
+            mainInputEditor &&
+            this.#get().mainInputEditor === mainInputEditor &&
+            this.#get().activeAgentId === operationContext.agentId &&
+            (this.#get().activeTopicId ?? null) === (operationContext.topicId ?? null) &&
+            !mainInputEditor.getMarkdownContent().trim()
+          ) {
+            if (jsonState) mainInputEditor.setJSONState(jsonState);
+            else mainInputEditor.setDocument('markdown', message);
+          }
+        }
+      }
+      this.#get().internal_dispatchMessage(
+        { type: 'deleteMessages', ids: [tempId, tempAssistantId] },
+        { operationId },
+      );
+      if (!persisted) rollbackOptimisticTopic('sendMessage/rollbackOptimisticTopic');
+    };
+
     // ── External agent mode: delegate to heterogeneous agent CLI (desktop only) ──
     // Per-agent heterogeneousProvider config takes priority over the global gateway mode.
     if (runtimeType === 'hetero' && heterogeneousProvider) {
@@ -828,11 +868,7 @@ export class ConversationLifecycleActionImpl {
         );
       } catch (e) {
         console.error('[HeterogeneousAgent] Failed to persist messages:', e);
-        this.#get().failOperation(operationId, {
-          message: e instanceof Error ? e.message : 'Unknown error',
-          type: 'HeterogeneousAgentError',
-        });
-        rollbackOptimisticTopic('sendMessage/rollbackOptimisticTopic');
+        handleSendFailure(e, 'HeterogeneousAgentError');
         return;
       }
 
@@ -993,6 +1029,7 @@ export class ConversationLifecycleActionImpl {
     // the gateway when gateway mode is enabled. Routing the supervisor through the
     // gateway here would drop the mention entirely (execAgentTask carries no mention data).
     if (runtimeType === 'gateway' && !directMentionRoute) {
+      let persisted = false;
       try {
         // Pass `sendMessage` as `parentOperationId` so executeGatewayAgent
         // completes it the instant phase-1 init finishes (after the child
@@ -1006,6 +1043,10 @@ export class ConversationLifecycleActionImpl {
           message,
           metadata: requestMetadata,
           parentOperationId: operationId,
+          onMessagePersisted: () => {
+            persisted = true;
+            this.#get().updateOperationMetadata(operationId, { inputEditorTempState: null });
+          },
           optimisticTopic,
           // Forward @-mentioned tool ids so the server runtime enables them for
           // this run — the gateway/server path otherwise never sees the mention
@@ -1057,16 +1098,12 @@ export class ConversationLifecycleActionImpl {
         // server task. Don't clobber that with 'failed'.
         const op = this.#get().operations[operationId];
         if (op?.status === 'cancelled') {
-          rollbackOptimisticTopic('sendMessage/rollbackOptimisticTopic');
+          handleSendFailure(e, 'GatewayError', persisted);
           return;
         }
 
         console.error('[Gateway] Failed to start server-side agent:', e);
-        this.#get().failOperation(operationId, {
-          message: e instanceof Error ? e.message : 'Unknown error',
-          type: 'GatewayError',
-        });
-        rollbackOptimisticTopic('sendMessage/rollbackOptimisticTopic');
+        handleSendFailure(e, 'GatewayError', persisted);
         return;
       }
     }
@@ -1271,26 +1308,7 @@ export class ConversationLifecycleActionImpl {
       }
     } catch (e) {
       console.error(e);
-      rollbackOptimisticTopic('sendMessage/rollbackOptimisticTopic');
-      // Fail operation on error
-      this.#get().failOperation(operationId, {
-        type: e instanceof Error ? e.name : 'unknown_error',
-        message: e instanceof Error ? e.message : 'Unknown error',
-      });
-
-      if (e instanceof Error) {
-        const isAbort = e.message.includes('aborted') || e.name === 'AbortError';
-        // Check if error is due to cancellation
-        if (!isAbort) {
-          this.#get().updateOperationMetadata(operationId, { inputSendErrorMsg: e.message });
-          const op = this.#get().operations[operationId];
-          if (op?.metadata.inputEditorTempState) {
-            this.#get().mainInputEditor?.setJSONState(op.metadata.inputEditorTempState);
-          } else {
-            this.#get().mainInputEditor?.setDocument('markdown', message);
-          }
-        }
-      }
+      handleSendFailure(e, e instanceof Error ? e.name : 'unknown_error', !!data);
     } finally {
       // A new topic was created, or the user cancelled the message (or it failed), so data is absent here
       if (isCreatedTopicResponse(data) || !data) {

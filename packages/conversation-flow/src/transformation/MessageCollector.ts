@@ -1,5 +1,7 @@
 import type { ContextNode, IdNode, Message, MessageNode, SignalCallbacksNode } from '../types';
 import { BranchResolver } from './BranchResolver';
+import type { Traversal } from './traversal';
+import { runTraversal } from './traversal';
 
 /**
  * Persisted external-signal lineage on `message.metadata.signal` —
@@ -151,7 +153,7 @@ export class MessageCollector {
   }
 
   /**
-   * Recursively collect the entire assistant chain
+   * Collect the entire assistant chain without growing the call stack
    * (assistant -> tools -> assistant -> tools -> ...)
    * Only collects messages from the SAME agent (matching agentId)
    */
@@ -162,74 +164,20 @@ export class MessageCollector {
     allToolMessages: Message[],
     processedIds: Set<string>,
   ): void {
-    if (processedIds.has(currentAssistant.id)) return;
-
-    // Mark visited up front so duplicated tool_call_ids (the same tool result
-    // reachable from multiple assistants) can't recurse forever.
-    processedIds.add(currentAssistant.id);
-
-    // Add current assistant to chain
-    assistantChain.push(currentAssistant);
-
-    // Get the agentId of the first assistant in the chain (the group owner)
-    const groupAgentId = assistantChain[0].agentId;
-
-    // Collect its tool messages
-    const toolMessages = this.collectToolMessages(currentAssistant, allMessages);
-    allToolMessages.push(...toolMessages);
-
-    // Find the next step's assistant. Role-aware dual-form walk:
-    // the continuation may hang off this assistant directly (assistant-anchored
-    // / new form) OR off one of its tool results (tool-anchored / old form).
-    const continuation = this.findFlatChainContinuation(
-      currentAssistant,
-      toolMessages,
-      allMessages,
-      processedIds,
-      groupAgentId,
-    );
-    if (!continuation) return;
-
-    if (continuation.tools && continuation.tools.length > 0) {
-      // Continue the chain (recursion marks it processed at the top)
-      this.collectAssistantChain(
-        continuation,
-        allMessages,
-        assistantChain,
-        allToolMessages,
-        processedIds,
-      );
-      return;
-    }
-
-    // Toolless continuations are still part of the same hetero-agent run. The
-    // model can emit several prose-only progress updates before the next tool
-    // call, so keep walking until the chain either ends in a toolless final
-    // answer or reaches the next tool-using assistant.
-    let toollessContinuation: Message | undefined = continuation;
-    while (
-      toollessContinuation &&
-      (!toollessContinuation.tools || toollessContinuation.tools.length === 0)
-    ) {
-      assistantChain.push(toollessContinuation);
-      processedIds.add(toollessContinuation.id);
-
-      toollessContinuation = this.findFlatChainContinuation(
-        toollessContinuation,
-        [], // a toolless step owns no tool results
+    const groupAgentId =
+      assistantChain.length > 0 ? assistantChain[0].agentId : currentAssistant.agentId;
+    let current: Message | undefined = currentAssistant;
+    while (current && !processedIds.has(current.id)) {
+      processedIds.add(current.id);
+      assistantChain.push(current);
+      const toolMessages = this.collectToolMessages(current, allMessages);
+      allToolMessages.push(...toolMessages);
+      current = this.findFlatChainContinuation(
+        current,
+        toolMessages,
         allMessages,
         processedIds,
         groupAgentId,
-      );
-    }
-
-    if (toollessContinuation) {
-      this.collectAssistantChain(
-        toollessContinuation,
-        allMessages,
-        assistantChain,
-        allToolMessages,
-        processedIds,
       );
     }
   }
@@ -405,32 +353,18 @@ export class MessageCollector {
     children: ContextNode[],
     groupAgentId?: string,
   ): void {
-    // Get the agentId of the first assistant in the group (the group owner)
     const agentId = groupAgentId ?? message.agentId;
-
-    // Get tool message IDs if this assistant has tools
-    const toolIds = idNode.children
-      .filter((child) => {
-        const childMsg = this.messageMap.get(child.id);
-        return childMsg?.role === 'tool';
-      })
-      .map((child) => child.id);
-
-    // Add current assistant message node
-    const messageNode: MessageNode = {
-      id: message.id,
-      type: 'message',
-    };
-    if (toolIds.length > 0) {
-      messageNode.tools = toolIds;
-    }
-    children.push(messageNode);
-
-    // Find the next step's assistant (dual-form aware, see findChainContinuationNode)
-    const nextNode = this.findChainContinuationNode(idNode, agentId);
-    if (nextNode) {
-      const nextMsg = this.messageMap.get(nextNode.id)!;
-      this.collectAssistantGroupMessages(nextMsg, nextNode, children, agentId);
+    const visited = new Set<string>();
+    let node: IdNode | undefined = idNode;
+    while (node && !visited.has(node.id)) {
+      visited.add(node.id);
+      const toolIds = node.children
+        .filter((child) => this.messageMap.get(child.id)?.role === 'tool')
+        .map((child) => child.id);
+      const messageNode: MessageNode = { id: node.id, type: 'message' };
+      if (toolIds.length > 0) messageNode.tools = toolIds;
+      children.push(messageNode);
+      node = this.findChainContinuationNode(node, agentId);
     }
   }
 
@@ -501,7 +435,7 @@ export class MessageCollector {
     const blocks: SignalCallbacksNode[] = [];
     const visited = new Set<string>();
 
-    const walk = (node: IdNode): void => {
+    const walk = function* (this: MessageCollector, node: IdNode): Traversal {
       if (visited.has(node.id)) return;
       visited.add(node.id);
 
@@ -548,13 +482,13 @@ export class MessageCollector {
           if (nextMsg?.role !== 'assistant') continue;
           if (nextMsg.agentId !== groupAgentId) continue;
           if (getMessageSignal(nextMsg)) continue;
-          walk(nextChild);
+          yield walk.call(this, nextChild);
           break;
         }
       }
     };
 
-    walk(idNode);
+    runTraversal(walk.call(this, idNode));
     return blocks;
   }
 
@@ -580,7 +514,7 @@ export class MessageCollector {
     const nodes: MessageNode[] = [];
     const visited = new Set<string>();
 
-    const walk = (node: IdNode): void => {
+    const walk = function* (this: MessageCollector, node: IdNode): Traversal {
       if (visited.has(node.id)) return;
       visited.add(node.id);
 
@@ -604,13 +538,13 @@ export class MessageCollector {
           if (nextMsg?.role !== 'assistant') continue;
           if (nextMsg.agentId !== groupAgentId) continue;
           if (getMessageSignal(nextMsg)) continue;
-          walk(nextChild);
+          yield walk.call(this, nextChild);
           break;
         }
       }
     };
 
-    walk(idNode);
+    runTraversal(walk.call(this, idNode));
     return nodes;
   }
 
@@ -653,10 +587,12 @@ export class MessageCollector {
    * Only follows messages from the SAME agent (matching agentId)
    */
   findLastNodeInAssistantGroup(idNode: IdNode, groupAgentId?: string): IdNode | null {
-    // Walk the chain to its next step (dual-form aware, see findChainContinuationNode)
-    const nextNode = this.findChainContinuationNode(idNode, groupAgentId);
-    if (nextNode) {
-      return this.findLastNodeInAssistantGroup(nextNode, groupAgentId);
+    const visited = new Set<string>([idNode.id]);
+    let nextNode = this.findChainContinuationNode(idNode, groupAgentId);
+    while (nextNode && !visited.has(nextNode.id)) {
+      visited.add(nextNode.id);
+      idNode = nextNode;
+      nextNode = this.findChainContinuationNode(idNode, groupAgentId);
     }
 
     // No further same-agent assistant. If this step still owns tool results

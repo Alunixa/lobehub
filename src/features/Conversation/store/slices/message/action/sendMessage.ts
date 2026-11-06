@@ -1,6 +1,8 @@
 import { type SendMessageParams } from '@lobechat/types';
 
 import { useChatStore } from '@/store/chat';
+import { messageMapKey } from '@/store/chat/utils/messageMapKey';
+import { useFileStore } from '@/store/file';
 
 import { isLocalOnlyMessage } from '../../../../utils/localMessages';
 import { type Store as ConversationStore } from '../../../action';
@@ -54,6 +56,42 @@ export const sendMessage = (
       context,
       messages,
       onTopicCreated: hooks.onTopicCreated,
+      onSendError: () => {
+        const current = get();
+        const editor = state.editor;
+        const fileState = useFileStore.getState();
+        // A delayed failure must never overwrite a newer draft or another
+        // conversation's editor / attachments.
+        if (
+          !editor ||
+          current.editor !== editor ||
+          useChatStore.getState().mainInputEditor !== editor ||
+          messageMapKey(current.context) !== messageMapKey(context) ||
+          current.inputMessage.trim() ||
+          editor.getMarkdownContent().trim() ||
+          fileState.chatUploadFileList.length > 0 ||
+          fileState.chatContextSelections.length > 0
+        )
+          return;
+
+        if (params.editorData) editor.setJSONState(params.editorData);
+        else editor.setDocument('markdown', params.message);
+        set({ inputMessage: params.message });
+        useFileStore.setState({
+          chatContextSelections:
+            params.contexts ??
+            params.pageSelections?.map((selection) => ({
+              content: selection.xml,
+              format: 'xml' as const,
+              id: selection.id,
+              pageId: selection.pageId,
+              preview: selection.content,
+              type: 'text' as const,
+            })) ??
+            [],
+          chatUploadFileList: params.files ?? [],
+        });
+      },
     });
 
     // ===== Hook: onAfterMessageCreate =====

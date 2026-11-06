@@ -380,6 +380,8 @@ export class GatewayActionImpl {
     metadata?: Pick<MessageMetadata, 'awareness' | 'trigger'>;
     /** Called when the gateway session completes (agent finished running) */
     onComplete?: () => void;
+    /** Called before any UI reconciliation, once the server accepted the send. */
+    onMessagePersisted?: () => void;
     /** Temporary sidebar topic inserted by sendMessage before the server creates the real topic. */
     optimisticTopic?: { id: string; metadata?: ChatTopicMetadata; title: string };
     /** Parent message ID for regeneration/continue (skip user message creation, branch from this message) */
@@ -534,6 +536,7 @@ export class GatewayActionImpl {
     if (!result.success) {
       throw new Error(result.error || 'Server agent could not start');
     }
+    params.onMessagePersisted?.();
 
     if (abortSignal?.aborted) {
       // Cancel arrived after execAgentTask resolved — server task exists.

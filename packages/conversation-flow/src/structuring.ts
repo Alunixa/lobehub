@@ -11,22 +11,6 @@ import type { HelperMaps, IdNode } from './types';
 export function buildIdTree(helperMaps: HelperMaps): IdNode[] {
   const { childrenMap, messageMap } = helperMaps;
 
-  // Build tree recursively starting from root messages (parentId = null)
-  const buildTree = (messageId: string): IdNode => {
-    const childIds = childrenMap.get(messageId) ?? [];
-
-    // Filter children to only include those in main flow (not in threads)
-    const mainFlowChildIds = childIds.filter((childId) => {
-      const child = messageMap.get(childId);
-      return child && !child.threadId;
-    });
-
-    return {
-      children: mainFlowChildIds.map((childId) => buildTree(childId)),
-      id: messageId,
-    };
-  };
-
   // Get root message IDs (messages with parentId = null and no threadId)
   const rootIds = childrenMap.get(null) ?? [];
   const mainFlowRootIds = rootIds.filter((id) => {
@@ -34,5 +18,18 @@ export function buildIdTree(helperMaps: HelperMaps): IdNode[] {
     return msg && !msg.threadId;
   });
 
-  return mainFlowRootIds.map((rootId) => buildTree(rootId));
+  const roots: IdNode[] = mainFlowRootIds.map((id) => ({ children: [], id }));
+  // Long conversations must not consume one JavaScript stack frame per message.
+  const pending = [...roots];
+  while (pending.length > 0) {
+    const node = pending.pop()!;
+    node.children = (childrenMap.get(node.id) ?? [])
+      .filter((childId) => {
+        const child = messageMap.get(childId);
+        return child && !child.threadId;
+      })
+      .map((id) => ({ children: [], id }));
+    for (const child of node.children) pending.push(child);
+  }
+  return roots;
 }

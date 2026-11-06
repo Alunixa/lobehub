@@ -594,6 +594,83 @@ describe('GatewayActionImpl', () => {
       delete (globalThis as any).window;
     });
 
+    const persistedResult = () => ({
+      agentId: 'agent-1',
+      assistantMessageId: 'ast-1',
+      autoStarted: true,
+      createdAt: new Date().toISOString(),
+      message: 'ok',
+      operationId: 'server-op-1',
+      status: 'created' as const,
+      success: true,
+      timestamp: new Date().toISOString(),
+      token: 'test-token',
+      topicId: 'topic-1',
+      userMessageId: 'usr-1',
+    });
+
+    it('acknowledges persistence before UI reconciliation can throw', async () => {
+      const { action, startOperation } = createExecuteTestAction();
+      const persisted = vi.fn();
+      vi.mocked(aiAgentService.execAgentTask).mockResolvedValue(persistedResult());
+      startOperation.mockImplementation(() => {
+        expect(persisted).toHaveBeenCalledOnce();
+        throw new Error('UI reconciliation failed');
+      });
+
+      await expect(
+        action.executeGatewayAgent({
+          context: { agentId: 'agent-1', topicId: 'topic-1' },
+          message: 'Saved message',
+          onMessagePersisted: persisted,
+        }),
+      ).rejects.toThrow('UI reconciliation failed');
+      expect(persisted).toHaveBeenCalledOnce();
+    });
+
+    it('does not acknowledge a rejected initialization as persisted', async () => {
+      const { action } = createExecuteTestAction();
+      const persisted = vi.fn();
+      vi.mocked(aiAgentService.execAgentTask).mockResolvedValue({
+        ...persistedResult(),
+        error: 'Initialization failed',
+        success: false,
+      });
+
+      await expect(
+        action.executeGatewayAgent({
+          context: { agentId: 'agent-1', topicId: 'topic-1' },
+          message: 'Unsent message',
+          onMessagePersisted: persisted,
+        }),
+      ).rejects.toThrow('Initialization failed');
+      expect(persisted).not.toHaveBeenCalled();
+    });
+
+    it('acknowledges a saved message even when cancellation races the server response', async () => {
+      const { action, startOperation, state } = createExecuteTestAction();
+      const controller = new AbortController();
+      state.getOperationAbortSignal = vi.fn(() => controller.signal);
+      const persisted = vi.fn();
+      vi.mocked(aiAgentService.interruptTask).mockResolvedValue({} as never);
+      vi.mocked(aiAgentService.execAgentTask).mockImplementation(async () => {
+        controller.abort();
+        return persistedResult();
+      });
+
+      await expect(
+        action.executeGatewayAgent({
+          context: { agentId: 'agent-1', topicId: 'topic-1' },
+          message: 'Saved then cancelled',
+          onMessagePersisted: persisted,
+          parentOperationId: 'send-op',
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+      expect(persisted).toHaveBeenCalledOnce();
+      expect(aiAgentService.interruptTask).toHaveBeenCalledWith({ operationId: 'server-op-1' });
+      expect(startOperation).not.toHaveBeenCalled();
+    });
+
     it('should forward parentMessageId to execAgentTask for regeneration', async () => {
       const { action } = createExecuteTestAction();
 

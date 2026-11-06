@@ -5,6 +5,7 @@ export default defineConfig({
     coverage: {
       reporter: ['text', 'json', 'lcov', 'text-summary'],
     },
-    environment: 'happy-dom',
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
   },
 });

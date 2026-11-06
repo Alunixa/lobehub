@@ -145,7 +145,14 @@ describe('ConversationLifecycle actions', () => {
 
     it('restores unsent text if model resolution fails instead of silently losing the send', async () => {
       const setDocument = vi.fn();
-      useChatStore.setState({ mainInputEditor: { getJSONState: vi.fn(), setDocument } as any });
+      useChatStore.setState({
+        activeTopicId: 'offline-topic',
+        mainInputEditor: {
+          getJSONState: vi.fn(),
+          getMarkdownContent: () => '',
+          setDocument,
+        } as any,
+      });
       vi.spyOn(topicService, 'getTopicDetail').mockRejectedValue(new Error('Offline model lookup'));
       const send = vi.spyOn(aiChatService, 'sendMessageInServer');
       await useChatStore.getState().sendMessage({
@@ -157,6 +164,148 @@ describe('ConversationLifecycle actions', () => {
       expect(
         Object.values(useChatStore.getState().operations).some((op) => op.status === 'failed'),
       ).toBe(true);
+    });
+  });
+  describe('send initialization failure recovery', () => {
+    const context = { ...createTestContext(), topicId: TEST_IDS.TOPIC_ID };
+    const getSendOperation = () =>
+      Object.values(useChatStore.getState().operations).find((op) => op.type === 'sendMessage')!;
+
+    beforeEach(() => {
+      useChatStore.setState({
+        activeTopicId: context.topicId,
+        dbMessagesMap: {},
+        messagesMap: {},
+        operations: {},
+        operationsByContext: {},
+        topicDataMap: {},
+        topicLoadingIdCounts: {},
+        topicLoadingIds: [],
+      });
+    });
+
+    it.each(['client', 'gateway', 'hetero'] as const)(
+      'restores an unpersisted %s send and exposes an error without leaving phantom messages',
+      async (runtime) => {
+        const restore = vi.fn();
+        if (runtime === 'hetero') {
+          setupMockSelectors({
+            agentConfig: {
+              agencyConfig: { heterogeneousProvider: { command: 'codex', type: 'codex' } },
+            },
+          });
+        }
+        const persist = vi
+          .spyOn(aiChatService, 'sendMessageInServer')
+          .mockRejectedValue(new RangeError('Maximum call stack size exceeded'));
+        const gateway = vi
+          .spyOn(useChatStore.getState(), 'executeGatewayAgent')
+          .mockRejectedValue(new RangeError('Maximum call stack size exceeded'));
+
+        await useChatStore.getState().sendMessage({
+          context,
+          forceRuntime: runtime,
+          message: 'Do not lose this message',
+          onSendError: restore,
+        });
+
+        expect(restore).toHaveBeenCalledOnce();
+        expect(getSendOperation().status).toBe('failed');
+        expect(getSendOperation().metadata.inputSendErrorMsg).toBe(
+          'Maximum call stack size exceeded',
+        );
+        expect(useChatStore.getState().messagesMap[messageMapKey(context)] ?? []).toEqual([]);
+        expect(runtime === 'gateway' ? gateway : persist).toHaveBeenCalledOnce();
+      },
+    );
+
+    it.each(['client', 'gateway'] as const)(
+      'does not restore a %s draft after persistence even if UI reconciliation fails',
+      async (runtime) => {
+        const restore = vi.fn();
+        vi.spyOn(aiChatService, 'sendMessageInServer').mockResolvedValue({
+          assistantMessageId: TEST_IDS.ASSISTANT_MESSAGE_ID,
+          messages: [],
+          topicId: context.topicId,
+          userMessageId: TEST_IDS.USER_MESSAGE_ID,
+        } as any);
+        vi.spyOn(useChatStore.getState(), 'replaceMessages').mockImplementation(() => {
+          throw new Error('UI reconciliation failed');
+        });
+        vi.spyOn(useChatStore.getState(), 'executeGatewayAgent').mockImplementation(
+          async (params) => {
+            params.onMessagePersisted?.();
+            throw new Error('UI reconciliation failed');
+          },
+        );
+
+        await useChatStore.getState().sendMessage({
+          context,
+          forceRuntime: runtime,
+          message: 'Already saved',
+          onSendError: restore,
+        });
+
+        expect(restore).not.toHaveBeenCalled();
+        expect(getSendOperation().metadata.inputEditorTempState).toBeNull();
+      },
+    );
+
+    it.each(['client', 'gateway'] as const)(
+      'terminates a %s transport abort as cancelled without failed-state or draft restoration',
+      async (runtime) => {
+        const restore = vi.fn();
+        const abort = new DOMException('Aborted', 'AbortError');
+        vi.spyOn(aiChatService, 'sendMessageInServer').mockRejectedValue(abort);
+        vi.spyOn(useChatStore.getState(), 'executeGatewayAgent').mockRejectedValue(abort);
+
+        await useChatStore.getState().sendMessage({
+          context,
+          forceRuntime: runtime,
+          message: 'Cancelled send',
+          onSendError: restore,
+        });
+
+        expect(getSendOperation().status).toBe('cancelled');
+        expect(getSendOperation().metadata.inputSendErrorMsg).toBeUndefined();
+        expect(restore).not.toHaveBeenCalled();
+      },
+    );
+
+    it('preserves an explicit cancellation when the gateway later rejects', async () => {
+      const restore = vi.fn();
+      vi.spyOn(useChatStore.getState(), 'executeGatewayAgent').mockImplementation(async () => {
+        useChatStore.getState().cancelOperation(getSendOperation().id);
+        throw new Error('Late transport rejection');
+      });
+
+      await useChatStore.getState().sendMessage({
+        context,
+        forceRuntime: 'gateway',
+        message: 'Cancelled',
+        onSendError: restore,
+      });
+
+      expect(getSendOperation().status).toBe('cancelled');
+      expect(restore).not.toHaveBeenCalled();
+    });
+
+    it('rolls back an unpersisted new topic and clears its loading state', async () => {
+      const restore = vi.fn();
+      vi.spyOn(useChatStore.getState(), 'executeGatewayAgent').mockRejectedValue(
+        new Error('Initialization failed'),
+      );
+
+      await useChatStore.getState().sendMessage({
+        context: createTestContext(),
+        forceRuntime: 'gateway',
+        message: 'First message',
+        onSendError: restore,
+      });
+
+      expect(restore).toHaveBeenCalledOnce();
+      expect(useChatStore.getState().topicDataMap[topicMapKey(context)]?.items ?? []).toEqual([]);
+      expect(useChatStore.getState().topicLoadingIds).toEqual([]);
     });
   });
   describe('manual context compression', () => {
@@ -465,8 +614,10 @@ describe('ConversationLifecycle actions', () => {
 
         act(() => {
           useChatStore.setState({
+            activeTopicId: undefined,
             mainInputEditor: {
               getJSONState: vi.fn().mockReturnValue(clearedEditorState),
+              getMarkdownContent: () => '',
               setDocument,
               setJSONState,
             } as any,

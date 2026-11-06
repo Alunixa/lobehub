@@ -23,6 +23,7 @@ on:
       - packages/utils/src/currentTime*
       - packages/utils/src/contextContent*
       - packages/context-engine/**
+      - packages/conversation-flow/**
       - packages/utils/src/conversationAwareness*
       - packages/utils/src/client/**
       - src/**
@@ -47,6 +48,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - run: pnpm install
+      - name: Conversation structure, active branches and stack-safe long history
+        working-directory: packages/conversation-flow
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2
       - name: Chat stream and media regressions
         run: node node_modules/vitest/vitest.mjs run --config tests/stream-reliability/vitest.config.mts --silent=passed-only
       - name: Request history and failure-state regressions
@@ -108,6 +112,7 @@ jobs:
             src/features/Conversation/store/slices/data/action.race.test.ts \
             src/features/Conversation/store/slices/message/action/crud.test.ts \
             src/features/Conversation/store/slices/message/action/state.test.ts \
+            src/features/Conversation/store/slices/message/action/sendMessage.test.ts \
             src/libs/swr/cacheProvider.integration.test.tsx \
             src/features/ChatInput/hooks/useEffectiveModel.test.ts \
             src/features/ChatInput/hooks/useEffectiveAgentMode.test.ts \
