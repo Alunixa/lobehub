@@ -81,8 +81,8 @@ export const sendMessage = (
           chatContextSelections:
             params.contexts ??
             params.pageSelections?.map((selection) => ({
-              content: selection.xml,
-              format: 'xml' as const,
+              content: selection.xml ?? selection.content,
+              format: selection.xml === undefined ? ('markdown' as const) : ('xml' as const),
               id: selection.id,
               pageId: selection.pageId,
               preview: selection.content,

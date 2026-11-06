@@ -59,35 +59,39 @@ describe('conversation send failure draft recovery', () => {
     expect(useFileStore.getState().chatContextSelections).toEqual(params.contexts);
   });
 
-  it('restores markdown and page selection previews without starting another send', async () => {
-    const { editor, store } = setup();
-    const send = vi
-      .spyOn(useChatStore.getState(), 'sendMessage')
-      .mockImplementation(async ({ onSendError }) => {
-        onSendError?.();
-        return undefined;
+  it.each([
+    { content: '<p>text</p>', format: 'xml', xml: '<p>text</p>' },
+    { content: 'Selection', format: 'markdown', xml: undefined },
+  ])(
+    'restores $format page selections without starting another send',
+    async ({ content, format, xml }) => {
+      const { editor, store } = setup();
+      const send = vi
+        .spyOn(useChatStore.getState(), 'sendMessage')
+        .mockImplementation(async ({ onSendError }) => {
+          onSendError?.();
+          return undefined;
+        });
+
+      await store.getState().sendMessage({
+        message: 'Keep my draft',
+        pageSelections: [{ content: 'Selection', id: 'selection', pageId: 'page', xml }],
       });
 
-    await store.getState().sendMessage({
-      message: 'Keep my draft',
-      pageSelections: [
-        { content: 'Selection', id: 'selection', pageId: 'page', xml: '<p>text</p>' },
-      ],
-    });
-
-    expect(editor.setDocument).toHaveBeenCalledExactlyOnceWith('markdown', 'Keep my draft');
-    expect(useFileStore.getState().chatContextSelections).toEqual([
-      {
-        content: '<p>text</p>',
-        format: 'xml',
-        id: 'selection',
-        pageId: 'page',
-        preview: 'Selection',
-        type: 'text',
-      },
-    ]);
-    expect(send).toHaveBeenCalledOnce();
-  });
+      expect(editor.setDocument).toHaveBeenCalledExactlyOnceWith('markdown', 'Keep my draft');
+      expect(useFileStore.getState().chatContextSelections).toEqual([
+        {
+          content,
+          format,
+          id: 'selection',
+          pageId: 'page',
+          preview: 'Selection',
+          type: 'text',
+        },
+      ]);
+      expect(send).toHaveBeenCalledOnce();
+    },
+  );
 
   it.each([
     'new input',
