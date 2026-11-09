@@ -169,6 +169,7 @@ const SORT_OPTIONS: SortBy[] = ['updatedAt', 'createdAt', 'title'];
 const GROUP_OPTIONS: GroupBy[] = ['byTime', 'byProject', 'none'];
 
 interface ToolbarProps {
+  onStatusChange: (status: StatusFilter) => void;
   projects: { label: string; value: string }[];
   statusCounts: Record<StatusFilter, number>;
 }
@@ -211,7 +212,7 @@ const FilterChip = memo<FilterChipProps>(({ icon, label, value, items, onClear }
   );
 });
 
-const Toolbar = memo<ToolbarProps>(({ projects, statusCounts }) => {
+const Toolbar = memo<ToolbarProps>(({ projects, statusCounts, onStatusChange }) => {
   const { t } = useTranslation('topic');
   const { message } = App.useApp();
 
@@ -219,7 +220,6 @@ const Toolbar = memo<ToolbarProps>(({ projects, statusCounts }) => {
   const updateTopicStatus = useChatStore((s) => s.updateTopicStatus);
 
   const status = useTopicsViewStore((s) => s.status);
-  const setStatus = useTopicsViewStore((s) => s.setStatus);
   const groupIds = useTopicsViewStore((s) => s.groupIds);
   const setGroupIds = useTopicsViewStore((s) => s.setGroupIds);
   const triggers = useTopicsViewStore((s) => s.triggers);
@@ -444,7 +444,7 @@ const Toolbar = memo<ToolbarProps>(({ projects, statusCounts }) => {
             ),
           };
         })}
-        onChange={(key) => setStatus(key as StatusFilter)}
+        onChange={(key) => onStatusChange(key as StatusFilter)}
       />
 
       <span className={styles.divider} />

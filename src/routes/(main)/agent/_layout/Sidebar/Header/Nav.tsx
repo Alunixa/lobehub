@@ -3,6 +3,7 @@
 import { Flexbox } from '@lobehub/ui';
 import { BotPromptIcon } from '@lobehub/ui/icons';
 import {
+  Archive,
   MessageSquarePlusIcon,
   MessagesSquareIcon,
   RadioTowerIcon,
@@ -16,7 +17,7 @@ import urlJoin from 'url-join';
 import NavItem from '@/features/NavPanel/components/NavItem';
 import { usePermission } from '@/hooks/usePermission';
 import { useQueryRoute } from '@/hooks/useQueryRoute';
-import { usePathname } from '@/libs/router/navigation';
+import { usePathname, useQuery } from '@/libs/router/navigation';
 import { useActionSWR } from '@/libs/swr';
 import { topicActionKeys } from '@/libs/swr/keys';
 import { useAgentStore } from '@/store/agent';
@@ -31,11 +32,13 @@ const Nav = memo(() => {
   const params = useParams();
   const agentId = params.aid;
   const pathname = usePathname();
+  const query = useQuery();
   const isProfileActive = pathname.includes('/profile');
   const isChannelActive = pathname.includes('/channel');
   // Topic IDs are prefixed `topics_`, so /agent/:aid/topics_abc would also match
   // pathname.includes('/topics') — anchor to end to avoid that false positive.
-  const isTopicsActive = pathname.endsWith('/topics');
+  const isCompletedTopicsActive = pathname.endsWith('/topics') && query.status === 'completed';
+  const isTopicsActive = pathname.endsWith('/topics') && !isCompletedTopicsActive;
   const router = useQueryRoute();
   const { allowed: canCreateTopic } = usePermission('create_content');
   const { isAgentEditable } = useServerConfigStore(featureFlagsSelectors);
@@ -118,7 +121,19 @@ const Nav = memo(() => {
         title={tTopic('management.sidebarEntry')}
         onClick={() => {
           switchTopic(null, { skipRefreshMessage: true });
-          router.push(urlJoin('/agent', agentId!, 'topics'));
+          router.push(urlJoin('/agent', agentId!, 'topics'), { replace: true });
+        }}
+      />
+      <NavItem
+        active={isCompletedTopicsActive}
+        icon={Archive}
+        title={tTopic('management.completedSidebarEntry')}
+        onClick={() => {
+          switchTopic(null, { skipRefreshMessage: true });
+          router.push(urlJoin('/agent', agentId!, 'topics'), {
+            query: { status: 'completed' },
+            replace: true,
+          });
         }}
       />
       {!hideChannel && (

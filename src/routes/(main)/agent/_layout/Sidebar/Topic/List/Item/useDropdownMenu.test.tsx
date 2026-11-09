@@ -131,4 +131,14 @@ describe('useTopicItemDropdownMenu', () => {
     expect(getMenuItem(items, 'copySessionId')).not.toMatchObject({ disabled: true });
     expect(getMenuItem(items, 'copyLink')).not.toMatchObject({ disabled: true });
   });
+
+  it('offers a restore action for legacy archived topics', () => {
+    const { result } = renderHook(() =>
+      useTopicItemDropdownMenu({ id: 'archived-topic', status: 'archived', title: 'Archived' }),
+    );
+
+    expect(getMenuItem(result.current.dropdownMenu(), 'markCompleted')).toMatchObject({
+      label: 'actions.unmarkCompleted',
+    });
+  });
 });

@@ -79,7 +79,7 @@ export const useTopicItemDropdownMenu = ({
     s.updateTopicTitle,
   ]);
 
-  const isCompleted = status === 'completed';
+  const isCompleted = status === 'completed' || status === 'archived';
   const handleOpenShareModal = useCallback(() => {
     if (!id) return;
 

@@ -87,6 +87,10 @@ interface QueryTopicParams {
    */
   groupId?: string | null;
   /**
+   * Include only topics matching one of these statuses.
+   */
+  includeStatuses?: string[];
+  /**
    * Include only topics whose trigger matches one of these values.
    * Takes precedence over excludeTriggers when provided.
    */
@@ -191,6 +195,7 @@ export class TopicModel {
     current = 0,
     excludeStatuses,
     excludeTriggers,
+    includeStatuses,
     includeTriggers,
     pageSize = 9999,
     groupId,
@@ -277,6 +282,10 @@ export class TopicModel {
             not(inArray(topics.status, excludeStatuses as ChatTopicStatus[])),
           )
         : undefined;
+    const includeStatusCondition =
+      includeStatuses && includeStatuses.length > 0
+        ? inArray(topics.status, includeStatuses as ChatTopicStatus[])
+        : undefined;
 
     // If groupId is provided, query topics by groupId directly
     if (groupId) {
@@ -287,6 +296,7 @@ export class TopicModel {
         excludeTriggerCondition,
         triggerCondition,
         excludeStatusCondition,
+        includeStatusCondition,
       );
 
       const [items, totalResult] = await Promise.all([
@@ -354,6 +364,7 @@ export class TopicModel {
         excludeTriggerCondition,
         triggerCondition,
         excludeStatusCondition,
+        includeStatusCondition,
       );
 
       const [items, totalResult] = await Promise.all([
@@ -412,6 +423,7 @@ export class TopicModel {
       excludeTriggerCondition,
       triggerCondition,
       excludeStatusCondition,
+      includeStatusCondition,
     );
 
     const [items, totalResult] = await Promise.all([
@@ -454,7 +466,7 @@ export class TopicModel {
 
     // Remove internal fields before returning
 
-    const cleanItems = items.map(({ agentId, sessionId, ...rest }) => rest);
+    const cleanItems = items.map(({ agentId: _agentId, sessionId: _sessionId, ...rest }) => rest);
 
     logTiming(timing, 'db.topic.query:done', {
       itemCount: cleanItems.length,

@@ -50,6 +50,12 @@ export interface ChatTopicState {
    * whether all topics drawer is open
    */
   allTopicsDrawerOpen: boolean;
+  /**
+   * Completed/archived topics for management and mobile archive views.
+   * Kept separate from both standard sidebar topics and the full manager list
+   * so status-filtered pagination cannot overwrite either cache.
+   */
+  completedTopicsViewMap: Record<string, TopicData>;
   conversationFeatureDetailMap: Record<string, ConversationFeatureDetail>;
   creatingTopic: boolean;
   inSearchingMode?: boolean;
@@ -76,6 +82,7 @@ export const initialTopicState: ChatTopicState = {
   conversationFeatureDetailMap: {},
   activeTopicId: null as any,
   agentTopicsViewMap: {},
+  completedTopicsViewMap: {},
   allTopicsDrawerOpen: false,
   creatingTopic: false,
   newTopicModelMap: {},

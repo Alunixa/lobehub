@@ -78,6 +78,7 @@ beforeEach(() => {
       activeGroupId: undefined,
       activeTopicId: undefined,
       agentTopicsViewMap: {},
+      completedTopicsViewMap: {},
       searchTopics: [],
       topicDataMap: {},
       conversationFeatureDetailMap: {},
@@ -1541,6 +1542,211 @@ describe('topic action', () => {
       expect(topicData.hasMore).toBe(false);
       expect(topicData.isLoadingMore).toBe(false);
       expect(topicData.loadMoreError).toBeUndefined();
+    });
+  });
+
+  describe('loadMoreCompletedTopicsView', () => {
+    it('loads the next page with a completed-status filter and appends it', async () => {
+      const { result } = renderHook(() => useChatStore());
+      const agentId = 'agent-archive';
+      const key = topicMapKey({ agentId });
+      const topics = [
+        { id: 'completed-1', status: 'completed', title: 'Completed 1' },
+        { id: 'completed-2', status: 'archived', title: 'Completed 2' },
+      ] as ChatTopic[];
+
+      act(() => {
+        useChatStore.setState({
+          activeAgentId: agentId,
+          completedTopicsViewMap: {
+            [key]: {
+              currentPage: 0,
+              hasMore: true,
+              isLoadingMore: false,
+              items: topics,
+              pageSize: 2,
+              total: 3,
+              withDetails: true,
+            },
+          },
+        });
+      });
+
+      (topicService.getTopics as Mock).mockResolvedValueOnce({
+        items: [{ id: 'completed-3', status: 'completed', title: 'Completed 3' }],
+        total: 3,
+      });
+
+      await act(async () => {
+        await result.current.loadMoreCompletedTopicsView();
+      });
+
+      const view = useChatStore.getState().completedTopicsViewMap[key];
+      expect(topicService.getTopics).toHaveBeenCalledWith({
+        agentId,
+        current: 1,
+        groupId: undefined,
+        includeStatuses: ['completed', 'archived'],
+        pageSize: 2,
+        withDetails: true,
+      });
+      expect(view.items.map((topic) => topic.id)).toEqual([
+        'completed-1',
+        'completed-2',
+        'completed-3',
+      ]);
+      expect(view.hasMore).toBe(false);
+      expect(view.loadMoreError).toBeUndefined();
+    });
+
+    it('keeps the group-agent scope key consistent while loading completed topics', async () => {
+      const { result } = renderHook(() => useChatStore());
+      const agentId = 'agent-in-group';
+      const groupId = 'group-archive';
+      const key = topicMapKey({ agentId, groupId });
+
+      act(() => {
+        useChatStore.setState({
+          activeAgentId: agentId,
+          activeGroupId: groupId,
+          completedTopicsViewMap: {
+            [key]: {
+              currentPage: 0,
+              hasMore: true,
+              isLoadingMore: false,
+              items: [{ id: 'completed-1', status: 'completed' }] as ChatTopic[],
+              pageSize: 1,
+              total: 2,
+            },
+          },
+        });
+      });
+
+      (topicService.getTopics as Mock).mockResolvedValueOnce({
+        items: [{ id: 'completed-2', status: 'completed' }],
+        total: 2,
+      });
+
+      await act(async () => {
+        await result.current.loadMoreCompletedTopicsView();
+      });
+
+      expect(topicService.getTopics).toHaveBeenCalledWith({
+        agentId,
+        current: 1,
+        groupId,
+        includeStatuses: ['completed', 'archived'],
+        pageSize: 1,
+        withDetails: undefined,
+      });
+      expect(useChatStore.getState().completedTopicsViewMap[key].items).toHaveLength(2);
+    });
+
+    it('preserves local restores that happen while a page request is in flight', async () => {
+      const { result } = renderHook(() => useChatStore());
+      const agentId = 'agent-archive';
+      const key = topicMapKey({ agentId });
+      const pageResponse = Promise.withResolvers<{ items: ChatTopic[]; total: number }>();
+
+      useChatStore.setState({
+        activeAgentId: agentId,
+        completedTopicsViewMap: {
+          [key]: {
+            currentPage: 0,
+            hasMore: true,
+            isLoadingMore: false,
+            items: [
+              { id: 'completed-1', status: 'completed', title: 'Completed 1' },
+              { id: 'completed-2', status: 'completed', title: 'Completed 2' },
+            ] as ChatTopic[],
+            pageSize: 2,
+            total: 3,
+          },
+        },
+        topicDataMap: {
+          [key]: {
+            currentPage: 0,
+            hasMore: false,
+            isLoadingMore: false,
+            items: [
+              { id: 'completed-1', status: 'active', title: 'Restored 1' },
+              { id: 'completed-2', status: 'completed', title: 'Completed 2' },
+            ] as ChatTopic[],
+            pageSize: 20,
+            total: 2,
+          },
+        },
+      });
+      (topicService.getTopics as Mock).mockReturnValueOnce(pageResponse.promise);
+
+      let loadMorePromise: Promise<void>;
+      act(() => {
+        loadMorePromise = result.current.loadMoreCompletedTopicsView();
+      });
+
+      act(() => {
+        useChatStore.getState().internal_dispatchTopic({
+          id: 'completed-1',
+          type: 'updateTopic',
+          value: { completedAt: null, status: 'active' },
+        });
+      });
+      pageResponse.resolve({
+        items: [
+          { id: 'completed-1', status: 'completed', title: 'Stale server row' },
+          { id: 'completed-3', status: 'completed', title: 'Completed 3' },
+        ] as ChatTopic[],
+        total: 3,
+      });
+      await act(async () => {
+        await loadMorePromise!;
+      });
+
+      const view = useChatStore.getState().completedTopicsViewMap[key];
+      expect(view.items.map((topic) => topic.id)).toEqual(['completed-2', 'completed-3']);
+      expect(view.total).toBe(2);
+      expect(view.currentPage).toBe(1);
+    });
+  });
+
+  describe('completedTopicsViewMap status updates', () => {
+    it('removes a restored topic from the completed view immediately', () => {
+      const agentId = 'agent-archive';
+      const topicId = 'completed-1';
+      const key = topicMapKey({ agentId });
+
+      useChatStore.setState({
+        activeAgentId: agentId,
+        completedTopicsViewMap: {
+          [key]: {
+            currentPage: 0,
+            hasMore: false,
+            items: [
+              {
+                createdAt: Date.now(),
+                id: topicId,
+                status: 'completed',
+                title: 'Completed topic',
+                updatedAt: Date.now(),
+              } as ChatTopic,
+            ],
+            pageSize: 30,
+            total: 1,
+          },
+        },
+      });
+
+      act(() => {
+        useChatStore.getState().internal_dispatchTopic({
+          id: topicId,
+          type: 'updateTopic',
+          value: { completedAt: null, status: 'active' },
+        });
+      });
+
+      const view = useChatStore.getState().completedTopicsViewMap[key];
+      expect(view.items).toEqual([]);
+      expect(view.total).toBe(0);
     });
   });
 

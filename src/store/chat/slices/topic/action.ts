@@ -52,6 +52,10 @@ import { topicReducer } from './reducer';
 import { topicSelectors } from './selectors';
 
 const n = setNamespace('t');
+const COMPLETED_TOPIC_STATUSES = ['completed', 'archived'];
+
+const isCompletedTopic = (topic: Pick<ChatTopic, 'status'>): boolean =>
+  topic.status === 'completed' || topic.status === 'archived';
 
 type CronTopicsGroupWithJobInfo = {
   cronJob: unknown;
@@ -780,6 +784,96 @@ export class ChatTopicActionImpl {
     );
   };
 
+  /**
+   * Fetch completed/archived topics into an isolated bucket. This avoids
+   * client-filtering only the first page of the general topic list, which made
+   * older completed topics look unavailable when they fell beyond page one.
+   */
+  useFetchCompletedTopicsView = (
+    enable: boolean,
+    {
+      agentId,
+      groupId,
+      pageSize: customPageSize,
+      withDetails,
+    }: {
+      agentId?: string;
+      groupId?: string;
+      pageSize?: number;
+      withDetails?: boolean;
+    } = {},
+  ): SWRResponse<{ items: ChatTopic[]; total: number }> => {
+    const pageSize = customPageSize || 30;
+    const containerKey = topicMapKey({ agentId, groupId });
+    const hasValidContainer = !!(agentId || groupId);
+
+    return useClientDataSWRWithSync<{ items: ChatTopic[]; total: number }>(
+      enable && hasValidContainer
+        ? topicKeys.agentView(containerKey, {
+            includeStatuses: COMPLETED_TOPIC_STATUSES,
+            pageSize,
+            ...(withDetails ? { withDetails: true } : {}),
+          })
+        : null,
+      async () => {
+        if (!hasValidContainer) return { items: [], total: 0 };
+
+        return topicService.getTopics({
+          agentId,
+          current: 0,
+          groupId,
+          includeStatuses: COMPLETED_TOPIC_STATUSES,
+          pageSize,
+          withDetails,
+        });
+      },
+      {
+        onData: (result) => {
+          if (!hasValidContainer) return;
+          const { items, total } = result;
+          const currentData = this.#get().completedTopicsViewMap[containerKey];
+          const isRefreshingExpandedList =
+            !!currentData && currentData.currentPage > 0 && currentData.pageSize === pageSize;
+          const nextItems = isRefreshingExpandedList
+            ? (() => {
+                const visibleCount = Math.min(currentData.items.length, total);
+                const topicIds = new Set(items.map((item) => item.id));
+                return [
+                  ...items,
+                  ...currentData.items.filter((topic) => !topicIds.has(topic.id)),
+                ].slice(0, visibleCount);
+              })()
+            : items;
+
+          if (currentData && isEqual(nextItems, currentData.items) && currentData.total === total) {
+            return;
+          }
+
+          this.#set(
+            {
+              completedTopicsViewMap: {
+                ...this.#get().completedTopicsViewMap,
+                [containerKey]: {
+                  currentPage: isRefreshingExpandedList ? currentData.currentPage : 0,
+                  hasMore: total > nextItems.length,
+                  isExpandingPageSize: false,
+                  isLoadingMore: false,
+                  loadMoreError: undefined,
+                  items: nextItems,
+                  pageSize,
+                  total,
+                  withDetails,
+                },
+              },
+            },
+            false,
+            n('useFetchCompletedTopicsView(onData)', { containerKey }),
+          );
+        },
+      },
+    );
+  };
+
   loadMoreAgentTopicsView = async (): Promise<void> => {
     const { activeAgentId, agentTopicsViewMap } = this.#get();
     if (!activeAgentId) return;
@@ -846,6 +940,105 @@ export class ChatTopicActionImpl {
         },
         false,
         n('loadMoreAgentTopicsView(error)'),
+      );
+    }
+  };
+
+  loadMoreCompletedTopicsView = async (): Promise<void> => {
+    const { activeAgentId, activeGroupId, completedTopicsViewMap } = this.#get();
+    if (!activeAgentId && !activeGroupId) return;
+
+    const key = topicMapKey({ agentId: activeAgentId, groupId: activeGroupId });
+    const currentData = completedTopicsViewMap[key];
+    if (!currentData || currentData.isLoadingMore) return;
+
+    const nextPage = (currentData.currentPage || 0) + 1;
+    const { pageSize, withDetails } = currentData;
+
+    this.#set(
+      {
+        completedTopicsViewMap: {
+          ...completedTopicsViewMap,
+          [key]: { ...currentData, isLoadingMore: true, loadMoreError: undefined },
+        },
+      },
+      false,
+      n('loadMoreCompletedTopicsView(start)'),
+    );
+
+    try {
+      const result = await topicService.getTopics({
+        agentId: activeAgentId,
+        current: nextPage,
+        groupId: activeGroupId ?? undefined,
+        includeStatuses: COMPLETED_TOPIC_STATUSES,
+        pageSize,
+        withDetails,
+      });
+
+      const latestState = this.#get();
+      const latestData = latestState.completedTopicsViewMap[key];
+      if (!latestData) return;
+
+      // A topic may have been restored while this page was in flight. Preserve
+      // the latest local rows and discard any stale non-completed result rows.
+      const restoredIds = new Set(
+        [
+          ...(latestState.topicDataMap[key]?.items ?? []),
+          ...(latestState.agentTopicsViewMap[key]?.items ?? []),
+        ]
+          .filter((topic) => !isCompletedTopic(topic))
+          .map((topic) => topic.id),
+      );
+      const pageItems = result.items.filter(
+        (topic) => isCompletedTopic(topic) && !restoredIds.has(topic.id),
+      );
+      const existingIds = new Set(latestData.items.map((topic) => topic.id));
+      const nextItems = [
+        ...latestData.items,
+        ...pageItems.filter((topic) => !existingIds.has(topic.id)),
+      ];
+      const hasConcurrentCountChange = latestData.total !== currentData.total;
+      const nextTotal = Math.max(
+        nextItems.length,
+        hasConcurrentCountChange ? latestData.total : result.total,
+      );
+
+      this.#set(
+        {
+          completedTopicsViewMap: {
+            ...this.#get().completedTopicsViewMap,
+            [key]: {
+              ...latestData,
+              currentPage: nextPage,
+              hasMore: nextTotal > nextItems.length,
+              isLoadingMore: false,
+              loadMoreError: undefined,
+              items: nextItems,
+              total: nextTotal,
+            },
+          },
+        },
+        false,
+        n('loadMoreCompletedTopicsView(success)'),
+      );
+    } catch (error) {
+      const latestData = this.#get().completedTopicsViewMap[key];
+      if (!latestData) return;
+
+      this.#set(
+        {
+          completedTopicsViewMap: {
+            ...this.#get().completedTopicsViewMap,
+            [key]: {
+              ...latestData,
+              isLoadingMore: false,
+              loadMoreError: error,
+            },
+          },
+        },
+        false,
+        n('loadMoreCompletedTopicsView(error)'),
       );
     }
   };
@@ -1013,7 +1206,7 @@ export class ChatTopicActionImpl {
     }
 
     this.#set(
-      { activeTopicId: !id ? (null as any) : id, activeThreadId: undefined },
+      { activeTopicId: (id ?? null) as any, activeThreadId: undefined },
       false,
       n('toggleTopic'),
     );
@@ -1316,9 +1509,47 @@ export class ChatTopicActionImpl {
     const nextViewItems = viewData ? topicReducer(viewData.items, payload) : undefined;
     const viewChanged = viewData ? !isEqual(nextViewItems, viewData.items) : false;
 
-    // no need to update if both maps are unchanged
+    // Keep the status-filtered recovery bucket in sync with individual and
+    // bulk status changes while maintaining its filtered total.
+    const completedViewMap = this.#get().completedTopicsViewMap;
+    const completedViewData = completedViewMap[key];
+    let nextCompletedItems = completedViewData
+      ? topicReducer(completedViewData.items, payload).filter(isCompletedTopic)
+      : undefined;
+    const topicId = 'id' in payload ? payload.id : undefined;
+    const sourceTopic = topicId
+      ? (currentData?.items.find((topic) => topic.id === topicId) ??
+        viewData?.items.find((topic) => topic.id === topicId) ??
+        completedViewData?.items.find((topic) => topic.id === topicId))
+      : undefined;
+
+    if (payload.type === 'updateTopic' && sourceTopic && nextCompletedItems) {
+      const updatedTopic = { ...sourceTopic, ...payload.value };
+      if (
+        isCompletedTopic(updatedTopic) &&
+        !nextCompletedItems.some((topic) => topic.id === updatedTopic.id)
+      ) {
+        nextCompletedItems = [{ ...updatedTopic, updatedAt: new Date() }, ...nextCompletedItems];
+      }
+    }
+
+    const completedCount = completedViewData?.total ?? completedViewData?.items.length ?? 0;
+    const wasInCompletedView = topicId
+      ? completedViewData?.items.some((topic) => topic.id === topicId)
+      : undefined;
+    const isInCompletedView = topicId
+      ? nextCompletedItems?.some((topic) => topic.id === topicId)
+      : undefined;
+    const nextCompletedTotal =
+      completedCount + (wasInCompletedView === isInCompletedView ? 0 : isInCompletedView ? 1 : -1);
+    const completedViewChanged =
+      !!completedViewData &&
+      (!isEqual(nextCompletedItems, completedViewData.items) ||
+        nextCompletedTotal !== completedViewData.total);
+
+    // no need to update if all maps are unchanged
     const mainChanged = !isEqual(nextItems, currentData?.items);
-    if (!mainChanged && !viewChanged) return;
+    if (!mainChanged && !viewChanged && !completedViewChanged) return;
 
     const currentTotal = currentData?.total ?? currentData?.items?.length ?? 0;
     const total =
@@ -1359,6 +1590,18 @@ export class ChatTopicActionImpl {
           hasMore: viewNextTotal > nextViewItems.length,
           items: nextViewItems,
           total: viewNextTotal,
+        },
+      };
+    }
+
+    if (completedViewChanged && completedViewData && nextCompletedItems) {
+      nextState.completedTopicsViewMap = {
+        ...completedViewMap,
+        [key]: {
+          ...completedViewData,
+          hasMore: nextCompletedTotal > nextCompletedItems.length,
+          items: nextCompletedItems,
+          total: nextCompletedTotal,
         },
       };
     }

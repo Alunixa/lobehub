@@ -3,14 +3,16 @@
 import { ActionIcon, Flexbox, Text } from '@lobehub/ui';
 import { confirmModal } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { Archive, Star, Trash2, X } from 'lucide-react';
-import { memo, useCallback } from 'react';
+import { Archive, ArchiveRestore, Star, Trash2, X } from 'lucide-react';
+import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useChatStore } from '@/store/chat';
+import { topicSelectors } from '@/store/chat/selectors';
 
 import MoveToAgentButton from './MoveToAgentButton';
 import { useTopicsViewStore } from './store';
+import { areAllTopicsArchived } from './utils';
 
 const styles = createStaticStyles(({ css }) => ({
   bar: css`
@@ -49,9 +51,22 @@ const BulkActionBar = memo(() => {
   const selectedIds = useTopicsViewStore((s) => s.selectedIds);
   const exitSelectMode = useTopicsViewStore((s) => s.exitSelectMode);
 
+  const allTopics = useChatStore(topicSelectors.agentTopicsViewTopics);
+  const completedTopics = useChatStore(topicSelectors.completedTopicsViewTopics);
+  const searchTopics = useChatStore(topicSelectors.searchTopics);
+  const topics = useMemo(
+    () => [...allTopics, ...completedTopics, ...searchTopics],
+    [allTopics, completedTopics, searchTopics],
+  );
   const favoriteTopic = useChatStore((s) => s.favoriteTopic);
   const updateTopicStatus = useChatStore((s) => s.updateTopicStatus);
+  const unmarkTopicCompleted = useChatStore((s) => s.unmarkTopicCompleted);
   const removeTopic = useChatStore((s) => s.removeTopic);
+
+  const allArchived = useMemo(
+    () => areAllTopicsArchived(topics, selectedIds),
+    [topics, selectedIds],
+  );
 
   const handleBatchFavorite = useCallback(async () => {
     await Promise.all(selectedIds.map((id) => favoriteTopic(id, true)));
@@ -66,6 +81,11 @@ const BulkActionBar = memo(() => {
     );
     exitSelectMode();
   }, [selectedIds, updateTopicStatus, exitSelectMode]);
+
+  const handleBatchUnarchive = useCallback(async () => {
+    await Promise.all(selectedIds.map((id) => unmarkTopicCompleted(id)));
+    exitSelectMode();
+  }, [selectedIds, unmarkTopicCompleted, exitSelectMode]);
 
   const handleBatchDelete = useCallback(() => {
     confirmModal({
@@ -98,12 +118,21 @@ const BulkActionBar = memo(() => {
           title={t('management.bulk.favorite')}
           onClick={handleBatchFavorite}
         />
-        <ActionIcon
-          icon={Archive}
-          size={'small'}
-          title={t('management.bulk.archive')}
-          onClick={handleBatchArchive}
-        />
+        {allArchived ? (
+          <ActionIcon
+            icon={ArchiveRestore}
+            size={'small'}
+            title={t('management.bulk.unarchive')}
+            onClick={handleBatchUnarchive}
+          />
+        ) : (
+          <ActionIcon
+            icon={Archive}
+            size={'small'}
+            title={t('management.bulk.archive')}
+            onClick={handleBatchArchive}
+          />
+        )}
         <MoveToAgentButton />
         <ActionIcon
           icon={Trash2}

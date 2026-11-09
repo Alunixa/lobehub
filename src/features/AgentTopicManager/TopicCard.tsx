@@ -2,14 +2,22 @@
 
 import { AGENT_CHAT_TOPIC_URL } from '@lobechat/const';
 import { formatPrice, formatTokenNumber } from '@lobechat/utils/format';
-import { Block, Checkbox, Flexbox, Icon, Tag, Text } from '@lobehub/ui';
+import { ActionIcon, Block, Checkbox, Flexbox, Icon, Tag, Text } from '@lobehub/ui';
 import { createStaticStyles, cssVar } from 'antd-style';
-import { CircleDollarSign, FolderIcon, MessageSquare, Star, Zap } from 'lucide-react';
+import {
+  ArchiveRestore,
+  CircleDollarSign,
+  FolderIcon,
+  MessageSquare,
+  Star,
+  Zap,
+} from 'lucide-react';
 import { memo, type MouseEvent, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 
 import { useActivityTime } from '@/hooks/useActivityTime';
+import { useChatStore } from '@/store/chat';
 import type { ChatTopic } from '@/types/topic';
 
 import StatusDot from './StatusDot';
@@ -87,6 +95,7 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
   const selected = useTopicsViewStore((s) => s.selectedIds.includes(topic.id));
   const toggleSelected = useTopicsViewStore((s) => s.toggleSelected);
   const toggleSelectMode = useTopicsViewStore((s) => s.toggleSelectMode);
+  const unmarkTopicCompleted = useChatStore((s) => s.unmarkTopicCompleted);
 
   const handleClick = useCallback(
     (e: MouseEvent) => {
@@ -105,12 +114,21 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
     toggleSelected(topic.id);
   }, [selectMode, topic.id, toggleSelected, toggleSelectMode]);
 
+  const handleRestore = useCallback(
+    (e: MouseEvent) => {
+      e.stopPropagation();
+      void unmarkTopicCompleted(topic.id);
+    },
+    [topic.id, unmarkTopicCompleted],
+  );
+
   const stopPropagation = useCallback((e: MouseEvent) => {
     e.stopPropagation();
   }, []);
 
   const projectLabel = getProjectLabel(topic);
   const status = topic.status ?? 'active';
+  const isCompleted = topic.status === 'completed' || topic.status === 'archived';
   // Preview priority: user-written description → AI history summary → first user
   // message (sliced server-side when neither richer field exists).
   const preview =
@@ -186,7 +204,17 @@ const TopicCard = memo<TopicCardProps>(({ topic, agentId }) => {
           )}
           <span title={updatedAt.title}>{updatedAt.text}</span>
         </Flexbox>
-        <StatusDot status={status} />
+        <Flexbox horizontal align={'center'} gap={6}>
+          {isCompleted && (
+            <ActionIcon
+              icon={ArchiveRestore}
+              size={'small'}
+              title={t('management.bulk.unarchive')}
+              onClick={handleRestore}
+            />
+          )}
+          <StatusDot status={status} />
+        </Flexbox>
       </Flexbox>
     </Block>
   );

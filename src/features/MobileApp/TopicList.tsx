@@ -1,5 +1,5 @@
 import { Flexbox, SearchBar } from '@lobehub/ui';
-import { Button } from '@lobehub/ui/base-ui';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
 import { Plus } from 'lucide-react';
 import { useDeferredValue, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,6 +14,7 @@ import { useGlobalStore } from '@/store/global';
 export const MobileTopicList = () => {
   const { t } = useTranslation(['common', 'topic']);
   const [keyword, setKeyword] = useState('');
+  const [completedOnly, setCompletedOnly] = useState(false);
   const searchKeyword = useDeferredValue(keyword);
   const [openNewTopic, unloaded] = useChatStore((s) => [
     s.openNewTopicOrSaveTopic,
@@ -41,6 +42,15 @@ export const MobileTopicList = () => {
       >
         {t('mobile.newConversation')}
       </Button>
+      <Tabs
+        activeKey={completedOnly ? 'completed' : 'all'}
+        size="small"
+        items={[
+          { key: 'all', label: t('management.sidebarEntry', { ns: 'topic' }) },
+          { key: 'completed', label: t('management.completedSidebarEntry', { ns: 'topic' }) },
+        ]}
+        onChange={(key) => setCompletedOnly(key === 'completed')}
+      />
       <SearchBar
         autoFocus={false}
         placeholder={t('searchPlaceholder', { ns: 'topic' })}
@@ -53,7 +63,7 @@ export const MobileTopicList = () => {
         {unloaded && !keyword ? (
           <SkeletonList />
         ) : (
-          <AllTopicsContent open searchKeyword={searchKeyword} />
+          <AllTopicsContent open completedOnly={completedOnly} searchKeyword={searchKeyword} />
         )}
       </Flexbox>
     </Flexbox>

@@ -329,6 +329,7 @@ export const topicRouter = router({
         excludeTriggers: z.array(z.string()).optional(),
         groupId: z.string().nullish(),
         includeTriggers: z.array(z.string()).optional(),
+        includeStatuses: z.array(z.string()).optional(),
         isInbox: z.boolean().optional(),
         pageSize: z.number().max(100).optional(),
         sessionId: z.string().nullish(),
@@ -354,6 +355,7 @@ export const topicRouter = router({
         excludeStatuses,
         excludeTriggers,
         includeTriggers,
+        includeStatuses,
         triggers,
         ...rest
       } = input;
@@ -364,6 +366,7 @@ export const topicRouter = router({
           excludeStatuses,
           excludeTriggers,
           groupId,
+          includeStatuses,
           includeTriggers,
           triggers,
           ...rest,
@@ -387,6 +390,7 @@ export const topicRouter = router({
         agentId: effectiveAgentId,
         excludeStatuses,
         excludeTriggers,
+        includeStatuses,
         includeTriggers,
         isInbox,
         triggers,

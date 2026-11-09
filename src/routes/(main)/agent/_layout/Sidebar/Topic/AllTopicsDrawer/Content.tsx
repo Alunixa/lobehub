@@ -17,11 +17,12 @@ import TopicItem from '../List/Item';
 const ITEM_HEIGHT = 36; // Each topic item height (NavItem height, no vertical padding)
 
 interface ContentProps {
+  completedOnly?: boolean;
   open: boolean;
   searchKeyword: string;
 }
 
-const Content = memo<ContentProps>(({ open, searchKeyword }) => {
+const Content = memo<ContentProps>(({ completedOnly = false, open, searchKeyword }) => {
   const virtuaRef = useRef<VListHandle>(null);
   const fetchedCountRef = useRef(-1);
   const initializedRef = useRef(false);
@@ -35,7 +36,10 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
     isExpandingPageSize,
     loadMoreTopics,
     activeAgentId,
+    activeGroupId,
     useSearchTopics,
+    useFetchCompletedTopicsView,
+    loadMoreCompletedTopicsView,
   ] = useChatStore((s) => [
     s.activeTopicId,
     s.activeThreadId,
@@ -45,12 +49,33 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
     topicSelectors.isExpandingPageSize(s),
     s.loadMoreTopics,
     s.activeAgentId,
+    s.activeGroupId,
     s.useSearchTopics,
+    s.useFetchCompletedTopicsView,
+    s.loadMoreCompletedTopicsView,
   ]);
 
   // Use server-side search if there's a keyword
   const trimmedKeyword = searchKeyword.trim();
   const isSearching = trimmedKeyword.length > 0;
+  const completedTopicsView = useFetchCompletedTopicsView(completedOnly && !isSearching, {
+    // Keep the same scope key as the regular topics list. The group ID takes
+    // precedence in the server query, while both IDs distinguish a group agent.
+    agentId: activeAgentId,
+    groupId: activeGroupId ?? undefined,
+    pageSize: 20,
+  });
+
+  const completedTopics = useChatStore(topicSelectors.completedTopicsViewTopics, isEqual);
+  const completedHasMore = useChatStore(topicSelectors.completedTopicsViewHasMore);
+  const completedIsLoadingMore = useChatStore(topicSelectors.completedTopicsViewIsLoadingMore);
+  const completedLoadMoreError = useChatStore(topicSelectors.completedTopicsViewLoadMoreError);
+  const isCompletedViewLoading =
+    completedOnly && (!completedTopicsView.isHydrated || completedTopicsView.isValidating);
+  const currentHasMore = completedOnly ? completedHasMore : hasMore;
+  const currentIsLoadingMore = completedOnly ? completedIsLoadingMore : isLoadingMore;
+  const currentLoadMoreError = completedOnly ? completedLoadMoreError : loadMoreError;
+  const loadMoreCurrentView = completedOnly ? loadMoreCompletedTopicsView : loadMoreTopics;
 
   // Set searching state and trigger search
   useEffect(() => {
@@ -65,7 +90,7 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
   // Only search when there's a keyword (pass undefined to disable SWR)
   useSearchTopics(isSearching ? trimmedKeyword : undefined, {
     agentId: activeAgentId,
-    groupId: undefined,
+    groupId: activeGroupId ?? undefined,
   });
 
   const searchResults = useChatStore(topicSelectors.searchTopics, isEqual);
@@ -73,8 +98,19 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
   const isSearchingTopic = useChatStore(topicSelectors.isSearchingTopic);
 
   // Use search results if searching, otherwise use regular list
-  const activeTopicList = isSearching ? searchResults : allTopicList;
+  const activeTopicList = completedOnly
+    ? isSearching
+      ? searchResults.filter((topic) => topic.status === 'completed' || topic.status === 'archived')
+      : completedTopics
+    : isSearching
+      ? searchResults
+      : allTopicList;
   const count = activeTopicList?.length || 0;
+
+  useEffect(() => {
+    initializedRef.current = false;
+    fetchedCountRef.current = -1;
+  }, [completedOnly]);
 
   useEffect(() => {
     if (fetchedCountRef.current > count) {
@@ -84,7 +120,16 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
 
   // Initial load: calculate how many items needed to fill viewport
   useEffect(() => {
-    if (!open || initializedRef.current || isLoadingMore || isSearching || loadMoreError) return;
+    if (
+      !open ||
+      initializedRef.current ||
+      currentIsLoadingMore ||
+      isSearching ||
+      currentLoadMoreError ||
+      isCompletedViewLoading
+    ) {
+      return;
+    }
 
     const timer = setTimeout(() => {
       const ref = virtuaRef.current;
@@ -97,7 +142,7 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
       initializedRef.current = true;
 
       // Calculate how many pages we need to load to fill screen
-      if (count < itemsNeeded && hasMore) {
+      if (count < itemsNeeded && currentHasMore) {
         fetchedCountRef.current = count;
 
         // Calculate pages needed and load once
@@ -106,8 +151,8 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
 
         // Load the required pages
         const loadPages = async () => {
-          for (let i = 0; i < pagesNeeded && hasMore; i++) {
-            await loadMoreTopics();
+          for (let i = 0; i < pagesNeeded; i++) {
+            await loadMoreCurrentView();
           }
         };
         loadPages();
@@ -115,7 +160,16 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [open, count, hasMore, loadMoreTopics, isLoadingMore, loadMoreError, isSearching]);
+  }, [
+    open,
+    count,
+    currentHasMore,
+    loadMoreCurrentView,
+    currentIsLoadingMore,
+    currentLoadMoreError,
+    isSearching,
+    isCompletedViewLoading,
+  ]);
 
   // Reset initialized flag when drawer closes
   useEffect(() => {
@@ -130,7 +184,7 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
     if (isSearching) return;
 
     const ref = virtuaRef.current;
-    if (!ref || !hasMore || loadMoreError) return;
+    if (!ref || !currentHasMore || currentLoadMoreError) return;
 
     // Use findItemIndex to detect scroll position
     const bottomVisibleIndex = ref.findItemIndex(ref.scrollOffset + ref.viewportSize);
@@ -138,23 +192,32 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
     // When scrolled near the end (within 5 items), load more
     if (fetchedCountRef.current < count && bottomVisibleIndex + 5 > count) {
       fetchedCountRef.current = count;
-      await loadMoreTopics();
+      await loadMoreCurrentView();
     }
-  }, [hasMore, loadMoreTopics, count, isSearching, loadMoreError]);
+  }, [currentHasMore, loadMoreCurrentView, count, isSearching, currentLoadMoreError]);
 
-  const showLoading = (isLoadingMore || isExpandingPageSize) && !isSearching;
+  const showLoading =
+    (currentIsLoadingMore || (!completedOnly && isExpandingPageSize) || isCompletedViewLoading) &&
+    !isSearching;
   const showSearchLoading = isSearching && isSearchingTopic;
-  const showLoadMoreError = !isSearching && !!loadMoreError && !isLoadingMore;
+  const showLoadMoreError = !isSearching && !!currentLoadMoreError && !currentIsLoadingMore;
+  const showCompletedFetchError =
+    completedOnly &&
+    !isSearching &&
+    !!completedTopicsView.error &&
+    !completedTopicsView.isValidating &&
+    count === 0;
 
   // Show empty state when no topics
-  if (count === 0 && showLoadMoreError) {
+  if (count === 0 && (showLoadMoreError || showCompletedFetchError)) {
     return (
       <Flexbox padding={12}>
         <AsyncError
-          error={loadMoreError}
+          error={showCompletedFetchError ? completedTopicsView.error : currentLoadMoreError}
           variant={'block'}
           onRetry={() => {
-            void loadMoreTopics();
+            if (showCompletedFetchError) void completedTopicsView.mutate();
+            else void loadMoreCurrentView();
           }}
         />
       </Flexbox>
@@ -202,10 +265,10 @@ const Content = memo<ContentProps>(({ open, searchKeyword }) => {
       {showLoadMoreError && (
         <Flexbox padding={'4px 8px'}>
           <AsyncError
-            error={loadMoreError}
+            error={currentLoadMoreError}
             variant={'inline'}
             onRetry={() => {
-              void loadMoreTopics();
+              void loadMoreCurrentView();
             }}
           />
         </Flexbox>

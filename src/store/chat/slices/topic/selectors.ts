@@ -258,6 +258,26 @@ const agentTopicsViewIsLoadingMore = (s: ChatStoreState): boolean =>
 const agentTopicsViewLoadMoreError = (s: ChatStoreState): unknown =>
   agentTopicsViewData(s)?.loadMoreError;
 
+const completedTopicsViewData = (s: ChatStoreState): TopicData | undefined => {
+  const key = topicMapKey({ agentId: s.activeAgentId, groupId: s.activeGroupId });
+  return s.completedTopicsViewMap[key];
+};
+
+const completedTopicsViewTopics = (s: ChatStoreState): ChatTopic[] =>
+  completedTopicsViewData(s)?.items ?? [];
+
+const completedTopicsViewHasMore = (s: ChatStoreState): boolean =>
+  completedTopicsViewData(s)?.hasMore ?? false;
+
+const completedTopicsViewIsLoadingMore = (s: ChatStoreState): boolean =>
+  completedTopicsViewData(s)?.isLoadingMore ?? false;
+
+const completedTopicsViewLoadMoreError = (s: ChatStoreState): unknown =>
+  completedTopicsViewData(s)?.loadMoreError;
+
+const completedTopicsViewTotal = (s: ChatStoreState): number | undefined =>
+  completedTopicsViewData(s)?.total;
+
 export const topicSelectors = {
   activeTopicModel,
   getTopicModelById,
@@ -265,6 +285,11 @@ export const topicSelectors = {
   agentTopicsViewIsLoadingMore,
   agentTopicsViewLoadMoreError,
   agentTopicsViewTopics,
+  completedTopicsViewHasMore,
+  completedTopicsViewIsLoadingMore,
+  completedTopicsViewLoadMoreError,
+  completedTopicsViewTopics,
+  completedTopicsViewTotal,
   currentActiveTopic,
   currentActiveTopicSummary,
   currentTopicCount,

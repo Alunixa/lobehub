@@ -330,6 +330,11 @@ export interface QueryTopicParams {
    */
   groupId?: string | null;
   /**
+   * Include only topics matching one of these statuses.
+   * Combined with all other filters when provided.
+   */
+  includeStatuses?: string[];
+  /**
    * Include only topics whose trigger matches one of these values.
    * Takes precedence over excludeTriggers when provided.
    */

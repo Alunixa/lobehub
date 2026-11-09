@@ -17,6 +17,7 @@ const switchTopicMock = vi.hoisted(() => vi.fn());
 const toggleCommandMenuMock = vi.hoisted(() => vi.fn());
 const useParamsMock = vi.hoisted(() => vi.fn());
 const usePathnameMock = vi.hoisted(() => vi.fn());
+const useQueryMock = vi.hoisted(() => vi.fn());
 const permissionMock = vi.hoisted(() => ({
   create_content: true,
 }));
@@ -32,6 +33,7 @@ vi.mock('@lobehub/ui/icons', () => ({
 }));
 
 vi.mock('lucide-react', () => ({
+  Archive: () => null,
   MessageSquarePlusIcon: () => null,
   MessagesSquareIcon: () => null,
   RadioTowerIcon: () => null,
@@ -83,6 +85,7 @@ vi.mock('@/libs/router/navigation', () => ({
     use(RouteContext);
     return usePathnameMock();
   },
+  useQuery: () => useQueryMock(),
 }));
 
 vi.mock('@/libs/swr', () => ({
@@ -144,10 +147,12 @@ describe('Agent sidebar header nav', () => {
     toggleCommandMenuMock.mockReset();
     useParamsMock.mockReset();
     usePathnameMock.mockReset();
+    useQueryMock.mockReset();
     permissionMock.create_content = true;
     openNewTopicOrSaveTopicMock.mockResolvedValue(true);
 
     useParamsMock.mockReturnValue({ aid: 'agt_eH4zL98zBx5u', topicId: 'tpc_2FCHvjS7d4CA' });
+    useQueryMock.mockReturnValue({});
   });
 
   it('resolves the source URL topic before returning from a document route to the bare chat', async () => {
@@ -241,5 +246,37 @@ describe('Agent sidebar header nav', () => {
 
     expect(pushMock).not.toHaveBeenCalled();
     expect(mutateMock).not.toHaveBeenCalled();
+  });
+
+  it('opens the completed topics view directly from the sidebar', () => {
+    usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u/topics');
+
+    render(<Nav />);
+
+    const completedNav = screen.getByRole('button', { name: 'management.completedSidebarEntry' });
+    expect(completedNav).toHaveAttribute('data-active', 'false');
+
+    fireEvent.click(completedNav);
+
+    expect(switchTopicMock).toHaveBeenCalledWith(null, { skipRefreshMessage: true });
+    expect(pushMock).toHaveBeenCalledWith('/agent/agt_eH4zL98zBx5u/topics', {
+      query: { status: 'completed' },
+      replace: true,
+    });
+  });
+
+  it('marks the completed nav entry active for the completed topics route', () => {
+    usePathnameMock.mockReturnValue('/agent/agt_eH4zL98zBx5u/topics');
+    useQueryMock.mockReturnValue({ status: 'completed' });
+
+    render(<Nav />);
+
+    expect(
+      screen.getByRole('button', { name: 'management.completedSidebarEntry' }),
+    ).toHaveAttribute('data-active', 'true');
+    expect(screen.getByRole('button', { name: 'management.sidebarEntry' })).toHaveAttribute(
+      'data-active',
+      'false',
+    );
   });
 });

@@ -428,6 +428,26 @@ describe('TopicModel - Query', () => {
       expect(ids).not.toContain('completed-topic');
     });
 
+    it('should include only requested completed statuses and scope the total', async () => {
+      await serverDB.insert(topics).values([
+        { id: 'active-topic', sessionId, userId, title: 'Active', status: 'active' },
+        { id: 'completed-topic', sessionId, userId, title: 'Completed', status: 'completed' },
+        { id: 'archived-topic', sessionId, userId, title: 'Archived', status: 'archived' },
+        { id: 'null-status-topic', sessionId, userId, title: 'No status' },
+      ]);
+
+      const result = await topicModel.query({
+        containerId: sessionId,
+        current: 0,
+        includeStatuses: ['completed', 'archived'],
+        pageSize: 1,
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(['completed-topic', 'archived-topic']).toContain(result.items[0].id);
+      expect(result.total).toBe(2);
+    });
+
     it('should select status and completedAt on returned topics', async () => {
       const completedAt = new Date('2024-02-01T10:00:00Z');
       await serverDB.insert(topics).values([

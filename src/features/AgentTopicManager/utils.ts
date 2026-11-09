@@ -19,7 +19,7 @@ export const matchesStatus = (topic: ChatTopic, status: StatusFilter): boolean =
       return topic.status === 'archived';
     }
     case 'completed': {
-      return topic.status === 'completed';
+      return topic.status === 'completed' || topic.status === 'archived';
     }
     case 'running': {
       return topic.status === 'running';
@@ -31,6 +31,22 @@ export const matchesStatus = (topic: ChatTopic, status: StatusFilter): boolean =
       return true;
     }
   }
+};
+
+export const parseTopicManagerStatus = (value: unknown): StatusFilter => {
+  if (value === 'all' || value === 'active' || value === 'running' || value === 'completed') {
+    return value;
+  }
+  return 'active';
+};
+
+export const areAllTopicsArchived = (topics: ChatTopic[], ids: string[]): boolean => {
+  if (ids.length === 0) return false;
+  const statusById = new Map(topics.map((topic) => [topic.id, topic.status]));
+  return ids.every((id) => {
+    const status = statusById.get(id);
+    return status === 'completed' || status === 'archived';
+  });
 };
 
 export const matchesGroup = (topic: ChatTopic, groupIds: string[]): boolean => {

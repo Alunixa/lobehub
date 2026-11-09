@@ -83,6 +83,15 @@ jobs:
             apps/server/src/services/proactiveConversation/completion.test.ts \
             apps/server/src/services/proactiveConversation/WebPushService.test.ts \
             apps/server/src/services/proactiveConversation/pushWorker.test.ts
+      - name: Completed topic filtering, navigation and recovery
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/features/AgentTopicManager/utils.test.ts \
+            'src/routes/(main)/agent/_layout/Sidebar/Topic/List/Item/useDropdownMenu.test.tsx' \
+            'src/routes/(main)/agent/_layout/Sidebar/Header/Nav.test.tsx'
+      - name: Completed topic database filtering and pagination
+        working-directory: packages/database
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/models/__tests__/topics/topic.query.test.ts
       - name: Model-only timing context regressions
         working-directory: packages/utils
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/conversationAwareness.test.ts
