@@ -87,6 +87,8 @@ export interface ServerCreateAgentToolsEngineParams {
     /** Plugin IDs enabled for this agent */
     plugins?: string[];
   };
+  /** Explicit opt-in from the user's configured conversation image model. */
+  allowConversationImage?: boolean;
   /** Whether cross-conversation topic references are enabled for this user/turn */
   allowTopicReference?: boolean;
   /**

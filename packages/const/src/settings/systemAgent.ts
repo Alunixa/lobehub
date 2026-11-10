@@ -46,6 +46,7 @@ export const DEFAULT_USER_MEMORY_EMBEDDING_SYSTEM_AGENT_ITEM: SystemAgentItem = 
 
 export const DEFAULT_SYSTEM_AGENT_CONFIG: UserServiceModelConfig = {
   agentMeta: DEFAULT_SYSTEM_AGENT_ITEM,
+  conversationImage: { enabled: false, model: '', provider: '' },
   followUpAction: DEFAULT_FOLLOW_UP_ACTION_SYSTEM_AGENT_ITEM,
   generationTopic: DEFAULT_MINI_SYSTEM_AGENT_ITEM,
   historyCompress: DEFAULT_SYSTEM_AGENT_ITEM,

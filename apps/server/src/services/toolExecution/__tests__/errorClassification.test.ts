@@ -26,4 +26,13 @@ describe('classifyToolError', () => {
 
     expect(result.kind).toBe('stop');
   });
+
+  it('should not automatically retry a failed paid image-generation request', () => {
+    const result = classifyToolError({
+      code: 'IMAGE_GENERATION_FAILED',
+      message: 'Image generation did not complete after provider timeout.',
+    });
+
+    expect(result.kind).toBe('stop');
+  });
 });

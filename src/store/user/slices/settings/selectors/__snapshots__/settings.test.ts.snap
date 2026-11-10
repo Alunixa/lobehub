@@ -54,6 +54,11 @@ exports[`settingsSelectors > currentSystemAgent > should merge DEFAULT_SYSTEM_AG
     "model": "deepseek-v4-pro",
     "provider": "deepseek",
   },
+  "conversationImage": {
+    "enabled": false,
+    "model": "",
+    "provider": "",
+  },
   "enableAutoReply": true,
   "followUpAction": {
     "enabled": false,
@@ -138,6 +143,7 @@ exports[`settingsSelectors > defaultAgent > should merge DEFAULT_AGENT and s.set
         "enabled": false,
       },
     },
+    "instructions": "",
     "model": "gpt-3.5-turbo",
     "openingQuestions": [],
     "params": {
@@ -185,6 +191,7 @@ exports[`settingsSelectors > defaultAgentConfig > should merge DEFAULT_AGENT_CON
       "enabled": false,
     },
   },
+  "instructions": "",
   "model": "gpt-4",
   "openingQuestions": [],
   "params": {

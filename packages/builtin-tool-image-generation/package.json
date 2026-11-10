@@ -1,0 +1,23 @@
+{
+  "name": "@lobechat/builtin-tool-image-generation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client/index.ts",
+    "./executionRuntime": "./src/ExecutionRuntime/index.ts",
+    "./executor": "./src/client/executor/index.ts"
+  },
+  "main": "./src/index.ts",
+  "dependencies": {
+    "@lobechat/types": "workspace:*",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "@lobehub/ui": "^5",
+    "antd-style": "*",
+    "react": "*",
+    "react-i18next": "*"
+  }
+}

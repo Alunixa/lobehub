@@ -1,3 +1,4 @@
+import { ImageGenerationManifest } from '@lobechat/builtin-tool-image-generation';
 import { type ToolManifest } from '@lobechat/types';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -8,6 +9,11 @@ vi.mock('@/store/tool', () => ({
   getToolStoreState: () => ({
     connectors: [],
     builtinTools: [
+      {
+        identifier: ImageGenerationManifest.identifier,
+        manifest: ImageGenerationManifest,
+        type: 'builtin' as const,
+      },
       {
         identifier: 'search',
         manifest: {
@@ -120,6 +126,7 @@ vi.mock('../isCanUseFC', () => ({
 }));
 
 let mockCurrentAgentPlugins: string[] = [];
+let mockConversationImageEnabled = false;
 
 vi.mock('@/store/agent', () => ({
   getAgentStoreState: () => ({}),
@@ -144,7 +151,18 @@ vi.mock('@/store/user', () => ({
 
 vi.mock('@/store/user/selectors', () => ({
   settingsSelectors: {
+    currentSystemAgent: () => ({
+      conversationImage: {
+        enabled: mockConversationImageEnabled,
+        model: mockConversationImageEnabled ? 'image-v1' : '',
+        provider: mockConversationImageEnabled ? 'provider' : '',
+      },
+    }),
     memoryEnabled: () => false,
+  },
+  userGeneralSettingsSelectors: {
+    enableProactiveTopicReading: () => false,
+    enableTopicReference: () => false,
   },
 }));
 
@@ -164,6 +182,7 @@ describe('toolEngineering', () => {
     mockInstalledPluginManifestList = () => [];
     mockUseApplicationBuiltinSearchTool = true;
     mockCurrentAgentPlugins = [];
+    mockConversationImageEnabled = false;
     mockIsCanUseFC = true;
   });
 
@@ -223,6 +242,25 @@ describe('toolEngineering', () => {
   });
 
   describe('createChatToolsEngine', () => {
+    it('exposes the configured image tool and keeps it unavailable when disabled', () => {
+      const disabledEngine = createAgentToolsEngine({ model: 'gpt-4', provider: 'openai' });
+      const disabled = disabledEngine.generateToolsDetailed({
+        model: 'gpt-4',
+        provider: 'openai',
+        toolIds: [ImageGenerationManifest.identifier],
+      });
+      expect(disabled.enabledToolIds).not.toContain(ImageGenerationManifest.identifier);
+
+      mockConversationImageEnabled = true;
+      const enabledEngine = createAgentToolsEngine({ model: 'gpt-4', provider: 'openai' });
+      const enabled = enabledEngine.generateToolsDetailed({
+        model: 'gpt-4',
+        provider: 'openai',
+        toolIds: [],
+      });
+      expect(enabled.enabledToolIds).toContain(ImageGenerationManifest.identifier);
+    });
+
     it('should include web browsing tool as default when no tools are provided', () => {
       const toolsEngine = createAgentToolsEngine({
         model: 'gpt-4',

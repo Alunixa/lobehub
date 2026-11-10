@@ -23,6 +23,11 @@ on:
       - packages/utils/src/currentTime*
       - packages/utils/src/contextContent*
       - packages/context-engine/**
+      - packages/builtin-tool-image-generation/**
+      - packages/builtin-tools/**
+      - packages/utils/src/abort*
+      - packages/utils/src/conversationImageModel*
+      - packages/const/src/settings/systemAgent.ts
       - packages/conversation-flow/**
       - packages/utils/src/conversationAwareness*
       - packages/utils/src/client/**
@@ -183,3 +188,18 @@ jobs:
             src/processors/__tests__/AttachmentRetention.test.ts \
             src/processors/__tests__/MessageContent.test.ts \
             src/engine/messages/__tests__/MessagesEngine.test.ts
+      - name: Context-aware image generation tool and cancellation
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            apps/server/src/modules/Mecha/AgentToolsEngine/__tests__/index.test.ts \
+            apps/server/src/services/conversationImage/index.test.ts \
+            apps/server/src/services/generation/index.test.ts \
+            apps/server/src/services/toolExecution/__tests__/errorClassification.test.ts \
+            src/helpers/toolEngineering/index.test.ts \
+            src/store/user/slices/settings/selectors/settings.test.ts
+      - name: Image generation runtime and manifest contract
+        working-directory: packages/builtin-tool-image-generation
+        run: node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts --silent=passed-only src/ExecutionRuntime/index.test.ts src/manifest.test.ts
+      - name: Image model setting and abort behavior
+        working-directory: packages/utils
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/conversationImageModel.test.ts src/abort.test.ts

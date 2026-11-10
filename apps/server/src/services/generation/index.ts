@@ -24,6 +24,7 @@ const log = debug('lobe-image:generation-service');
 export async function fetchImageFromUrl(
   url: string,
   fetchHeaders?: Record<string, string>,
+  signal?: AbortSignal,
 ): Promise<{
   buffer: Buffer;
   mimeType: string;
@@ -57,7 +58,7 @@ export async function fetchImageFromUrl(
     // are read and returned, other responses leak status/statusText for blind probing.
     // ssrfSafeFetch blocks private/link-local IPs at connect time and on every redirect hop.
     // See GHSA-53h9-fmjf-frwr / #16536.
-    const response = await ssrfSafeFetch(url, { headers: fetchHeaders });
+    const response = await ssrfSafeFetch(url, { headers: fetchHeaders, signal });
     if (!response.ok) {
       throw new Error(
         `Failed to fetch image from ${url}: ${response.status} ${response.statusText}`,
@@ -97,6 +98,7 @@ export class GenerationService {
   async transformImageForGeneration(
     url: string,
     fetchHeaders?: Record<string, string>,
+    signal?: AbortSignal,
   ): Promise<{
     image: ImageForGeneration;
     thumbnailImage: ImageForGeneration;
@@ -108,6 +110,7 @@ export class GenerationService {
     const { buffer: originalImageBuffer, mimeType: originalMimeType } = await fetchImageFromUrl(
       url,
       fetchHeaders,
+      signal,
     );
     log('fetchImageFromUrl: done, buffer size:', originalImageBuffer.length);
 
@@ -209,7 +212,12 @@ export class GenerationService {
     };
   }
 
-  async uploadImageForGeneration(image: ImageForGeneration, thumbnail: ImageForGeneration) {
+  async uploadImageForGeneration(
+    image: ImageForGeneration,
+    thumbnail: ImageForGeneration,
+    options?: { signal?: AbortSignal },
+  ) {
+    options?.signal?.throwIfAborted();
     log('Starting image upload for generation');
 
     const generationImagesFolder = 'generations/images';
@@ -232,6 +240,10 @@ export class GenerationService {
       log('Buffers are identical, uploading single image');
       // If buffers are identical, only upload once
       const result = await this.fileService.uploadMedia(imageKey, image.buffer);
+      if (options?.signal?.aborted) {
+        await this.fileService.deleteFile(result.key);
+        options.signal.throwIfAborted();
+      }
       log('Single image uploaded successfully:', result.key);
       // Use the same key for both image and thumbnail
       return {
@@ -241,10 +253,30 @@ export class GenerationService {
     } else {
       log('Buffers are different, uploading both images');
       // If buffers are different, upload both
-      const [imageResult, thumbnailResult] = await Promise.all([
+      const results = await Promise.allSettled([
         this.fileService.uploadMedia(imageKey, image.buffer),
         this.fileService.uploadMedia(thumbnailKey, thumbnail.buffer),
       ]);
+      const failure = results.find((result) => result.status === 'rejected');
+      if (failure || options?.signal?.aborted) {
+        const uploadedKeys = results.flatMap((result) =>
+          result.status === 'fulfilled' ? [result.value.key] : [],
+        );
+        const cleanup = await Promise.allSettled(
+          uploadedKeys.map((key) => this.fileService.deleteFile(key)),
+        );
+        cleanup.forEach((result) => {
+          if (result.status === 'rejected')
+            console.error('[generation] Failed to clean up partial image upload', result.reason);
+        });
+        options?.signal?.throwIfAborted();
+        if (failure?.status === 'rejected') throw failure.reason;
+      }
+      // The failure branch above throws before any result is unwrapped.
+      const [imageResult, thumbnailResult] = results.map((result) => {
+        if (result.status === 'rejected') throw result.reason;
+        return result.value;
+      });
 
       log('Both images uploaded successfully:', {
         imageUrl: imageResult.key,

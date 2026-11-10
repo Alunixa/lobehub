@@ -2,6 +2,7 @@ import type { AgentRuntimeContext, AgentState } from '@lobechat/agent-runtime';
 import { BUILTIN_AGENT_SLUGS, getAgentRuntimeConfig } from '@lobechat/builtin-agents';
 import { builtinSkills } from '@lobechat/builtin-skills';
 import { CloudSandboxApiName, CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
+import { ImageGenerationIdentifier } from '@lobechat/builtin-tool-image-generation';
 import { LobeAgentIdentifier, LobeAgentManifest } from '@lobechat/builtin-tool-lobe-agent';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MessageToolIdentifier } from '@lobechat/builtin-tool-message';
@@ -53,6 +54,7 @@ import {
   ThreadType,
 } from '@lobechat/types';
 import { nanoid } from '@lobechat/utils';
+import { resolveConversationImageModel } from '@lobechat/utils/conversationImageModel';
 import { TRPCError } from '@trpc/server';
 import debug from 'debug';
 
@@ -129,6 +131,7 @@ import { buildCloudHeteroContext } from '@/server/services/heterogeneousAgent/cl
 import { buildRemoteDeviceHeteroContext } from '@/server/services/heterogeneousAgent/remoteDeviceHeteroContext';
 import { MarketService } from '@/server/services/market';
 import { publishMessageRealtimeUpdate } from '@/server/services/message/realtime';
+import type { UserServiceModelConfig } from '@/types/user/settings';
 import { markdownToTxt } from '@/utils/markdownToTxt';
 
 import { resolveDeviceAccessPolicy } from './deviceAccessPolicy';
@@ -2202,6 +2205,7 @@ export class AiAgentService {
     const agentMemoryEnabled = agentConfig.chatConfig?.memory?.enabled;
     let globalMemoryEnabled = agentMemoryEnabled ?? false;
     let allowTopicReference = false;
+    let allowConversationImage = false;
     let userTimezone: string | undefined;
     // Resolved once below (alongside the group-tool authorization fetch) and
     // forwarded into op metadata for the per-step context engine.
@@ -2209,6 +2213,9 @@ export class AiAgentService {
     try {
       const userModel = new UserModel(this.db, this.userId);
       const settings = await userModel.getUserSettings();
+      allowConversationImage = !!resolveConversationImageModel(
+        (settings?.systemAgent as Partial<UserServiceModelConfig> | undefined)?.conversationImage,
+      );
       const memorySettings = settings?.memory as { enabled?: boolean } | undefined;
 
       globalMemoryEnabled = agentMemoryEnabled ?? memorySettings?.enabled !== false;
@@ -2662,6 +2669,7 @@ export class AiAgentService {
           ...connectorManifests,
         ],
         allowTopicReference: allowTopicReference || hasTopicReference,
+        allowConversationImage,
         agentConfig: {
           chatConfig: agentConfig.chatConfig ?? undefined,
           plugins: agentPlugins,
@@ -2745,7 +2753,8 @@ export class AiAgentService {
       // (). Centralising the check at the ingest layer means
       // every future manifest source automatically inherits the wall.
       const isManifestIngestAllowed = (identifier: string): boolean =>
-        canUseDevice || !isDeviceToolIdentifier(identifier);
+        (canUseDevice || !isDeviceToolIdentifier(identifier)) &&
+        (allowConversationImage || identifier !== ImageGenerationIdentifier);
 
       // Start with the scoped manifest map (pluginIds + defaultToolIds)
       const manifestMap = toolsEngine.getEnabledPluginManifests(pluginIds);

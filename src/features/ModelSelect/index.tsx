@@ -6,6 +6,8 @@ import { memo, useMemo } from 'react';
 
 import { ModelItemRender, ProviderItemRender, TAG_CLASSNAME } from '@/components/ModelSelect';
 import { useEnabledChatModels } from '@/hooks/useEnabledChatModels';
+import { useAiInfraStore } from '@/store/aiInfra';
+import { aiProviderSelectors } from '@/store/aiInfra/selectors';
 import { type EnabledProviderWithModels } from '@/types/aiProvider';
 
 const prefixCls = 'ant';
@@ -43,6 +45,9 @@ interface ModelSelectProps extends Pick<
 > {
   defaultValue?: { model: string; provider?: string };
   initialWidth?: boolean;
+  modelType?: 'chat' | 'image';
+  /** When provided, the explicit empty selection is returned as empty model/provider strings. */
+  noneLabel?: string;
   onChange?: (props: { model: string; provider: string }) => void;
   popupWidth?: number;
   requiredAbilities?: (keyof EnabledProviderWithModels['children'][number]['abilities'])[];
@@ -54,7 +59,6 @@ const ModelSelect = memo<ModelSelectProps>(
   ({
     value,
     onChange,
-    showAbility = true,
     requiredAbilities,
     loading,
     disabled,
@@ -62,9 +66,14 @@ const ModelSelect = memo<ModelSelectProps>(
     style,
     variant,
     initialWidth = false,
+    modelType = 'chat',
+    noneLabel,
     popupWidth,
   }) => {
-    const enabledList = useEnabledChatModels();
+    const chatModels = useEnabledChatModels();
+    const imageModels = useAiInfraStore(aiProviderSelectors.enabledImageModelList);
+    const enabledList = modelType === 'image' ? imageModels : chatModels;
+    const noneValue = '__none__';
 
     const options = useMemo<SelectProps['options']>(() => {
       const getChatModels = (provider: EnabledProviderWithModels) => {
@@ -83,13 +92,15 @@ const ModelSelect = memo<ModelSelectProps>(
         }));
       };
 
+      const noneOptions = noneLabel ? [{ label: noneLabel, value: noneValue }] : [];
+
       if (enabledList.length === 1) {
         const provider = enabledList[0];
 
-        return getChatModels(provider);
+        return [...noneOptions, ...getChatModels(provider)];
       }
 
-      return enabledList
+      const providerOptions = enabledList
         .map((provider) => {
           const opts = getChatModels(provider);
           if (opts.length === 0) return undefined;
@@ -106,35 +117,47 @@ const ModelSelect = memo<ModelSelectProps>(
             options: opts,
           };
         })
-        .filter(Boolean) as SelectProps['options'];
-    }, [enabledList, requiredAbilities, showAbility]);
+        .filter(Boolean);
+      return [...noneOptions, ...providerOptions] as SelectProps['options'];
+    }, [enabledList, requiredAbilities, noneLabel]);
+
+    const selectedValue =
+      noneLabel && !value?.model ? noneValue : `${value?.provider}/${value?.model}`;
 
     return (
       <TooltipGroup>
         <Select
           className={styles.select}
-          defaultValue={`${value?.provider}/${value?.model}`}
+          defaultValue={selectedValue}
           disabled={disabled}
           loading={loading}
           options={options}
           popupClassName={styles.popup}
           popupMatchSelectWidth={popupWidth === undefined ? false : popupWidth}
           size={size}
-          value={`${value?.provider}/${value?.model}`}
+          value={selectedValue}
           variant={variant}
-          optionRender={(option) => (
-            <ModelItemRender
-              {...(option as ModelOption)}
-              {...(option as ModelOption).abilities}
-              showInfoTag={false}
-            />
-          )}
+          optionRender={(option) =>
+            option.value === noneValue ? (
+              noneLabel
+            ) : (
+              <ModelItemRender
+                {...(option as ModelOption)}
+                {...(option as ModelOption).abilities}
+                showInfoTag={false}
+              />
+            )
+          }
           style={{
             minWidth: 200,
             width: initialWidth ? 'initial' : undefined,
             ...style,
           }}
           onChange={(value, option) => {
+            if (noneLabel && value === noneValue) {
+              onChange?.({ model: '', provider: '' });
+              return;
+            }
             const model = value.split('/').slice(1).join('/');
             onChange?.({ model, provider: (option as unknown as ModelOption).provider });
           }}

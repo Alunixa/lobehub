@@ -45,6 +45,7 @@ describe('GenerationService', () => {
 
     // Setup common mocks used across all tests
     mockFileService = {
+      deleteFile: vi.fn(),
       uploadMedia: vi.fn(),
     };
     vi.mocked(FileService).mockImplementation(() => mockFileService);
@@ -730,6 +731,9 @@ describe('GenerationService', () => {
 
       // Verify both uploads were attempted
       expect(mockFileService.uploadMedia).toHaveBeenCalledTimes(2);
+      expect(mockFileService.deleteFile).toHaveBeenCalledWith(
+        'generations/images/test-uuid_600x800_20240101123000_raw.png',
+      );
     });
 
     it('should handle complete upload failure', async () => {
@@ -757,6 +761,47 @@ describe('GenerationService', () => {
       ).rejects.toThrow('Upload service unavailable');
 
       expect(mockFileService.uploadMedia).toHaveBeenCalledTimes(1);
+    });
+
+    it('should delete the uploaded image if cancellation occurs while uploading a single image', async () => {
+      const identicalBuffer = Buffer.from('same data');
+      const imageWithSameBuffer = { ...mockImage, buffer: identicalBuffer };
+      const thumbnailWithSameBuffer = { ...mockThumbnail, buffer: identicalBuffer };
+      const controller = new AbortController();
+      const key = 'generations/images/test-uuid_600x800_20240101123000_raw.png';
+      mockFileService.uploadMedia.mockImplementationOnce(async () => {
+        controller.abort();
+        return { key };
+      });
+
+      await expect(
+        service.uploadImageForGeneration(imageWithSameBuffer, thumbnailWithSameBuffer, {
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(mockFileService.deleteFile).toHaveBeenCalledExactlyOnceWith(key);
+    });
+
+    it('should clean up successful uploads when the paired upload is cancelled', async () => {
+      const controller = new AbortController();
+      const rawKey = 'generations/images/test-uuid_600x800_20240101123000_raw.png';
+      const thumbnailKey = 'generations/images/test-uuid_300x400_20240101123000_thumb.png';
+      mockFileService.uploadMedia
+        .mockImplementationOnce(async () => {
+          controller.abort();
+          return { key: rawKey };
+        })
+        .mockResolvedValueOnce({ key: thumbnailKey });
+
+      await expect(
+        service.uploadImageForGeneration(mockImage, mockThumbnail, {
+          signal: controller.signal,
+        }),
+      ).rejects.toMatchObject({ name: 'AbortError' });
+
+      expect(mockFileService.deleteFile).toHaveBeenCalledWith(rawKey);
+      expect(mockFileService.deleteFile).toHaveBeenCalledWith(thumbnailKey);
     });
 
     it('should validate file naming format with correct patterns', async () => {

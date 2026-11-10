@@ -1,10 +1,8 @@
 // @vitest-environment node
-import {
-  CloudSandboxApiName,
-  CloudSandboxManifest,
-} from '@lobechat/builtin-tool-cloud-sandbox';
+import { CloudSandboxApiName, CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
 import { GroupAgentBuilderManifest } from '@lobechat/builtin-tool-group-agent-builder';
 import { GroupManagementManifest } from '@lobechat/builtin-tool-group-management';
+import { ImageGenerationIdentifier } from '@lobechat/builtin-tool-image-generation';
 import { KnowledgeBaseManifest } from '@lobechat/builtin-tool-knowledge-base';
 import { LobeAgentApiName, LobeAgentManifest } from '@lobechat/builtin-tool-lobe-agent';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
@@ -189,6 +187,32 @@ describe('createServerToolsEngine', () => {
 });
 
 describe('createServerAgentToolsEngine', () => {
+  it('only exposes conversation image generation when the user setting enables it', () => {
+    const context = createMockContext();
+    const disabled = createServerAgentToolsEngine(context, {
+      agentConfig: { plugins: [ImageGenerationIdentifier] },
+      model: 'gpt-4',
+      provider: 'openai',
+    }).generateToolsDetailed({
+      model: 'gpt-4',
+      provider: 'openai',
+      toolIds: [ImageGenerationIdentifier],
+    });
+    expect(disabled.enabledToolIds).not.toContain(ImageGenerationIdentifier);
+
+    const enabled = createServerAgentToolsEngine(context, {
+      agentConfig: { plugins: [] },
+      allowConversationImage: true,
+      model: 'gpt-4',
+      provider: 'openai',
+    }).generateToolsDetailed({
+      model: 'gpt-4',
+      provider: 'openai',
+      toolIds: [],
+    });
+    expect(enabled.enabledToolIds).toContain(ImageGenerationIdentifier);
+  });
+
   it('should return a ToolsEngine instance', () => {
     const context = createMockContext();
     const engine = createServerAgentToolsEngine(context, {

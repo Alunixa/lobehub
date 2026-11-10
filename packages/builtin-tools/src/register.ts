@@ -50,6 +50,12 @@ import {
   GroupManagementStreamings,
 } from '@lobechat/builtin-tool-group-management/client';
 import {
+  ImageGenerationIdentifier,
+  ImageGenerationInspectors,
+  ImageGenerationPlaceholders,
+  ImageGenerationRenders,
+} from '@lobechat/builtin-tool-image-generation/client';
+import {
   KnowledgeBaseInspectors,
   KnowledgeBaseManifest,
   KnowledgeBaseRenders,
@@ -166,6 +172,7 @@ export const registerBuiltinToolSurfaces = (): void => {
   if (builtinToolSurfacesRegistered) return;
 
   registerBuiltinRenders({
+    [ImageGenerationIdentifier]: ImageGenerationRenders as Record<string, BuiltinRender>,
     [AgentBuilderManifest.identifier]: AgentBuilderRenders as Record<string, BuiltinRender>,
     [AgentDocumentsManifest.identifier]: AgentDocumentsRenders as Record<string, BuiltinRender>,
     [AgentManagementManifest.identifier]: AgentManagementRenders as Record<string, BuiltinRender>,
@@ -203,6 +210,7 @@ export const registerBuiltinToolSurfaces = (): void => {
   });
 
   registerBuiltinInspectors({
+    [ImageGenerationIdentifier]: ImageGenerationInspectors as Record<string, BuiltinInspector>,
     [AgentBuilderManifest.identifier]: AgentBuilderInspectors as Record<string, BuiltinInspector>,
     [AgentDocumentsManifest.identifier]: AgentDocumentsInspectors as Record<
       string,
@@ -304,6 +312,7 @@ export const registerBuiltinToolSurfaces = (): void => {
   });
 
   registerBuiltinPlaceholders({
+    [ImageGenerationIdentifier]: ImageGenerationPlaceholders as Record<string, BuiltinPlaceholder>,
     [LocalSystemIdentifier]: {
       [LocalSystemApiName.searchFiles]: LocalSystemSearchFilesPlaceholder as BuiltinPlaceholder,
       [LocalSystemApiName.listFiles]: LocalSystemListFilesPlaceholder as BuiltinPlaceholder,

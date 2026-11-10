@@ -1,6 +1,23 @@
 export default {
   'arguments.moreParams': '{{count}} params in total',
   'arguments.title': 'Arguments',
+  'builtins.lobe-image-generation.title': 'Conversation Image Generation',
+  'builtins.lobe-image-generation.apiName.generateImage': 'Generate image',
+  'builtins.lobe-image-generation.inspector.loading': 'Generating image',
+  'builtins.lobe-image-generation.inspector.completed': 'Image generated',
+  'builtins.lobe-image-generation.inspector.failed': 'Image generation failed',
+  'builtins.lobe-image-generation.placeholder':
+    'Generating your image. Use Stop in the conversation to cancel.',
+  'builtins.lobe-image-generation.render.failed': 'Image generation did not complete',
+  'builtins.lobe-image-generation.render.retryHint':
+    'No automatic retry was made. To try again, explicitly ask the assistant to generate again.',
+  'builtins.lobe-image-generation.render.empty': 'The image model returned no images.',
+  'builtins.lobe-image-generation.render.imageAlt': 'AI-generated image',
+  'builtins.lobe-image-generation.render.previewFailed':
+    'The stored image could not be loaded. Reloading the preview does not generate or charge for another image.',
+  'builtins.lobe-image-generation.render.reloadImage': 'Reload image',
+  'builtins.lobe-image-generation.render.showPrompt': 'Show full prompt',
+  'builtins.lobe-image-generation.render.hidePrompt': 'Collapse prompt',
   'builtins.lobe-agent-builder.apiName.getAvailableModels': 'Get available models',
   'builtins.lobe-agent-builder.apiName.getAvailableTools': 'Get available Skills',
   'builtins.lobe-agent-builder.apiName.getConfig': 'Get config',

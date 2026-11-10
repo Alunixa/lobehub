@@ -17,6 +17,8 @@ import { useUserStore } from '@/store/user';
 import { settingsSelectors } from '@/store/user/selectors';
 import type { SystemAgentItem, UserServiceModelConfigKey } from '@/types/user/settings';
 
+import { ConversationImageModelField } from './ConversationImageModelField';
+
 interface SystemAgentModelItem {
   contextLimit?: boolean;
   key: UserServiceModelConfigKey;
@@ -252,7 +254,23 @@ const ModelAssignmentsForm = memo(() => {
   const isModelAssignmentLoading = loadingKey && !isOptionalFeatureLoading && !isMemoryModelLoading;
 
   const modelAssignments: FormGroupItemType = {
-    children: [defaultAgentItem, ...systemModelItems],
+    children: [
+      defaultAgentItem,
+      {
+        children: (
+          <Tooltip title={reason}>
+            <ConversationImageModelField
+              disabled={!canManageServiceModel}
+              value={systemAgentSettings.conversationImage}
+              onChange={(value) => updateSystemAgentModel('conversationImage', value)}
+            />
+          </Tooltip>
+        ),
+        desc: t('systemAgent.conversationImage.modelDesc'),
+        label: t('systemAgent.conversationImage.title'),
+      },
+      ...systemModelItems,
+    ],
     extra: isModelAssignmentLoading && (
       <Icon spin icon={Loader2Icon} size={16} style={{ opacity: 0.5 }} />
     ),

@@ -1,3 +1,4 @@
+import { GenerateImageParamsSchema } from '@lobechat/builtin-tool-image-generation';
 import { BRANDING_PROVIDER } from '@lobechat/business-const';
 import { isLobeHubModelAvailable } from '@lobechat/business-model-bank/model-config';
 import { resolveBusinessModelMapping } from '@lobechat/business-model-runtime';
@@ -18,6 +19,7 @@ import { asyncTasks, generationBatches, generations } from '@/database/schemas';
 import { router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
 import { createAsyncCaller } from '@/server/routers/async/caller';
+import { ConversationImageGenerationService } from '@/server/services/conversationImage';
 import { FileService } from '@/server/services/file';
 import {
   AsyncTaskError,
@@ -42,6 +44,11 @@ const imageProcedure = wsCompatProcedure.use(serverDatabase).use(async (opts) =>
       generationTopicModel: new GenerationTopicModel(ctx.serverDB, ctx.userId, wsId),
     },
   });
+});
+
+const conversationImageInputSchema = GenerateImageParamsSchema.extend({
+  requestId: z.string().min(1).max(255),
+  topicId: z.string().min(1),
 });
 
 const imageCreateProcedure = imageProcedure.use(withScopedPermission('file:upload'));
@@ -344,6 +351,30 @@ export const imageRouter = router({
         },
         success: true,
       };
+    }),
+  generateInConversation: imageCreateProcedure
+    .input(conversationImageInputSchema)
+    .mutation(async ({ input, ctx, signal }) => {
+      const { requestId, topicId, ...params } = input;
+      try {
+        const service = new ConversationImageGenerationService({
+          requestId,
+          serverDB: ctx.serverDB,
+          topicId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId ?? undefined,
+        });
+        const data = await service.generateImage(params, { signal });
+        return { data, success: true };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error('[image:generateInConversation] Image generation failed', error);
+        throw new TRPCError({
+          cause: error,
+          code: 'BAD_REQUEST',
+          message: error instanceof Error ? error.message : 'Image generation failed.',
+        });
+      }
     }),
 });
 

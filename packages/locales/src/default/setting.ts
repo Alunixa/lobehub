@@ -1152,6 +1152,16 @@ When I am ___, I need ___
   'systemAgent.agentMeta.modelDesc':
     'Model used to generate names, descriptions, avatars, and tags',
   'systemAgent.agentMeta.title': 'Profile Generation',
+  'systemAgent.conversationImage.title': 'Conversation Image Model',
+  'systemAgent.conversationImage.modelDesc':
+    'Let the current text assistant use conversation context to compose image prompts and call this image model. Select None to disable. The text model must support tool calling.',
+  'systemAgent.conversationImage.none': 'None (disabled)',
+  'systemAgent.conversationImage.empty':
+    'No enabled image models. Configure and enable an image model first.',
+  'systemAgent.conversationImage.unavailable':
+    'The selected image model is unavailable. Enable it or select another model.',
+  'systemAgent.conversationImage.saved': 'Saved',
+  'systemAgent.conversationImage.manageModels': 'Manage image models',
   'systemAgent.customPrompt.addPrompt': 'Add Custom Prompt',
   'systemAgent.customPrompt.desc':
     'Once filled out, the system agent will use the custom prompt when generating content',

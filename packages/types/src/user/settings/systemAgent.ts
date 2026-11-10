@@ -29,7 +29,10 @@ export interface UserMemoryServiceModelConfig {
 }
 
 export interface UserServiceModelConfig
-  extends UserSystemAgentConfig, UserMemoryServiceModelConfig {}
+  extends UserSystemAgentConfig, UserMemoryServiceModelConfig {
+  /** Opt-in image model called by the conversation's text model, never a chat-model fallback. */
+  conversationImage: SystemAgentItem;
+}
 
 export type UserSystemAgentConfigKey = keyof UserSystemAgentConfig;
 export type UserMemoryServiceModelConfigKey = keyof UserMemoryServiceModelConfig;

@@ -2,6 +2,7 @@
  * Tools Engineering - Unified tools processing using ToolsEngine
  */
 import { CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
+import { ImageGenerationIdentifier } from '@lobechat/builtin-tool-image-generation';
 import { KnowledgeBaseManifest } from '@lobechat/builtin-tool-knowledge-base';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MemoryManifest } from '@lobechat/builtin-tool-memory';
@@ -17,6 +18,7 @@ import {
   type ToolManifest,
   type WorkingModel,
 } from '@lobechat/types';
+import { resolveConversationImageModel } from '@lobechat/utils/conversationImageModel';
 
 import type { ConnectorToolPermission } from '@/database/schemas';
 import { isToolAvailableInCurrentEnv } from '@/helpers/toolAvailability';
@@ -160,6 +162,9 @@ export const createToolsEngine = (config: ToolsEngineConfig = {}): ToolsEngine =
 
   // Combine all manifests, dropping entries that would crash ToolsEngine.
   // Each source is filtered separately so the warning pinpoints the origin.
+  const allowConversationImage = !!resolveConversationImageModel(
+    settingsSelectors.currentSystemAgent(useUserStore.getState()).conversationImage,
+  );
   const allManifests = [
     ...dropInvalidManifests(pluginManifests, 'installedPlugins'),
     ...dropInvalidManifests(builtinManifests, 'builtinTools'),
@@ -167,7 +172,9 @@ export const createToolsEngine = (config: ToolsEngineConfig = {}): ToolsEngine =
     ...dropInvalidManifests(lobehubSkillManifests, 'lobehubSkills'),
     ...dropInvalidManifests(connectorManifests, 'connectors'),
     ...dropInvalidManifests(additionalManifests, 'additionalManifests'),
-  ];
+  ].filter(
+    (manifest) => allowConversationImage || manifest.identifier !== ImageGenerationIdentifier,
+  );
 
   return new ToolsEngine({
     defaultToolIds,
@@ -200,12 +207,16 @@ export const createAgentToolsEngine = (
     agentChatConfigSelectors.currentChatConfig(agentState).memory?.enabled ??
     settingsSelectors.memoryEnabled(useUserStore.getState());
   const webBrowsingEnabled = searchConfig.useApplicationBuiltinSearchTool;
+  const conversationImageEnabled = !!resolveConversationImageModel(
+    settingsSelectors.currentSystemAgent(useUserStore.getState()).conversationImage,
+  );
   const topicReferenceEnabled =
     userGeneralSettingsSelectors.enableTopicReference(useUserStore.getState()) ||
     userGeneralSettingsSelectors.enableProactiveTopicReading(useUserStore.getState()) ||
     pluginIds?.includes(TopicReferenceManifest.identifier) === true;
 
   const chatModeRules = {
+    [ImageGenerationIdentifier]: conversationImageEnabled,
     [KnowledgeBaseManifest.identifier]: kbEnabled,
     [MemoryManifest.identifier]: memoryEnabled,
     [TopicReferenceManifest.identifier]: topicReferenceEnabled,
@@ -222,6 +233,7 @@ export const createAgentToolsEngine = (
     ...Object.fromEntries(alwaysOnToolIds.map((id) => [id, true])),
     // System-level rules (may override user selection for specific tools)
     [CloudSandboxManifest.identifier]: agentChatConfigSelectors.isCloudSandboxEnabled(agentState),
+    [ImageGenerationIdentifier]: conversationImageEnabled,
     [KnowledgeBaseManifest.identifier]: kbEnabled,
     [LocalSystemManifest.identifier]: agentChatConfigSelectors.isLocalSystemEnabled(agentState),
     [MemoryManifest.identifier]: memoryEnabled,

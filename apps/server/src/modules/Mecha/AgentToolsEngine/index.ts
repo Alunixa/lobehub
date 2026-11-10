@@ -10,6 +10,7 @@
  * - No dependency on frontend stores (useToolStore, useAgentStore, etc.)
  */
 import { CloudSandboxManifest } from '@lobechat/builtin-tool-cloud-sandbox';
+import { ImageGenerationIdentifier } from '@lobechat/builtin-tool-image-generation';
 import { KnowledgeBaseManifest } from '@lobechat/builtin-tool-knowledge-base';
 import { LocalSystemManifest } from '@lobechat/builtin-tool-local-system';
 import { MemoryManifest } from '@lobechat/builtin-tool-memory';
@@ -149,6 +150,7 @@ export const createServerAgentToolsEngine = (
 ): ToolsEngine => {
   const {
     additionalManifests,
+    allowConversationImage = false,
     allowTopicReference = false,
     agentConfig,
     canUseDevice = false,
@@ -219,6 +221,7 @@ export const createServerAgentToolsEngine = (
   // web-browsing needs search on). `allowExplicitActivation` is off so the
   // activator can't smuggle anything else in.
   const chatModeRules = {
+    [ImageGenerationIdentifier]: allowConversationImage,
     [KnowledgeBaseManifest.identifier]: hasEnabledKnowledgeBases,
     [MemoryManifest.identifier]: globalMemoryEnabled,
     [TopicReferenceManifest.identifier]: allowTopicReference,
@@ -238,6 +241,7 @@ export const createServerAgentToolsEngine = (
     ...Object.fromEntries(alwaysOnToolIds.map((id) => [id, true])),
     // System-level rules (may override user selection for specific tools)
     [CloudSandboxManifest.identifier]: runtimeMode === 'cloud',
+    [ImageGenerationIdentifier]: allowConversationImage,
     [KnowledgeBaseManifest.identifier]: hasEnabledKnowledgeBases,
     // Local-system: the user must have opted into local runtime
     // (`runtimeMode === 'local'`) AND have an online, auto-activated device
@@ -303,7 +307,10 @@ export const createServerAgentToolsEngine = (
     // filters the builtin source). Excluding the identifiers here drops
     // them from the combined `manifestSchemas` so the activator cannot
     // resolve them regardless of which manifest source declared them.
-    excludeIdentifiers: canUseDevice ? undefined : DEVICE_TOOL_IDENTIFIERS,
+    excludeIdentifiers: new Set([
+      ...(canUseDevice ? [] : DEVICE_TOOL_IDENTIFIERS),
+      ...(allowConversationImage ? [] : [ImageGenerationIdentifier]),
+    ]),
     // Conversation context for context-aware builtin manifests (scope /
     // isSubAgent), e.g. hiding lobe-agent's callSubAgent in sub-agent / group runs.
     manifestContext,
