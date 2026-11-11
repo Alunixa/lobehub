@@ -24,6 +24,7 @@ const styles = createStaticStyles(({ css }) => ({
     position: relative;
 
     overflow: hidden;
+    flex-shrink: 0;
     align-self: center;
 
     width: min(100%, 480px);
@@ -61,7 +62,11 @@ const CropImageContent = ({
           aria-label={t('globalBackground.cropPreview')}
           className={styles.viewport}
           ref={state.viewport}
-          style={{ aspectRatio: state.options.aspect }}
+          style={{
+            aspectRatio: state.options.aspect,
+            // Bound width as well as height so portrait crops are not stretched.
+            width: `min(100%, 480px, ${42 * state.options.aspect}dvh)`,
+          }}
           onPointerCancel={state.onPointerUp}
           onPointerDown={state.onPointerDown}
           onPointerMove={state.onPointerMove}

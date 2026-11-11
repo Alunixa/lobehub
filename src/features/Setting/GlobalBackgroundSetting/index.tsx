@@ -153,7 +153,12 @@ export const GlobalBackgroundSetting = memo(() => {
           <div
             aria-label={t('globalBackground.preview')}
             className={styles.preview}
-            style={{ aspectRatio: state.device === 'mobile' ? '9 / 16' : '16 / 9', maxHeight: 260 }}
+            style={{
+              alignSelf: 'center',
+              aspectRatio: state.device === 'mobile' ? '9 / 16' : '16 / 9',
+              maxHeight: 260,
+              width: `min(100%, ${260 * (state.device === 'mobile' ? 9 / 16 : 16 / 9)}px)`,
+            }}
           >
             <img
               alt=""
