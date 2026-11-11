@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 const dns = require('node:dns').promises;
 const fs = require('node:fs').promises;
 const path = require('node:path');
@@ -26,8 +27,10 @@ const PROXYCHAINS_CONF_PATH = '/etc/proxychains4.conf';
 
 // Function to check if a string is a valid IP address
 const isValidIP = (ip, version = 4) => {
+  // eslint-disable-next-line regexp/no-unused-capturing-group -- Preserve the existing proxy address validation.
   const ipv4Regex = /^(25[0-5]|2[0-4]\d|[01]?\d{1,2})(\.(25[0-5]|2[0-4]\d|[01]?\d{1,2})){3}$/;
   const ipv6Regex =
+    // eslint-disable-next-line regexp/no-unused-capturing-group -- Preserve the existing proxy address validation.
     /^(([\da-f]{1,4}:){7}[\da-f]{1,4}|([\da-f]{1,4}:){1,7}:|([\da-f]{1,4}:){1,6}:[\da-f]{1,4}|([\da-f]{1,4}:){1,5}(:[\da-f]{1,4}){1,2}|([\da-f]{1,4}:){1,4}(:[\da-f]{1,4}){1,3}|([\da-f]{1,4}:){1,3}(:[\da-f]{1,4}){1,4}|([\da-f]{1,4}:){1,2}(:[\da-f]{1,4}){1,5}|[\da-f]{1,4}:((:[\da-f]{1,4}){1,6})|:((:[\da-f]{1,4}){1,7}|:)|fe80:(:[\da-f]{0,4}){0,4}%[\da-z]+|::(ffff(:0{1,4})?:)?((25[0-5]|(2[0-4]|1?\d)?\d)\.){3}(25[0-5]|(2[0-4]|1?\d)?\d)|([\da-f]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1?\d)?\d)\.){3}(25[0-5]|(2[0-4]|1?\d)?\d))$/;
 
   switch (version) {
@@ -151,6 +154,7 @@ const startGateway = async () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({}),
+        signal: AbortSignal.timeout(10_000),
       });
 
       if (res.ok) {
@@ -160,9 +164,10 @@ const startGateway = async () => {
 
       console.warn(`⚠️ Gateway: Received status ${res.status}, retrying...`);
     } catch {
-      if (i < maxRetries - 1) {
-        await new Promise((r) => setTimeout(r, retryDelay));
-      }
+      // Startup retries are bounded and must not block the HTTP server.
+    }
+    if (i < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, retryDelay));
     }
   }
 
@@ -227,6 +232,10 @@ const runServer = async () => {
   return runRealtimeServer({
     internalPort,
     listenHost: process.env.SERVER_LISTEN_HOST || '0.0.0.0',
+    onReady: () => {
+      void startGateway();
+      void createQstashSchedule();
+    },
     publicPort,
     serverScriptPath: SERVER_SCRIPT_PATH,
     useProxy: Boolean(PROXY_URL),
@@ -259,12 +268,6 @@ const runServer = async () => {
       }
     }
   }
-
-  // Start gateway in background after server is ready
-  startGateway();
-
-  // Create QStash schedule for workflow task dispatching
-  createQstashSchedule();
 
   // Run the server in either database or non-database mode
   await runServer();

@@ -136,7 +136,10 @@ jobs:
             apps/server/src/services/aiAgent/__tests__/execAgent.threadId.test.ts \
             scripts/serverLauncher/realtimeServer.test.mjs
       - name: Authenticated realtime bridge integration
-        run: node node_modules/vitest/vitest.mjs run --silent=passed-only scripts/serverLauncher/realtimeServer.integration.test.mjs
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            scripts/serverLauncher/realtimeServer.integration.test.mjs \
+            scripts/serverLauncher/serverReady.test.mjs
       - name: Provider stream decoder regressions
         working-directory: packages/model-runtime
         run: |

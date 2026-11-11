@@ -13,6 +13,7 @@ name: Codex Build Server Image
       - locales/**
       - package.json
       - packages/**
+      - scripts/serverLauncher/**
       - src/**
 
 permissions:
@@ -53,6 +54,45 @@ jobs:
           docker run --rm --entrypoint /bin/node --workdir /app \
             lobehub/lobehub:codex-${{ github.sha }} \
             -e "require.resolve('@swc/helpers/esm/_interop_require_default.js'); require('next/dist/server/next-server.js'); require('node:fs').accessSync('/app/public/proactive-push-sw.js'); const Redis = require('ioredis'); const redis = new Redis('redis://127.0.0.1:1', { lazyConnect: true }); redis.disconnect(); const realtime = require('/app/realtimeServer.js'); if (typeof realtime.createRedisMessageBroker !== 'function') throw new Error('realtime broker export missing')"
+
+      - name: Verify isolated production cold start
+        timeout-minutes: 5
+        env:
+          IMAGE: lobehub/lobehub:codex-${{ github.sha }}
+        run: |
+          set -eu
+          NAME="codex-cold-start-${GITHUB_RUN_ID}"
+          cleanup() {
+            docker logs --timestamps "$NAME" || true
+            docker rm -f "$NAME" || true
+          }
+          trap cleanup EXIT
+          docker run -d --name "$NAME" --network none \
+            -e DATABASE_DRIVER= \
+            -e DATABASE_URL=postgresql://test:test@127.0.0.1:1/test \
+            -e REDIS_URL=redis://127.0.0.1:1 \
+            -e S3_ENDPOINT=http://127.0.0.1:1 \
+            -e S3_BUCKET=cold-start -e S3_ACCESS_KEY_ID=cold-start \
+            -e S3_SECRET_ACCESS_KEY=cold-start \
+            -e KEY_VAULTS_SECRET="$(openssl rand -base64 32)" \
+            -e AUTH_SECRET=cold-start-ci-fixture \
+            -e APP_URL=http://127.0.0.1:3210 \
+            -e PORT=3210 -e INTERNAL_PORT=3211 "$IMAGE"
+          docker exec "$NAME" /bin/node -e '
+            const deadline = Date.now() + 180000;
+            (async () => {
+              while (Date.now() < deadline) {
+                const ports = await Promise.all([3210, 3211].map(async port => {
+                  try {
+                    const r = await fetch(`http://127.0.0.1:${port}/api/version`, { signal: AbortSignal.timeout(10000) });
+                    return r.status === 200 && typeof (await r.json()).version === "string";
+                  } catch { return false; }
+                }));
+                if (ports.every(Boolean)) { console.log("COLD_START_PUBLIC_AND_INTERNAL_OK"); return; }
+                await new Promise(resolve => setTimeout(resolve, 2000));
+              }
+              throw new Error("Production cold start did not become ready");
+            })().catch(error => { console.error(error.message); process.exitCode = 1; });'
 
       - name: Export static production UI for browser validation
         uses: docker/build-push-action@v6

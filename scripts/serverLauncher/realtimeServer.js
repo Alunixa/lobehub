@@ -4,8 +4,9 @@ const { spawn } = require('node:child_process');
 const { URL } = require('node:url');
 const { WebSocket, WebSocketServer } = require('ws');
 
+const { waitForInternalServer } = require('./serverReady.js');
+
 const WEBSOCKET_PATH = '/api/trpc-ws';
-const INTERNAL_READY_PATH = '/api/version';
 const MESSAGE_SUBSCRIPTION_QUERY_PATH = 'message.getRealtimeSubscription';
 const MAX_WEBSOCKET_PAYLOAD = 16 * 1024 * 1024;
 const UPSTREAM_TIMEOUT_MS = 15_000;
@@ -866,54 +867,10 @@ const createRealtimeServer = ({
   return { close, listen, server, websocketServer };
 };
 
-const waitForInternalServer = ({ child, internalHost, internalPort }) =>
-  new Promise((resolve, reject) => {
-    let settled = false;
-    let attempts = 0;
-    let retryTimer;
-
-    const finish = (error) => {
-      if (settled) return;
-      settled = true;
-      clearTimeout(retryTimer);
-      child.off('exit', onExit);
-      if (error) reject(error);
-      else resolve();
-    };
-    const onExit = (code, signal) => {
-      finish(new Error(`Internal Next server exited before readiness (${code ?? signal})`));
-    };
-    const probe = () => {
-      if (settled) return;
-      attempts += 1;
-      const request = http.get(
-        {
-          hostname: internalHost,
-          path: INTERNAL_READY_PATH,
-          port: internalPort,
-        },
-        (response) => {
-          response.resume();
-          if (response.statusCode && response.statusCode < 500) {
-            finish();
-            return;
-          }
-          retryTimer = setTimeout(probe, Math.min(1000, 100 + attempts * 25));
-        },
-      );
-      request.setTimeout(1000, () => request.destroy());
-      request.once('error', () => {
-        retryTimer = setTimeout(probe, Math.min(1000, 100 + attempts * 25));
-      });
-    };
-
-    child.once('exit', onExit);
-    probe();
-  });
-
 const runRealtimeServer = async ({
   internalPort,
   listenHost = '0.0.0.0',
+  onReady,
   publicPort,
   serverScriptPath,
   useProxy = false,
@@ -938,19 +895,22 @@ const runRealtimeServer = async ({
   });
   let shuttingDown = false;
   let resolveRun;
-  let rejectRun;
-  const runPromise = new Promise((resolve, reject) => {
+  const startupController = new AbortController();
+  const runPromise = new Promise((resolve) => {
     resolveRun = resolve;
-    rejectRun = reject;
   });
 
   const shutdown = async (exitCode) => {
     if (shuttingDown) return;
     shuttingDown = true;
+    startupController.abort(new Error('Server stopped before readiness'));
     child.kill('SIGTERM');
     await realtimeServer.close().catch(() => {});
-    if (exitCode === undefined) resolveRun();
-    else rejectRun(new Error(`Internal Next server exited with code ${exitCode}`));
+    resolveRun(
+      exitCode === undefined
+        ? undefined
+        : new Error(`Internal Next server exited with code ${exitCode}`),
+    );
   };
 
   child.once('exit', (code, signal) => {
@@ -958,21 +918,37 @@ const runRealtimeServer = async ({
     void shutdown(code ?? signal);
   });
 
-  process.once('SIGTERM', () => void shutdown());
-  process.once('SIGINT', () => void shutdown());
+  const onStop = () => void shutdown();
+  process.once('SIGTERM', onStop);
+  process.once('SIGINT', onStop);
 
   try {
-    await waitForInternalServer({ child, internalHost, internalPort });
+    await waitForInternalServer({
+      child,
+      internalHost,
+      internalPort,
+      signal: startupController.signal,
+    });
+    if (shuttingDown) return;
     await realtimeServer.listen();
     console.log(
       `✅ Realtime server: HTTP proxy on ${listenHost}:${publicPort}, WebSocket ${WEBSOCKET_PATH}`,
     );
+    onReady?.();
+    const exitError = await runPromise;
+    if (exitError) throw exitError;
   } catch (error) {
+    if (shuttingDown) {
+      const exitError = await runPromise;
+      if (exitError) throw exitError;
+      return;
+    }
     await shutdown(error instanceof Error ? error.message : 1);
     throw error;
+  } finally {
+    process.off('SIGTERM', onStop);
+    process.off('SIGINT', onStop);
   }
-
-  await runPromise;
 };
 
 module.exports = {
