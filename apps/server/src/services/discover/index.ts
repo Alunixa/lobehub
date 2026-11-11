@@ -2116,7 +2116,7 @@ export class DiscoverService {
       return response;
     } catch (error) {
       log('getGroupAgentList: error: %O', error);
-      return { currentPage: 1, items: [], totalCount: 0, totalPages: 1 };
+      throw error;
     }
   };
 

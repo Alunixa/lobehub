@@ -319,6 +319,8 @@ class DiscoverService {
   // ============================== Models ==============================
 
   getModelCategories = async (params: CategoryListQuery = {}): Promise<CategoryItem[]> => {
+    await this.safeInjectMPToken();
+
     return lambdaClient.market.getModelCategories.query(params);
   };
 
@@ -326,6 +328,8 @@ class DiscoverService {
     identifier: string;
     locale?: string;
   }): Promise<DiscoverModelDetail | undefined> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getModelDetail.query({
       ...params,
@@ -334,10 +338,14 @@ class DiscoverService {
   };
 
   getModelIdentifiers = async (): Promise<IdentifiersResponse> => {
+    await this.safeInjectMPToken();
+
     return lambdaClient.market.getModelIdentifiers.query();
   };
 
   getModelList = async (params: ModelQueryParams = {}): Promise<ModelListResponse> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getModelList.query({
       ...params,
@@ -350,6 +358,8 @@ class DiscoverService {
   // ============================== Plugin Market ==============================
 
   getPluginCategories = async (params: CategoryListQuery = {}): Promise<CategoryItem[]> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getPluginCategories.query({
       ...params,
@@ -362,6 +372,8 @@ class DiscoverService {
     locale?: string;
     withManifest?: boolean;
   }): Promise<DiscoverPluginDetail | undefined> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getPluginDetail.query({
       ...params,
@@ -370,10 +382,14 @@ class DiscoverService {
   };
 
   getPluginIdentifiers = async (): Promise<IdentifiersResponse> => {
+    await this.safeInjectMPToken();
+
     return lambdaClient.market.getPluginIdentifiers.query();
   };
 
   getPluginList = async (params: PluginQueryParams = {}): Promise<PluginListResponse> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getPluginList.query({
       ...params,
@@ -390,6 +406,8 @@ class DiscoverService {
     locale?: string;
     withReadme?: boolean;
   }): Promise<DiscoverProviderDetail | undefined> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getProviderDetail.query({
       ...params,
@@ -398,10 +416,14 @@ class DiscoverService {
   };
 
   getProviderIdentifiers = async (): Promise<IdentifiersResponse> => {
+    await this.safeInjectMPToken();
+
     return lambdaClient.market.getProviderIdentifiers.query();
   };
 
   getProviderList = async (params: ProviderQueryParams = {}): Promise<ProviderListResponse> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getProviderList.query({
       ...params,
@@ -417,6 +439,8 @@ class DiscoverService {
     locale?: string;
     username: string;
   }): Promise<DiscoverUserProfile | undefined> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getUserInfo.query({
       locale,
@@ -603,6 +627,8 @@ class DiscoverService {
   // ============================== Group Agent Market ==============================
 
   getGroupAgentCategories = async (params: CategoryListQuery = {}): Promise<CategoryItem[]> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getGroupAgentCategories.query({
       ...params,
@@ -615,6 +641,8 @@ class DiscoverService {
     locale?: string;
     version?: string;
   }): Promise<any> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getGroupAgentDetail.query({
       identifier: params.identifier,
@@ -624,10 +652,14 @@ class DiscoverService {
   };
 
   getGroupAgentIdentifiers = async (): Promise<IdentifiersResponse> => {
+    await this.safeInjectMPToken();
+
     return lambdaClient.market.getGroupAgentIdentifiers.query();
   };
 
   getGroupAgentList = async (params: GroupAgentQueryParams = {}): Promise<any> => {
+    await this.safeInjectMPToken();
+
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.agentGroup.getAgentGroupList.query(
       {

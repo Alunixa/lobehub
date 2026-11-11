@@ -600,6 +600,19 @@ describe('DiscoverService', () => {
     });
   });
 
+  describe('Group Agent Market', () => {
+    it('propagates catalogue failures instead of returning a fake empty list', async () => {
+      const error = new Error('Market unavailable');
+      service.market = {
+        ...mockMarket,
+        getAgentGroupList: vi.fn().mockRejectedValue(error),
+        agentGroups: { getAgentGroupList: vi.fn().mockRejectedValue(error) },
+      } as any;
+
+      await expect(service.getGroupAgentList()).rejects.toBe(error);
+    });
+  });
+
   describe('Provider Market', () => {
     describe('getProviderList', () => {
       it('should return formatted provider list', async () => {

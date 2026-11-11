@@ -261,10 +261,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getGroupAgentList(input);
       } catch (error) {
         log('Error fetching group agent list: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch group agent list',
-        });
+        throw mapMarketError(error, 'Failed to fetch group agent list');
       }
     }),
 
