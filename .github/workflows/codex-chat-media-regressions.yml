@@ -148,6 +148,7 @@ jobs:
             src/features/GlobalBackground/config.test.ts \
             src/features/GlobalBackground/useLoadedBackground.test.ts \
             src/features/Setting/GlobalBackgroundSetting/draftStorage.test.ts \
+            src/features/Setting/GlobalBackgroundSetting/useBackgroundSetting.test.ts \
             src/services/background.test.ts \
             src/store/user/slices/settings/action.test.ts
       - name: Chat/Completions model-specific parameter compatibility

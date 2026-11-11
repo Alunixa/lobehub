@@ -106,7 +106,7 @@ export const useBackgroundSetting = () => {
         const cropped = await cropUploadedBackground(file, target, abort.signal);
         if (!cropped || abort.signal.aborted || !mounted.current) break;
         const image = await backgroundService.uploadImage(cropped, abort);
-        if (!mounted.current) break;
+        if (abort.signal.aborted || !mounted.current) break;
         const current = configRef.current;
         update(
           {
