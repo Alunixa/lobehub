@@ -316,3 +316,17 @@ that evidence, but it can never replace it.
 **Why / what it breaks**: a persisted user row can be absent from the API's oldest-page cap, the selected display branch, and the final model context at the same time. An upstream error does not explain those omissions.
 
 **Correct approach**: follow the same message IDs through persistence, complete query results, selected-branch parsing, and model context. Cover histories beyond the old page limit and a newer inactive regenerated branch with real database/RPC tests. Verify reload in both layouts, and preserve any user edits made while diagnosing instead of restoring a stale snapshot.
+
+## Case 15 — A background fixture accidentally supplies the missing production root class
+
+**Wrong approach**: set `className="lobe-ui-theme-app"` on a fixture ThemeProvider and
+use its screenshots to claim that the same global background works in production.
+
+**Why / what it breaks**: the library uses that name as an id on a display-contents
+descendant, while the production AppTheme passes only generated classes. The fixture
+silently repairs the broken selector and produces a false pass on both device types.
+
+**Correct approach**: render the actual AppTheme and its actual global/Home styles
+without supplying a fixture root class. Verify image delivery independently, capture
+the failing opaque surfaces, then check the real App element's shared marker and
+computed transparency in desktop/mobile, light/dark, reload and image preview states.

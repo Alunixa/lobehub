@@ -143,6 +143,7 @@ jobs:
       - name: Provider request errors and global background preferences
         run: |
           node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/layout/SPAGlobalProvider/index.test.tsx \
             src/features/Conversation/Error/index.test.tsx \
             src/features/Conversation/Error/isProviderAuthError.test.ts \
             src/features/GlobalBackground/config.test.ts \

@@ -14,7 +14,11 @@ import { memo, useEffect, useMemo, useState } from 'react';
 
 import AntdStaticMethods from '@/components/AntdStaticMethods';
 import Link from '@/components/Link';
-import { LOBE_THEME_NEUTRAL_COLOR, LOBE_THEME_PRIMARY_COLOR } from '@/const/theme';
+import {
+  APP_THEME_ROOT_CLASS_NAME,
+  LOBE_THEME_NEUTRAL_COLOR,
+  LOBE_THEME_PRIMARY_COLOR,
+} from '@/const/theme';
 import { isDesktop } from '@/const/version';
 import { useIsDark } from '@/hooks/useIsDark';
 import { getUILocaleAndResources } from '@/libs/getUILocaleAndResources';
@@ -157,9 +161,14 @@ const AppTheme = memo<AppThemeProps>(
       <AppConfigContext value={appConfig}>
         <ThemeProvider
           appearance={currentAppearence}
-          className={cx(styles.app, styles.scrollbar, styles.scrollbarPolyfill)}
           defaultAppearance={currentAppearence}
           defaultThemeMode={currentAppearence}
+          className={cx(
+            APP_THEME_ROOT_CLASS_NAME,
+            styles.app,
+            styles.scrollbar,
+            styles.scrollbarPolyfill,
+          )}
           customTheme={{
             neutralColor: neutralColor ?? defaultNeutralColor,
             primaryColor: primaryColor ?? defaultPrimaryColor,

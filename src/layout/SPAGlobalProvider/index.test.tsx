@@ -1,9 +1,12 @@
 /**
  * @vitest-environment happy-dom
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { APP_THEME_ROOT_CLASS_NAME } from '@/const/theme';
+import type * as AppThemeModule from '@/layout/GlobalProvider/AppTheme';
 
 import type SPAGlobalProviderComponent from './index';
 
@@ -17,6 +20,10 @@ vi.mock('@lobehub/ui', async () => {
   return {
     ContextMenuHost: () => React.createElement('div', { 'data-testid': 'context-menu-host' }),
     ModalHost: () => React.createElement('div', { 'data-testid': 'legacy-modal-host' }),
+    ConfigProvider: Passthrough,
+    FontLoader: () => null,
+    ThemeProvider: ({ children, className }: { children?: ReactNode; className?: string }) =>
+      React.createElement('div', { className, 'data-testid': 'app-theme-root' }, children),
     TooltipGroup: Passthrough,
   };
 });
@@ -34,6 +41,13 @@ vi.mock('antd-style', async () => {
   const React = await import('react');
 
   return {
+    createStaticStyles: () => ({
+      app: 'fixture-app-layout',
+      scrollbar: 'fixture-scrollbar',
+      scrollbarPolyfill: 'fixture-scrollbar-polyfill',
+    }),
+    cx: (...values: (string | undefined)[]) => values.filter(Boolean).join(' '),
+    useTheme: () => ({ fontFamily: 'system-ui' }),
     StyleProvider: ({ children }: { children?: ReactNode }) =>
       React.createElement(React.Fragment, null, children),
   };
@@ -78,6 +92,37 @@ vi.mock('@/features/AgentMockDevtools', () => ({
 vi.mock('@/features/DevFeatureFlagPanel', () => ({
   default: () => null,
 }));
+
+vi.mock('@/features/GlobalBackground', async () => {
+  const React = await import('react');
+  return {
+    GlobalBackground: () => React.createElement('div', { 'data-testid': 'global-background' }),
+  };
+});
+
+vi.mock('@/features/Conversation/ProactiveNotificationObserver', () => ({ default: () => null }));
+
+vi.mock('@/hooks/useIsDark', () => ({ useIsDark: () => false }));
+vi.mock('@/store/user', () => ({
+  useUserStore: (selector: (state: unknown) => unknown) => selector({}),
+}));
+vi.mock('@/store/user/selectors', () => ({
+  userGeneralSettingsSelectors: {
+    animationMode: () => 'agile',
+    neutralColor: () => undefined,
+    primaryColor: () => undefined,
+  },
+}));
+vi.mock('@/store/global', () => ({
+  useGlobalStore: (selector: (state: unknown) => unknown) => selector({}),
+}));
+vi.mock('@/store/global/selectors', () => ({
+  systemStatusSelectors: { language: () => 'en-US' },
+}));
+vi.mock('@/libs/getUILocaleAndResources', () => ({
+  getUILocaleAndResources: async () => ({ locale: 'en-US', resources: undefined }),
+}));
+vi.mock('@/styles', () => ({ GlobalStyle: () => null }));
 
 vi.mock('@/layout/AuthProvider', async () => {
   const React = await import('react');
@@ -182,15 +227,46 @@ describe('SPAGlobalProvider', () => {
     Reflect.deleteProperty(window, '__SERVER_CONFIG__');
   });
 
-  it('provides Market auth from the SPA global provider', () => {
-    render(
-      <SPAGlobalProvider>
-        <div data-testid="spa-route-content" />
-      </SPAGlobalProvider>,
-    );
+  it('provides Market auth from the SPA global provider', async () => {
+    await act(async () => {
+      render(
+        <SPAGlobalProvider>
+          <div data-testid="spa-route-content" />
+        </SPAGlobalProvider>,
+      );
+    });
 
     const routeContent = screen.getByTestId('spa-route-content');
 
     expect(routeContent.closest('[data-testid="market-auth-provider"]')).not.toBeNull();
+  });
+
+  it('mounts the background in the same signed-in provider tree as routes', async () => {
+    await act(async () => {
+      render(
+        <SPAGlobalProvider>
+          <div />
+        </SPAGlobalProvider>,
+      );
+    });
+    expect(
+      screen.getByTestId('global-background').closest('[data-testid="market-auth-provider"]'),
+    ).not.toBeNull();
+  });
+
+  it('the actual AppTheme passes the shared background surface class to its App element', async () => {
+    const { default: AppTheme } = await vi.importActual<typeof AppThemeModule>(
+      '@/layout/GlobalProvider/AppTheme',
+    );
+    await act(async () => {
+      render(
+        <AppTheme>
+          <span>Real theme root contract</span>
+        </AppTheme>,
+      );
+    });
+    expect(screen.getByTestId('app-theme-root')).toHaveClass(APP_THEME_ROOT_CLASS_NAME);
+    // The vendor's lobe-ui-theme-app is an id on a display-contents descendant.
+    expect(screen.getByTestId('app-theme-root')).not.toHaveClass('lobe-ui-theme-app');
   });
 });

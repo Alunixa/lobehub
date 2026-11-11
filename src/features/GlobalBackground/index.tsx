@@ -4,6 +4,7 @@ import { createGlobalStyle, createStaticStyles, useTheme } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { memo, useEffect, useMemo, useState } from 'react';
 
+import { APP_THEME_ROOT_CLASS_NAME } from '@/const/theme';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useUserStore } from '@/store/user';
 import { userGeneralSettingsSelectors } from '@/store/user/selectors';
@@ -13,7 +14,8 @@ import { useLoadedBackground } from './useLoadedBackground';
 
 const BackgroundSurfaces = createGlobalStyle`
   html[data-global-background='on'] {
-    .lobe-ui-theme-app {
+    /* The UI library uses lobe-ui-theme-app as an id, not an App class. */
+    .${APP_THEME_ROOT_CLASS_NAME} {
       --ant-color-bg-layout: transparent;
       --ant-color-bg-container: color-mix(in srgb, var(--global-bg-solid) 18%, transparent);
       --ant-color-bg-container-secondary: color-mix(in srgb, var(--global-bg-solid) 12%, transparent);
@@ -24,7 +26,7 @@ const BackgroundSurfaces = createGlobalStyle`
     }
 
     /* Home keeps this legacy surface token inline instead of using antd vars. */
-    .lobe-ui-theme-app [style*='--content-bg-secondary'] {
+    .${APP_THEME_ROOT_CLASS_NAME} [style*='--content-bg-secondary'] {
       --content-bg-secondary: color-mix(in srgb, var(--global-bg-solid) 18%, transparent) !important;
     }
 
