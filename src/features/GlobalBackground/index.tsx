@@ -23,6 +23,11 @@ const BackgroundSurfaces = createGlobalStyle`
       background: transparent !important;
     }
 
+    /* Home keeps this legacy surface token inline instead of using antd vars. */
+    .lobe-ui-theme-app [style*='--content-bg-secondary'] {
+      --content-bg-secondary: color-mix(in srgb, var(--global-bg-solid) 18%, transparent) !important;
+    }
+
     /* Keep original image previews opaque, including transparent uploaded PNGs. */
     .ant-image-preview-root .ant-image-preview-mask,
     .ant-image-preview-root .ant-image-mask,
