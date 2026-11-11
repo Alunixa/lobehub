@@ -67,6 +67,31 @@ describe('SettingsAction', () => {
   });
 
   describe('setSettings', () => {
+    it('saves desktop backgrounds without overwriting the mobile selection and can clear arrays', async () => {
+      const desktopImage = { id: 'file_desktop', name: 'Desktop', url: '/f/file_desktop' };
+      const mobileImage = { id: 'file_mobile', name: 'Mobile', url: '/f/file_mobile' };
+      useUserStore.setState({
+        settings: {
+          general: {
+            background: {
+              desktop: { enabled: true, images: [desktopImage], blur: 2 },
+              mobile: { enabled: true, images: [mobileImage], blur: 8 },
+            },
+          },
+        },
+      });
+      await useUserStore.getState().setSettings({
+        general: { background: { desktop: { enabled: false, images: [], blur: 0 } } },
+      });
+      const settings = useUserStore.getState().settings.general?.background;
+      expect(settings?.desktop).toMatchObject({ enabled: false, images: [], blur: 0 });
+      expect(settings?.mobile).toMatchObject({
+        enabled: true,
+        images: [mobileImage],
+        blur: 8,
+      });
+    });
+
     it('retains the saved time preference if only the subsequent refresh fails', async () => {
       useUserStore.setState({ settings: { general: { injectCurrentTime: false } } });
       const refresh = vi

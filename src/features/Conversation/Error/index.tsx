@@ -23,6 +23,7 @@ import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfi
 import { getRuntimeErrorMessage } from '@/utils/locale/runtimeErrorMessage';
 
 import ChatInvalidAPIKey from './ChatInvalidApiKey';
+import { isProviderAuthError } from './isProviderAuthError';
 import { useHeterogeneousAutoRetry } from './useHeterogeneousAutoRetry';
 
 interface ErrorMessageData {
@@ -376,7 +377,7 @@ const ErrorMessageExtra = memo<ErrorExtraProps>(
       }
     }
 
-    if (error?.type?.toString().includes('Invalid')) {
+    if (isProviderAuthError(error?.type)) {
       return <ChatInvalidAPIKey id={data.id} provider={data.error?.body?.provider} />;
     }
 

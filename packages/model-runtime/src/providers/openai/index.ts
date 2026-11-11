@@ -10,6 +10,7 @@ import {
   isOpenAIComputerUseModel,
   isOpenAIReasoningPayloadModel,
   isResponsesAPIModel,
+  parseOpenAIModelId,
   supportsOpenAIServiceTierFlex,
 } from './openaiModelId';
 
@@ -24,7 +25,7 @@ export const params = {
   baseURL: 'https://api.openai.com/v1',
   chatCompletion: {
     handlePayload: (payload) => {
-      const { enabledSearch, instructions, model, ...rest } = payload;
+      const { enabledSearch, instructions, model, verbosity, ...rest } = payload;
 
       if (isResponsesAPIModel(model) || enabledSearch) {
         return {
@@ -33,11 +34,14 @@ export const params = {
           enabledSearch,
           instructions,
           model,
+          verbosity,
         } as ChatStreamPayload;
       }
 
       const chatPayload = {
         ...rest,
+        // OpenAI-compatible does not mean every model accepts GPT-5-only options.
+        ...(verbosity && (parseOpenAIModelId(model)?.majorVersion ?? 0) >= 5 ? { verbosity } : {}),
         messages: instructions
           ? [{ content: instructions, role: 'system' as const }, ...rest.messages]
           : rest.messages,

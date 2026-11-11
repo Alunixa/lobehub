@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 
 import { CurrentTimeSetting } from '@/features/Setting/CurrentTimeSetting';
+import { GlobalBackgroundSetting } from '@/features/Setting/GlobalBackgroundSetting';
 import SettingHeader from '@/routes/(main)/settings/features/SettingHeader';
 
 import ChatAppearance from '../chat-appearance/features/ChatAppearance';
@@ -16,6 +17,7 @@ const Page = () => {
       <Common />
       <CurrentTimeSetting />
       <Appearance />
+      <GlobalBackgroundSetting />
       <Desktop />
       <ChatAppearance />
     </>

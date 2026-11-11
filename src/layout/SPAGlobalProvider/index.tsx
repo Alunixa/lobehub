@@ -11,6 +11,7 @@ import { isDesktop } from '@/const/version';
 import AgentMockDevtools from '@/features/AgentMockDevtools';
 import ProactiveNotificationObserver from '@/features/Conversation/ProactiveNotificationObserver';
 import DevFeatureFlagPanel from '@/features/DevFeatureFlagPanel';
+import { GlobalBackground } from '@/features/GlobalBackground';
 import AuthProvider from '@/layout/AuthProvider';
 import { MarketAuthProvider } from '@/layout/AuthProvider/MarketAuth';
 import AppTheme from '@/layout/GlobalProvider/AppTheme';
@@ -54,6 +55,7 @@ const SPAGlobalProvider = memo<PropsWithChildren>(({ children }) => {
             <AuthProvider>
               <MarketAuthProvider isDesktop={isDesktop}>
                 <StoreInitialization />
+                <GlobalBackground />
                 <ProactiveNotificationObserver />
 
                 {isDesktop && <ServerVersionOutdatedAlert />}

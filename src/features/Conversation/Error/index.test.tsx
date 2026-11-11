@@ -135,6 +135,26 @@ describe('ErrorMessageExtra', () => {
     serverConfigMock.enableBusinessFeatures = false;
   });
 
+  it('shows invalid request details instead of suggesting a cn API key reset', () => {
+    render(
+      <ErrorMessageExtra
+        error={{ message: 'Invalid request format' }}
+        data={{
+          error: {
+            body: { provider: 'cn' },
+            message: '400 Validation: Unsupported parameter(s): `verbosity`',
+            type: AgentRuntimeErrorType.InvalidRequestFormat,
+          },
+          id: 'cn-invalid-verbosity',
+        }}
+      />,
+    );
+    expect(
+      screen.getByText('400 Validation: Unsupported parameter(s): `verbosity`'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('unlock.apiKey.title')).not.toBeInTheDocument();
+  });
+
   it('keeps the localized message for known error types even when a traceId exists', () => {
     serverConfigMock.enableBusinessFeatures = true;
 

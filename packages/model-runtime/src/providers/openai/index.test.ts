@@ -41,6 +41,35 @@ describe('LobeOpenAI', () => {
   });
 
   describe('chat', () => {
+    it.each(['deepseek-v4.1-flash', 'deepseek/deepseek-v4-pro', 'gpt-4o'])(
+      'does not leak GPT-5 verbosity to Chat/Completions model %s',
+      async (model) => {
+        await instance.chat({
+          apiMode: 'chatCompletion',
+          messages: [{ content: 'Hello', role: 'user' }],
+          model,
+          verbosity: 'high',
+        });
+        const request = (instance.client.chat.completions.create as Mock).mock.calls[0][0];
+        expect(request.model).toBe(model);
+        expect(request.verbosity).toBeUndefined();
+        expect(instance.client.responses.create).not.toHaveBeenCalled();
+      },
+    );
+
+    it('keeps supported GPT-5 verbosity in explicitly selected Chat/Completions mode', async () => {
+      await instance.chat({
+        apiMode: 'chatCompletion',
+        messages: [{ content: 'Hello', role: 'user' }],
+        model: 'gpt-5',
+        verbosity: 'high',
+      });
+      expect(instance.client.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({ model: 'gpt-5', verbosity: 'high' }),
+        expect.anything(),
+      );
+    });
+
     it('should return a StreamingTextResponse on successful API call', async () => {
       // Arrange
       const mockStream = new ReadableStream();

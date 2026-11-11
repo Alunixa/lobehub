@@ -6,8 +6,33 @@ export type AnimationMode = 'disabled' | 'agile' | 'elegant';
 
 export type ContextMenuMode = 'disabled' | 'default';
 
+export type BackgroundDevice = 'desktop' | 'mobile';
+
+export interface BackgroundImage {
+  /** A stable application file route, never an expiring signed storage URL. */
+  id: string;
+  name: string;
+  url: string;
+}
+
+export interface BackgroundConfig {
+  activeImageId?: string;
+  blur: number;
+  enabled: boolean;
+  images: BackgroundImage[];
+  intervalSeconds: number;
+  opacity: number;
+  overlayColor: 'auto' | 'black' | 'white';
+  overlayOpacity: number;
+  slideshow: boolean;
+}
+
+export type GlobalBackgroundConfig = Partial<Record<BackgroundDevice, BackgroundConfig>>;
+
 export interface UserGeneralConfig {
   animationMode?: AnimationMode;
+  /** Account-synced, independently configured desktop and mobile wallpapers. */
+  background?: GlobalBackgroundConfig;
   contextMenuMode?: ContextMenuMode;
   costEstimateWarningThreshold?: number;
   /**

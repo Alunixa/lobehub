@@ -1,4 +1,48 @@
 export default {
+  'globalBackground.title': 'Global background',
+  'globalBackground.description':
+    'Personalize the entire workspace, including Home and topic sidebars. Desktop and mobile have independent, account-synced settings.',
+  'globalBackground.desktop': 'Desktop',
+  'globalBackground.mobile': 'Mobile',
+  'globalBackground.enabled': 'Enable background on this device type',
+  'globalBackground.upload': 'Upload and crop images',
+  'globalBackground.count': '{{count}} / {{max}} images',
+  'globalBackground.remove': 'Remove from backgrounds',
+  'globalBackground.selectImage': 'Use image {{number}}',
+  'globalBackground.preview': 'Background preview',
+  'globalBackground.opacity': 'Image opacity (%)',
+  'globalBackground.overlayOpacity': 'Overlay opacity (%)',
+  'globalBackground.blur': 'Blur (px)',
+  'globalBackground.overlayColor': 'Overlay color',
+  'globalBackground.color.auto': 'Follow theme',
+  'globalBackground.color.black': 'Black',
+  'globalBackground.color.white': 'White',
+  'globalBackground.slideshow': 'Rotate multiple images',
+  'globalBackground.intervalSeconds': 'Rotation interval (seconds)',
+  'globalBackground.previewIsolated':
+    'Image previews use an opaque backdrop so wallpapers never show through your original images. Removing a background does not delete its file from your library.',
+  'globalBackground.save': 'Save background',
+  'globalBackground.saved': 'Background saved',
+  'globalBackground.saveFailed':
+    'Background could not be saved. Your edits are retained; retry saving.',
+  'globalBackground.reset': 'Reset this device type',
+  'globalBackground.cancel': 'Cancel',
+  'globalBackground.retry': 'Retry upload',
+  'globalBackground.cropTitle': 'Crop background · {{name}}',
+  'globalBackground.cropHelp':
+    'Drag to reposition, or use the sliders. Each image is cropped before uploading.',
+  'globalBackground.cropPreview': 'Draggable crop preview',
+  'globalBackground.cropApply': 'Use this crop',
+  'globalBackground.cropFailed':
+    'This image could not be decoded or cropped. Use a supported image up to 48 megapixels.',
+  'globalBackground.crop.zoom': 'Zoom',
+  'globalBackground.crop.x': 'Horizontal position',
+  'globalBackground.crop.y': 'Vertical position',
+  'globalBackground.notice.limit': 'You can keep up to 8 backgrounds for each device type.',
+  'globalBackground.notice.size': 'Choose a non-empty image smaller than 20 MB.',
+  'globalBackground.notice.type': 'Supported image formats: JPEG, PNG, WebP and AVIF.',
+  'globalBackground.notice.uploadFailed':
+    'Image upload failed. Retry without losing your existing backgrounds.',
   'manualCompression.title': 'Manual context compression',
   'manualCompression.action': 'Compress now',
   'manualCompression.desc':
