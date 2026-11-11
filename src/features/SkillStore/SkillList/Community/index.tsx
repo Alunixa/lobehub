@@ -1,13 +1,11 @@
 'use client';
 
 import { type SkillListItem } from '@lobechat/types';
-import { Center, Icon, Text } from '@lobehub/ui';
 import isEqual from 'fast-deep-equal';
-import { ServerCrash } from 'lucide-react';
 import { memo, useEffect, useMemo, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { VirtuosoGrid } from 'react-virtuoso';
 
+import AsyncError from '@/components/AsyncError';
 import { useToolStore } from '@/store/tool';
 import { agentSkillsSelectors } from '@/store/tool/selectors';
 import { type DiscoverMcpItem } from '@/types/discover';
@@ -21,12 +19,9 @@ import WantMoreSkills from '../WantMoreSkills';
 import Item from './Item';
 
 type CommunityListItem =
-  | { itemType: 'agentSkill'; skill: SkillListItem }
-  | { data: DiscoverMcpItem; itemType: 'mcp' };
+  { itemType: 'agentSkill'; skill: SkillListItem } | { data: DiscoverMcpItem; itemType: 'mcp' };
 
 export const CommunityList = memo(() => {
-  const { t } = useTranslation('setting');
-
   const [
     keywords,
     isMcpListInit,
@@ -87,7 +82,7 @@ export const CommunityList = memo(() => {
     }
   }, [keywords, resetMCPPluginList]);
 
-  const { isLoading, error } = useFetchMCPPluginList({
+  const { isLoading, error, mutate } = useFetchMCPPluginList({
     page: currentPage,
     pageSize: 20,
     q: keywords,
@@ -97,16 +92,12 @@ export const CommunityList = memo(() => {
 
   const renderContent = () => {
     // Show loading when searching, not initialized, or first page is loading with no items
-    if (searchLoading || !isMcpListInit || (isLoading && allItems.length === 0)) return <Loading />;
-
-    if (error) {
-      return (
-        <Center gap={12} padding={40}>
-          <Icon icon={ServerCrash} size={80} />
-          <Text type={'secondary'}>{t('skillStore.networkError')}</Text>
-        </Center>
-      );
+    if (error && combinedItems.length === 0) {
+      return <AsyncError error={error} variant={'block'} onRetry={() => void mutate()} />;
     }
+
+    if (!error && (searchLoading || !isMcpListInit || (isLoading && allItems.length === 0)))
+      return <Loading />;
 
     if (combinedItems.length === 0) return <Empty search={hasSearchKeywords} />;
 
@@ -115,6 +106,8 @@ export const CommunityList = memo(() => {
 
     const renderFooter = () => {
       if (isLoading) return <VirtuosoLoading />;
+      if (error)
+        return <AsyncError error={error} variant={'inline'} onRetry={() => void mutate()} />;
       if (hasReachedEnd) return <WantMoreSkills />;
       return <div style={{ height: 16 }} />;
     };
@@ -122,7 +115,7 @@ export const CommunityList = memo(() => {
     return (
       <VirtuosoGrid
         data={combinedItems}
-        endReached={loadMoreMCPPlugins}
+        endReached={error ? undefined : loadMoreMCPPlugins}
         increaseViewportBy={typeof window !== 'undefined' ? window.innerHeight : 0}
         itemClassName={virtuosoGridStyles.item}
         listClassName={virtuosoGridStyles.list}

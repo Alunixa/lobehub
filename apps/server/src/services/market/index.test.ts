@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { CacheRevalidate, CacheTag } from '@lobechat/types';
 import { MarketSDK } from '@lobehub/market-sdk';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -188,6 +189,26 @@ describe('MarketService', () => {
 
       const service = await MarketService.createFromRequest(req);
       expect(service).toBeInstanceOf(MarketService);
+    });
+  });
+
+  describe('searchSkill', () => {
+    it('caches skill catalogue requests with the discover tags and list lifetime', async () => {
+      const service = new MarketService();
+      const request = { page: 2, pageSize: 12, q: 'weather' };
+      const result = { currentPage: 2, items: [], pageSize: 12, totalCount: 0, totalPages: 0 };
+      const getSkillList = (
+        service.market.marketSkills.getSkillList as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(result);
+
+      await expect(service.searchSkill(request)).resolves.toBe(result);
+
+      expect(getSkillList).toHaveBeenCalledWith(request, {
+        next: {
+          revalidate: CacheRevalidate.List,
+          tags: [CacheTag.Discover, CacheTag.Skills],
+        },
+      });
     });
   });
 

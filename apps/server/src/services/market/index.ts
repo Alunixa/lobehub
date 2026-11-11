@@ -1,4 +1,5 @@
 import { type LobeToolManifest } from '@lobechat/context-engine';
+import { CacheRevalidate, CacheTag } from '@lobechat/types';
 import { MarketSDK, type OrgRef, orgRefToPathSegment } from '@lobehub/market-sdk';
 import debug from 'debug';
 import { type NextRequest } from 'next/server';
@@ -440,7 +441,12 @@ export class MarketService {
   }) {
     log('searchSkill: %O', params);
 
-    const result = await this.market.marketSkills.getSkillList(params);
+    const result = await this.market.marketSkills.getSkillList(params, {
+      next: {
+        revalidate: CacheRevalidate.List,
+        tags: [CacheTag.Discover, CacheTag.Skills],
+      },
+    });
 
     log('searchSkill response: %O', result);
 
@@ -479,10 +485,10 @@ export class MarketService {
   /**
    * Get skill categories
    */
-  async getSkillCategories() {
-    log('getSkillCategories');
+  async getSkillCategories(params?: { locale?: string; q?: string }) {
+    log('getSkillCategories: %O', params);
 
-    return this.market.marketSkills.getCategories();
+    return this.market.marketSkills.getCategories(params);
   }
 
   /**

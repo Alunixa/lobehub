@@ -541,7 +541,7 @@ export class DiscoverService {
       return categories;
     } catch (error) {
       log('getAssistantCategories: error fetching from market SDK: %O', error);
-      return [];
+      throw error;
     }
   };
 
@@ -641,7 +641,7 @@ export class DiscoverService {
       return result;
     } catch (error) {
       log('getAssistantDetail: error fetching from market SDK: %O', error);
-      return;
+      throw error;
     }
   };
 
@@ -780,13 +780,7 @@ export class DiscoverService {
       return result;
     } catch (error) {
       log('getAssistantList: error fetching from market SDK: %O', error);
-      return {
-        currentPage: page,
-        items: [],
-        pageSize,
-        totalCount: 0,
-        totalPages: 0,
-      };
+      throw error;
     }
   };
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizeAsyncError } from './normalizeError';
+import { isAutoRetryable, normalizeAsyncError } from './normalizeError';
 
 describe('normalizeAsyncError', () => {
   it('treats a missing error as retryable with no status', () => {
@@ -37,5 +37,21 @@ describe('normalizeAsyncError', () => {
   it('keeps 5xx and other transient failures retryable', () => {
     expect(normalizeAsyncError({ status: 500 }).retryable).toBe(true);
     expect(normalizeAsyncError({ status: 408 }).retryable).toBe(true);
+  });
+});
+
+describe('isAutoRetryable', () => {
+  it('does not automatically retry auth walls or rate limits', () => {
+    expect(isAutoRetryable({ data: { httpStatus: 401 } })).toBe(false);
+    expect(isAutoRetryable({ status: 403 })).toBe(false);
+    expect(isAutoRetryable({ data: { httpStatus: 429 } })).toBe(false);
+  });
+
+  it('keeps transient failures eligible for automatic retry', () => {
+    expect(isAutoRetryable({ status: 500 })).toBe(true);
+  });
+
+  it('honors an explicit non-retryable marker', () => {
+    expect(isAutoRetryable({ meta: { shouldRetry: false }, status: 500 })).toBe(false);
   });
 });

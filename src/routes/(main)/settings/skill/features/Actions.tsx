@@ -120,8 +120,10 @@ const Actions = memo<ActionsProps>(({ identifier, type, isMCP }) => {
             onClick={async () => {
               if (!canCreate || !canEdit) return;
               if (isMCP) {
-                await installMCPPlugin(identifier);
-                await togglePlugin(identifier);
+                const installed = await installMCPPlugin(identifier);
+                if (installed) {
+                  await togglePlugin(identifier);
+                }
               }
             }}
           >

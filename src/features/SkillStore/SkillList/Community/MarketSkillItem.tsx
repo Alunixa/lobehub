@@ -8,6 +8,7 @@ import { DownloadIcon, Loader2, MoreVerticalIcon, Plus, Trash2 } from 'lucide-re
 import { lazy, memo, Suspense, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { notification } from '@/components/AntdStaticMethods';
 import ImperativeModal from '@/components/ImperativeModal';
 import { usePermission } from '@/hooks/usePermission';
 import { agentSkillService } from '@/services/skill';
@@ -60,12 +61,15 @@ const MarketSkillItem = memo<DiscoverSkillItem>(({ name, icon, description, iden
     try {
       await agentSkillService.importFromMarket(identifier);
       await refreshAgentSkills();
-    } catch {
-      // silently fail
+    } catch (error) {
+      console.error('Failed to install community skill:', error);
+      notification.error({
+        message: t('error.installError', { name, ns: 'plugin' }),
+      });
     } finally {
       setInstalling(false);
     }
-  }, [canCreate, identifier, installing, installed, refreshAgentSkills]);
+  }, [canCreate, identifier, installing, installed, name, refreshAgentSkills, t]);
 
   const handleUninstall = useCallback(() => {
     if (!canEdit || !installedSkill) return;

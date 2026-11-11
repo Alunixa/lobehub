@@ -20,6 +20,7 @@ import {
 import { agentRouter } from './agent';
 import { agentGroupRouter } from './agentGroup';
 import { credsRouter } from './creds';
+import { mapMarketError } from './marketError';
 import { oidcRouter } from './oidc';
 import { skillRouter } from './skill';
 import { socialRouter } from './social';
@@ -103,10 +104,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getAssistantCategories(input);
       } catch (error) {
         log('Error fetching assistant categories: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch assistant categories',
-        });
+        throw mapMarketError(error, 'Failed to fetch assistant categories');
       }
     }),
 
@@ -126,10 +124,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getAssistantDetail(input);
       } catch (error) {
         log('Error fetching assistants detail: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch assistants detail',
-        });
+        throw mapMarketError(error, 'Failed to fetch assistants detail');
       }
     }),
 
@@ -180,10 +175,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getAssistantList(input);
       } catch (error) {
         log('Error fetching assistant list: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch assistant list',
-        });
+        throw mapMarketError(error, 'Failed to fetch assistant list');
       }
     }),
 
@@ -314,10 +306,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getMcpCategories(input);
       } catch (error) {
         log('Error fetching mcp categories: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch mcp categories',
-        });
+        throw mapMarketError(error, 'Failed to fetch mcp categories');
       }
     }),
 
@@ -336,10 +325,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getMcpDetail(input);
       } catch (error) {
         console.error('Error fetching mcp detail: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch mcp detail',
-        });
+        throw mapMarketError(error, 'Failed to fetch mcp detail');
       }
     }),
 
@@ -365,10 +351,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getMcpList(input);
       } catch (error) {
         log('Error fetching mcp list: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch mcp list',
-        });
+        throw mapMarketError(error, 'Failed to fetch mcp list');
       }
     }),
 
@@ -388,10 +371,7 @@ export const marketRouter = router({
         return await ctx.discoverService.getMcpManifest(input);
       } catch (error) {
         log('Error fetching mcp manifest: %O', error);
-        throw new TRPCError({
-          code: 'INTERNAL_SERVER_ERROR',
-          message: 'Failed to fetch mcp manifest',
-        });
+        throw mapMarketError(error, 'Failed to fetch mcp manifest');
       }
     }),
 

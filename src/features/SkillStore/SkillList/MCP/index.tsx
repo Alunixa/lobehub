@@ -1,11 +1,9 @@
 'use client';
 
-import { Center, Icon, Text } from '@lobehub/ui';
-import { ServerCrash } from 'lucide-react';
 import { memo, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
 import { VirtuosoGrid } from 'react-virtuoso';
 
+import AsyncError from '@/components/AsyncError';
 import { useToolStore } from '@/store/tool';
 
 import Item from '../Community/Item';
@@ -16,8 +14,6 @@ import VirtuosoLoading from '../VirtuosoLoading';
 import WantMoreSkills from '../WantMoreSkills';
 
 export const MCPList = memo(() => {
-  const { t } = useTranslation('setting');
-
   const [
     keywords,
     isMcpListInit,
@@ -49,7 +45,7 @@ export const MCPList = memo(() => {
     }
   }, [keywords, resetMCPPluginList]);
 
-  const { isLoading, error } = useFetchMCPPluginList({
+  const { isLoading, error, mutate } = useFetchMCPPluginList({
     page: currentPage,
     pageSize: 20,
     q: keywords,
@@ -57,16 +53,11 @@ export const MCPList = memo(() => {
 
   const hasSearchKeywords = Boolean(keywords && keywords.trim());
 
-  if (searchLoading || !isMcpListInit || (isLoading && allItems.length === 0)) return <Loading />;
-
-  if (error) {
-    return (
-      <Center gap={12} padding={40}>
-        <Icon icon={ServerCrash} size={80} />
-        <Text type={'secondary'}>{t('skillStore.networkError')}</Text>
-      </Center>
-    );
+  if (error && allItems.length === 0) {
+    return <AsyncError error={error} variant={'block'} onRetry={() => void mutate()} />;
   }
+
+  if (searchLoading || !isMcpListInit || (isLoading && allItems.length === 0)) return <Loading />;
 
   if (allItems.length === 0) return <Empty search={hasSearchKeywords} />;
 
@@ -74,6 +65,7 @@ export const MCPList = memo(() => {
 
   const renderFooter = () => {
     if (isLoading) return <VirtuosoLoading />;
+    if (error) return <AsyncError error={error} variant={'inline'} onRetry={() => void mutate()} />;
     if (hasReachedEnd) return <WantMoreSkills />;
     return <div style={{ height: 16 }} />;
   };
@@ -82,7 +74,7 @@ export const MCPList = memo(() => {
     <VirtuosoGrid
       components={{ Footer: renderFooter }}
       data={allItems}
-      endReached={loadMoreMCPPlugins}
+      endReached={error ? undefined : loadMoreMCPPlugins}
       increaseViewportBy={typeof window !== 'undefined' ? window.innerHeight : 0}
       itemClassName={virtuosoGridStyles.item}
       itemContent={(_, item) => <Item {...item} />}

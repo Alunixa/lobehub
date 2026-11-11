@@ -62,3 +62,17 @@ export const normalizeAsyncError = (error: unknown): NormalizedAsyncError => {
 
   return { code, rawMessage, retryable, status };
 };
+
+const NON_AUTO_RETRYABLE_STATUS = new Set([401, 403, 429]);
+
+/**
+ * Rate limits remain manually retryable, but should not trigger repeated
+ * requests from SWR's short exponential backoff window.
+ */
+export const isAutoRetryable = (error: unknown): boolean => {
+  const err = error as any;
+  if (err?.meta?.shouldRetry === false) return false;
+
+  const status = extractStatus(err);
+  return !(typeof status === 'number' && NON_AUTO_RETRYABLE_STATUS.has(status));
+};

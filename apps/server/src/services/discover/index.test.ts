@@ -326,6 +326,13 @@ describe('DiscoverService', () => {
       );
     });
 
+    it('propagates Market list failures instead of presenting an empty catalogue', async () => {
+      const error = new Error('Market unavailable');
+      mockMarket.agents.getAgentList.mockRejectedValueOnce(error);
+
+      await expect(service.getAssistantList()).rejects.toBe(error);
+    });
+
     it('getAssistantDetail should fetch from market SDK by default', async () => {
       const result = await service.getAssistantDetail({
         identifier: 'market-assistant-1',
