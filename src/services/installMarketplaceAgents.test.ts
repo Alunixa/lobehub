@@ -5,6 +5,7 @@ import { discoverService } from '@/services/discover';
 import { marketApiService } from '@/services/marketApi';
 import { useAgentStore } from '@/store/agent';
 import { useHomeStore } from '@/store/home';
+import * as serverConfig from '@/store/serverConfig/store';
 
 import { installMarketplaceAgents } from './installMarketplaceAgents';
 
@@ -135,5 +136,43 @@ describe('installMarketplaceAgents', () => {
     expect(items.map((i) => i.sourceIdentifier)).toEqual(['src-a']);
     expect(result.skippedAgentIds).toEqual(['src-b', 'src-c']);
     expect(result.installedAgentIds).toEqual(['agent-src-a']);
+  });
+
+  it('installs public agents locally on self-hosted servers without a cloud fork', async () => {
+    vi.spyOn(serverConfig, 'getServerConfigStoreState').mockReturnValue({
+      serverConfig: { enableBusinessFeatures: false },
+    } as ReturnType<typeof serverConfig.getServerConfigStoreState>);
+    vi.spyOn(agentService, 'getAgentByForkedFromIdentifier').mockResolvedValue(null);
+    vi.spyOn(discoverService, 'getAssistantDetail').mockResolvedValue({
+      identifier: 'public-agent',
+      title: 'Public Agent',
+      config: {
+        model: 'authors-private-model',
+        params: { temperature: 0.5 },
+        provider: 'lobehub',
+        systemRole: 'Public instructions',
+      },
+    } as any);
+    const forkSpy = vi
+      .spyOn(marketApiService, 'forkAgent')
+      .mockRejectedValue(new Error('Self-hosted install must not publish to the cloud'));
+    createAgent.mockResolvedValue({ agentId: 'installed-local-agent' });
+
+    const result = await installMarketplaceAgents(['public-agent']);
+
+    expect(result.installedAgentIds).toEqual(['installed-local-agent']);
+    expect(forkSpy).not.toHaveBeenCalled();
+    expect(createAgent).toHaveBeenCalledWith({
+      config: expect.objectContaining({
+        marketIdentifier: undefined,
+        params: { temperature: 0.5, forkedFromIdentifier: 'public-agent' },
+        systemRole: 'Public instructions',
+        title: 'Public Agent',
+      }),
+      visibility: undefined,
+    });
+    expect(discoverService.reportAgentEvent).not.toHaveBeenCalled();
+    expect(createAgent.mock.calls[0][0].config).not.toHaveProperty('model');
+    expect(createAgent.mock.calls[0][0].config).not.toHaveProperty('provider');
   });
 });

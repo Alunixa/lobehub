@@ -1,11 +1,15 @@
 'use client';
 
+import { Button } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
+import { ArrowLeft } from 'lucide-react';
 import { memo, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 
 import NavHeader from '@/features/NavHeader';
+import { useIsMobile } from '@/hooks/useIsMobile';
 import { useToolStore } from '@/store/tool';
 import { agentSkillsSelectors, builtinToolSelectors } from '@/store/tool/selectors';
 
@@ -22,16 +26,21 @@ const styles = createStaticStyles(({ css }) => ({
   detail: css`
     overflow-y: auto;
     flex: 1;
+    min-width: 0;
   `,
   root: css`
     overflow: hidden;
     display: flex;
     flex: 1;
+
+    min-width: 0;
     height: 100%;
   `,
 }));
 
 const Page = memo(() => {
+  const mobile = useIsMobile();
+  const { t } = useTranslation('common');
   const [searchParams] = useSearchParams();
   const queryViewMode: SkillViewMode =
     searchParams.get('tab') === 'skill' || searchParams.get('view') === 'skill'
@@ -59,6 +68,7 @@ const Page = memo(() => {
   }, [queryViewMode]);
 
   useEffect(() => {
+    if (mobile) return;
     if (selected) return;
     if (viewMode === 'skill' && querySkillIdentifier) return;
     if (viewMode === 'connector') {
@@ -74,7 +84,15 @@ const Page = memo(() => {
         setSelected({ identifier: firstSkill.identifier, type: 'builtin-skill' });
       }
     }
-  }, [builtinTools, builtinSkills, installedBuiltinIds, querySkillIdentifier, selected, viewMode]);
+  }, [
+    builtinTools,
+    builtinSkills,
+    installedBuiltinIds,
+    mobile,
+    querySkillIdentifier,
+    selected,
+    viewMode,
+  ]);
 
   useEffect(() => {
     if (viewMode !== 'skill' || !querySkillIdentifier) return;
@@ -91,20 +109,34 @@ const Page = memo(() => {
 
   return (
     <>
-      <NavHeader />
+      {!mobile && <NavHeader />}
       <div className={styles.root}>
-        <LeftPanel
-          selectedIdentifier={selected?.identifier}
-          viewMode={viewMode}
-          onDeleteSelected={() => setSelected(null)}
-          onSelect={handleSelect}
-          onViewModeChange={setViewMode}
-        />
+        {(!mobile || !selected) && (
+          <LeftPanel
+            mobile={mobile}
+            selectedIdentifier={selected?.identifier}
+            viewMode={viewMode}
+            onDeleteSelected={() => setSelected(null)}
+            onSelect={handleSelect}
+            onViewModeChange={setViewMode}
+          />
+        )}
 
         {selected && (
           <div className={styles.detail}>
+            {mobile && (
+              <Button
+                icon={<ArrowLeft size={16} />}
+                style={{ margin: 8 }}
+                type={'text'}
+                onClick={() => setSelected(null)}
+              >
+                {t('back')}
+              </Button>
+            )}
             <SkillDetail
               identifier={selected.identifier}
+              key={`${selected.type}:${selected.identifier}`}
               type={selected.type}
               onDelete={() => setSelected(null)}
             />

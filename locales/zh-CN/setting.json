@@ -919,6 +919,8 @@
   "skillGroup.communityTools": "社区工具",
   "skillGroup.customConnectors": "自定义连接器",
   "skillGroup.customSkills": "自定义技能",
+  "skillManagement.add": "安装或导入资源",
+  "skillManagement.mcp": "MCP 与工具",
   "skillStore.button": "技能商店",
   "skillStore.empty": "浏览技能商店。安装一个技能开始使用，之后可随时添加更多。",
   "skillStore.emptySearch": "未找到匹配的技能",

@@ -4,6 +4,7 @@ import { Boxes } from 'lucide-react';
 import { memo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import AsyncError from '@/components/AsyncError';
 import Agents from '@/features/MCPPluginDetail/Agents';
 import Deployment from '@/features/MCPPluginDetail/Deployment';
 import { DetailProvider } from '@/features/MCPPluginDetail/DetailProvider';
@@ -37,7 +38,10 @@ const Detail = memo<DetailProps>(({ identifier: defaultIdentifier, defaultTab, n
   const identifier = defaultIdentifier ?? activeMCPIdentifier;
 
   const useMcpDetail = useDiscoverStore((s) => s.useFetchMcpDetail);
-  const { data, isLoading } = useMcpDetail({ identifier });
+  const { data, error, isLoading, mutate } = useMcpDetail({ identifier });
+
+  if (error && !data)
+    return <AsyncError error={error} variant={'block'} onRetry={() => void mutate()} />;
 
   // If an explicit identifier is passed in, skip the isMcpListInit check
   const shouldWaitForInit = !defaultIdentifier && !isMcpListInit;

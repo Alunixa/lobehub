@@ -1,7 +1,7 @@
 'use client';
 
-import { Button, DropdownMenu, Flexbox, Icon, Text } from '@lobehub/ui';
-import { Tabs } from '@lobehub/ui/base-ui';
+import { DropdownMenu, Flexbox, Icon, Text } from '@lobehub/ui';
+import { Button, Tabs } from '@lobehub/ui/base-ui';
 import { GithubIcon } from '@lobehub/ui/icons';
 import { createStaticStyles } from 'antd-style';
 import { FileArchive, Grid2x2Plus, Link, Store } from 'lucide-react';
@@ -47,6 +47,7 @@ const styles = createStaticStyles(({ css, cssVar }) => ({
 }));
 
 interface LeftPanelProps {
+  mobile?: boolean;
   onDeleteSelected: () => void;
   onSelect: (identifier: string, type: ToolDetailType) => void;
   onViewModeChange: (mode: SkillViewMode) => void;
@@ -55,7 +56,7 @@ interface LeftPanelProps {
 }
 
 const LeftPanel = memo<LeftPanelProps>(
-  ({ onDeleteSelected, onSelect, onViewModeChange, selectedIdentifier, viewMode }) => {
+  ({ mobile, onDeleteSelected, onSelect, onViewModeChange, selectedIdentifier, viewMode }) => {
     const { t } = useTranslation('setting');
     const [showAddConnector, setShowAddConnector] = useState(false);
 
@@ -65,14 +66,14 @@ const LeftPanel = memo<LeftPanelProps>(
 
     return (
       <>
-        <div className={styles.root}>
+        <div className={styles.root} style={mobile ? { minWidth: 0, width: '100%' } : undefined}>
           <div className={styles.header}>
             <Tabs
               activeKey={viewMode}
               size="small"
               style={{ width: 'auto' }}
               items={[
-                { key: 'connector', label: t('skillView.connectors', 'Connectors') },
+                { key: 'connector', label: t('skillManagement.mcp') },
                 { key: 'skill', label: t('skillView.skills', 'Skills') },
               ]}
               onChange={(key) => onViewModeChange(key as SkillViewMode)}
@@ -140,9 +141,18 @@ const LeftPanel = memo<LeftPanelProps>(
                   },
                 ]}
               >
-                <Button icon={Grid2x2Plus} size="small" />
+                <Button
+                  aria-label={t('skillManagement.add')}
+                  icon={<Icon icon={Grid2x2Plus} />}
+                  size="small"
+                />
               </DropdownMenu>
-              <Button icon={<Icon icon={Store} />} size="small" onClick={handleOpenStore} />
+              <Button
+                aria-label={t('skillStore.title')}
+                icon={<Icon icon={Store} />}
+                size="small"
+                onClick={handleOpenStore}
+              />
             </div>
           </div>
 

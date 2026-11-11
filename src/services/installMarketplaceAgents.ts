@@ -1,4 +1,5 @@
 import type { InstallMarketplaceAgentSummary } from '@lobechat/builtin-tool-web-onboarding/agentMarketplace';
+import { omit } from 'es-toolkit';
 import { customAlphabet } from 'nanoid/non-secure';
 
 import { getActiveWorkspaceId } from '@/business/client/hooks/useActiveWorkspaceId';
@@ -8,6 +9,7 @@ import { discoverService } from '@/services/discover';
 import { marketApiService } from '@/services/marketApi';
 import { useAgentStore } from '@/store/agent';
 import { useHomeStore } from '@/store/home';
+import { getServerConfigStoreState } from '@/store/serverConfig/store';
 
 export type { InstallMarketplaceAgentSummary };
 
@@ -60,6 +62,8 @@ export const installMarketplaceAgents = async (
 
   const workspaceId = getActiveWorkspaceId();
   const visibility = workspaceId ? (options?.visibility ?? 'public') : undefined;
+  const localOnly =
+    !workspaceId && getServerConfigStoreState()?.serverConfig.enableBusinessFeatures === false;
 
   // Workspace-mode forks must be attributed to the workspace's Market org via
   // `actAs` — the per-user trust token already carries workspaceId, so Market
@@ -127,7 +131,7 @@ export const installMarketplaceAgents = async (
 
   // 4. Single batch fork call
   const forkOutcomes =
-    prepared.length === 0
+    localOnly || prepared.length === 0
       ? []
       : await marketApiService.forkAgent(
           prepared.map((p) => ({
@@ -142,35 +146,41 @@ export const installMarketplaceAgents = async (
 
   // 5. Parallel local createAgent for successful forks
   const installResults = await Promise.allSettled(
-    forkOutcomes.map(async (outcome, i) => {
-      const { detail, sourceId } = prepared[i];
-      if (!outcome.success) {
+    prepared.map(async ({ detail, sourceId }, i) => {
+      const outcome = forkOutcomes[i];
+      if (!localOnly && !outcome?.success) {
+        if (!outcome) throw new Error('Marketplace fork result is missing');
         throw new Error(outcome.error.message);
       }
-      const fork = outcome.data;
+      const fork = outcome?.success ? outcome.data : undefined;
+      const installedConfig = localOnly
+        ? omit(detail.config, ['model', 'provider'])
+        : detail.config;
       const result = await createAgent({
         config: {
-          ...detail.config,
+          ...installedConfig,
           avatar: detail.avatar,
           backgroundColor: detail.backgroundColor,
           description: detail.description,
           editorData: detail.editorData,
-          marketIdentifier: fork.agent.identifier,
+          marketIdentifier: fork?.agent.identifier,
           params: {
             ...detail.config.params,
             forkedFromIdentifier: sourceId,
           },
           tags: detail.tags,
-          title: fork.agent.name,
+          title: fork?.agent.name ?? detail.title,
         },
         visibility,
       });
 
-      discoverService.reportAgentEvent({
-        event: 'add',
-        identifier: fork.agent.identifier,
-        source: getSourcePath(),
-      });
+      if (fork) {
+        discoverService.reportAgentEvent({
+          event: 'add',
+          identifier: fork.agent.identifier,
+          source: getSourcePath(),
+        });
+      }
 
       return { agentId: result.agentId, sourceId };
     }),

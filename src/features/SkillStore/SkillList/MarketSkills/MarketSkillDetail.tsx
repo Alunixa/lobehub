@@ -10,6 +10,7 @@ import { DotIcon, ExternalLinkIcon } from 'lucide-react';
 import { memo, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import AsyncError from '@/components/AsyncError';
 import PublishedTime from '@/components/PublishedTime';
 import ContentViewer from '@/features/AgentSkillDetail/ContentViewer';
 import FileTree from '@/features/FileTree';
@@ -139,7 +140,7 @@ const MarketSkillDetail = memo<MarketSkillDetailProps>(({ identifier }) => {
 
   // Market data (always fetched for header info + icon)
   const useFetchSkillDetail = useDiscoverStore((s) => s.useFetchSkillDetail);
-  const { data, isLoading } = useFetchSkillDetail({ identifier });
+  const { data, error, isLoading, mutate } = useFetchSkillDetail({ identifier });
 
   // Installed skill data (for full file content)
   const installedSkill = useToolStore(agentSkillsSelectors.getAgentSkillByIdentifier(identifier));
@@ -182,6 +183,10 @@ const MarketSkillDetail = memo<MarketSkillDetailProps>(({ identifier }) => {
     if (zipTree.length > 0) return zipTree;
     return buildMarketResourceTree(data?.resources);
   }, [installedResourceTree, zipTree, data?.resources]);
+
+  if (error && !data) {
+    return <AsyncError error={error} variant={'block'} onRetry={() => void mutate()} />;
+  }
 
   if (isLoading || !data) {
     return <Skeleton active paragraph={{ rows: 8 }} style={{ padding: 16 }} />;

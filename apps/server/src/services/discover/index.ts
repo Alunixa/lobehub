@@ -72,6 +72,7 @@ import { normalizeLocale } from '@/locales/resources';
 import { AssistantStore } from '@/server/modules/AssistantStore';
 import { PluginStore } from '@/server/modules/PluginStore';
 import { MarketService } from '@/server/services/market';
+import { readMarketCatalogDetail } from '@/server/services/market/publicCatalog';
 
 const log = debug('lobe-server:discover');
 
@@ -562,10 +563,14 @@ export class DiscoverService {
 
     try {
       // @ts-ignore
-      const data = await this.market.agents.getAgentDetail(identifier, {
-        locale: normalizedLocale,
-        version,
-      });
+      const data = await readMarketCatalogDetail(
+        () =>
+          this.market.agents.getAgentDetail(identifier, {
+            locale: normalizedLocale,
+            version,
+          }),
+        { identifier, kind: 'agent', locale: normalizedLocale, version },
+      );
 
       if (!data) {
         log('getAssistantDetail: assistant not found for identifier=%s', identifier);
@@ -813,12 +818,21 @@ export class DiscoverService {
     log('getMcpDetail: params=%O', params);
     const { locale } = params;
     const normalizedLocale = normalizeLocale(locale);
-    const mcp = await this.market.plugins.getPluginDetail(
-      { ...params, locale: normalizedLocale },
+    const mcp = await readMarketCatalogDetail(
+      () =>
+        this.market.plugins.getPluginDetail(
+          { ...params, locale: normalizedLocale },
+          {
+            next: {
+              revalidate: 3600,
+            },
+          },
+        ),
       {
-        next: {
-          revalidate: 3600,
-        },
+        identifier: params.identifier,
+        kind: 'mcp',
+        locale: normalizedLocale,
+        version: params.version,
       },
     );
 

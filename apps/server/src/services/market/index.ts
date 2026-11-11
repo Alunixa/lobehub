@@ -8,6 +8,7 @@ import { type TrustedClientUserInfo } from '@/libs/trusted-client';
 import { generateTrustedClientToken, getTrustedClientTokenForSession } from '@/libs/trusted-client';
 
 import { listSkillToolsWithLiveFallback } from './listSkillToolsWithLiveFallback';
+import { readMarketCatalogDetail } from './publicCatalog';
 
 const log = debug('lobe-server:market-service');
 
@@ -459,7 +460,10 @@ export class MarketService {
   async getSkillDetail(identifier: string, options?: { locale?: string; version?: string }) {
     log('getSkillDetail: %s, options: %O', identifier, options);
 
-    const result = await this.market.marketSkills.getSkillDetail(identifier, options);
+    const result = await readMarketCatalogDetail(
+      () => this.market.marketSkills.getSkillDetail(identifier, options),
+      { identifier, kind: 'skill', ...options },
+    );
 
     log('getSkillDetail response: %O', result);
 

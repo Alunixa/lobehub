@@ -53,6 +53,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - run: pnpm install
+      - name: Community catalogue access and resource lifecycle regressions
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 --testTimeout=15000 \
+            apps/server/src/services/market/publicCatalog.test.ts \
+            apps/server/src/services/market/index.test.ts \
+            apps/server/src/services/discover/index.test.ts \
+            apps/server/src/services/skill/importer.test.ts \
+            apps/server/src/routers/lambda/market/marketError.test.ts \
+            src/services/discover.test.ts \
+            src/services/installMarketplaceAgents.test.ts \
+            src/libs/swr/normalizeError.test.ts \
+            src/store/tool/slices/mcpStore/action.test.ts \
+            'src/routes/(main)/settings/skill/features/SkillDetail/index.test.tsx'
       - name: Conversation structure, active branches and stack-safe long history
         working-directory: packages/conversation-flow
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2

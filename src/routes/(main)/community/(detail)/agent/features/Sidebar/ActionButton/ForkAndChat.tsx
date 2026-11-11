@@ -16,9 +16,11 @@ import { useMarketAuth } from '@/layout/AuthProvider/MarketAuth';
 import { lambdaClient } from '@/libs/trpc/client';
 import { agentService } from '@/services/agent';
 import { discoverService } from '@/services/discover';
+import { installMarketplaceAgents } from '@/services/installMarketplaceAgents';
 import { marketApiService } from '@/services/marketApi';
 import { useAgentStore } from '@/store/agent';
 import { useHomeStore } from '@/store/home';
+import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
 
 import { useDetailContext } from '../../DetailProvider';
 
@@ -88,6 +90,8 @@ const ForkAndChat = memo<{ mobile?: boolean }>(({ mobile }) => {
   const { isAuthenticated, signIn } = useMarketAuth();
   const { allowed: canCreate } = usePermission('create_content');
   const activeWorkspaceId = useActiveWorkspaceId();
+  const enableBusinessFeatures = useServerConfigStore(serverConfigSelectors.enableBusinessFeatures);
+  const localOnly = !enableBusinessFeatures && !activeWorkspaceId;
   const [visibility, setVisibility] = useState<ForkTarget>('private');
 
   const meta = {
@@ -106,7 +110,7 @@ const ForkAndChat = memo<{ mobile?: boolean }>(({ mobile }) => {
   const handleForkAndChat = async (target: ForkTarget = 'private') => {
     if (!canCreate || isLoading) return;
     // Check if user is authenticated
-    if (!isAuthenticated) {
+    if (!localOnly && !isAuthenticated) {
       try {
         await signIn();
       } catch {
@@ -124,6 +128,15 @@ const ForkAndChat = memo<{ mobile?: boolean }>(({ mobile }) => {
         // User has already forked this agent, navigate to existing fork
         message.info(t('fork.alreadyForked'));
         navigate(AGENT_CHAT_URL(existingAgentId, mobile));
+        return;
+      }
+
+      if (localOnly) {
+        const installed = await installMarketplaceAgents([identifier!]);
+        const agentId = installed.installedAgentIds[0];
+        if (!agentId) throw new Error('Public agent could not be installed');
+        message.success(t('fork.success'));
+        navigate(AGENT_CHAT_URL(agentId, mobile));
         return;
       }
 

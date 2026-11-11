@@ -1056,6 +1056,8 @@ export default {
   'skillStore.empty': 'Browse the Skill Store. Install one to get started, add more later.',
   'skillStore.emptySearch': 'No matching Skills',
   'skillStore.networkError': 'Network error, please try again',
+  'skillManagement.add': 'Install or import a resource',
+  'skillManagement.mcp': 'MCP & tools',
   'skillStore.rateLimited': 'Too many requests just now. Please wait a moment and try again.',
   'skillStore.search': 'Search skills by name or keyword, press Enter to search…',
   'skillStore.tabs.community': 'Community',

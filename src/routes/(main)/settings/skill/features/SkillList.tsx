@@ -472,6 +472,9 @@ const SkillList = memo<SkillListProps>(
 
     return (
       <div className={styles.container}>
+        {skillsError && (
+          <AsyncError error={skillsError} variant={'inline'} onRetry={reloadSkills} />
+        )}
         {hasBuiltinTools &&
           renderSection(
             'builtinTools',
