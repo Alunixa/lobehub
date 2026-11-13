@@ -367,7 +367,7 @@ const ErrorMessageExtra = memo<ErrorExtraProps>(
       }
 
       case AgentRuntimeErrorType.ExceededContextWindow: {
-        return <ExceededContextWindowError id={data.id} />;
+        return <ExceededContextWindowError id={data.id} parentMessageId={retryScopeId} />;
       }
 
       case AgentRuntimeErrorType.NoOpenAIAPIKey: {

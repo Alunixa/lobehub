@@ -12,50 +12,53 @@ import { useRetryParentMessage } from './useRetryParentMessage';
 
 interface ExceededContextWindowErrorProps {
   id: string;
+  parentMessageId?: string;
 }
 
-const ExceededContextWindowError = memo<ExceededContextWindowErrorProps>(({ id }) => {
-  const { t } = useTranslation('error');
-  const { allowed: canCreate } = usePermission('create_content');
+const ExceededContextWindowError = memo<ExceededContextWindowErrorProps>(
+  ({ id, parentMessageId }) => {
+    const { t } = useTranslation('error');
+    const { allowed: canCreate } = usePermission('create_content');
 
-  const context = useConversationStore((s) => s.context);
-  const { disabled, loading, retryParentMessage } = useRetryParentMessage(id);
+    const context = useConversationStore((s) => s.context);
+    const { disabled, loading, retryParentMessage } = useRetryParentMessage(id, parentMessageId);
 
-  const handleCompact = useCallback(async () => {
-    if (!canCreate || !context.topicId) return;
+    const handleCompact = useCallback(async () => {
+      if (!canCreate || !context.topicId) return;
 
-    await retryParentMessage(() => useChatStore.getState().executeCompression(context, ''));
-  }, [canCreate, context, retryParentMessage]);
+      await retryParentMessage(() => useChatStore.getState().executeCompression(context, ''));
+    }, [canCreate, context, retryParentMessage]);
 
-  return (
-    <Flexbox gap={4} paddingBlock={4} role={'status'}>
-      <Text fontSize={12} type={'secondary'}>
-        {t('exceededContext.desc')}
-      </Text>
-      <Flexbox horizontal gap={4} wrap={'wrap'}>
-        <Button
-          disabled={!canCreate || disabled}
-          icon={<Icon icon={RotateCw} size={12} />}
-          loading={loading}
-          size={'small'}
-          type={'text'}
-          onClick={() => retryParentMessage()}
-        >
-          {t('exceededContext.retry')}
-        </Button>
-        <Button
-          disabled={!canCreate || !context.topicId || disabled}
-          icon={<Icon icon={Minimize2} size={12} />}
-          loading={loading}
-          size={'small'}
-          type={'text'}
-          onClick={handleCompact}
-        >
-          {t('exceededContext.compact')}
-        </Button>
+    return (
+      <Flexbox gap={4} paddingBlock={4} role={'status'}>
+        <Text fontSize={12} type={'secondary'}>
+          {t('exceededContext.desc')}
+        </Text>
+        <Flexbox horizontal gap={4} wrap={'wrap'}>
+          <Button
+            disabled={!canCreate || disabled}
+            icon={<Icon icon={RotateCw} size={12} />}
+            loading={loading}
+            size={'small'}
+            type={'text'}
+            onClick={() => retryParentMessage()}
+          >
+            {t('exceededContext.retry')}
+          </Button>
+          <Button
+            disabled={!canCreate || !context.topicId || disabled}
+            icon={<Icon icon={Minimize2} size={12} />}
+            loading={loading}
+            size={'small'}
+            type={'text'}
+            onClick={handleCompact}
+          >
+            {t('exceededContext.compact')}
+          </Button>
+        </Flexbox>
       </Flexbox>
-    </Flexbox>
-  );
-});
+    );
+  },
+);
 
 export default ExceededContextWindowError;

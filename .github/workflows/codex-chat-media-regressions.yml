@@ -63,6 +63,7 @@ jobs:
             apps/server/src/services/skill/importer.test.ts \
             apps/server/src/routers/lambda/market/marketError.test.ts \
             src/services/discover.test.ts \
+            src/features/Conversation/Error/useRetryParentMessage.test.ts \
             src/services/installMarketplaceAgents.test.ts \
             src/libs/swr/normalizeError.test.ts \
             src/store/tool/slices/mcpStore/action.test.ts \

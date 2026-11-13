@@ -68,4 +68,33 @@ describe('useRetryParentMessage', () => {
     expect(result.current.disabled).toBe(true);
     expect(storeMock.regenerateUserMessage).not.toHaveBeenCalled();
   });
+
+  it('retries a grouped content block through its explicitly supplied parent user message', async () => {
+    storeMock.displayMessages = [{ id: 'assistant-group', parentId: 'group-user-message' }];
+    const { result } = renderHook(() =>
+      useRetryParentMessage('nested-content-block', 'group-user-message'),
+    );
+    await act(async () => {
+      await result.current.retryParentMessage();
+    });
+    expect(result.current.disabled).toBe(false);
+    expect(storeMock.regenerateUserMessage).toHaveBeenCalledWith('group-user-message');
+  });
+
+  it('runs manual compression before retrying the same grouped user message', async () => {
+    storeMock.displayMessages = [{ id: 'assistant-group', parentId: 'group-user-message' }];
+    const calls: string[] = [];
+    storeMock.regenerateUserMessage.mockImplementationOnce(async () => {
+      calls.push('request');
+    });
+    const { result } = renderHook(() =>
+      useRetryParentMessage('nested-content-block', 'group-user-message'),
+    );
+    await act(async () => {
+      await result.current.retryParentMessage(async () => {
+        calls.push('manual-compression');
+      });
+    });
+    expect(calls).toEqual(['manual-compression', 'request']);
+  });
 });
