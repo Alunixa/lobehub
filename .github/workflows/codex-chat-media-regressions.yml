@@ -57,6 +57,7 @@ jobs:
         run: |
           node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 --testTimeout=15000 \
             apps/server/src/services/market/publicCatalog.test.ts \
+            apps/server/src/services/market/publicCatalogClient.test.ts \
             apps/server/src/services/market/index.test.ts \
             apps/server/src/services/discover/index.test.ts \
             apps/server/src/services/skill/importer.test.ts \
@@ -194,6 +195,8 @@ jobs:
             src/core/openaiCompatibleFactory/index.test.ts \
             src/core/openaiCompatibleFactory/streamingFetch.test.ts \
             src/core/openaiCompatibleFactory/nonStreamToStream.test.ts \
+            src/providers/openai/chatCompletion.wire.test.ts \
+            src/providers/minimax/index.test.ts \
             src/providers/google/transport.test.ts \
             src/utils/handleOpenAIError.test.ts
       - name: Topic operation ownership and cleanup regressions

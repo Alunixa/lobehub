@@ -12,8 +12,8 @@ export const DEFAULT_MAX_TOKENS_BUFFER = 1024;
 
 /**
  * Default minimum allowed `max_tokens`. If the dynamically-derived value
- * falls below this, we treat the request as already exceeding the context
- * window and abort early instead of letting the upstream API reject it.
+ * falls below this, retain a usable output budget and let the provider
+ * validate its actual input tokens instead of rejecting a local estimate.
  */
 export const DEFAULT_MIN_OUTPUT_TOKENS = 1024;
 
@@ -26,7 +26,7 @@ export type PreFlightSuggestion = (typeof DEFAULT_PRE_FLIGHT_SUGGESTIONS)[number
 export interface ResolveSafeMaxTokensOptions {
   /** Safety buffer reserved on top of estimated input tokens. */
   bufferTokens?: number;
-  /** Minimum acceptable `max_tokens`; below this we throw. */
+  /** Minimum output budget when the estimated remaining capacity is too small. */
   minOutputTokens?: number;
 }
 
@@ -109,9 +109,8 @@ const estimatePayloadInputTokens = (payload: Pick<ChatStreamPayload, 'messages' 
  *
  * - If the user explicitly passed `max_tokens`, return it untouched.
  * - Otherwise compute `min(maxOutput, contextWindow - estimatedInput - buffer)`.
- * - If the resulting value would be smaller than `minOutputTokens`, throw
- *   `ContextExceededPreFlightError` so callers can surface a clear error
- *   before issuing a doomed request.
+ * - Local estimates never block dispatch. Near/over capacity, keep a positive
+ *   output budget and let the upstream tokenizer validate the full request.
  */
 export const resolveSafeMaxTokens = (
   payload: Pick<ChatStreamPayload, 'max_tokens' | 'messages' | 'model' | 'tools'>,
@@ -135,16 +134,8 @@ export const resolveSafeMaxTokens = (
   const estimatedInputTokens = estimatePayloadInputTokens(payload);
   const remaining = contextWindow - estimatedInputTokens - bufferTokens;
 
-  if (remaining < minOutputTokens) {
-    throw new ContextExceededPreFlightError({
-      ctx: contextWindow,
-      minOutputTokens,
-      model: payload.model,
-      promptTokens: estimatedInputTokens,
-    });
-  }
-
-  return maxOutput !== undefined ? Math.min(maxOutput, remaining) : remaining;
+  const outputBudget = Math.max(1, minOutputTokens, remaining);
+  return maxOutput !== undefined ? Math.min(maxOutput, outputBudget) : outputBudget;
 };
 
 export interface AssertContextWithinWindowOptions {

@@ -3,7 +3,6 @@ import { ModelProvider } from 'model-bank';
 import { describe, expect, it, vi } from 'vitest';
 
 import { testProvider } from '../../providerTestUtils';
-import { ContextExceededPreFlightError } from '../../utils/resolveSafeMaxTokens';
 import {
   anthropicParams,
   LobeMinimaxAI,
@@ -304,19 +303,19 @@ describe('LobeMinimaxAI - handlePayload', () => {
     expect(result.max_tokens).toBeGreaterThanOrEqual(1024);
   });
 
-  it('throws ContextExceededPreFlightError when no headroom remains', () => {
+  it('retains the full prompt and sends a positive output budget when the estimate is over capacity', () => {
     // M2-her: contextWindow=65_536. With ~67k tokens of input there is no
     // room left for the minimum 1024 output tokens, so we should bail out
     // before the request reaches the upstream API.
     const longContent = 'a'.repeat(450_000);
 
-    expect(() =>
-      handlePayload({
-        messages: [{ content: longContent, role: 'user' }],
-        model: 'M2-her',
-        temperature: 1,
-      } as any),
-    ).toThrow(ContextExceededPreFlightError);
+    const result = handlePayload({
+      messages: [{ content: longContent, role: 'user' }],
+      model: 'M2-her',
+      temperature: 1,
+    } as any);
+    expect(result.max_tokens).toBe(1024);
+    expect(result.messages[0].content).toBe(longContent);
   });
 
   it('estimates tokens against the sanitized messages, not the raw payload', () => {

@@ -3,6 +3,8 @@ import { TRPCError } from '@trpc/server';
 
 const MARKET_STATUS_TO_TRPC_CODE: Record<number, TRPCError['code']> = {
   400: 'BAD_REQUEST',
+  // A Market credential is not the local application's login session.
+  401: 'BAD_GATEWAY',
   403: 'FORBIDDEN',
   404: 'NOT_FOUND',
   429: 'TOO_MANY_REQUESTS',

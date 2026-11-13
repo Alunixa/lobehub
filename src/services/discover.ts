@@ -73,8 +73,6 @@ class DiscoverService {
   getAssistantCategories = async (
     params: CategoryListQuery & { source?: AssistantMarketSource } = {},
   ): Promise<CategoryItem[]> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     const { source, ...rest } = params;
     return lambdaClient.market.getAssistantCategories.query({
@@ -90,8 +88,6 @@ class DiscoverService {
     source?: AssistantMarketSource;
     version?: string;
   }): Promise<DiscoverAssistantDetail | undefined> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getAssistantDetail.query({
       identifier: params.identifier,
@@ -104,14 +100,10 @@ class DiscoverService {
   getAssistantIdentifiers = async (
     params: { source?: AssistantMarketSource } = {},
   ): Promise<IdentifiersResponse> => {
-    await this.safeInjectMPToken();
-
     return lambdaClient.market.getAssistantIdentifiers.query(params);
   };
 
   getAssistantList = async (params: AssistantQueryParams = {}): Promise<AssistantListResponse> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getAssistantList.query(
       {
@@ -130,8 +122,6 @@ class DiscoverService {
     pageSize?: number;
     pluginId: string;
   }): Promise<AssistantListResponse> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getAgentsByPlugin.query({
       ...params,
@@ -144,8 +134,6 @@ class DiscoverService {
   // ============================== MCP Market ==============================
 
   getMcpCategories = async (params: CategoryListQuery = {}): Promise<CategoryItem[]> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getMcpCategories.query({
       ...params,
@@ -158,8 +146,6 @@ class DiscoverService {
     locale?: string;
     version?: string;
   }): Promise<DiscoverMcpDetail> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getMcpDetail.query({
       ...params,
@@ -168,8 +154,6 @@ class DiscoverService {
   };
 
   getMcpList = async (params: McpQueryParams = {}): Promise<McpListResponse> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getMcpList.query({
       ...params,
@@ -180,8 +164,6 @@ class DiscoverService {
   };
 
   getMCPPluginList = async (params: MCPPluginListParams): Promise<McpListResponse> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
 
     return lambdaClient.market.getMcpList.query({
@@ -193,8 +175,6 @@ class DiscoverService {
   };
 
   getMcpManifest = async (params: { identifier: string; locale?: string; version?: string }) => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.getMcpManifest.query({
       ...params,
@@ -206,8 +186,6 @@ class DiscoverService {
     identifier: string,
     options: { install?: boolean } = {},
   ): Promise<PluginManifest> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
 
     return lambdaClient.market.getMcpManifest.query({
@@ -575,8 +553,6 @@ class DiscoverService {
   // ============================== Skills Market ==============================
 
   getSkillCategories = async (params: CategoryListQuery = {}): Promise<SkillCategoryItem[]> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.skill.getSkillCategories.query({
       ...params,
@@ -589,8 +565,6 @@ class DiscoverService {
     locale?: string;
     version?: string;
   }): Promise<DiscoverSkillDetail> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.skill.getSkillDetail.query({
       ...params,
@@ -599,8 +573,6 @@ class DiscoverService {
   };
 
   getSkillList = async (params: SkillQueryParams = {}): Promise<SkillListResponse> => {
-    await this.safeInjectMPToken();
-
     const locale = globalHelpers.getCurrentLanguage();
     return lambdaClient.market.skill.getSkillList.query({
       ...params,

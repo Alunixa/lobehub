@@ -9,6 +9,7 @@ import { generateTrustedClientToken, getTrustedClientTokenForSession } from '@/l
 
 import { listSkillToolsWithLiveFallback } from './listSkillToolsWithLiveFallback';
 import { readMarketCatalogDetail } from './publicCatalog';
+import { readMarketCatalog } from './publicCatalogClient';
 
 const log = debug('lobe-server:market-service');
 
@@ -442,12 +443,14 @@ export class MarketService {
   }) {
     log('searchSkill: %O', params);
 
-    const result = await this.market.marketSkills.getSkillList(params, {
-      next: {
-        revalidate: CacheRevalidate.List,
-        tags: [CacheTag.Discover, CacheTag.Skills],
-      },
-    });
+    const result = await readMarketCatalog(this.market, (market) =>
+      market.marketSkills.getSkillList(params, {
+        next: {
+          revalidate: CacheRevalidate.List,
+          tags: [CacheTag.Discover, CacheTag.Skills],
+        },
+      }),
+    );
 
     log('searchSkill response: %O', result);
 
@@ -492,7 +495,7 @@ export class MarketService {
   async getSkillCategories(params?: { locale?: string; q?: string }) {
     log('getSkillCategories: %O', params);
 
-    return this.market.marketSkills.getCategories(params);
+    return readMarketCatalog(this.market, (market) => market.marketSkills.getCategories(params));
   }
 
   /**

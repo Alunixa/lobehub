@@ -1,4 +1,7 @@
 export default {
+  'tokenDetails.limitDescription':
+    'The estimate has reached the context window. Requests still send normally; compact manually if needed.',
+  'tokenDetails.limitHint': 'Can send · compact optional',
   'tokenDetails.cachedIncluded': 'Cached tokens (already included)',
   'tokenDetails.currentEstimate': 'Current text / tool estimate',
   'tokenDetails.estimatedDescription':

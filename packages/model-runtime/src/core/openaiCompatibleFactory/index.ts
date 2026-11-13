@@ -56,7 +56,6 @@ import { resolveMappedModelId, withMappedModelId } from '../../utils/modelIdMapp
 import { detectModelProvider } from '../../utils/modelParse';
 import { postProcessModelList } from '../../utils/postProcessModelList';
 import {
-  assertContextWithinWindow,
   type AssertContextWithinWindowOptions,
   ContextExceededPreFlightError,
 } from '../../utils/resolveSafeMaxTokens';
@@ -188,18 +187,8 @@ export interface OpenAICompatibleFactoryOptions<T extends Record<string, any> = 
   baseURL?: string;
   chatCompletion?: {
     /**
-     * When set, the factory runs a pre-flight token estimate against the
-     * provided model list before dispatching to upstream. If the estimated
-     * prompt tokens strictly exceed the model's context window, the
-     * request is aborted with a structured `ExceededContextWindow` error
-     * — see .
-     *
-     * This is for providers like NVIDIA / DeepSeek where the harness does
-     * not cap `max_tokens` itself but we still want to fail fast on doomed
-     * requests instead of round-tripping to the upstream just to get a
-     * 400 back. Providers that manage `max_tokens` themselves (e.g.
-     * MiniMax via `resolveSafeMaxTokens`) still benefit because the
-     * factory's centralised error handler converts the same error class.
+     * Model metadata retained for compatibility. Local token estimates are
+     * advisory only: the provider decides whether the full request fits.
      */
     contextPreFlight?: AssertContextWithinWindowOptions & {
       models: AiFullModelCard[];
@@ -570,14 +559,6 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
 
         if (shouldUseResponses) {
           processedPayload = { ...payload, apiMode: 'responses' } as any;
-        }
-
-        // Pre-flight: abort doomed requests before invoking handlePayload so
-        // providers don't waste a round-trip to upstream just to get a 400.
-        // See .
-        if (chatCompletion?.contextPreFlight) {
-          const { models: preFlightModels, ...preFlightOptions } = chatCompletion.contextPreFlight;
-          assertContextWithinWindow(processedPayload, preFlightModels, preFlightOptions);
         }
 
         // Then perform factory-level processing

@@ -1,6 +1,6 @@
 import { ToolNameResolver } from '@lobechat/context-engine';
 import { pluginPrompts } from '@lobechat/prompts';
-import { Center, Flexbox, Tooltip } from '@lobehub/ui';
+import { Center, Flexbox, Text, Tooltip } from '@lobehub/ui';
 import { TokenTag } from '@lobehub/ui/chat';
 import { cssVar } from 'antd-style';
 import numeral from 'numeral';
@@ -198,6 +198,11 @@ const Token = memo(() => {
         </Tooltip>
       </Flexbox>
       <Flexbox gap={8}>
+        {capacity.maximum > 0 && capacity.used >= capacity.maximum && (
+          <Text fontSize={12} type={'secondary'}>
+            {t('tokenDetails.limitDescription')}
+          </Text>
+        )}
         <div style={{ color: cssVar.colorTextSecondary }}>
           {t('tokenDetails.estimatedDescription')}
         </div>
@@ -272,23 +277,30 @@ const Token = memo(() => {
   );
 
   return (
-    <ActionPopover content={content}>
-      <TokenTag
-        aria-label={t('tokenDetails.title')}
-        maxValue={capacity.maximum}
-        mode={'used'}
-        value={capacity.used}
-        size={{
-          blockSize: 28,
-          size: 18,
-        }}
-        text={{
-          overload: t('tokenTag.overload'),
-          remained: t('tokenTag.remained'),
-          used: t('tokenDetails.estimatedUsed'),
-        }}
-      />
-    </ActionPopover>
+    <Flexbox horizontal align={'center'} gap={4}>
+      <ActionPopover content={content}>
+        <TokenTag
+          aria-label={t('tokenDetails.title')}
+          maxValue={capacity.maximum}
+          mode={'used'}
+          value={capacity.used}
+          size={{
+            blockSize: 28,
+            size: 18,
+          }}
+          text={{
+            overload: t('tokenTag.overload'),
+            remained: t('tokenTag.remained'),
+            used: t('tokenDetails.estimatedUsed'),
+          }}
+        />
+      </ActionPopover>
+      {capacity.maximum > 0 && capacity.used >= capacity.maximum && (
+        <Text fontSize={12} type={'secondary'}>
+          {t('tokenDetails.limitHint')}
+        </Text>
+      )}
+    </Flexbox>
   );
 });
 

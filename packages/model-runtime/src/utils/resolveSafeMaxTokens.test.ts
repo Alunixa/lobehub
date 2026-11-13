@@ -83,9 +83,9 @@ describe('resolveSafeMaxTokens', () => {
     expect(result!).toBeGreaterThanOrEqual(DEFAULT_MIN_OUTPUT_TOKENS);
   });
 
-  it('throws ContextExceededPreFlightError when remaining window < minOutputTokens', () => {
+  it('keeps a positive output budget when the estimate exceeds the window', () => {
     const longContent = 'a'.repeat(20_000);
-    expect(() =>
+    expect(
       resolveSafeMaxTokens(
         {
           messages: [{ content: longContent, role: 'user' }],
@@ -93,13 +93,13 @@ describe('resolveSafeMaxTokens', () => {
         } as any,
         [baseModel({ contextWindowTokens: 2000, maxOutput: 8000 })],
       ),
-    ).toThrow(ContextExceededPreFlightError);
+    ).toBe(DEFAULT_MIN_OUTPUT_TOKENS);
   });
 
   it('attaches structured diagnostic data to ContextExceededPreFlightError', () => {
     const longContent = 'a'.repeat(20_000);
     try {
-      resolveSafeMaxTokens(
+      assertContextWithinWindow(
         {
           messages: [{ content: longContent, role: 'user' }],
           model: 'tight-model',
@@ -115,7 +115,7 @@ describe('resolveSafeMaxTokens', () => {
       expect(err.ctx).toBe(2000);
       expect(err.promptTokens).toBeGreaterThan(0);
       expect(err.shortBy).toBe(err.promptTokens - err.ctx);
-      expect(err.minOutputTokens).toBe(DEFAULT_MIN_OUTPUT_TOKENS);
+      expect(err.minOutputTokens).toBeUndefined();
       expect(err.suggestions).toEqual(DEFAULT_PRE_FLIGHT_SUGGESTIONS);
     }
   });

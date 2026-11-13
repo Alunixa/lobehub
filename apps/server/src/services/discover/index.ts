@@ -73,6 +73,7 @@ import { AssistantStore } from '@/server/modules/AssistantStore';
 import { PluginStore } from '@/server/modules/PluginStore';
 import { MarketService } from '@/server/services/market';
 import { readMarketCatalogDetail } from '@/server/services/market/publicCatalog';
+import { readMarketCatalog } from '@/server/services/market/publicCatalogClient';
 
 const log = debug('lobe-server:discover');
 
@@ -534,10 +535,12 @@ export class DiscoverService {
 
     try {
       // @ts-ignore
-      const categories = await this.market.agents.getCategories({
-        locale: normalizedLocale,
-        q,
-      });
+      const categories = await readMarketCatalog(this.market, (market) =>
+        market.agents.getCategories({
+          locale: normalizedLocale,
+          q,
+        }),
+      );
       log('getAssistantCategories: returning %d categories from market SDK', categories.length);
       return categories;
     } catch (error) {
@@ -726,21 +729,23 @@ export class DiscoverService {
         }
       }
 
-      const data = await this.market.agents.getAgentList({
-        category: shouldOmitCategory ? undefined : category,
-        haveSkills,
-        // includeAgentGroup may not be in SDK type definition yet, using 'as any'
-        includeAgentGroup,
-        locale: normalizedLocale,
-        order,
-        ownerId,
-        page,
-        pageSize,
-        q,
-        sort: apiSort,
-        status: 'published',
-        visibility: 'public',
-      } as any);
+      const data = await readMarketCatalog(this.market, (market) =>
+        market.agents.getAgentList({
+          category: shouldOmitCategory ? undefined : category,
+          haveSkills,
+          // includeAgentGroup may not be in SDK type definition yet, using 'as any'
+          includeAgentGroup,
+          locale: normalizedLocale,
+          order,
+          ownerId,
+          page,
+          pageSize,
+          q,
+          sort: apiSort,
+          status: 'published',
+          visibility: 'public',
+        } as any),
+      );
 
       const transformedItems: DiscoverAssistantItem[] = (data.items || []).map((item: any) => {
         const normalizedAuthor = this.normalizeAuthorField(item.author);
@@ -795,16 +800,18 @@ export class DiscoverService {
     log('getMcpCategories: params=%O', params);
     const { locale } = params;
     const normalizedLocale = normalizeLocale(locale);
-    const result = await this.market.plugins.getCategories(
-      {
-        ...params,
-        locale: normalizedLocale,
-      },
-      {
-        next: {
-          revalidate: 3600,
+    const result = await readMarketCatalog(this.market, (market) =>
+      market.plugins.getCategories(
+        {
+          ...params,
+          locale: normalizedLocale,
         },
-      },
+        {
+          next: {
+            revalidate: 3600,
+          },
+        },
+      ),
     );
     log('getMcpCategories: returning %d categories', result.length);
     return result;
@@ -860,19 +867,21 @@ export class DiscoverService {
       category as McpCategory,
     );
 
-    const result = await this.market.plugins.getPluginList(
-      {
-        ...params,
-        category: shouldOmitCategory ? undefined : category,
-        locale: normalizedLocale,
-        sort: shouldOmitCategory ? McpSorts.Recommended : sort,
-      },
-      {
-        next: {
-          revalidate: CacheRevalidate.List,
-          tags: [CacheTag.Discover, CacheTag.MCP],
+    const result = await readMarketCatalog(this.market, (market) =>
+      market.plugins.getPluginList(
+        {
+          ...params,
+          category: shouldOmitCategory ? undefined : category,
+          locale: normalizedLocale,
+          sort: shouldOmitCategory ? McpSorts.Recommended : sort,
         },
-      },
+        {
+          next: {
+            revalidate: CacheRevalidate.List,
+            tags: [CacheTag.Discover, CacheTag.MCP],
+          },
+        },
+      ),
     );
     log('getMcpList: returning %d items on page %d', result.items.length, result.currentPage);
     return result;
@@ -882,17 +891,19 @@ export class DiscoverService {
     log('getMcpManifest: params=%O', params);
     const { locale } = params;
     const normalizedLocale = normalizeLocale(locale);
-    const result = await this.market.plugins.getPluginManifest(
-      {
-        ...params,
-        locale: normalizedLocale,
-      },
-      {
-        next: {
-          revalidate: CacheRevalidate.List,
-          tags: [CacheTag.Discover, CacheTag.MCP],
+    const result = await readMarketCatalog(this.market, (market) =>
+      market.plugins.getPluginManifest(
+        {
+          ...params,
+          locale: normalizedLocale,
         },
-      },
+        {
+          next: {
+            revalidate: CacheRevalidate.List,
+            tags: [CacheTag.Discover, CacheTag.MCP],
+          },
+        },
+      ),
     );
     log('getMcpManifest: returning manifest for %s', params.identifier);
     return result;

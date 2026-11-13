@@ -98,8 +98,9 @@ export default {
   'response.CreateMessageError':
     'Sorry, the message could not be sent successfully. Please copy the content and try sending it again. This message will not be retained after refreshing the page.',
   'exceededContext.compact': 'Compact Context',
+  'exceededContext.retry': 'Retry without compacting',
   'exceededContext.desc':
-    'The conversation has exceeded the context window limit. You can compact the context to compress history and continue chatting.',
+    'The provider rejected the context length. Retry unchanged, or compact the context manually.',
   'exceededContext.title': 'Context Window Exceeded',
 
   'unknownError.copyTraceId': 'Trace ID Copied',

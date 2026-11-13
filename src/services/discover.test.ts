@@ -19,7 +19,7 @@ describe('DiscoverService marketplace authentication', () => {
     vi.restoreAllMocks();
   });
 
-  it('obtains the marketplace token before the first Skill catalogue request', async () => {
+  it('does not require browser machine credentials before a public Skill catalogue request', async () => {
     const calls: string[] = [];
     const response = {
       currentPage: 1,
@@ -38,6 +38,6 @@ describe('DiscoverService marketplace authentication', () => {
     });
 
     await expect(discoverService.getSkillList({ page: 1 })).resolves.toBe(response);
-    expect(calls).toEqual(['token', 'catalogue']);
+    expect(calls).toEqual(['catalogue']);
   });
 });

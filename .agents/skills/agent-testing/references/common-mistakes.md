@@ -330,3 +330,11 @@ silently repairs the broken selector and produces a false pass on both device ty
 without supplying a fixture root class. Verify image delivery independently, capture
 the failing opaque surfaces, then check the real App element's shared marker and
 computed transparency in desktop/mobile, light/dark, reload and image preview states.
+
+## Case 16 — A newly registered Market token masks old-browser catalogue failures
+
+**Wrong approach**: validate only loopback calls with freshly minted machine cookies, then treat that as proof that existing users can open Community.
+
+**Why / what it breaks**: missing/expired browser tokens still make public lists fail; a detail's related-list fetch can turn a successful public detail read into a 500, and a readable status cookie is not proof that the token is valid.
+
+**Correct approach**: repeat actual catalogue/detail calls without cookies and with deliberately stale tokens, including related resources and browser services. Recover only public reads through a distinct server machine identity, bound refresh retries, keep 403/404/429 semantics, and test token expiry/concurrent cold starts. Preserve local application login and private-resource permissions.

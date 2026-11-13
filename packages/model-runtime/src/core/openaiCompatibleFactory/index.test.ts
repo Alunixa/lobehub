@@ -871,7 +871,7 @@ describe('LobeOpenAICompatibleFactory', () => {
         type: 'chat',
       };
 
-      it('aborts before dispatch with ExceededContextWindow when prompt exceeds ctx', async () => {
+      it('dispatches the complete prompt even when the local estimate exceeds ctx', async () => {
         const LobePreFlightProvider = createOpenAICompatibleRuntime({
           baseURL: defaultBaseURL,
           chatCompletion: {
@@ -887,29 +887,13 @@ describe('LobeOpenAICompatibleFactory', () => {
 
         const longContent = 'a'.repeat(20_000);
 
-        try {
-          await instance.chat({
-            messages: [{ content: longContent, role: 'user' }],
-            model: 'tight-model',
-            temperature: 0,
-          });
-          expect.fail('expected chat to reject');
-        } catch (error) {
-          expect((error as any).errorType).toBe(AgentRuntimeErrorType.ExceededContextWindow);
-          expect((error as any).error.type).toBe('context_exceeded_pre_flight');
-          expect((error as any).error.model).toBe('tight-model');
-          expect((error as any).error.ctx).toBe(2000);
-          expect((error as any).error.promptTokens).toBeGreaterThan(0);
-          expect((error as any).error.shortBy).toBe(
-            (error as any).error.promptTokens - (error as any).error.ctx,
-          );
-          expect((error as any).error.suggestions).toEqual([
-            'fork_topic',
-            'switch_to_larger_ctx_model',
-          ]);
-        }
-
-        expect(mockCreateMethod).not.toHaveBeenCalled();
+        await instance.chat({
+          messages: [{ content: longContent, role: 'user' }],
+          model: 'tight-model',
+          temperature: 0,
+        });
+        expect(mockCreateMethod).toHaveBeenCalledOnce();
+        expect(mockCreateMethod.mock.calls[0][0].messages[0].content).toBe(longContent);
       });
 
       it('passes through when prompt fits comfortably', async () => {

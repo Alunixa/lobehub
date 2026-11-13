@@ -15,7 +15,7 @@ describe('mapMarketError', () => {
   it('does not route a rejected Market credential to app re-authentication', () => {
     const error = mapMarketError(new MarketAPIError(401, 'Unauthorized'), 'Market failed');
 
-    expect(error.code).toBe('INTERNAL_SERVER_ERROR');
+    expect(error.code).toBe('BAD_GATEWAY');
   });
 
   it('keeps existing tRPC error codes', () => {
