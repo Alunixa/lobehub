@@ -1,7 +1,6 @@
 import { imageUrlToBase64 } from '@lobechat/utils';
 import { cleanObject } from '@lobechat/utils/object';
 import createDebug from 'debug';
-import type { RuntimeImageGenParamsValue } from 'model-bank';
 import type OpenAI from 'openai';
 
 import type {
@@ -61,21 +60,17 @@ async function generateByImageMode(
 
   log('Creating image with model: %s and params: %O', requestModel, params);
 
-  // Map parameter names, mapping imageUrls to image
-  const paramsMap = new Map<RuntimeImageGenParamsValue, string>([
-    ['imageUrls', 'image'],
-    ['imageUrl', 'image'],
-  ]);
-  const userInput: Record<string, any> = Object.fromEntries(
-    Object.entries(params).map(([key, value]) => [
-      paramsMap.get(key as RuntimeImageGenParamsValue) ?? key,
-      value,
-    ]),
-  );
-  // unify image input to array
-  if (typeof userInput.image === 'string' && userInput.image.trim() !== '') {
-    userInput.image = [userInput.image];
-  }
+  // Empty single/multi-image defaults must not overwrite a populated reference.
+  const { imageUrl: referenceImageUrl, imageUrls: referenceImageUrls, ...otherParams } = params;
+  const references = referenceImageUrls?.length
+    ? referenceImageUrls
+    : referenceImageUrl?.trim()
+      ? [referenceImageUrl]
+      : [];
+  const userInput: Record<string, any> = {
+    ...otherParams,
+    ...(references.length ? { image: references } : {}),
+  };
 
   // https://platform.openai.com/docs/api-reference/images/createEdit
   const isImageEdit = Array.isArray(userInput.image) && userInput.image.length > 0;
@@ -210,17 +205,20 @@ async function generateByChatModel(
   ];
 
   // Add image for editing mode if provided
-  if (params.imageUrl && params.imageUrl !== null) {
-    log('Processing image URL for editing mode: %s', params.imageUrl);
+  const references = params.imageUrls?.length
+    ? params.imageUrls
+    : params.imageUrl?.trim()
+      ? [params.imageUrl]
+      : [];
+  if (references.length) {
     try {
-      const processedImageUrl = await processImageUrlForChat(params.imageUrl);
-      content.push({
-        image_url: {
-          url: processedImageUrl,
-        },
-        type: 'image_url',
-      });
-      log('Successfully processed image URL for chat input');
+      const processedUrls = await Promise.all(references.map(processImageUrlForChat));
+      content.push(
+        ...processedUrls.map((url) => ({
+          image_url: { url },
+          type: 'image_url',
+        })),
+      );
     } catch (error) {
       throw new Error(`Failed to process image URL: ${error}`, { cause: error });
     }

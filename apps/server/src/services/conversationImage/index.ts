@@ -5,13 +5,14 @@ import type {
 import { ASYNC_TASK_TIMEOUT } from '@lobechat/business-config/server';
 import { resolveBusinessModelMapping } from '@lobechat/business-model-runtime';
 import { INBOX_SESSION_ID } from '@lobechat/const';
+import { resolveImageModelParameters } from '@lobechat/model-runtime';
 import type { ProviderConfig, UserServiceModelConfig } from '@lobechat/types';
 import { FileSource, RequestTrigger } from '@lobechat/types';
 import { raceWithAbort } from '@lobechat/utils/abort';
 import { resolveConversationImageModel } from '@lobechat/utils/conversationImageModel';
 import { sha256 } from 'js-sha256';
-import type { ModelParamsSchema, RuntimeImageGenParams } from 'model-bank';
-import { CHAT_MODEL_IMAGE_GENERATION_PARAMS, extractDefaultValues } from 'model-bank';
+import type { RuntimeImageGenParams } from 'model-bank';
+import { extractDefaultValues } from 'model-bank';
 
 import { AgentModel } from '@/database/models/agent';
 import { AgentOperationModel } from '@/database/models/agentOperation';
@@ -151,10 +152,7 @@ export class ConversationImageGenerationService {
         'The selected image model is unavailable. Enable it or choose another image model in Service Models.',
       );
 
-    const schema: ModelParamsSchema = {
-      ...(selectedModel.parameters ?? CHAT_MODEL_IMAGE_GENERATION_PARAMS),
-      prompt: selectedModel.parameters?.prompt ?? CHAT_MODEL_IMAGE_GENERATION_PARAMS.prompt,
-    };
+    const schema = await resolveImageModelParameters(selectedModel);
     const generationParams: RuntimeImageGenParams = {
       ...extractDefaultValues(schema),
       prompt: params.prompt,

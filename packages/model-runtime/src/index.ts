@@ -96,4 +96,5 @@ export {
   resolveDefaultThinkingLevelForModel,
 } from './utils/modelExtendParams';
 export { isDeepSeekThinkingEligibleModel, isDeepSeekV4FamilyModel } from './utils/modelParse';
+export { resolveImageModelParameters } from './utils/resolveImageModelParameters';
 export { parseDataUri } from './utils/uriParser';

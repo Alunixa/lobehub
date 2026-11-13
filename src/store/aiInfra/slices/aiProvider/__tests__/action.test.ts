@@ -1,8 +1,8 @@
-import * as runtimeModule from '@lobechat/model-runtime';
 import type { AIImageModelCard, EnabledAiModel, ModelParamsSchema, Pricing } from 'model-bank';
 import { CHAT_MODEL_IMAGE_GENERATION_PARAMS } from 'model-bank';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as runtimeModule from '../../../../../../packages/model-runtime/src/utils/getFallbackModelProperty';
 import {
   getChatModelList,
   getImageModelList,
@@ -203,12 +203,10 @@ describe('aiProvider action helpers', () => {
         prompt: { default: '' },
         size: { default: 'auto', enum: ['auto', '1024x1024', '2048x2048'] },
       } satisfies ModelParamsSchema;
-      vi.mocked(runtimeModule.getModelPropertyWithFallback).mockImplementation(
-        async (id, key) => {
-          if (id === 'gpt-image-2' && key === 'parameters') return canonicalParameters;
-          return undefined;
-        },
-      );
+      vi.mocked(runtimeModule.getModelPropertyWithFallback).mockImplementation(async (id, key) => {
+        if (id === 'gpt-image-2' && key === 'parameters') return canonicalParameters;
+        return undefined;
+      });
 
       const result = await normalizeImageModel(
         createImageModel({

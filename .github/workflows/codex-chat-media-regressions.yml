@@ -197,6 +197,8 @@ jobs:
             src/core/openaiCompatibleFactory/streamingFetch.test.ts \
             src/core/openaiCompatibleFactory/nonStreamToStream.test.ts \
             src/providers/openai/chatCompletion.wire.test.ts \
+            src/core/openaiCompatibleFactory/createImage.test.ts \
+            src/utils/resolveImageModelParameters.test.ts \
             src/providers/minimax/index.test.ts \
             src/providers/google/transport.test.ts \
             src/utils/handleOpenAIError.test.ts
@@ -234,10 +236,14 @@ jobs:
             apps/server/src/services/generation/index.test.ts \
             apps/server/src/services/toolExecution/__tests__/errorClassification.test.ts \
             src/helpers/toolEngineering/index.test.ts \
+            src/store/aiInfra/slices/aiProvider/__tests__/action.test.ts \
             src/store/user/slices/settings/selectors/settings.test.ts
       - name: Image generation runtime and manifest contract
         working-directory: packages/builtin-tool-image-generation
         run: node ../../node_modules/vitest/vitest.mjs run --config vitest.config.mts --silent=passed-only src/ExecutionRuntime/index.test.ts src/manifest.test.ts
+      - name: Uploaded image reference identifiers
+        working-directory: packages/prompts
+        run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/prompts/files/index.test.ts
       - name: Image model setting and abort behavior
         working-directory: packages/utils
         run: node ../../node_modules/vitest/vitest.mjs run --silent=passed-only src/conversationImageModel.test.ts src/abort.test.ts

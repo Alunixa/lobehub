@@ -1,6 +1,8 @@
 import { createVisualFileRef } from '@lobechat/const/visualRef';
 import type { ChatImageItem } from '@lobechat/types';
 
+import { escapeXmlAttr } from '../search/xmlEscape';
+
 const imagePrompt = (
   item: ChatImageItem,
   attachUrl: boolean,
@@ -8,10 +10,12 @@ const imagePrompt = (
   messageId?: string,
 ) => {
   const ref = createVisualFileRef({ index, messageId, type: 'image' });
+  const fileId = item.id ? ` fileId="${escapeXmlAttr(item.id)}"` : '';
+  const attributes = `ref="${ref}"${fileId} name="${escapeXmlAttr(item.alt)}"`;
 
   return attachUrl
-    ? `<image ref="${ref}" name="${item.alt}" url="${item.url}"></image>`
-    : `<image ref="${ref}" name="${item.alt}"></image>`;
+    ? `<image ${attributes} url="${escapeXmlAttr(item.url)}"></image>`
+    : `<image ${attributes}></image>`;
 };
 
 export const imagesPrompts = (

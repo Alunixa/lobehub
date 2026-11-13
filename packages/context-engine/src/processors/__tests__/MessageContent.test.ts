@@ -398,7 +398,7 @@ describe('MessageContentProcessor', () => {
       expect(content[0].text).toContain('SYSTEM CONTEXT');
       expect(content[0].text).toContain('Hello');
       expect(content[0].text).toContain(
-        '<image ref="msg_1cs5ql.image_1" name="test.png" url="http://example.com/image.jpg"></image>',
+        '<image ref="msg_1cs5ql.image_1" fileId="img1" name="test.png" url="http://example.com/image.jpg"></image>',
       );
       expect(content[0].text).toContain(
         '<file id="file1" name="test.txt" type="text/plain" size="100" url="http://example.com/test.txt"></file>',

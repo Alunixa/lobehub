@@ -1,5 +1,6 @@
 import {
   getModelPropertyWithFallback,
+  resolveImageModelParameters,
   resolveImageSinglePrice,
   resolveVideoSinglePrice,
 } from '@lobechat/model-runtime';
@@ -12,7 +13,7 @@ import type {
   ModelParamsSchema,
   Pricing,
 } from 'model-bank';
-import { CHAT_MODEL_IMAGE_GENERATION_PARAMS, isAiModelVisible } from 'model-bank';
+import { isAiModelVisible } from 'model-bank';
 import { type SWRResponse } from 'swr';
 
 import { mutate, useClientDataSWR } from '@/libs/swr';
@@ -102,41 +103,7 @@ export const normalizeChatModel = async (model: EnabledAiModel): Promise<Provide
 export const normalizeImageModel = async (
   model: EnabledAiModel,
 ): Promise<ProviderModelListItem> => {
-  const fallbackParametersPromise = (async () => {
-    const parameterFallbackIds = [model.id];
-
-    if (!model.id.endsWith(':image')) parameterFallbackIds.push(`${model.id}:image`);
-
-    // OpenAI-compatible providers often expose a newer gateway alias before it
-    // lands in the built-in model bank. GPT Image 2.x keeps the same generation
-    // controls as GPT Image 2, so inherit that canonical schema instead of
-    // silently degrading to a prompt-only form.
-    if (/^gpt-image-2(?:$|[.:-])/i.test(model.id) && model.id !== 'gpt-image-2') {
-      parameterFallbackIds.push('gpt-image-2');
-    }
-
-    let canonicalParameters: ModelParamsSchema | undefined;
-    for (const fallbackId of parameterFallbackIds) {
-      canonicalParameters = await getModelPropertyWithFallback<ModelParamsSchema | undefined>(
-        fallbackId,
-        'parameters',
-        model.providerId,
-      );
-      if (canonicalParameters) break;
-    }
-
-    const inlineParameters = model.parameters as ModelParamsSchema | undefined;
-    const parameters = canonicalParameters
-      ? { ...canonicalParameters, ...inlineParameters }
-      : inlineParameters
-        ? { prompt: CHAT_MODEL_IMAGE_GENERATION_PARAMS.prompt, ...inlineParameters }
-        : CHAT_MODEL_IMAGE_GENERATION_PARAMS;
-
-    return {
-      ...parameters,
-      prompt: parameters.prompt ?? CHAT_MODEL_IMAGE_GENERATION_PARAMS.prompt,
-    };
-  })();
+  const fallbackParametersPromise = resolveImageModelParameters(model);
 
   const fallbackPricingPromise = getModelProperty<Pricing>(model, 'pricing');
   const fallbackDescriptionPromise = getModelProperty<string>(model, 'description');

@@ -25,7 +25,9 @@ export const ImageGenerationManifest: BuiltinToolManifest = {
           },
           referenceImageFileIds: {
             description:
-              'Optional image file IDs supplied in the conversation or returned by this tool. Never URLs.',
+              'Optional image file IDs: copy the fileId attribute of uploaded <image> context entries, ' +
+              'or Image file ID values returned by this tool. Use IDs in the intended reference order, ' +
+              'not visual ref labels, message IDs, filenames or URLs.',
             items: { minLength: 1, type: 'string' },
             maxItems: 8,
             type: 'array',

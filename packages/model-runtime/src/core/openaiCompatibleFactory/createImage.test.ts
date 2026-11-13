@@ -46,6 +46,64 @@ describe('createOpenAICompatibleImage', () => {
   });
 
   describe('chat model mode (model with :image suffix)', () => {
+    it('passes the multi-image references used by conversation tools to the chat image model', async () => {
+      vi.spyOn(uriParserModule, 'parseDataUri').mockImplementation((url) => ({
+        type: 'base64',
+        base64: url.endsWith('AAAA') ? 'AAAA' : 'BBBB',
+        mimeType: 'image/png',
+      }));
+      vi.mocked(mockClient.chat.completions.create).mockResolvedValue({
+        choices: [
+          { message: { images: [{ image_url: { url: 'data:image/png;base64,result' } }] } },
+        ],
+      } as never);
+      await createOpenAICompatibleImage(
+        mockClient,
+        {
+          model: 'compatible-gemini:image',
+          params: {
+            imageUrl: null,
+            imageUrls: ['data:image/png;base64,BBBB', 'data:image/png;base64,AAAA'],
+            prompt: 'Use both images.',
+          },
+        },
+        'custom',
+      );
+      const payload = vi.mocked(mockClient.chat.completions.create).mock.calls[0][0];
+      expect(payload.messages[0].content).toEqual([
+        { type: 'text', text: 'Use both images.' },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,BBBB' } },
+        { type: 'image_url', image_url: { url: 'data:image/png;base64,AAAA' } },
+      ]);
+    });
+
+    it('keeps a single reference when the multi-image default is empty', async () => {
+      vi.spyOn(uriParserModule, 'parseDataUri').mockReturnValue({
+        type: 'base64',
+        base64: 'AAAA',
+        mimeType: 'image/png',
+      });
+      vi.mocked(mockClient.chat.completions.create).mockResolvedValue({
+        choices: [
+          { message: { images: [{ image_url: { url: 'data:image/png;base64,result' } }] } },
+        ],
+      } as never);
+      await createOpenAICompatibleImage(
+        mockClient,
+        {
+          model: 'compatible-gemini:image',
+          params: {
+            imageUrl: 'data:image/png;base64,AAAA',
+            imageUrls: [],
+            prompt: 'Edit the image.',
+          },
+        },
+        'custom',
+      );
+      const payload = vi.mocked(mockClient.chat.completions.create).mock.calls[0][0];
+      expect(payload.messages[0].content).toHaveLength(2);
+    });
+
     describe('processImageUrlForChat function', () => {
       it('should process base64 data URI correctly', async () => {
         const mockImageUrl =
@@ -707,6 +765,27 @@ describe('createOpenAICompatibleImage', () => {
   });
 
   describe('image mode - parameter mapping', () => {
+    it.each([
+      { imageUrl: null, imageUrls: ['data:image/png;base64,AAAA'] },
+      { imageUrl: 'data:image/png;base64,AAAA', imageUrls: [] },
+    ])('does not lose a reference to an empty alternate parameter default: %j', async (params) => {
+      vi.mocked(mockClient.images.edit).mockResolvedValue({
+        data: [{ b64_json: 'result' }],
+      } as never);
+      await createOpenAICompatibleImage(
+        mockClient,
+        {
+          model: 'gpt-image-2',
+          params: { ...params, prompt: 'Edit the reference.' },
+        },
+        'openai',
+      );
+      expect(mockClient.images.edit).toHaveBeenCalledOnce();
+      expect(mockClient.images.generate).not.toHaveBeenCalled();
+      const request = vi.mocked(mockClient.images.edit).mock.calls[0][0];
+      expect(request.image).toBeInstanceOf(File);
+    });
+
     it('should map single imageUrl string parameter to image array', async () => {
       const mockImageResponse = {
         data: [

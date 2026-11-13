@@ -1,5 +1,12 @@
 // @vitest-environment node
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { once } from 'node:events';
+import { createServer } from 'node:http';
+
+import * as businessModelRuntime from '@lobechat/business-model-runtime';
+import { LobeOpenAI } from '@lobechat/model-runtime';
+import * as modelRuntime from '@lobechat/model-runtime';
+import type { ModelParamsSchema } from 'model-bank';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ConversationImageGenerationService } from './index';
 
@@ -9,6 +16,9 @@ const fixtures = vi.hoisted(() => ({
   failFileCreate: false,
   files: new Map<string, Record<string, unknown>>(),
   modelAvailable: true,
+  modelId: 'image-v1',
+  parameters: { imageUrls: { default: [] }, prompt: { default: '' } } as ModelParamsSchema,
+  storageBase: 'https://storage.example',
   topic: {
     agentId: null as string | null,
     groupId: null as string | null,
@@ -24,7 +34,7 @@ vi.mock('@/database/models/user', () => ({
     getUserSettings = async () => ({
       systemAgent: {
         conversationImage: fixtures.enabled
-          ? { enabled: true, model: 'image-v1', provider: 'openai' }
+          ? { enabled: true, model: fixtures.modelId, provider: 'openai' }
           : { enabled: false, model: '', provider: '' },
       },
     });
@@ -71,11 +81,8 @@ vi.mock('@/database/repositories/aiInfra', () => ({
     getEnabledModels = async () => [
       {
         enabled: fixtures.modelAvailable,
-        id: 'image-v1',
-        parameters: {
-          imageUrls: { default: [] },
-          prompt: { default: '' },
-        },
+        id: fixtures.modelId,
+        parameters: fixtures.parameters,
         providerId: 'openai',
         type: 'image',
       },
@@ -99,7 +106,7 @@ vi.mock('@/server/services/file', () => ({
     deleteFile = async (key: string) => {
       fixtures.uploaded = fixtures.uploaded.filter((item) => item !== key);
     };
-    getFullFileUrl = async (key: string) => `https://storage.example/${key}`;
+    getFullFileUrl = async (key: string) => `${fixtures.storageBase}/${key}`;
   },
   getFileProxyUrl: (id: string) => `/f/${id}`,
 }));
@@ -136,21 +143,23 @@ vi.mock('@/server/services/generation', () => ({
   },
 }));
 
-vi.mock('@lobechat/business-model-runtime', () => ({
-  resolveBusinessModelMapping: async (_provider: string, model: string) => ({
-    resolvedModelId: model,
-  }),
-}));
-
 vi.mock('@/utils/sanitizeFileName', () => ({
   sanitizeFileName: () => 'generated-image',
 }));
 
 describe('ConversationImageGenerationService', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   beforeEach(() => {
+    vi.spyOn(businessModelRuntime, 'resolveBusinessModelMapping').mockImplementation(
+      async (_provider, model) => ({ resolvedModelId: model }),
+    );
     fixtures.enabled = true;
     fixtures.failFileCreate = false;
     fixtures.modelAvailable = true;
+    fixtures.modelId = 'image-v1';
+    fixtures.parameters = { imageUrls: { default: [] }, prompt: { default: '' } };
+    fixtures.storageBase = 'https://storage.example';
     fixtures.topic = { agentId: null, groupId: null, id: 'topic-1', sessionId: 'session-1' };
     fixtures.topicFiles = [];
     fixtures.files.clear();
@@ -261,6 +270,167 @@ describe('ConversationImageGenerationService', () => {
       }),
       expect.anything(),
     );
+  });
+
+  it.each(['gpt-image-2', 'gpt-image-2.6-sunburst'])(
+    'accepts uploaded references for %s when the custom provider stores an empty schema',
+    async (modelId) => {
+      fixtures.modelId = modelId;
+      fixtures.parameters = {} as ModelParamsSchema;
+      fixtures.topicFiles = [{ id: 'upload-b' }, { id: 'upload-a' }];
+      for (const id of ['upload-a', 'upload-b']) {
+        fixtures.files.set(id, {
+          fileType: 'image/png',
+          id,
+          metadata: {},
+          size: 100,
+          url: `${id}.png`,
+          visibility: 'private',
+        });
+      }
+      await createService().generateImage({
+        prompt: 'Keep the person from the second upload and the style of the first.',
+        referenceImageFileIds: ['upload-b', 'upload-a', 'upload-b'],
+      });
+      expect(fixtures.createImage.mock.calls[0][0].params.imageUrls).toEqual([
+        'https://storage.example/upload-b.png',
+        'https://storage.example/upload-a.png',
+      ]);
+    },
+  );
+
+  it('rejects references for a genuinely text-only image model before making a paid request', async () => {
+    vi.spyOn(modelRuntime, 'resolveImageModelParameters').mockResolvedValue({
+      prompt: { default: '' },
+    });
+    await expect(
+      createService().generateImage({
+        prompt: 'Edit this image.',
+        referenceImageFileIds: ['upload'],
+      }),
+    ).rejects.toThrow('does not support reference images');
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+  });
+
+  it('keeps explicit single-image restrictions', async () => {
+    fixtures.parameters = { imageUrl: { default: null }, prompt: { default: '' } };
+    await expect(
+      createService().generateImage({
+        prompt: 'Blend both images.',
+        referenceImageFileIds: ['one', 'two'],
+      }),
+    ).rejects.toThrow('only one reference image');
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+  });
+
+  it('enforces custom reference count and size limits', async () => {
+    fixtures.parameters = {
+      imageUrls: { default: [], maxCount: 1, maxFileSize: 99 },
+      prompt: { default: '' },
+    };
+    await expect(
+      createService().generateImage({
+        prompt: 'Blend both images.',
+        referenceImageFileIds: ['one', 'two'],
+      }),
+    ).rejects.toThrow('at most 1 reference');
+    fixtures.topicFiles = [{ id: 'one' }];
+    fixtures.files.set('one', {
+      id: 'one',
+      fileType: 'image/png',
+      size: 100,
+      metadata: {},
+      url: 'one.png',
+    });
+    await expect(
+      createService().generateImage({
+        prompt: 'Edit this image.',
+        referenceImageFileIds: ['one'],
+      }),
+    ).rejects.toThrow('file size limit');
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+  });
+
+  it('sends both authorized reference files in order through the real OpenAI edit HTTP request', async () => {
+    fixtures.modelId = 'gpt-image-2';
+    fixtures.parameters = {} as ModelParamsSchema;
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+      'base64',
+    );
+    const observed: {
+      images: Buffer[];
+      model: FormDataEntryValue | null;
+      path: string;
+      prompt: FormDataEntryValue | null;
+    }[] = [];
+    const server = createServer(async (request, response) => {
+      if (request.method === 'GET') {
+        response.writeHead(200, { 'content-type': 'image/png' });
+        response.end(request.url === '/b.png' ? Buffer.concat([png, Buffer.from('b')]) : png);
+        return;
+      }
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) chunks.push(chunk);
+      const form = await new Response(Buffer.concat(chunks), {
+        headers: { 'content-type': request.headers['content-type']! },
+      }).formData();
+      const files = [...form.getAll('image[]'), ...form.getAll('image')].filter(
+        (item): item is File => item instanceof File,
+      );
+      observed.push({
+        images: await Promise.all(files.map(async (file) => Buffer.from(await file.arrayBuffer()))),
+        model: form.get('model'),
+        path: request.url!,
+        prompt: form.get('prompt'),
+      });
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ data: [{ b64_json: png.toString('base64') }] }));
+    });
+    server.listen(0, '127.0.0.1');
+    await once(server, 'listening');
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('No fixture port');
+    fixtures.storageBase = `http://127.0.0.1:${address.port}`;
+    fixtures.topicFiles = [{ id: 'ref-a' }, { id: 'ref-b' }];
+    for (const [id, url] of [
+      ['ref-a', 'a.png'],
+      ['ref-b', 'b.png'],
+    ]) {
+      fixtures.files.set(id, {
+        fileType: 'image/png',
+        id,
+        size: png.length,
+        metadata: {},
+        url,
+        visibility: 'private',
+      });
+    }
+    const runtime = new LobeOpenAI({
+      apiKey: 'reference-wire-fixture',
+      baseURL: `${fixtures.storageBase}/v1`,
+      maxRetries: 0,
+    });
+    fixtures.createImage.mockImplementation((payload, options) =>
+      runtime.createImage(payload, options),
+    );
+    try {
+      const state = await createService('real-edit-wire').generateImage({
+        prompt: 'Use both references in order.',
+        referenceImageFileIds: ['ref-b', 'ref-a'],
+      });
+      expect(state.images).toHaveLength(1);
+      expect(observed).toHaveLength(1);
+      expect(observed[0]).toMatchObject({
+        model: 'gpt-image-2',
+        path: '/v1/images/edits',
+        prompt: 'Use both references in order.',
+      });
+      expect(observed[0].images).toEqual([Buffer.concat([png, Buffer.from('b')]), png]);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+    }
   });
 
   it('keeps generated images private when their workspace agent is private', async () => {
