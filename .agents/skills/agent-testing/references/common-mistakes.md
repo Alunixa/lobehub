@@ -338,3 +338,19 @@ computed transparency in desktop/mobile, light/dark, reload and image preview st
 **Why / what it breaks**: missing/expired browser tokens still make public lists fail; a detail's related-list fetch can turn a successful public detail read into a 500, and a readable status cookie is not proof that the token is valid.
 
 **Correct approach**: repeat actual catalogue/detail calls without cookies and with deliberately stale tokens, including related resources and browser services. Recover only public reads through a distinct server machine identity, bound refresh retries, keep 403/404/429 semantics, and test token expiry/concurrent cold starts. Preserve local application login and private-resource permissions.
+
+## Case 17 — Treating a published build as a completed production deployment
+
+**Wrong approach**: stop after a successful release, or dispatch another release of
+the same source, when deployment actually stopped because the script's expected tag
+differs from the verified manifest and staging receipt.
+
+**Why / what it breaks**: production still runs the old image, while duplicate
+publishing adds more identities and makes the recovery harder to audit.
+
+**Correct approach**: inspect actual container identity and deployment markers first.
+Keep the already verified release immutable, reconcile all deployment inputs, preserve
+the failed receipt, refresh an independently named pre-switch database backup, and
+resume only the incomplete protected-deployment stage. Confirm the new image and guard,
+then exercise the deployed RPC using owned fixtures and a local fake provider before
+reporting deployment complete.

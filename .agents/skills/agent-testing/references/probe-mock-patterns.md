@@ -558,3 +558,23 @@
 - **Situation**: a release client holds a zero-byte image file, or the server download reaches its transport timeout after receiving a substantial prefix.
 - **Does not work**: silently waiting indefinitely, deleting the partial download and starting over, or importing before the full digest matches.
 - **Works**: stop only the owned stalled client, use the same immutable release asset on the target server, preserve the matching manifest, resume the exact partial file with HTTP Range, and verify full size/source/SHA before importing once. Keep the successful staging receipt and inspect it after any missing SSH result.
+
+### E17. Resume a tag-drift failure without overwriting earlier deployment evidence
+
+- **Situation**: the release and imported image are verified, but preflight stops
+  because a deployment script expects a newer tag for the same source.
+- **Does not work**: bypassing the assertion, republishing yet another tag, rerunning
+  the whole publisher pipeline, or overwriting the old pre-switch snapshot.
+- **Works**: revalidate the existing release and same-source checks, compare the tar
+  configuration and RootFS with the loaded image, and verify production still matches
+  its backup. Reconcile the tag, save a separately named fresh pre-switch dump and
+  matching dual-location digest receipt, retain the original guard and health gates,
+  and resume deployment only. A short-lived API key for an owned temporary user plus a
+  loopback fake image provider can exercise the deployed conversation-image RPC,
+  actual ordered multipart bytes, storage persistence, generated-image reuse,
+  idempotency, and rejected inputs without replaying paid model requests. Remove only
+  the fixture's records, storage keys and cache entries; close its listener.
+- **Baseline scope**: use the original query's filters for post-test comparisons.
+  Comparing an enabled-model snapshot with all per-user model rows incorrectly flags
+  a pre-existing disabled record as a mutation; never "repair" that record to make the
+  assertion pass.
