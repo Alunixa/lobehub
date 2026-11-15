@@ -376,6 +376,29 @@ export const imageRouter = router({
         });
       }
     }),
+  getConversationImageCapabilities: imageProcedure
+    .input(z.object({ topicId: z.string().min(1) }).strict())
+    .query(async ({ input, ctx, signal }) => {
+      try {
+        const service = new ConversationImageGenerationService({
+          requestId: 'read-image-model-capabilities',
+          serverDB: ctx.serverDB,
+          topicId: input.topicId,
+          userId: ctx.userId,
+          workspaceId: ctx.workspaceId ?? undefined,
+        });
+        return { data: await service.getImageModelCapabilities({ signal }), success: true };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        console.error('[image:getConversationImageCapabilities] Failed', error);
+        throw new TRPCError({
+          cause: error,
+          code: 'BAD_REQUEST',
+          message:
+            error instanceof Error ? error.message : 'Could not read image model capabilities.',
+        });
+      }
+    }),
 });
 
 export type ImageRouter = typeof imageRouter;

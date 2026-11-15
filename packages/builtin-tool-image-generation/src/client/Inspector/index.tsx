@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 
 import { inspectorTextStyles, shinyTextStyles } from '@/styles';
 
-import type { GenerateImageParams, GenerateImageState } from '../../types';
+import type { GenerateImageParams, GenerateImageState, ImageModelCapabilities } from '../../types';
 import { ImageGenerationApiName } from '../../types';
 
 export const GenerateImageInspector = memo<
@@ -40,6 +40,28 @@ export const GenerateImageInspector = memo<
 
 GenerateImageInspector.displayName = 'GenerateImageInspector';
 
+export const ImageModelCapabilitiesInspector = memo<
+  BuiltinInspectorProps<Record<string, never>, ImageModelCapabilities>
+>(({ isArgumentsStreaming, isLoading, pluginState }) => {
+  const { t } = useTranslation('plugin');
+  return (
+    <Text
+      ellipsis
+      as={'span'}
+      className={cx(
+        inspectorTextStyles.root,
+        (isArgumentsStreaming || isLoading) && shinyTextStyles.shinyText,
+      )}
+    >
+      {t('builtins.lobe-image-generation.apiName.getImageModelCapabilities')}
+      {!isArgumentsStreaming && !isLoading && pluginState?.model ? ` · ${pluginState.model}` : ''}
+    </Text>
+  );
+});
+
+ImageModelCapabilitiesInspector.displayName = 'ImageModelCapabilitiesInspector';
+
 export const ImageGenerationInspectors = {
   [ImageGenerationApiName.generateImage]: GenerateImageInspector,
+  [ImageGenerationApiName.getImageModelCapabilities]: ImageModelCapabilitiesInspector,
 };

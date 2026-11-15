@@ -225,8 +225,29 @@ async function generateByChatModel(
   }
 
   // Call chat completion API
+  const {
+    aspectRatio: _aspectRatio,
+    imageUrl: _imageUrl,
+    imageUrls: _imageUrls,
+    prompt: _prompt,
+    resolution: _resolution,
+    seed: _seed,
+    ...generationControls
+  } = params;
   const response = await client.chat.completions.create(
     {
+      ...generationControls,
+      ...((params.aspectRatio && params.aspectRatio !== 'auto') || params.resolution
+        ? {
+            image_config: {
+              ...(params.aspectRatio && params.aspectRatio !== 'auto'
+                ? { aspect_ratio: params.aspectRatio }
+                : {}),
+              ...(params.resolution ? { image_size: params.resolution } : {}),
+            },
+          }
+        : {}),
+      ...(params.seed !== undefined && params.seed !== null ? { seed: params.seed } : {}),
       messages: [
         {
           content,

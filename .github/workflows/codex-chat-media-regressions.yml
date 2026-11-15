@@ -233,6 +233,8 @@ jobs:
           node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
             apps/server/src/modules/Mecha/AgentToolsEngine/__tests__/index.test.ts \
             apps/server/src/services/conversationImage/index.test.ts \
+            apps/server/src/services/conversationImage/parameters.test.ts \
+            apps/server/src/routers/lambda/image/index.test.ts \
             apps/server/src/services/generation/index.test.ts \
             apps/server/src/services/toolExecution/__tests__/errorClassification.test.ts \
             src/helpers/toolEngineering/index.test.ts \

@@ -17,6 +17,8 @@ const {
   mockInsertValues,
   mockIsLobeHubModelAvailable,
   mockResolveBusinessModelMapping,
+  mockGenerateConversationImage,
+  mockImageCapabilities,
 } = vi.hoisted(() => ({
   mockServerDB: {
     transaction: vi.fn(),
@@ -31,6 +33,15 @@ const {
   mockInsertValues: [] as unknown[],
   mockIsLobeHubModelAvailable: vi.fn(),
   mockResolveBusinessModelMapping: vi.fn(),
+  mockGenerateConversationImage: vi.fn(),
+  mockImageCapabilities: vi.fn(),
+}));
+
+vi.mock('@/server/services/conversationImage', () => ({
+  ConversationImageGenerationService: vi.fn(() => ({
+    generateImage: mockGenerateConversationImage,
+    getImageModelCapabilities: mockImageCapabilities,
+  })),
 }));
 
 // Mock debug
@@ -139,6 +150,17 @@ describe('imageRouter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockInsertValues.length = 0;
+    mockGenerateConversationImage.mockResolvedValue({
+      images: [{ fileId: 'file-result', width: 3840, height: 2160, url: '/f/file-result' }],
+      model: 'image-model',
+      provider: 'test-provider',
+    });
+    mockImageCapabilities.mockResolvedValue({
+      imageNum: { default: 1, min: 1, max: 50 },
+      model: 'image-model',
+      provider: 'test-provider',
+      parameters: { size: { default: 'auto', enum: ['auto', '3840x2160'] } },
+    });
 
     // Default mock implementations
     mockResolveBusinessModelMapping.mockImplementation(
@@ -206,6 +228,64 @@ describe('imageRouter', () => {
       image: {
         createImage: mockAsyncCallerCreateImage,
       },
+    });
+  });
+
+  describe('conversation image controls', () => {
+    it('provides read-only capability discovery without starting generation', async () => {
+      const caller = imageRouter.createCaller(createMockCtx());
+      expect(await caller.getConversationImageCapabilities({ topicId: 'topic-1' })).toMatchObject({
+        success: true,
+        data: { parameters: { size: { enum: ['auto', '3840x2160'] } } },
+      });
+      expect(mockGenerateConversationImage).not.toHaveBeenCalled();
+    });
+
+    it('preserves structured controls and count in the authenticated conversation route', async () => {
+      const caller = imageRouter.createCaller(createMockCtx());
+      const input = {
+        topicId: 'topic-1',
+        requestId: 'call-1',
+        prompt: 'Landscape',
+        imageNum: 2,
+        options: { size: '3840x2160', seed: 0 },
+      };
+      expect(await caller.generateInConversation(input)).toMatchObject({ success: true });
+      expect(mockGenerateConversationImage).toHaveBeenCalledWith(
+        { prompt: 'Landscape', imageNum: 2, options: { size: '3840x2160', seed: 0 } },
+        expect.anything(),
+      );
+    });
+
+    it.each([
+      { options: { imageUrls: ['https://arbitrary.invalid'] } },
+      { options: { apiKey: 'forbidden' } },
+      { imageNum: 51 },
+      { imageNum: 1.5 },
+      { provider: 'override' },
+    ])(
+      'rejects unknown controls, arbitrary media and invalid counts at the route boundary: %j',
+      async (extra) => {
+        const caller = imageRouter.createCaller(createMockCtx());
+        await expect(
+          // @ts-expect-error Exercise untrusted inputs rejected by the runtime boundary.
+          caller.generateInConversation({
+            topicId: 'topic-1',
+            requestId: 'call-1',
+            prompt: 'Landscape',
+            ...extra,
+          }),
+        ).rejects.toThrow();
+        expect(mockGenerateConversationImage).not.toHaveBeenCalled();
+      },
+    );
+
+    it('denies capability reads without application authentication', async () => {
+      const caller = imageRouter.createCaller({ userId: undefined });
+      await expect(
+        caller.getConversationImageCapabilities({ topicId: 'topic-1' }),
+      ).rejects.toThrow();
+      expect(mockImageCapabilities).not.toHaveBeenCalled();
     });
   });
 

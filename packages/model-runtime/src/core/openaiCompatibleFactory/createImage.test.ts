@@ -46,6 +46,93 @@ describe('createOpenAICompatibleImage', () => {
   });
 
   describe('chat model mode (model with :image suffix)', () => {
+    it('sends native ratio and resolution as image_config, keeping seed zero and excluding auto ratio', async () => {
+      vi.mocked(mockClient.chat.completions.create).mockResolvedValue({
+        choices: [
+          { message: { images: [{ image_url: { url: 'data:image/png;base64,result' } }] } },
+        ],
+      } as never);
+      await createOpenAICompatibleImage(
+        mockClient,
+        {
+          model: 'gemini-image:image',
+          params: { prompt: 'Landscape', aspectRatio: '16:9', resolution: '4K', seed: 0 },
+        },
+        'openrouter',
+      );
+      expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          image_config: { aspect_ratio: '16:9', image_size: '4K' },
+          seed: 0,
+        }),
+        expect.objectContaining({ maxRetries: 0 }),
+      );
+      await createOpenAICompatibleImage(
+        mockClient,
+        {
+          model: 'gemini-image:image',
+          params: { prompt: 'Landscape', aspectRatio: 'auto', resolution: '4K' },
+        },
+        'openrouter',
+      );
+      expect(vi.mocked(mockClient.chat.completions.create).mock.calls[1][0]).toMatchObject({
+        image_config: { image_size: '4K' },
+      });
+      expect(vi.mocked(mockClient.chat.completions.create).mock.calls[1][0]).not.toHaveProperty(
+        'image_config.aspect_ratio',
+      );
+    });
+
+    it('does not silently discard other explicitly advertised generation controls on compatible chat endpoints', async () => {
+      vi.mocked(mockClient.chat.completions.create).mockResolvedValue({
+        choices: [
+          { message: { images: [{ image_url: { url: 'data:image/png;base64,result' } }] } },
+        ],
+      } as never);
+      await createOpenAICompatibleImage(
+        mockClient,
+        {
+          model: 'custom-image:image',
+          params: {
+            prompt: 'Landscape',
+            size: '3840x2160',
+            quality: 'high',
+            width: 3840,
+            height: 2160,
+            steps: 30,
+            cfg: 7,
+            strength: 0.5,
+            samplerName: 'euler',
+            scheduler: 'normal',
+            watermark: false,
+            webSearch: false,
+            promptExtend: false,
+          },
+        },
+        'custom',
+      );
+      expect(mockClient.chat.completions.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          size: '3840x2160',
+          quality: 'high',
+          width: 3840,
+          height: 2160,
+          steps: 30,
+          cfg: 7,
+          strength: 0.5,
+          samplerName: 'euler',
+          scheduler: 'normal',
+          watermark: false,
+          webSearch: false,
+          promptExtend: false,
+        }),
+        expect.objectContaining({ maxRetries: 0 }),
+      );
+      const body = vi.mocked(mockClient.chat.completions.create).mock.calls[0][0];
+      expect(body).not.toHaveProperty('prompt');
+      expect(body).not.toHaveProperty('imageUrls');
+    });
+
     it('passes the multi-image references used by conversation tools to the chat image model', async () => {
       vi.spyOn(uriParserModule, 'parseDataUri').mockImplementation((url) => ({
         type: 'base64',

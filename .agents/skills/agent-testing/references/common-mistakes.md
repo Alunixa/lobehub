@@ -354,3 +354,18 @@ the failed receipt, refresh an independently named pre-switch database backup, a
 resume only the incomplete protected-deployment stage. Confirm the new image and guard,
 then exercise the deployed RPC using owned fixtures and a local fake provider before
 reporting deployment complete.
+
+## Case 18 — Treating a prompt's “4K” text as a real generation parameter
+
+**Wrong approach**: expose only prompt and reference IDs to the assistant, then say
+image size is unavailable or describe the requested dimensions as the actual result.
+
+**Why / what it breaks**: the image studio already has model-specific size,
+aspect-ratio, resolution and sampling controls, but none reaches the tool call or
+provider. A prompt instruction is not an API setting, and the output can be smaller.
+
+**Correct approach**: expose read-only current-model capability discovery and every
+standard studio control, validate explicit settings against the same metadata, and
+inspect real JSON/multipart request bytes. Return decoded output dimensions separately
+from requested settings. Test batch partial failure, cancellation and idempotency so
+enabling quantity controls does not cause silent paid retries.

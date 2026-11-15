@@ -68,7 +68,7 @@ export const GenerateImageRender = memo<
   const { t } = useTranslation('plugin');
   const [expanded, setExpanded] = useState(false);
 
-  if (pluginError)
+  if (pluginError && !pluginState?.images?.length)
     return (
       <Alert
         title={t('builtins.lobe-image-generation.render.failed')}
@@ -88,9 +88,35 @@ export const GenerateImageRender = memo<
 
   return (
     <Flexbox gap={12} style={{ maxWidth: '100%', width: 512 }}>
+      {pluginState.incompleteReason && (
+        <Alert
+          description={t('builtins.lobe-image-generation.render.retryHint')}
+          type={'warning'}
+          title={t('builtins.lobe-image-generation.render.partial', {
+            completed: pluginState.images.length,
+            requested: pluginState.requestedCount ?? args?.imageNum ?? 1,
+          })}
+        />
+      )}
       {pluginState.images.map((image) => (
-        <GeneratedImagePreview image={image} key={image.fileId} />
+        <Flexbox gap={4} key={image.fileId}>
+          <GeneratedImagePreview image={image} />
+          <Text fontSize={12} type={'secondary'}>
+            {t('builtins.lobe-image-generation.render.actualDimensions', {
+              height: image.height,
+              width: image.width,
+            })}
+          </Text>
+        </Flexbox>
       ))}
+      {!!args?.options && Object.keys(args.options).length > 0 && (
+        <Text fontSize={12} type={'secondary'} wordBreak={'break-word'}>
+          {t('builtins.lobe-image-generation.render.requestedOptions')}:{' '}
+          {Object.entries(args.options)
+            .map(([key, value]) => `${key}=${String(value)}`)
+            .join(' · ')}
+        </Text>
+      )}
       <Flexbox gap={4}>
         <Text
           ellipsis={expanded ? false : { rows: 3 }}

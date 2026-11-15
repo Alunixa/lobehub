@@ -1,6 +1,12 @@
 import type {
   GenerateImageParams,
   GenerateImageState,
+  ImageModelCapabilities,
+} from '@lobechat/builtin-tool-image-generation';
+import {
+  GenerateImageParamsSchema,
+  MAX_CONVERSATION_IMAGE_REFERENCES,
+  MAX_CONVERSATION_IMAGES,
 } from '@lobechat/builtin-tool-image-generation';
 import { ASYNC_TASK_TIMEOUT } from '@lobechat/business-config/server';
 import { resolveBusinessModelMapping } from '@lobechat/business-model-runtime';
@@ -11,8 +17,7 @@ import { FileSource, RequestTrigger } from '@lobechat/types';
 import { raceWithAbort } from '@lobechat/utils/abort';
 import { resolveConversationImageModel } from '@lobechat/utils/conversationImageModel';
 import { sha256 } from 'js-sha256';
-import type { RuntimeImageGenParams } from 'model-bank';
-import { extractDefaultValues } from 'model-bank';
+import type { ModelParamsSchema } from 'model-bank';
 
 import { AgentModel } from '@/database/models/agent';
 import { AgentOperationModel } from '@/database/models/agentOperation';
@@ -28,6 +33,11 @@ import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { FileService, getFileProxyUrl } from '@/server/services/file';
 import { GenerationService } from '@/server/services/generation';
 import { sanitizeFileName } from '@/utils/sanitizeFileName';
+
+import {
+  getConversationImageParameterDefinitions,
+  resolveConversationImageParameters,
+} from './parameters';
 
 interface ConversationImageContext {
   agentVisibility?: 'private' | 'public' | null;
@@ -45,15 +55,9 @@ const inFlight = new Map<string, Promise<GenerateImageState>>();
 export class ConversationImageGenerationService {
   constructor(private context: ConversationImageContext) {}
 
-  generateImage = async (
-    params: GenerateImageParams,
-    options?: { signal?: AbortSignal },
-  ): Promise<GenerateImageState> => {
-    const { serverDB, userId, workspaceId, topicId, requestId } = this.context;
-    if (!topicId || !requestId) throw new Error('A conversation and tool call ID are required.');
-    options?.signal?.throwIfAborted();
-
-    // Read on EVERY call: disabling the feature takes effect even in a running conversation.
+  private async resolveModelConfiguration(signal?: AbortSignal) {
+    signal?.throwIfAborted();
+    const { serverDB, userId, workspaceId } = this.context;
     const settings = await new UserModel(serverDB, userId).getUserSettings();
     const config = resolveConversationImageModel(
       (settings?.systemAgent as Partial<UserServiceModelConfig> | undefined)?.conversationImage,
@@ -63,6 +67,71 @@ export class ConversationImageGenerationService {
         'Conversation image generation is disabled. Select an image model in Settings > Service Models.',
       );
     }
+    const { aiProvider, enableBusinessFeatures } = await getServerGlobalConfig();
+    const models = await new AiInfraRepos(
+      serverDB,
+      userId,
+      aiProvider as unknown as Record<string, ProviderConfig>,
+      workspaceId,
+    ).getEnabledModels();
+    const selectedModel = models.find(
+      (item) =>
+        item.providerId === config.provider &&
+        item.id === config.model &&
+        item.type === 'image' &&
+        item.enabled,
+    );
+    if (!selectedModel)
+      throw new Error(
+        'The selected image model is unavailable. Enable it or choose another image model in Service Models.',
+      );
+    const schema = await resolveImageModelParameters(selectedModel);
+    signal?.throwIfAborted();
+    return { config, maxImages: enableBusinessFeatures ? 8 : MAX_CONVERSATION_IMAGES, schema };
+  }
+
+  getImageModelCapabilities = async (options?: {
+    signal?: AbortSignal;
+  }): Promise<ImageModelCapabilities> => {
+    const { config, maxImages, schema } = await this.resolveModelConfiguration(options?.signal);
+    const { serverDB, userId, workspaceId, topicId } = this.context;
+    if (!(await new TopicModel(serverDB, userId, workspaceId).findById(topicId))) {
+      throw new Error('The conversation is unavailable.');
+    }
+    return {
+      ...config,
+      imageNum: { default: 1, max: maxImages, min: 1 },
+      parameters: getConversationImageParameterDefinitions(schema),
+      ...(schema.imageUrls || schema.imageUrl
+        ? {
+            references: {
+              maxCount: schema.imageUrls
+                ? Math.min(
+                    schema.imageUrls.maxCount ?? MAX_CONVERSATION_IMAGE_REFERENCES,
+                    MAX_CONVERSATION_IMAGE_REFERENCES,
+                  )
+                : 1,
+              maxFileSize: schema.imageUrls?.maxFileSize ?? schema.imageUrl?.maxFileSize,
+            },
+          }
+        : {}),
+    };
+  };
+
+  generateImage = async (
+    params: GenerateImageParams,
+    options?: { signal?: AbortSignal },
+  ): Promise<GenerateImageState> => {
+    const { serverDB, userId, workspaceId, topicId, requestId } = this.context;
+    if (!topicId || !requestId) throw new Error('A conversation and tool call ID are required.');
+    options?.signal?.throwIfAborted();
+
+    params = GenerateImageParamsSchema.parse(params);
+    // Read on EVERY call: disabling or changing the configured model takes effect immediately.
+    const { config, schema, maxImages } = await this.resolveModelConfiguration(options?.signal);
+    const count = params.imageNum ?? 1;
+    if (count > maxImages) throw new Error(`At most ${maxImages} images may be requested at once.`);
+    resolveConversationImageParameters(schema, params.prompt, params.options);
     const { model, provider } = config;
     const topic = await new TopicModel(serverDB, userId, workspaceId).findById(topicId);
     if (!topic) throw new Error('The conversation is unavailable.');
@@ -106,19 +175,99 @@ export class ConversationImageGenerationService {
         provider,
       };
     };
-    const existing = await fileModel.findById(fileId);
-    if (existing) {
-      if (workspaceId && visibility === 'public' && existing.visibility === 'private') {
+    const ids = Array.from({ length: count }, (_, index) =>
+      index === 0 ? fileId : `file_${sha256(`${key}:${index}`).slice(0, 24)}`,
+    );
+    const existing = await Promise.all(ids.map((id) => fileModel.findById(id)));
+    const completed = existing.filter((file) => !!file);
+    if (completed.length) {
+      if (
+        workspaceId &&
+        visibility === 'public' &&
+        completed.some((file) => file.visibility === 'private')
+      ) {
         throw new Error(
           'The earlier image belongs to a private conversation and cannot be shared here.',
         );
       }
-      return toState(existing);
+      return {
+        images: completed.flatMap((file) => toState(file).images),
+        model,
+        provider,
+        requestedCount: count,
+        ...(completed.length < count
+          ? {
+              incompleteReason:
+                'An earlier attempt saved only part of this batch. Missing items were not automatically retried.',
+            }
+          : {}),
+      };
     }
     const pending = inFlight.get(key);
     if (pending) return pending;
 
-    const generation = this.generate(params, fileId, config, visibility, options?.signal);
+    const generation = (async (): Promise<GenerateImageState> => {
+      const batch = new AbortController();
+      const abort = () => batch.abort(options?.signal?.reason);
+      options?.signal?.addEventListener('abort', abort, { once: true });
+      if (options?.signal?.aborted) abort();
+      const timeout = setTimeout(
+        () => batch.abort(new DOMException('Image batch timed out.', 'TimeoutError')),
+        ASYNC_TASK_TIMEOUT,
+      );
+      timeout.unref?.();
+      const states: Array<GenerateImageState | undefined> = Array.from(
+        { length: count },
+        () => undefined,
+      );
+      let next = 0;
+      let failure: unknown;
+      let failed = false;
+      try {
+        // Each provider request still creates exactly one image. Bound concurrency,
+        // stop scheduling on the first error, and retain all already accepted results.
+        await Promise.all(
+          Array.from({ length: Math.min(count, 3) }, async () => {
+            while (!failed && next < count) {
+              const index = next++;
+              try {
+                batch.signal.throwIfAborted();
+                states[index] = await this.generate(
+                  params,
+                  ids[index],
+                  config,
+                  schema,
+                  visibility,
+                  batch.signal,
+                );
+              } catch (error) {
+                failed = true;
+                failure ??= error;
+              }
+            }
+          }),
+        );
+        const images = states.flatMap((state) => state?.images ?? []);
+        if (!images.length) throw failure ?? new Error('The image provider returned no image.');
+        return {
+          images,
+          model,
+          provider,
+          requestedCount: count,
+          ...(images.length < count
+            ? {
+                incompleteReason:
+                  failure instanceof Error
+                    ? failure.message
+                    : 'The batch did not complete. Missing items were not retried.',
+              }
+            : {}),
+        };
+      } finally {
+        clearTimeout(timeout);
+        options?.signal?.removeEventListener('abort', abort);
+      }
+    })();
     inFlight.set(key, generation);
     try {
       return await generation;
@@ -131,32 +280,17 @@ export class ConversationImageGenerationService {
     params: GenerateImageParams,
     fileId: string,
     config: { model: string; provider: string },
+    schema: ModelParamsSchema,
     visibility: 'private' | 'public',
     signal?: AbortSignal,
   ): Promise<GenerateImageState> {
     const { serverDB, userId, workspaceId, topicId, operationId } = this.context;
     const { model, provider } = config;
-    const { aiProvider } = await getServerGlobalConfig();
-    const models = await new AiInfraRepos(
-      serverDB,
-      userId,
-      aiProvider as unknown as Record<string, ProviderConfig>,
-      workspaceId,
-    ).getEnabledModels();
-    const selectedModel = models.find(
-      (item) =>
-        item.providerId === provider && item.id === model && item.type === 'image' && item.enabled,
+    const generationParams = resolveConversationImageParameters(
+      schema,
+      params.prompt,
+      params.options,
     );
-    if (!selectedModel)
-      throw new Error(
-        'The selected image model is unavailable. Enable it or choose another image model in Service Models.',
-      );
-
-    const schema = await resolveImageModelParameters(selectedModel);
-    const generationParams: RuntimeImageGenParams = {
-      ...extractDefaultValues(schema),
-      prompt: params.prompt,
-    };
     const fileService = new FileService(serverDB, userId, workspaceId);
     const fileModel = new FileModel(serverDB, userId, workspaceId);
     const references = [...new Set(params.referenceImageFileIds ?? [])];
@@ -284,6 +418,7 @@ export class ConversationImageGenerationService {
           fileType: image.mime,
           id: fileId,
           metadata: {
+            generationOptions: params.options,
             height: image.height,
             model,
             path: uploaded.imageUrl,

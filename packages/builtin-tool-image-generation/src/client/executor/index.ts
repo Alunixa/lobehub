@@ -15,11 +15,13 @@ class ImageGenerationExecutor extends BaseExecutor<typeof ImageGenerationApiName
   readonly identifier = ImageGenerationIdentifier;
   protected readonly apiEnum = ImageGenerationApiName;
 
-  generateImage = async (
-    params: GenerateImageParams,
-    ctx: BuiltinToolContext,
-  ): Promise<BuiltinToolResult> => {
-    const runtime = new ImageGenerationExecutionRuntime({
+  private createRuntime(ctx: BuiltinToolContext) {
+    return new ImageGenerationExecutionRuntime({
+      getImageModelCapabilities: async (options) => {
+        if (!ctx.topicId)
+          throw new Error('A conversation is required for image model capabilities.');
+        return conversationImageService.getImageModelCapabilities(ctx.topicId, options);
+      },
       generateImage: async (input, options) => {
         if (!ctx.topicId) throw new Error('A conversation is required for image generation.');
         return conversationImageService.generateImage(
@@ -32,6 +34,21 @@ class ImageGenerationExecutor extends BaseExecutor<typeof ImageGenerationApiName
         );
       },
     });
+  }
+
+  getImageModelCapabilities = async (
+    params: unknown,
+    ctx: BuiltinToolContext,
+  ): Promise<BuiltinToolResult> =>
+    this.toResult(
+      await this.createRuntime(ctx).getImageModelCapabilities(params, { signal: ctx.signal }),
+    );
+
+  generateImage = async (
+    params: GenerateImageParams,
+    ctx: BuiltinToolContext,
+  ): Promise<BuiltinToolResult> => {
+    const runtime = this.createRuntime(ctx);
     return this.toResult(await runtime.generateImage(params, { signal: ctx.signal }));
   };
 

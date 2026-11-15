@@ -11,6 +11,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConversationImageGenerationService } from './index';
 
 const fixtures = vi.hoisted(() => ({
+  afterFileCreate: undefined as (() => void) | undefined,
+  businessFeatures: false,
   createImage: vi.fn(),
   enabled: true,
   failFileCreate: false,
@@ -59,6 +61,7 @@ vi.mock('@/database/models/file', () => ({
     create = async (file: Record<string, unknown>) => {
       if (fixtures.failFileCreate) throw new Error('file record write failed');
       fixtures.files.set(file.id as string, file);
+      fixtures.afterFileCreate?.();
       return { id: file.id };
     };
   },
@@ -91,7 +94,10 @@ vi.mock('@/database/repositories/aiInfra', () => ({
 }));
 
 vi.mock('@/server/globalConfig', () => ({
-  getServerGlobalConfig: async () => ({ aiProvider: 'openai' }),
+  getServerGlobalConfig: async () => ({
+    aiProvider: 'openai',
+    enableBusinessFeatures: fixtures.businessFeatures,
+  }),
 }));
 
 vi.mock('@/server/modules/ModelRuntime', () => ({
@@ -155,6 +161,8 @@ describe('ConversationImageGenerationService', () => {
       async (_provider, model) => ({ resolvedModelId: model }),
     );
     fixtures.enabled = true;
+    fixtures.afterFileCreate = undefined;
+    fixtures.businessFeatures = false;
     fixtures.failFileCreate = false;
     fixtures.modelAvailable = true;
     fixtures.modelId = 'image-v1';
@@ -176,6 +184,132 @@ describe('ConversationImageGenerationService', () => {
       topicId: 'topic-1',
       userId: 'user-1',
     });
+
+  it('reads all current model capabilities without calling a provider or revealing media defaults', async () => {
+    fixtures.modelId = 'gpt-image-2';
+    fixtures.parameters = {} as ModelParamsSchema;
+    const caps = await createService().getImageModelCapabilities();
+    expect(caps).toMatchObject({
+      model: 'gpt-image-2',
+      provider: 'openai',
+      imageNum: { default: 1, min: 1, max: 50 },
+      parameters: { size: { allowCustom: true, enum: expect.arrayContaining(['3840x2160']) } },
+      references: { maxCount: 16 },
+    });
+    expect(caps.parameters).not.toHaveProperty('imageUrls');
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+    fixtures.enabled = false;
+    await expect(createService().getImageModelCapabilities()).rejects.toThrow('disabled');
+  });
+
+  it('passes a real 4K size parameter, not only a prompt instruction, and preserves actual result dimensions', async () => {
+    fixtures.modelId = 'gpt-image-2';
+    fixtures.parameters = {} as ModelParamsSchema;
+    const state = await createService().generateImage({
+      prompt: 'Landscape',
+      options: { size: '3840x2160' },
+    });
+    expect(fixtures.createImage.mock.calls[0][0].params.size).toBe('3840x2160');
+    expect(state.images[0]).toMatchObject({ width: 1024, height: 768 });
+    expect(fixtures.files.get(state.images[0].fileId)).toMatchObject({
+      metadata: { generationOptions: { size: '3840x2160' }, width: 1024, height: 768 },
+    });
+  });
+
+  it('forwards native aspect ratio, resolution, seed zero and disabled boolean controls', async () => {
+    fixtures.parameters = {
+      prompt: { default: '' },
+      aspectRatio: { default: '1:1', enum: ['1:1', '16:9'] },
+      resolution: { default: '1K', enum: ['1K', '4K'] },
+      seed: { default: null },
+      watermark: { default: true },
+      webSearch: { default: true },
+      promptExtend: { default: true },
+    };
+    const options = {
+      aspectRatio: '16:9',
+      resolution: '4K',
+      seed: 0,
+      watermark: false,
+      webSearch: false,
+      promptExtend: false,
+    };
+    await createService().generateImage({ prompt: 'Landscape', options });
+    expect(fixtures.createImage.mock.calls[0][0].params).toMatchObject(options);
+  });
+
+  it('rejects unadvertised controls without sending any paid request', async () => {
+    await expect(
+      createService().generateImage({ prompt: 'Landscape', options: { resolution: '4K' } }),
+    ).rejects.toThrow('not supported');
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+  });
+
+  it('generates the explicit batch with unique durable IDs and reuses the entire result', async () => {
+    const args = { prompt: 'Three requested images', imageNum: 3 };
+    const [a, b] = await Promise.all([
+      createService().generateImage(args),
+      createService().generateImage(args),
+    ]);
+    expect(a.images).toHaveLength(3);
+    expect(new Set(a.images.map((image) => image.fileId)).size).toBe(3);
+    expect(a.requestedCount).toBe(3);
+    expect(b).toEqual(a);
+    expect(await createService().generateImage(args)).toEqual(a);
+    expect(fixtures.createImage).toHaveBeenCalledTimes(3);
+  });
+
+  it('keeps partial batch successes, stops scheduling new items and never refills on duplicate execution', async () => {
+    fixtures.createImage.mockRejectedValueOnce(new Error('Provider rejected the first request'));
+    const args = { prompt: 'Five requested images', imageNum: 5 };
+    const result = await createService().generateImage(args);
+    expect(result.images).toHaveLength(2);
+    expect(result.requestedCount).toBe(5);
+    expect(result.incompleteReason).toContain('Provider rejected');
+    expect(fixtures.createImage).toHaveBeenCalledTimes(3);
+    const repeated = await createService().generateImage(args);
+    expect(repeated.images).toEqual(result.images);
+    expect(repeated.incompleteReason).toBeTruthy();
+    expect(fixtures.createImage).toHaveBeenCalledTimes(3);
+  });
+
+  it('does not start generation after cancellation', async () => {
+    const controller = new AbortController();
+    controller.abort();
+    await expect(
+      createService().generateImage(
+        { prompt: 'Cancelled', imageNum: 4 },
+        { signal: controller.signal },
+      ),
+    ).rejects.toThrow();
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+  });
+
+  it('keeps a saved image when a running batch is cancelled and does not start more items', async () => {
+    const controller = new AbortController();
+    fixtures.createImage
+      .mockResolvedValueOnce({ imageUrl: 'https://provider.example/first.png' })
+      .mockImplementationOnce(() => new Promise(() => {}))
+      .mockImplementationOnce(() => new Promise(() => {}));
+    fixtures.afterFileCreate = () =>
+      controller.abort(new DOMException('User stopped batch', 'AbortError'));
+    const pending = createService().generateImage(
+      { prompt: 'Five images', imageNum: 5 },
+      { signal: controller.signal },
+    );
+    const result = await pending;
+    expect(result.images).toHaveLength(1);
+    expect(result.incompleteReason).toContain('User stopped batch');
+    expect(fixtures.createImage).toHaveBeenCalledTimes(3);
+  });
+  it('enforces the same business batch limit as the studio', async () => {
+    fixtures.businessFeatures = true;
+    expect((await createService().getImageModelCapabilities()).imageNum.max).toBe(8);
+    await expect(
+      createService().generateImage({ prompt: 'Too many', imageNum: 9 }),
+    ).rejects.toThrow('At most 8');
+    expect(fixtures.createImage).not.toHaveBeenCalled();
+  });
 
   it('keeps generation disabled unless a model is explicitly selected', async () => {
     fixtures.enabled = false;
@@ -363,6 +497,7 @@ describe('ConversationImageGenerationService', () => {
       model: FormDataEntryValue | null;
       path: string;
       prompt: FormDataEntryValue | null;
+      size: FormDataEntryValue | null;
     }[] = [];
     const server = createServer(async (request, response) => {
       if (request.method === 'GET') {
@@ -383,6 +518,7 @@ describe('ConversationImageGenerationService', () => {
         model: form.get('model'),
         path: request.url!,
         prompt: form.get('prompt'),
+        size: form.get('size'),
       });
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ data: [{ b64_json: png.toString('base64') }] }));
@@ -418,6 +554,7 @@ describe('ConversationImageGenerationService', () => {
       const state = await createService('real-edit-wire').generateImage({
         prompt: 'Use both references in order.',
         referenceImageFileIds: ['ref-b', 'ref-a'],
+        options: { size: '3840x2160' },
       });
       expect(state.images).toHaveLength(1);
       expect(observed).toHaveLength(1);
@@ -425,6 +562,7 @@ describe('ConversationImageGenerationService', () => {
         model: 'gpt-image-2',
         path: '/v1/images/edits',
         prompt: 'Use both references in order.',
+        size: '3840x2160',
       });
       expect(observed[0].images).toEqual([Buffer.concat([png, Buffer.from('b')]), png]);
     } finally {

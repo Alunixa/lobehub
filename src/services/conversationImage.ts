@@ -3,6 +3,14 @@ import type { GenerateImageParams } from '@lobechat/builtin-tool-image-generatio
 import { lambdaClient } from '@/libs/trpc/client';
 
 class ConversationImageService {
+  async getImageModelCapabilities(topicId: string, options?: { signal?: AbortSignal }) {
+    const result = await lambdaClient.image.getConversationImageCapabilities.query(
+      { topicId },
+      options,
+    );
+    return result.data;
+  }
+
   async generateImage(
     params: GenerateImageParams & { requestId: string; topicId: string },
     options?: { signal?: AbortSignal },

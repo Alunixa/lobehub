@@ -3,6 +3,7 @@ export default {
   'arguments.title': 'Arguments',
   'builtins.lobe-image-generation.title': 'Conversation Image Generation',
   'builtins.lobe-image-generation.apiName.generateImage': 'Generate image',
+  'builtins.lobe-image-generation.apiName.getImageModelCapabilities': 'Image model capabilities',
   'builtins.lobe-image-generation.inspector.loading': 'Generating image',
   'builtins.lobe-image-generation.inspector.completed': 'Image generated',
   'builtins.lobe-image-generation.inspector.failed': 'Image generation failed',
@@ -18,6 +19,10 @@ export default {
   'builtins.lobe-image-generation.render.reloadImage': 'Reload image',
   'builtins.lobe-image-generation.render.showPrompt': 'Show full prompt',
   'builtins.lobe-image-generation.render.hidePrompt': 'Collapse prompt',
+  'builtins.lobe-image-generation.render.actualDimensions':
+    'Actual dimensions: {{width}} × {{height}} px',
+  'builtins.lobe-image-generation.render.partial': '{{completed}} of {{requested}} images saved',
+  'builtins.lobe-image-generation.render.requestedOptions': 'Requested settings',
   'builtins.lobe-agent-builder.apiName.getAvailableModels': 'Get available models',
   'builtins.lobe-agent-builder.apiName.getAvailableTools': 'Get available Skills',
   'builtins.lobe-agent-builder.apiName.getConfig': 'Get config',

@@ -578,3 +578,16 @@
   Comparing an enabled-model snapshot with all per-user model rows incorrectly flags
   a pre-existing disabled record as a mutation; never "repair" that record to make the
   assertion pass.
+
+### E18. Make batch-cancellation tests deterministic at the persistence boundary
+
+- **Situation**: a bounded-concurrency generator saves one result while other
+  requests remain pending; a cancellation test waits for the saved count to be one.
+- **Does not work**: polling the count after the first request completes while all
+  later mock requests default to immediate success. Free worker slots legitimately
+  consume more of the explicitly requested batch before the poll runs.
+- **Works**: hold the other provider promises and trigger cancellation immediately
+  after the first fixture file write. Assert the saved asset remains, no additional
+  provider requests start, partial status is returned, and the abort listeners and
+  timers are cleaned up. A scheduling race in the fixture is not evidence of a
+  production cancellation defect.
