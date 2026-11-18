@@ -139,7 +139,7 @@ describe('optional public transmission after ownership checks', () => {
     publicReachable.mockResolvedValue(false);
     const chat = vi.fn().mockResolvedValue(new Response('reply'));
     const runtime = new ModelRuntime(
-        { chat },
+      { chat },
       createOwnedMediaHook({} as never, 'owner', undefined, true, 'https://media.example/objects'),
     );
     const payload = imagePayload();
@@ -157,6 +157,24 @@ afterEach(() => {
 });
 
 describe('authorized historical media reuse', () => {
+  it('resolves generated-image paths through user and workspace ownership', async () => {
+    const payload = imagePayload();
+    payload.messages[0].content = [{ image_url: { url: `/f/${id}` }, type: 'image_url' }];
+    await createOwnedMediaHook({} as never, 'owner', 'workspace').beforeChat?.(payload, undefined);
+    expect(authorize).toHaveBeenCalledWith('owner', 'workspace', [id]);
+    expect(JSON.stringify(payload)).toContain('data:image/png;base64,');
+  });
+
+  it('replaces deleted or inaccessible generated pixels with a text explanation', async () => {
+    accessible = false;
+    const payload = imagePayload();
+    payload.messages[0].content = [{ image_url: { url: `/f/${id}` }, type: 'image_url' }];
+    await createOwnedMediaHook({} as never, 'owner').beforeChat?.(payload, undefined);
+    expect(download).not.toHaveBeenCalled();
+    expect(payload.messages[0].content).toEqual([
+      { text: `Generated image ${id} unavailable for visual review.`, type: 'text' },
+    ]);
+  });
   it('reuses the complete same image after a long model turn and during an active conversation', async () => {
     const first = await run();
     vi.setSystemTime(new Date('2026-10-14T10:13:00Z'));

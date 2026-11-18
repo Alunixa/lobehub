@@ -25,6 +25,7 @@ import {
   ToolMessageReorder,
   VerifyMessageProcessor,
 } from '../../processors';
+import { ConversationImageFeedback } from '../../processors/ConversationImageFeedback';
 import {
   ActiveTopicDocumentContextInjector,
   AgentBuilderContextInjector,
@@ -476,10 +477,6 @@ export class MessagesEngine {
         model,
         provider,
       }),
-      // Encoding can expose native image parts from assistant or tool history.
-      ...(attachmentRetention?.limitImages || attachmentRetention?.limitFiles
-        ? [new AttachmentRetentionProcessor(attachmentRetention, true)]
-        : []),
       // Tool call processing
       new ToolCallProcessor({
         genToolCallingName: this.toolNameResolver.generate.bind(this.toolNameResolver),
@@ -499,6 +496,11 @@ export class MessagesEngine {
 
       // Tool message reordering
       new ToolMessageReorder(),
+      new ConversationImageFeedback(() => capabilities?.isCanUseVision?.(model, provider) ?? true),
+      // Include synthetic image feedback in the same request-wide retention budget.
+      ...(attachmentRetention?.limitImages || attachmentRetention?.limitFiles
+        ? [new AttachmentRetentionProcessor(attachmentRetention, true)]
+        : []),
       // Force finish summary (when maxSteps exceeded)
       new ForceFinishSummaryInjector({ enabled: !!forceFinish }),
       // Message cleanup (final step)

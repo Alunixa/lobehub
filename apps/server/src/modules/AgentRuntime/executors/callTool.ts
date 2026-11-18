@@ -476,6 +476,10 @@ export const callTool =
 
         newState.messages.push({
           content: executionResult.content,
+          ...(chatToolPayload.identifier === 'lobe-image-generation' &&
+          chatToolPayload.apiName === 'generateImage'
+            ? { plugin: chatToolPayload, pluginState: executionResult.state }
+            : {}),
           role: 'tool',
           tool_call_id: chatToolPayload.id,
         });

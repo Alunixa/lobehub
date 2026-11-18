@@ -51,6 +51,10 @@ export class ImageGenerationExecutionRuntime {
       return {
         content: [
           `Generated ${state.images.length} of ${state.requestedCount ?? 1} requested images using ${state.provider}/${state.model}.`,
+          `Tool arguments (prompt, explicit options, count and reference file IDs): ${JSON.stringify(parsed.data)}`,
+          state.requestReceipt
+            ? `Image runtime inputs (includes defaults, before provider-specific encoding; references listed in the actual input order, without signed URLs): ${JSON.stringify(state.requestReceipt)}`
+            : 'No verified runtime input receipt is available for this result.',
           ...state.images.map(
             (image) =>
               `Image file ID: ${image.fileId}\nImage URL: ${image.url}\nActual dimensions: ${image.width}x${image.height} pixels.`,

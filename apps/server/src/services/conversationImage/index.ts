@@ -1,10 +1,12 @@
 import type {
   GenerateImageParams,
   GenerateImageState,
+  ImageGenerationReceipt,
   ImageModelCapabilities,
 } from '@lobechat/builtin-tool-image-generation';
 import {
   GenerateImageParamsSchema,
+  ImageGenerationReceiptSchema,
   MAX_CONVERSATION_IMAGE_REFERENCES,
   MAX_CONVERSATION_IMAGES,
 } from '@lobechat/builtin-tool-image-generation';
@@ -195,6 +197,9 @@ export class ConversationImageGenerationService {
         model,
         provider,
         requestedCount: count,
+        requestReceipt: ImageGenerationReceiptSchema.safeParse(
+          (completed[0].metadata as { requestReceipt?: unknown } | null)?.requestReceipt,
+        ).data,
         ...(completed.length < count
           ? {
               incompleteReason:
@@ -254,6 +259,7 @@ export class ConversationImageGenerationService {
           model,
           provider,
           requestedCount: count,
+          requestReceipt: states.find((state) => state?.requestReceipt)?.requestReceipt,
           ...(images.length < count
             ? {
                 incompleteReason:
@@ -380,6 +386,22 @@ export class ConversationImageGenerationService {
       controller.signal.throwIfAborted();
       const runtime = await initModelRuntimeFromDB(serverDB, userId, provider, workspaceId);
       const { resolvedModelId } = await resolveBusinessModelMapping(provider, model);
+      const {
+        imageUrl: _imageUrl,
+        imageUrls: _imageUrls,
+        prompt: _prompt,
+        ...runtimeOptions
+      } = generationParams;
+      const requestReceipt: ImageGenerationReceipt = {
+        referenceImageFileIds: references,
+        referenceInput: references.length
+          ? schema.imageUrls
+            ? 'imageUrls'
+            : 'imageUrl'
+          : undefined,
+        resolvedModel: resolvedModelId,
+        runtimeOptions,
+      };
       controller.signal.throwIfAborted();
       const response = await raceWithAbort(
         runtime.createImage(
@@ -424,6 +446,7 @@ export class ConversationImageGenerationService {
             path: uploaded.imageUrl,
             prompt: params.prompt,
             provider,
+            requestReceipt,
             thumbnailUrl: uploaded.thumbnailImageUrl,
             topicId,
             width: image.width,
@@ -443,6 +466,7 @@ export class ConversationImageGenerationService {
         ],
         model,
         provider,
+        requestReceipt,
       };
     } finally {
       disposed = true;

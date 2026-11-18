@@ -1,5 +1,6 @@
 import type { ModelRuntimeHooks } from '@lobechat/model-runtime';
 import { registerModelHostedMedia } from '@lobechat/model-runtime';
+import { generatedImageFilePath } from '@lobechat/utils/conversationImageResult';
 import { isRecord } from '@lobechat/utils/object';
 
 import { FileModel } from '@/database/models/file';
@@ -43,6 +44,12 @@ export const createOwnedMediaHook = (
                 ? part.audio_url
                 : undefined;
         if (!media) continue;
+        const generatedId =
+          part.type === 'image_url' ? generatedImageFilePath.exec(media.url)?.[1] : undefined;
+        if (generatedId) {
+          fileUrls.set(media.url, generatedId);
+          continue;
+        }
         try {
           const url = new URL(media.url);
           if (url.origin !== new URL(appEnv.APP_URL).origin) continue;
@@ -165,6 +172,11 @@ export const createOwnedMediaHook = (
           try {
             resolved.set(url, await load(id, usePublic));
           } catch (error) {
+            if (generatedImageFilePath.test(url)) {
+              // A historical generated asset can be deleted or become inaccessible.
+              // Do not block the conversation or fall back to fetching it externally.
+              return;
+            }
             if (!usePublic) throw error;
             console.error('[ModelMedia] Private inline copy retained:', (error as Error).name);
             resolved.set(url, await load(id, false));
@@ -193,6 +205,12 @@ export const createOwnedMediaHook = (
                   : undefined;
           if (!media || !isRecord(media)) return part;
           const value = resolved.get(media.url);
+          if (!value && part.type === 'image_url' && generatedImageFilePath.test(media.url)) {
+            return {
+              text: `Generated image ${media.url.slice(3)} unavailable for visual review.`,
+              type: 'text' as const,
+            };
+          }
           if (!value) return part;
           const forwarded = { ...media, url: value.value };
           return {

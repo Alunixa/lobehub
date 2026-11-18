@@ -61,7 +61,17 @@ export interface GenerateImageState {
   model: string;
   provider: string;
   requestedCount?: number;
+  requestReceipt?: ImageGenerationReceipt;
 }
+
+export const ImageGenerationReceiptSchema = z.object({
+  referenceImageFileIds: z.array(z.string()),
+  referenceInput: z.enum(['imageUrl', 'imageUrls']).optional(),
+  resolvedModel: z.string(),
+  runtimeOptions: z.record(z.union([z.string(), z.number(), z.boolean(), z.null()])),
+});
+
+export type ImageGenerationReceipt = z.infer<typeof ImageGenerationReceiptSchema>;
 
 export interface ImageGenerationParameter {
   allowCustom?: boolean;

@@ -63,6 +63,32 @@ describe('ImageGenerationExecutionRuntime', () => {
     expect(generateImage).toHaveBeenCalledTimes(1);
   });
 
+  it('returns the explicit arguments and the resolved runtime inputs to the model', async () => {
+    const runtime = new ImageGenerationExecutionRuntime({
+      generateImage: vi.fn().mockResolvedValue({
+        images: [{ fileId: 'file_output', height: 2160, url: '/f/file_output', width: 3840 }],
+        model: 'image',
+        provider: 'fixture',
+        requestReceipt: {
+          referenceImageFileIds: ['file_b', 'file_a'],
+          referenceInput: 'imageUrls',
+          resolvedModel: 'mapped-image',
+          runtimeOptions: { quality: 'standard', seed: 0, size: '3840x2160' },
+        },
+      }),
+      getImageModelCapabilities,
+    });
+    const result = await runtime.generateImage({
+      options: { seed: 0, size: '3840x2160' },
+      prompt: 'Keep the composition',
+      referenceImageFileIds: ['file_b', 'file_a'],
+    });
+    expect(result.content).toContain('"prompt":"Keep the composition"');
+    expect(result.content).toContain('"quality":"standard"');
+    expect(result.content).toContain('"referenceImageFileIds":["file_b","file_a"]');
+    expect(result.content).toContain('Actual dimensions: 3840x2160 pixels');
+  });
+
   it('honors cancellation before starting an image request', async () => {
     const generateImage = vi.fn();
     const runtime = new ImageGenerationExecutionRuntime({

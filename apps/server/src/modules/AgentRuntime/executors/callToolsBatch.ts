@@ -502,6 +502,19 @@ export const callToolsBatch =
     // Accumulate tool usage sequentially after all tools have finished
     const newState = structuredClone(state);
     for (const result of toolResults) {
+      if (
+        result.toolCall.identifier === 'lobe-image-generation' &&
+        result.toolCall.apiName === 'generateImage' &&
+        !newState.messages.some((message) => message.tool_call_id === result.toolCallId)
+      ) {
+        newState.messages.push({
+          content: result.data.content,
+          plugin: result.toolCall,
+          pluginState: result.data.state,
+          role: 'tool',
+          tool_call_id: result.toolCallId,
+        });
+      }
       if (result.usageParams) {
         const { usage, cost } = UsageCounter.accumulateTool({
           ...result.usageParams,

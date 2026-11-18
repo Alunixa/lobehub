@@ -1,4 +1,5 @@
 import { sanitizeToolCallArguments } from '@lobechat/utils';
+import { isConversationImageGeneration } from '@lobechat/utils/conversationImageResult';
 import debug from 'debug';
 
 import { BaseProcessor } from '../base/BaseProcessor';
@@ -135,19 +136,17 @@ export class ToolCallProcessor extends BaseProcessor {
     // whose tool_calls arguments are invalid JSON (e.g. persisted before the
     // server-side sanitizer landed, or produced by an older client). Strict
     // providers like NVIDIA NIM otherwise 400 on the entire request. See .
-    const tool_calls = message.tools.map(
-      (tool: any): MessageToolCall => ({
-        function: {
-          arguments: sanitizeToolCallArguments(tool.arguments),
-          name: this.config.genToolCallingName
-            ? this.config.genToolCallingName(tool.identifier, tool.apiName, tool.type)
-            : `${tool.identifier}.${tool.apiName}`,
-        },
-        id: tool.id,
-        thoughtSignature: tool.thoughtSignature,
-        type: 'function',
-      }),
-    );
+    const tool_calls = message.tools.map((tool: any): MessageToolCall => ({
+      function: {
+        arguments: sanitizeToolCallArguments(tool.arguments),
+        name: this.config.genToolCallingName
+          ? this.config.genToolCallingName(tool.identifier, tool.apiName, tool.type)
+          : `${tool.identifier}.${tool.apiName}`,
+      },
+      id: tool.id,
+      thoughtSignature: tool.thoughtSignature,
+      type: 'function',
+    }));
 
     return { ...message, tool_calls };
   }
@@ -161,7 +160,7 @@ export class ToolCallProcessor extends BaseProcessor {
       return {
         ...message,
         name: undefined,
-        plugin: undefined,
+        plugin: isConversationImageGeneration(message.plugin) ? message.plugin : undefined,
         role: 'user',
         tool_call_id: undefined,
       };

@@ -558,6 +558,20 @@ describe('ConversationImageGenerationService', () => {
       });
       expect(state.images).toHaveLength(1);
       expect(observed).toHaveLength(1);
+      expect(state.requestReceipt).toMatchObject({
+        referenceImageFileIds: ['ref-b', 'ref-a'],
+        referenceInput: 'imageUrls',
+        resolvedModel: 'gpt-image-2',
+        runtimeOptions: { size: '3840x2160' },
+      });
+      expect(JSON.stringify(state.requestReceipt)).not.toContain(fixtures.storageBase);
+      const replay = await createService('real-edit-wire').generateImage({
+        options: { size: '3840x2160' },
+        prompt: 'Use both references in order.',
+        referenceImageFileIds: ['ref-b', 'ref-a'],
+      });
+      expect(replay.requestReceipt).toEqual(state.requestReceipt);
+      expect(observed).toHaveLength(1);
       expect(observed[0]).toMatchObject({
         model: 'gpt-image-2',
         path: '/v1/images/edits',

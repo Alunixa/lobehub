@@ -1,3 +1,4 @@
+import { isConversationImageGeneration } from '@lobechat/utils/conversationImageResult';
 import debug from 'debug';
 
 import { BaseProcessor } from '../base/BaseProcessor';
@@ -196,7 +197,7 @@ ${resultContent}
       ...msg,
       content,
       // Remove tool-related fields
-      plugin: undefined,
+      plugin: isConversationImageGeneration(msg.plugin) ? msg.plugin : undefined,
       role: 'user',
       tool_call_id: undefined,
     };

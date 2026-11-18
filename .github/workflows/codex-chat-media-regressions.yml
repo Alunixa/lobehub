@@ -226,6 +226,7 @@ jobs:
         run: |
           node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
             src/processors/__tests__/AttachmentRetention.test.ts \
+            src/processors/__tests__/ConversationImageFeedback.test.ts \
             src/processors/__tests__/MessageContent.test.ts \
             src/engine/messages/__tests__/MessagesEngine.test.ts
       - name: Context-aware image generation tool and cancellation

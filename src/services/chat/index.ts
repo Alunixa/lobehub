@@ -18,6 +18,7 @@ import type {
   UIChatMessage,
 } from '@lobechat/types';
 import { ChatErrorType, TraceTagMap } from '@lobechat/types';
+import { generatedImageFilePath } from '@lobechat/utils/conversationImageResult';
 import { withCurrentTime } from '@lobechat/utils/currentTime';
 import { merge } from 'es-toolkit/compat';
 import { ModelProvider } from 'model-bank';
@@ -608,6 +609,56 @@ class ChatService {
       runtimeProvider: params.runtimeProvider,
     });
     const data = params.payload as ChatStreamPayload;
+    // Client-side providers cannot dereference authenticated application paths.
+    const generatedImages = new Map<string, Promise<string | undefined>>();
+    data.messages = await Promise.all(
+      (data.messages ?? []).map(async (message) => {
+        if (!Array.isArray(message.content)) return message;
+        return {
+          ...message,
+          content: await Promise.all(
+            message.content.map(async (part) => {
+              if (part.type !== 'image_url' || !generatedImageFilePath.test(part.image_url.url))
+                return part;
+              const url = part.image_url.url;
+              let pending = generatedImages.get(url);
+              if (!pending) {
+                pending = (async () => {
+                  const response = await fetch(url, {
+                    credentials: 'same-origin',
+                    signal: params.signal,
+                  });
+                  if (!response.ok || !response.headers.get('content-type')?.startsWith('image/'))
+                    return;
+                  const blob = await response.blob();
+                  return new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result));
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(blob);
+                  });
+                })().catch((error: unknown) => {
+                  params.signal?.throwIfAborted();
+                  console.error(
+                    '[conversation-image] Client preview unavailable:',
+                    error instanceof Error ? error.name : 'UnknownError',
+                  );
+                  return undefined;
+                });
+                generatedImages.set(url, pending);
+              }
+              const resolved = await pending;
+              return resolved
+                ? { ...part, image_url: { ...part.image_url, url: resolved } }
+                : {
+                    text: `Generated image ${url.slice(3)} unavailable for visual review.`,
+                    type: 'text' as const,
+                  };
+            }),
+          ),
+        } as typeof message;
+      }),
+    );
     const general = userGeneralSettingsSelectors.config(getUserStoreState());
     data.messages = withCurrentTime(data.messages ?? [], {
       ...general,

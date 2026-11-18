@@ -107,17 +107,55 @@ export const GenerateImageRender = memo<
               width: image.width,
             })}
           </Text>
+          <Text fontSize={12} type={'secondary'} wordBreak={'break-word'}>
+            {t('builtins.lobe-image-generation.render.outputFileId')}: {image.fileId}
+          </Text>
         </Flexbox>
       ))}
-      {!!args?.options && Object.keys(args.options).length > 0 && (
-        <Text fontSize={12} type={'secondary'} wordBreak={'break-word'}>
-          {t('builtins.lobe-image-generation.render.requestedOptions')}:{' '}
-          {Object.entries(args.options)
-            .map(([key, value]) => `${key}=${String(value)}`)
-            .join(' · ')}
-        </Text>
-      )}
       <Flexbox gap={4}>
+        <Text strong>{t('builtins.lobe-image-generation.render.callDetails')}</Text>
+        <Text fontSize={12} wordBreak={'break-word'}>
+          {pluginState.provider} / {pluginState.model}
+          {pluginState.requestReceipt?.resolvedModel &&
+          pluginState.requestReceipt.resolvedModel !== pluginState.model
+            ? ` → ${pluginState.requestReceipt.resolvedModel}`
+            : ''}
+        </Text>
+        <Text fontSize={12}>
+          {t('builtins.lobe-image-generation.render.imageCount', {
+            completed: pluginState.images.length,
+            requested: pluginState.requestedCount ?? args?.imageNum ?? 1,
+          })}
+        </Text>
+        <Text fontSize={12} wordBreak={'break-word'}>
+          {t(
+            pluginState.requestReceipt
+              ? 'builtins.lobe-image-generation.render.referencesUsed'
+              : 'builtins.lobe-image-generation.render.referencesRequested',
+          )}
+          {': '}
+          {(pluginState.requestReceipt?.referenceImageFileIds ?? args?.referenceImageFileIds)?.join(
+            ' → ',
+          ) || t('builtins.lobe-image-generation.render.none')}
+          {pluginState.requestReceipt?.referenceInput
+            ? ` (${pluginState.requestReceipt.referenceInput})`
+            : ''}
+        </Text>
+        <Text fontSize={12} wordBreak={'break-word'}>
+          {t('builtins.lobe-image-generation.render.requestedOptions')}:{' '}
+          {JSON.stringify(args?.options ?? {})}
+        </Text>
+        <Text fontSize={12} wordBreak={'break-word'}>
+          {t('builtins.lobe-image-generation.render.runtimeOptions')}:{' '}
+          {pluginState.requestReceipt
+            ? JSON.stringify(pluginState.requestReceipt.runtimeOptions)
+            : t('builtins.lobe-image-generation.render.runtimeUnknown')}
+        </Text>
+      </Flexbox>
+      <Flexbox gap={4}>
+        <Text strong fontSize={12}>
+          {t('builtins.lobe-image-generation.render.prompt')}
+        </Text>
         <Text
           ellipsis={expanded ? false : { rows: 3 }}
           fontSize={12}
@@ -126,7 +164,7 @@ export const GenerateImageRender = memo<
         >
           {args?.prompt}
         </Text>
-        {args?.prompt && args.prompt.length > 180 && (
+        {args?.prompt && (args.prompt.length > 180 || args.prompt.includes('\n')) && (
           <Button
             aria-expanded={expanded}
             size={'small'}
@@ -142,9 +180,6 @@ export const GenerateImageRender = memo<
           </Button>
         )}
       </Flexbox>
-      <Text fontSize={12} type={'secondary'}>
-        {pluginState.provider} / {pluginState.model}
-      </Text>
     </Flexbox>
   );
 });
