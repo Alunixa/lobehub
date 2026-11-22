@@ -56,7 +56,6 @@ export const topics = pgTable(
       ],
     }),
     completedAt: timestamptz('completed_at'),
-    memoryMigrated: boolean('memory_migrated').default(false).notNull(),
 
     // ---- Usage & cost aggregates (denormalized roll-up of the topic's operations) ----
     // Kept nullable: NULL means "not measured yet" so in-flight / legacy topics
@@ -97,7 +96,6 @@ export const topics = pgTable(
     index('topics_user_id_completed_at_idx').on(t.userId, t.completedAt),
     index('topics_sender_id_idx').on(t.senderId),
     index('topics_workspace_id_idx').on(t.workspaceId),
-    index('topics_user_id_memory_migrated_idx').on(t.userId, t.memoryMigrated),
     index('topics_extract_status_gin_idx').using(
       'gin',
       sql`(metadata->'userMemoryExtractStatus') jsonb_path_ops`,

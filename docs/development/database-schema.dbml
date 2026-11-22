@@ -1002,32 +1002,6 @@ table generations {
   }
 }
 
-table user_core_memory {
-  user_id text [pk, not null]
-  persona_tone text
-  user_core text
-  active_matters text
-  updated_at "timestamp with time zone" [not null, default: `now()`]
-}
-
-table user_episodic_memories {
-  id text [pk, not null]
-  user_id text [not null]
-  source_topic_id text
-  content text [not null]
-  embedding jsonb
-  importance real [not null, default: 0.5]
-  strength_s real [not null, default: 7]
-  created_at "timestamp with time zone" [not null, default: `now()`]
-  last_recalled_at "timestamp with time zone" [not null, default: `now()`]
-
-  indexes {
-    user_id [name: 'user_episodic_memories_user_id_idx']
-    (user_id, last_recalled_at) [name: 'user_episodic_memories_user_recalled_idx']
-    source_topic_id [name: 'user_episodic_memories_source_topic_id_idx']
-  }
-}
-
 table llm_generation_tracing {
   id uuid [pk, not null, default: `gen_random_uuid()`]
   scenario text [not null]
@@ -2196,7 +2170,6 @@ table topics {
   mode text
   status text
   completed_at "timestamp with time zone"
-  memory_migrated boolean [not null, default: false]
   total_cost "numeric(20, 6)"
   total_input_tokens integer
   total_output_tokens integer
@@ -2225,7 +2198,6 @@ table topics {
     (user_id, completed_at) [name: 'topics_user_id_completed_at_idx']
     sender_id [name: 'topics_sender_id_idx']
     workspace_id [name: 'topics_workspace_id_idx']
-    (user_id, memory_migrated) [name: 'topics_user_id_memory_migrated_idx']
     () [name: 'topics_extract_status_gin_idx']
   }
 }
