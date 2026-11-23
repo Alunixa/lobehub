@@ -28,7 +28,7 @@ export const userEpisodicMemories = pgTable(
   'user_episodic_memories',
   {
     id: text('id')
-      .$defaultFn(() => idGenerator('episodic_memory'))
+      .$defaultFn(() => idGenerator('memory'))
       .primaryKey(),
     userId: text('user_id')
       .notNull()
@@ -45,10 +45,7 @@ export const userEpisodicMemories = pgTable(
   },
   (table) => [
     index('user_episodic_memories_user_id_idx').on(table.userId),
-    index('user_episodic_memories_user_recalled_idx').on(
-      table.userId,
-      table.lastRecalledAt,
-    ),
+    index('user_episodic_memories_user_recalled_idx').on(table.userId, table.lastRecalledAt),
     index('user_episodic_memories_source_topic_id_idx').on(table.sourceTopicId),
   ],
 );

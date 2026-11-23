@@ -287,6 +287,39 @@ export const callLlm =
         conversationFeatures,
       );
       let processedMessages: ChatStreamPayload['messages'];
+      let messagesForContext = shouldReplayAssistantReasoning
+        ? awareInferenceMessages
+        : stripAssistantReasoningForReplay(awareInferenceMessages);
+      let humanMemoryEnabled = false;
+      let humanMemorySettings: UserMemorySettings | undefined;
+      let humanMemorySourceMessages: UIChatMessage[] | undefined;
+      let humanMemoryPrompt = '';
+
+      if (ctx.serverDB && ctx.userId) {
+        try {
+          const userSettings = await new UserModel(ctx.serverDB, ctx.userId).getUserSettings();
+          humanMemorySettings = userSettings?.memory as UserMemorySettings | undefined;
+          humanMemoryEnabled = humanMemorySettings?.humanMemoryEnabled === true;
+
+          if (humanMemoryEnabled) {
+            humanMemorySourceMessages = messagesForContext as UIChatMessage[];
+            const lastUserMessage = [...humanMemorySourceMessages]
+              .reverse()
+              .find((message) => message.role === 'user');
+            const prepared = await new HumanMemoryService(ctx.serverDB, ctx.userId).prepareContext({
+              messages: humanMemorySourceMessages,
+              userMessage: extractMessageText(lastUserMessage?.content),
+              windowSize: humanMemorySettings?.humanMemoryWindowSize,
+            });
+
+            messagesForContext = prepared.recentMessages as UIChatMessage[];
+            humanMemoryPrompt = prepared.memoryPrompt;
+          }
+        } catch (error) {
+          log('Failed to prepare human memory context: %O', error);
+        }
+      }
+
       if (agentConfig) {
         const { loadModels } = await import('@/business/client/model-bank/loadModels');
         const builtinModels = await loadModels();
@@ -417,42 +450,6 @@ export const callLlm =
             extendParams: modelExtendParams as ExtendParamsType[] | undefined,
             model,
           });
-        }
-
-        let messagesForContext = shouldReplayAssistantReasoning
-          ? awareInferenceMessages
-          : stripAssistantReasoningForReplay(awareInferenceMessages);
-        let humanMemoryEnabled = false;
-        let humanMemorySettings: UserMemorySettings | undefined;
-        let humanMemorySourceMessages: UIChatMessage[] | undefined;
-        let humanMemoryPrompt = '';
-
-        if (ctx.serverDB && ctx.userId) {
-          try {
-            const userSettings = await new UserModel(ctx.serverDB, ctx.userId).getUserSettings();
-            humanMemorySettings = userSettings?.memory as UserMemorySettings | undefined;
-            humanMemoryEnabled = humanMemorySettings?.humanMemoryEnabled === true;
-
-            if (humanMemoryEnabled) {
-              humanMemorySourceMessages = messagesForContext as UIChatMessage[];
-              const lastUserMessage = [...humanMemorySourceMessages]
-                .reverse()
-                .find((message) => message.role === 'user');
-              const prepared = await new HumanMemoryService(
-                ctx.serverDB,
-                ctx.userId,
-              ).prepareContext({
-                messages: humanMemorySourceMessages,
-                userMessage: extractMessageText(lastUserMessage?.content),
-                windowSize: humanMemorySettings?.humanMemoryWindowSize,
-              });
-
-              messagesForContext = prepared.recentMessages as UIChatMessage[];
-              humanMemoryPrompt = prepared.memoryPrompt;
-            }
-          } catch (error) {
-            log('Failed to prepare human memory context: %O', error);
-          }
         }
 
         // Extract <refer_topic> tags from messages and fetch summaries.
