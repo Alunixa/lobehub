@@ -154,9 +154,7 @@ export class HumanMemoryService {
     await this.db.delete(userEpisodicMemories).where(eq(userEpisodicMemories.userId, this.userId));
   }
 
-  async prepareContext(
-    input: PrepareHumanMemoryContextInput,
-  ): Promise<PreparedHumanMemoryContext> {
+  async prepareContext(input: PrepareHumanMemoryContextInput): Promise<PreparedHumanMemoryContext> {
     const recentMessages = buildRecentMemoryWindow(
       input.messages,
       input.windowSize ?? DEFAULT_HUMAN_MEMORY_WINDOW_SIZE,
@@ -168,7 +166,11 @@ export class HumanMemoryService {
       recentMessages,
     };
 
-    return withTimeout(this.prepareContextUnbounded(input, recentMessages), input.timeoutMs ?? 250, fallback);
+    return withTimeout(
+      this.prepareContextUnbounded(input, recentMessages),
+      input.timeoutMs ?? 250,
+      fallback,
+    );
   }
 
   private async prepareContextUnbounded(
@@ -387,7 +389,9 @@ export class HumanMemoryService {
               queryEmbedding: embedding,
             })[0]?.semanticSim
           : undefined;
-      return (vectorMatch ?? textSimilarity(content, memory.content)) >= DEFAULT_DEDUPLICATION_THRESHOLD;
+      return (
+        (vectorMatch ?? textSimilarity(content, memory.content)) >= DEFAULT_DEDUPLICATION_THRESHOLD
+      );
     });
 
     if (duplicate) {
@@ -418,3 +422,4 @@ export class HumanMemoryService {
 }
 
 export * from './logic';
+export * from './provider';

@@ -42,6 +42,26 @@ class UserMemoryService {
     return lambdaClient.userMemories.testMemoryModelConnection.mutate(params);
   };
 
+  clearHumanEpisodicMemories = async () => {
+    return lambdaClient.humanMemory.clearEpisodicMemories.mutate();
+  };
+
+  getHumanCoreMemory = async () => {
+    return lambdaClient.humanMemory.getCoreMemory.query();
+  };
+
+  getHumanEpisodicMemoryCount = async () => {
+    return lambdaClient.humanMemory.getEpisodicMemoryCount.query();
+  };
+
+  updateHumanCoreMemory = async (params: {
+    activeMatters: string | null;
+    personaTone: string | null;
+    userCore: string | null;
+  }) => {
+    return lambdaClient.humanMemory.updateCoreMemory.mutate(params);
+  };
+
   addActivityMemory = async (
     params: z.infer<typeof ActivityMemoryItemSchema>,
   ): Promise<AddActivityMemoryResult> => {
