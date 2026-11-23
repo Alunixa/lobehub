@@ -440,6 +440,15 @@ export const callLlm =
             ? preserveThinkingConfigured
             : undefined;
 
+        // The initial context is stripped before model capabilities are resolved so
+        // the default path never replays stored reasoning. If replay is enabled,
+        // restore the same trailing window from the original messages after the
+        // capability gate has been evaluated. This also preserves the human-memory
+        // sliding window when it has already narrowed the message list.
+        if (shouldReplayAssistantReasoning) {
+          messagesForContext = awareInferenceMessages.slice(-messagesForContext.length);
+        }
+
         // Resolve model extend params (thinkingLevel, reasoning effort, urlContext, …)
         // from the agent chat config so the server-side agent runtime forwards the same
         // runtime params the client chat service does. Without this, e.g. Gemini 3 Pro's
