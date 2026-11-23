@@ -319,7 +319,7 @@ const AgentTopicManager = memo(() => {
               }}
             />
           ) : isLoading && baseTopics.length === 0 ? (
-            <Skeleton active paragraph={{ rows: 6 }} title={false} />
+            <Skeleton.Text animated rows={6} />
           ) : totalAfterFilter === 0 ? (
             <>
               <EmptyState
