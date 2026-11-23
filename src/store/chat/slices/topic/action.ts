@@ -1529,7 +1529,7 @@ export class ChatTopicActionImpl {
         isCompletedTopic(updatedTopic) &&
         !nextCompletedItems.some((topic) => topic.id === updatedTopic.id)
       ) {
-        nextCompletedItems = [{ ...updatedTopic, updatedAt: new Date() }, ...nextCompletedItems];
+        nextCompletedItems = [{ ...updatedTopic, updatedAt: Date.now() }, ...nextCompletedItems];
       }
     }
 

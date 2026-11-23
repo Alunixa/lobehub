@@ -5,7 +5,8 @@ import {
   groupTopicsByProject,
   groupTopicsByUpdatedTime,
 } from '@lobechat/utils/client/topic';
-import { Flexbox, Skeleton } from '@lobehub/ui';
+import { Flexbox } from '@lobehub/ui';
+import { Skeleton } from '@lobehub/ui/base-ui';
 import { memo, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import urlJoin from 'url-join';
@@ -119,9 +120,7 @@ const AgentTopicManager = memo(() => {
   );
   const isCompletedMode = routeStatus === 'completed' && !isSearchMode;
   const currentError = isCompletedMode ? completedTopicsView.error : allTopicsView.error;
-  const isLoading = isCompletedMode
-    ? !completedTopicsView.isHydrated || completedTopicsView.isValidating
-    : !allTopicsView.isHydrated || allTopicsView.isValidating;
+  const isLoading = isCompletedMode ? completedTopicsView.isLoading : allTopicsView.isLoading;
   const currentHasMore = isCompletedMode ? completedHasMore : hasMore;
   const currentIsLoadingMore = isCompletedMode ? isLoadingMoreCompleted : isLoadingMore;
   const currentLoadMoreError = isCompletedMode ? completedLoadMoreError : loadMoreError;

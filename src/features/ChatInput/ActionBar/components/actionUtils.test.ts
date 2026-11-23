@@ -19,19 +19,16 @@ const MobileDropdownHarness = ({ onOpenChange }: { onOpenChange: (open: boolean)
       },
       open,
     },
-    createElement(
-      DropdownMenuTrigger,
-      {
-        nativeButton: false,
-        onMouseDown: (event) => preventMobileDropdownMouseDown(event, true),
-      },
-      createElement('div', {
+    createElement(DropdownMenuTrigger, {
+      children: createElement('div', {
         'aria-label': 'mobile action menu',
         'onClick': () => setOpen(!open),
         'role': 'button',
         'tabIndex': 0,
       }),
-    ),
+      nativeButton: false,
+      onMouseDown: (event) => preventMobileDropdownMouseDown(event, true),
+    }),
     createElement('output', { 'data-testid': 'open-state' }, String(open)),
   );
 };

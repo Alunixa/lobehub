@@ -1,7 +1,8 @@
 'use client';
 
-import { type ActionIconProps, type PopoverTrigger } from '@lobehub/ui';
-import { ActionIcon } from '@lobehub/ui';
+import type { PopoverTrigger } from '@lobehub/ui';
+import type { ActionIconProps } from '@lobehub/ui/base-ui';
+import { ActionIcon } from '@lobehub/ui/base-ui';
 import { isUndefined } from 'es-toolkit/compat';
 import { memo } from 'react';
 import useMergeState from 'use-merge-value';
@@ -47,7 +48,7 @@ const Action = memo<ActionProps>(
       onChange: onOpenChange,
       value: open,
     });
-    const mobile = useServerConfigStore((s) => s.isMobile);
+    const mobile = useServerConfigStore((s) => s.isMobile === true);
     const { actionSize, dropdownPlacement } = useActionBarContext();
     const { allowed: canUseChatInputAction, reason } = usePermission('create_content');
     const blocked = disabled || !canUseChatInputAction;

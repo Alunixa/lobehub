@@ -70,8 +70,7 @@ const Content = memo<ContentProps>(({ completedOnly = false, open, searchKeyword
   const completedHasMore = useChatStore(topicSelectors.completedTopicsViewHasMore);
   const completedIsLoadingMore = useChatStore(topicSelectors.completedTopicsViewIsLoadingMore);
   const completedLoadMoreError = useChatStore(topicSelectors.completedTopicsViewLoadMoreError);
-  const isCompletedViewLoading =
-    completedOnly && (!completedTopicsView.isHydrated || completedTopicsView.isValidating);
+  const isCompletedViewLoading = completedOnly && completedTopicsView.isLoading;
   const currentHasMore = completedOnly ? completedHasMore : hasMore;
   const currentIsLoadingMore = completedOnly ? completedIsLoadingMore : isLoadingMore;
   const currentLoadMoreError = completedOnly ? completedLoadMoreError : loadMoreError;

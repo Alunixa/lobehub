@@ -2,6 +2,7 @@ import { AgentBuilderIdentifier } from '@lobechat/builtin-tool-agent-builder';
 import { WebBrowsingManifest } from '@lobechat/builtin-tool-web-browsing';
 import { REQUEST_TRIGGER_HEADER } from '@lobechat/const';
 import { createVisualFileRef } from '@lobechat/const/visualRef';
+import type { ChatStreamPayload as RuntimeChatStreamPayload } from '@lobechat/model-runtime';
 import { ModelRuntime } from '@lobechat/model-runtime';
 import type { ChatStreamPayload, LobeTool, UIChatMessage } from '@lobechat/types';
 import { ChatErrorType, RequestTrigger } from '@lobechat/types';
@@ -1713,9 +1714,9 @@ describe('ChatService', () => {
       const previousSettings = useUserStore.getState().settings;
       const previousSignedIn = useUserStore.getState().isSignedIn;
       const original = [{ content: 'What time is it?', role: 'user' as const }];
-      const snapshots: ChatStreamPayload[] = [];
+      const snapshots: RuntimeChatStreamPayload[] = [];
       vi.spyOn(chatHelper, 'isEnableFetchOnClient').mockReturnValue(true);
-      const runtime = new ModelRuntime('openai', { apiKey: 'test-current-time' });
+      const runtime = new ModelRuntime({});
       vi.spyOn(runtime, 'chat').mockImplementation(async (payload) => {
         snapshots.push(structuredClone(payload));
         return new Response('test response');
