@@ -1,4 +1,5 @@
 import { isParkedStatus } from '@lobechat/agent-runtime';
+import type { UserMemorySettings } from '@lobechat/types';
 import debug from 'debug';
 
 import {
@@ -6,13 +7,19 @@ import {
   type RecordOperationStartParams,
 } from '@/database/models/agentOperation';
 import { MessageModel } from '@/database/models/message';
+import { UserModel } from '@/database/models/user';
 import { VerifyRunModel } from '@/database/models/verifyRun';
 import { type LobeChatDatabase } from '@/database/type';
 import { formatErrorForState } from '@/server/modules/AgentRuntime/formatErrorForState';
 import { buildFinalSnapshotKey } from '@/server/modules/AgentTracing';
+import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { emitAgentSignalSourceEvent } from '@/server/services/agentSignal';
 import { toAgentSignalTraceEvents } from '@/server/services/agentSignal/observability/traceEvents';
 import { extractSelfIterationCompletionPayload } from '@/server/services/agentSignal/services/selfIteration/completion';
+import {
+  createHumanMemoryExtractionProvider,
+  HumanMemoryService,
+} from '@/server/services/humanMemory';
 import { completeProactiveConversation } from '@/server/services/proactiveConversation/completion';
 import { instantiateVerifyPlanOnStart, runVerifyOnCompletion } from '@/server/services/verify';
 
@@ -439,6 +446,80 @@ export class CompletionLifecycle {
   }
 
   /**
+   * Capture durable human memory after a successful turn without delaying the
+   * terminal stream event or the next user request.
+   */
+  private scheduleHumanMemory(state: any): void {
+    void this.persistHumanMemory(state).catch((error) => {
+      log('[completion-lifecycle] human memory persistence failed (non-fatal): %O', error);
+    });
+  }
+
+  private async persistHumanMemory(state: any): Promise<void> {
+    const userId = state?.metadata?.userId || this.userId;
+    const topicId = state?.metadata?.topicId;
+    if (!userId || !topicId) return;
+
+    const settings = await new UserModel(this.serverDB, userId).getUserSettings();
+    const memorySettings = settings?.memory as UserMemorySettings | null | undefined;
+    if (memorySettings?.humanMemoryEnabled !== true) return;
+
+    const messages: Array<{ content?: unknown; role?: string }> = Array.isArray(state?.messages)
+      ? state.messages
+      : [];
+    const assistantIndex = messages.findLastIndex((message) => message.role === 'assistant');
+    if (assistantIndex < 0) return;
+
+    const assistantReply = extractTextFromMessageContent(messages[assistantIndex]?.content) ?? '';
+    if (!assistantReply.trim()) return;
+
+    const userMessage = messages
+      .slice(0, assistantIndex)
+      .findLast((message) => message.role === 'user');
+    const userMessageText = extractTextFromMessageContent(userMessage?.content) ?? '';
+    if (!userMessageText.trim()) return;
+
+    const modelRuntimeConfig = state?.modelRuntimeConfig ?? {};
+    const agentConfig = state?.metadata?.agentConfig ?? {};
+    const model = modelRuntimeConfig.model ?? state?.model ?? agentConfig.model;
+    const provider = modelRuntimeConfig.provider ?? state?.provider ?? agentConfig.provider;
+
+    let currentRuntime: Awaited<ReturnType<typeof initModelRuntimeFromDB>> | undefined;
+    if (model && provider && memorySettings.textModel?.enabled !== true) {
+      currentRuntime = await initModelRuntimeFromDB(
+        this.serverDB,
+        userId,
+        provider,
+        this.workspaceId,
+        { maxRetries: 0 },
+      );
+    }
+
+    const extractionProvider = await createHumanMemoryExtractionProvider({
+      embeddingModel: memorySettings.humanMemoryEmbeddingModel ?? memorySettings.embedding?.model,
+      embeddingRuntime:
+        currentRuntime && memorySettings.embedding?.enabled !== true && model
+          ? { model, runtime: currentRuntime }
+          : undefined,
+      serverDB: this.serverDB,
+      textModel: memorySettings.humanMemoryModel ?? memorySettings.textModel?.model,
+      textRuntime: currentRuntime && model ? { model, runtime: currentRuntime } : undefined,
+      userId,
+    });
+
+    if (!extractionProvider) return;
+
+    new HumanMemoryService(this.serverDB, userId).schedulePostReply(
+      {
+        assistantReply,
+        sourceTopicId: topicId,
+        userMessage: userMessageText,
+      },
+      extractionProvider,
+    );
+  }
+
+  /**
    * The single terminal-completion entry for every path that does NOT have the
    * in-process runtime's rich `state` in hand: heterogeneous CLI exit
    * (`heteroFinish`), remote-agent done signal (`agentNotify`), and synchronous
@@ -482,6 +563,7 @@ export class CompletionLifecycle {
       // Finalize the agent_operations row before user hooks fire so
       // downstream consumers see the row in its terminal shape.
       await this.persistCompletion(operationId, state, reason);
+      if (reason === 'done') this.scheduleHumanMemory(state);
       if (
         metadata.proactivePlanId &&
         metadata.topicId &&

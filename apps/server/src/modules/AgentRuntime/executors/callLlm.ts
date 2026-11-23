@@ -58,7 +58,12 @@ import {
   CONTEXT_ENGINEERING_SPAN_NAME,
   tracer as agentRuntimeTracer,
 } from '@lobechat/observability-otel/modules/agent-runtime';
-import { type ChatToolPayload, type MessageToolCall, type UIChatMessage } from '@lobechat/types';
+import {
+  type ChatToolPayload,
+  type MessageToolCall,
+  type UIChatMessage,
+  type UserMemorySettings,
+} from '@lobechat/types';
 import { sanitizeToolCallArguments, serializePartsForStorage } from '@lobechat/utils';
 import { appendConversationAwareness } from '@lobechat/utils/conversationAwareness';
 import { type ExtendParamsType, ModelProvider } from 'model-bank';
@@ -79,6 +84,11 @@ import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { AgentDocumentsService } from '@/server/services/agentDocuments';
 import { type DeviceAccessReason } from '@/server/services/aiAgent/deviceToolAudit';
 import { FileService } from '@/server/services/file';
+import {
+  createHumanMemoryExtractionProvider,
+  HumanMemoryService,
+} from '@/server/services/humanMemory';
+import { extractMessageText } from '@/server/services/humanMemory/logic';
 import { MarketService } from '@/server/services/market';
 import { OnboardingService } from '@/server/services/onboarding';
 import { persistProactiveDecision } from '@/server/services/proactiveConversation/plan';
@@ -409,9 +419,41 @@ export const callLlm =
           });
         }
 
-        const messagesForContext = shouldReplayAssistantReasoning
+        let messagesForContext = shouldReplayAssistantReasoning
           ? awareInferenceMessages
           : stripAssistantReasoningForReplay(awareInferenceMessages);
+        let humanMemoryEnabled = false;
+        let humanMemorySettings: UserMemorySettings | undefined;
+        let humanMemorySourceMessages: UIChatMessage[] | undefined;
+        let humanMemoryPrompt = '';
+
+        if (ctx.serverDB && ctx.userId) {
+          try {
+            const userSettings = await new UserModel(ctx.serverDB, ctx.userId).getUserSettings();
+            humanMemorySettings = userSettings?.memory as UserMemorySettings | undefined;
+            humanMemoryEnabled = humanMemorySettings?.humanMemoryEnabled === true;
+
+            if (humanMemoryEnabled) {
+              humanMemorySourceMessages = messagesForContext as UIChatMessage[];
+              const lastUserMessage = [...humanMemorySourceMessages]
+                .reverse()
+                .find((message) => message.role === 'user');
+              const prepared = await new HumanMemoryService(
+                ctx.serverDB,
+                ctx.userId,
+              ).prepareContext({
+                messages: humanMemorySourceMessages,
+                userMessage: extractMessageText(lastUserMessage?.content),
+                windowSize: humanMemorySettings?.humanMemoryWindowSize,
+              });
+
+              messagesForContext = prepared.recentMessages as UIChatMessage[];
+              humanMemoryPrompt = prepared.memoryPrompt;
+            }
+          } catch (error) {
+            log('Failed to prepare human memory context: %O', error);
+          }
+        }
 
         // Extract <refer_topic> tags from messages and fetch summaries.
         // Skip if messages already contain injected topic_reference_context
@@ -893,10 +935,14 @@ export const callLlm =
           },
           botPlatformContext: ctx.botPlatformContext,
           discordContext: ctx.discordContext,
-          enableHistoryCount: agentConfig.chatConfig?.enableHistoryCount ?? undefined,
+          enableHistoryCount: humanMemoryEnabled
+            ? false
+            : (agentConfig.chatConfig?.enableHistoryCount ?? undefined),
           evalContext: ctx.evalContext,
           forceFinish: state.forceFinish,
-          historyCount: resolveRuntimeHistoryCount(agentConfig.chatConfig?.historyCount),
+          historyCount: humanMemoryEnabled
+            ? undefined
+            : resolveRuntimeHistoryCount(agentConfig.chatConfig?.historyCount),
           initialContext: (state as any).initialContext?.initialContext,
           knowledge: {
             fileContents: agentConfig.files
@@ -918,7 +964,8 @@ export const callLlm =
           modelDisplayName,
           modelKnowledgeCutoff,
           provider,
-          systemRole: agentConfig.systemRole ?? undefined,
+          systemRole:
+            [humanMemoryPrompt, agentConfig.systemRole].filter(Boolean).join('\n\n') || undefined,
           toolDiscoveryConfig,
           toolsConfig: {
             manifests: Object.values(resolved.manifestMap),
@@ -1026,6 +1073,42 @@ export const callLlm =
           maxRetries: 0,
         },
       );
+
+      if (
+        humanMemoryEnabled &&
+        humanMemorySettings &&
+        humanMemorySourceMessages &&
+        state.metadata?.topicId
+      ) {
+        try {
+          const memoryProvider = await createHumanMemoryExtractionProvider({
+            embeddingModel:
+              humanMemorySettings.humanMemoryEmbeddingModel ?? humanMemorySettings.embedding?.model,
+            embeddingRuntime:
+              humanMemorySettings.embedding?.enabled === true
+                ? undefined
+                : { model, runtime: modelRuntime },
+            serverDB: ctx.serverDB,
+            textModel: humanMemorySettings.humanMemoryModel ?? humanMemorySettings.textModel?.model,
+            textRuntime:
+              humanMemorySettings.textModel?.enabled === true
+                ? undefined
+                : { model, runtime: modelRuntime },
+            userId: ctx.userId!,
+          });
+
+          if (memoryProvider) {
+            new HumanMemoryService(ctx.serverDB, ctx.userId!).scheduleLazyBackfill({
+              messages: humanMemorySourceMessages,
+              provider: memoryProvider,
+              sourceTopicId: state.metadata.topicId,
+              windowSize: humanMemorySettings.humanMemoryWindowSize,
+            });
+          }
+        } catch (error) {
+          log('Failed to schedule human memory backfill: %O', error);
+        }
+      }
 
       // Construct ChatStreamPayload
       const stream = ctx.stream ?? true;

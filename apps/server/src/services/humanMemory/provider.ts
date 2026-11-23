@@ -1,5 +1,5 @@
 import type { LobeChatDatabase } from '@lobechat/database';
-import type { GenerateObjectSchema } from '@lobechat/model-runtime';
+import type { GenerateObjectSchema, ModelRuntime } from '@lobechat/model-runtime';
 import { RequestTrigger } from '@lobechat/types';
 import { z } from 'zod';
 
@@ -117,49 +117,63 @@ const buildEpisodicPrompt = (conversation: { assistantReply: string; userMessage
 
 export const createHumanMemoryExtractionProvider = async ({
   embeddingModel,
+  embeddingRuntime,
   serverDB,
   textModel,
+  textRuntime,
   userId,
 }: {
   embeddingModel?: string;
+  embeddingRuntime?: {
+    model: string;
+    runtime: Pick<ModelRuntime, 'embeddings'>;
+  };
   serverDB: LobeChatDatabase;
   textModel?: string;
+  textRuntime?: {
+    model: string;
+    runtime: Pick<ModelRuntime, 'generateObject'>;
+  };
   userId: string;
 }): Promise<HumanMemoryExtractionProvider | undefined> => {
   const [textRuntimeResult, embeddingRuntimeResult] = await Promise.all([
-    resolveUserMemoryTextModelRuntimeWithFallback({
-      serverDB,
-      userId,
-    }),
-    resolveUserMemoryEmbeddingRuntimeWithFallback({
-      serverDB,
-      userId,
-    }),
+    textRuntime
+      ? Promise.resolve(textRuntime)
+      : resolveUserMemoryTextModelRuntimeWithFallback({
+          serverDB,
+          userId,
+        }),
+    embeddingRuntime
+      ? Promise.resolve(embeddingRuntime)
+      : resolveUserMemoryEmbeddingRuntimeWithFallback({
+          serverDB,
+          userId,
+        }),
   ]);
-  const textRuntime = textRuntimeResult;
-  const embeddingRuntime = embeddingRuntimeResult;
+  const resolvedTextRuntime = textRuntimeResult;
+  const resolvedEmbeddingRuntime = embeddingRuntimeResult;
 
-  if (!textRuntime && !embeddingRuntime) return undefined;
+  if (!resolvedTextRuntime && !resolvedEmbeddingRuntime) return undefined;
 
   return {
-    embed: embeddingRuntime
+    embed: resolvedEmbeddingRuntime
       ? async (text) => {
           const [embedding] = await embedUserMemoryTextsWithFallback({
             input: [text],
-            model: embeddingModel?.trim() || embeddingRuntime.model,
-            runtime: embeddingRuntime.runtime,
+            model: embeddingModel?.trim() || resolvedEmbeddingRuntime.model,
+            runtime: resolvedEmbeddingRuntime.runtime,
             source: 'human-memory',
             userId,
           });
           return embedding;
         }
       : undefined,
-    extractCoreMemory: textRuntime
+    extractCoreMemory: resolvedTextRuntime
       ? async ({ conversation, current }) => {
-          const result = await textRuntime.runtime.generateObject(
+          const result = await resolvedTextRuntime.runtime.generateObject(
             {
               messages: buildCorePrompt(current, conversation),
-              model: textModel?.trim() || textRuntime.model,
+              model: textModel?.trim() || resolvedTextRuntime.model,
               schema: CORE_MEMORY_SCHEMA,
             },
             { metadata: { trigger: RequestTrigger.Memory }, user: userId },
@@ -167,12 +181,12 @@ export const createHumanMemoryExtractionProvider = async ({
           return coreMemoryResponseSchema.parse(result) as CoreMemoryOperations;
         }
       : undefined,
-    extractEpisodicMemories: textRuntime
+    extractEpisodicMemories: resolvedTextRuntime
       ? async ({ conversation }) => {
-          const result = await textRuntime.runtime.generateObject(
+          const result = await resolvedTextRuntime.runtime.generateObject(
             {
               messages: buildEpisodicPrompt(conversation),
-              model: textModel?.trim() || textRuntime.model,
+              model: textModel?.trim() || resolvedTextRuntime.model,
               schema: EPISODIC_MEMORY_SCHEMA,
             },
             { metadata: { trigger: RequestTrigger.Memory }, user: userId },
