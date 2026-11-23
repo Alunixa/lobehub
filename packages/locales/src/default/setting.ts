@@ -1282,6 +1282,37 @@ When I am ___, I need ___
   'tab.advanced.conversationReading.customCount.title': 'Custom recent conversation count',
   'tab.advanced.conversationReading.customCount.desc':
     'Choose between 1 and 25 recent conversations.',
+  'tab.advanced.humanMemory.clear.action': 'Clear cold memories',
+  'tab.advanced.humanMemory.clear.button': 'Clear ({{count}})',
+  'tab.advanced.humanMemory.clear.confirm':
+    'This removes the long-term episodic memories stored for your account.',
+  'tab.advanced.humanMemory.clear.desc':
+    'Remove extracted long-term memories. Core Memory remains unchanged.',
+  'tab.advanced.humanMemory.clear.label': 'Cold memory storage',
+  'tab.advanced.humanMemory.clear.success': 'Cold memories cleared',
+  'tab.advanced.humanMemory.clear.title': 'Clear cold memories?',
+  'tab.advanced.humanMemory.count.desc': '{{count}} episodic memories are currently stored.',
+  'tab.advanced.humanMemory.count.title': 'Stored memory count',
+  'tab.advanced.humanMemory.editor.activeMatters.placeholder': 'Active matters and ongoing plans',
+  'tab.advanced.humanMemory.editor.desc':
+    'Review or edit the three compact memory slots shared across conversations.',
+  'tab.advanced.humanMemory.editor.open': 'View and edit',
+  'tab.advanced.humanMemory.editor.personaTone.placeholder':
+    'Preferred tone, name, address, and communication style',
+  'tab.advanced.humanMemory.editor.saveSuccess': 'Core Memory saved',
+  'tab.advanced.humanMemory.editor.title': 'Core Memory',
+  'tab.advanced.humanMemory.editor.userCore.placeholder':
+    'Stable user facts and long-term preferences',
+  'tab.advanced.humanMemory.enabled.desc':
+    'When enabled, recent messages use the configured window and durable memories are recalled across conversations. The native history limit and automatic compression are bypassed for this path.',
+  'tab.advanced.humanMemory.enabled.off': 'Enable',
+  'tab.advanced.humanMemory.enabled.on': 'Enabled',
+  'tab.advanced.humanMemory.enabled.title': 'Human Memory',
+  'tab.advanced.humanMemory.refresh': 'Refresh',
+  'tab.advanced.humanMemory.title': 'Human Memory',
+  'tab.advanced.humanMemory.windowSize.desc':
+    'Number of recent user/assistant turns kept verbatim before long-term memory is used.',
+  'tab.advanced.humanMemory.windowSize.title': 'Recent turn window',
   'tab.advanced.memoryEmbedding.apiKey.desc':
     'Stored encrypted with the account key vault and used only for memory embeddings.',
   'tab.advanced.memoryEmbedding.apiKey.title': 'Key',
