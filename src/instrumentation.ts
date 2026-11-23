@@ -1,3 +1,23 @@
+const scheduledServices = new Set<string>();
+
+const scheduleBackgroundService = (name: string, start: () => Promise<unknown>) => {
+  if (scheduledServices.has(name)) return;
+  scheduledServices.add(name);
+
+  // Next waits for register() before serving any request, including readiness.
+  // Defer both module loading and startup so background services cannot hold it open.
+  setTimeout(() => {
+    const run = async () => {
+      try {
+        await start();
+      } catch (error) {
+        console.error(`[Instrumentation] Failed to start ${name}:`, error);
+      }
+    };
+    void run();
+  }, 0).unref();
+};
+
 export async function register() {
   // In local development, write debug logs to logs/server.log
   if (process.env.NODE_ENV !== 'production' && process.env.NEXT_RUNTIME === 'nodejs') {
@@ -15,10 +35,9 @@ export async function register() {
     !process.env.VERCEL_ENV &&
     (!isDev || process.env.ENABLE_BOT_IN_DEV === '1')
   ) {
-    const { GatewayService } = await import('@/server/services/gateway');
-    const service = new GatewayService();
-    service.ensureRunning().catch((err) => {
-      console.error('[Instrumentation] Failed to auto-start GatewayManager:', err);
+    scheduleBackgroundService('GatewayManager', async () => {
+      const { GatewayService } = await import('@/server/services/gateway');
+      await new GatewayService().ensureRunning();
     });
   }
 
@@ -31,13 +50,15 @@ export async function register() {
     !process.env.VERCEL_ENV &&
     (!isDev || process.env.ENABLE_TASKS_IN_DEV === '1')
   ) {
-    const { startProactiveConversationDispatcher } =
-      await import('@/server/services/proactiveConversation/dispatch');
-    startProactiveConversationDispatcher();
-    const { startLocalTaskDispatcher } =
-      await import('@/server/services/taskScheduler/localDispatcher');
-    startLocalTaskDispatcher().catch((error) => {
-      console.error('[Instrumentation] Failed to start local task dispatcher:', error);
+    scheduleBackgroundService('proactive conversation dispatcher', async () => {
+      const { startProactiveConversationDispatcher } =
+        await import('@/server/services/proactiveConversation/dispatch');
+      startProactiveConversationDispatcher();
+    });
+    scheduleBackgroundService('local task dispatcher', async () => {
+      const { startLocalTaskDispatcher } =
+        await import('@/server/services/taskScheduler/localDispatcher');
+      await startLocalTaskDispatcher();
     });
   }
 
