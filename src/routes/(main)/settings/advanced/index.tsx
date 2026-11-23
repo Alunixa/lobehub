@@ -18,6 +18,7 @@ import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfi
 import { useUserStore } from '@/store/user';
 import { labPreferSelectors, preferenceSelectors, settingsSelectors } from '@/store/user/selectors';
 
+import { useHumanMemorySettingsGroup } from './useHumanMemorySettingsGroup';
 import { useMemoryEmbeddingSettingsGroup } from './useMemoryEmbeddingSettingsGroup';
 import { useMemoryTextModelSettingsGroup } from './useMemoryTextModelSettingsGroup';
 
@@ -81,6 +82,7 @@ const Page = memo(() => {
   const [automaticUpdatesEnabled, setAutomaticUpdatesEnabled] = useState(false);
   const [automaticUpdatesLoading, setAutomaticUpdatesLoading] = useState(true);
   const memoryEmbeddingGroup = useMemoryEmbeddingSettingsGroup();
+  const humanMemoryGroup = useHumanMemorySettingsGroup();
   const memoryTextModelGroup = useMemoryTextModelSettingsGroup();
 
   useEffect(() => {
@@ -404,6 +406,7 @@ const Page = memo(() => {
     ? [
         advancedGroup,
         conversationReadingGroup,
+        humanMemoryGroup,
         updateChannelGroup,
         memoryEmbeddingGroup,
         memoryTextModelGroup,
@@ -412,6 +415,7 @@ const Page = memo(() => {
     : [
         advancedGroup,
         conversationReadingGroup,
+        humanMemoryGroup,
         memoryEmbeddingGroup,
         memoryTextModelGroup,
         labsGroup,
