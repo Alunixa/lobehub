@@ -134,6 +134,50 @@ describe('human memory storage and live retrieval contract', () => {
     expect(reinforce).not.toHaveBeenCalled();
   });
 
+  it('waits for a normal hot embedding response within the default recall budget', async () => {
+    const recall = vi.spyOn(
+      service as unknown as {
+        recall: () => Promise<{ memories: unknown[]; mode: string }>;
+      },
+      'recall',
+    );
+    const [stored] = await db
+      .insert(userEpisodicMemories)
+      .values({
+        content: '用户喜欢周末徒步',
+        importance: 0.8,
+        searchTokens: ['徒步'],
+        userId,
+      })
+      .returning();
+    recall.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      return {
+        memories: [
+          {
+            content: stored.content,
+            finalScore: 0.9,
+            id: stored.id,
+            importance: stored.importance,
+            lastRecalledAt: stored.lastRecalledAt,
+            recencyDecay: 1,
+            semanticSim: 0.9,
+            strengthS: stored.strengthS,
+          },
+        ],
+        mode: 'semantic',
+      };
+    });
+
+    const prepared = await service.prepareContext({
+      messages: [],
+      userMessage: '周末户外活动',
+    });
+
+    expect(prepared.recalledMemories).toHaveLength(1);
+    expect(prepared.memoryPrompt).toContain('用户喜欢周末徒步');
+  });
+
   it('recalls relevant older facts beyond 200 newer irrelevant records and isolates users', async () => {
     await db.insert(userEpisodicMemories).values([
       {

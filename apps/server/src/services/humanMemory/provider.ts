@@ -1,6 +1,7 @@
 import type { LobeChatDatabase } from '@lobechat/database';
 import type { GenerateObjectSchema, ModelRuntime } from '@lobechat/model-runtime';
 import { RequestTrigger } from '@lobechat/types';
+import { sanitizeHumanMemoryText } from '@lobechat/utils/humanMemory';
 import { and, eq, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -196,10 +197,12 @@ export const createHumanMemoryExtractionProvider = async ({
   return {
     embed: resolvedEmbeddingRuntime
       ? async (text) => {
+          const cleanText = sanitizeHumanMemoryText(text);
+          if (!cleanText) return undefined;
           try {
             const embeddings = await resolvedEmbeddingRuntime.runtime.embeddings(
               {
-                input: [text],
+                input: [cleanText],
                 model: resolvedEmbeddingRuntime.model,
               },
               {

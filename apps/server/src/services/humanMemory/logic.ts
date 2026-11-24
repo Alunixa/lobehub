@@ -1,9 +1,11 @@
 import type { UserCoreMemoryItem } from '@lobechat/database/schemas';
+import { sanitizeHumanMemoryText } from '@lobechat/utils/humanMemory';
 import { estimateTokenCount } from 'tokenx';
 
-export { buildRecentMemoryWindow } from '@lobechat/utils/humanMemory';
+export { buildRecentMemoryWindow, sanitizeHumanMemoryText } from '@lobechat/utils/humanMemory';
 
 export const DEFAULT_HUMAN_MEMORY_WINDOW_SIZE = 12;
+export const DEFAULT_HUMAN_MEMORY_RECALL_TIMEOUT_MS = 800;
 export const DEFAULT_RECALL_LIMIT = 3;
 export const DEFAULT_RECALL_SCORE_THRESHOLD = 0.5;
 export const DEFAULT_SEMANTIC_WAKE_THRESHOLD = 0.78;
@@ -206,9 +208,9 @@ const extractTextPart = (part: unknown): string => {
 };
 
 export const extractMessageText = (content: unknown): string => {
-  if (typeof content === 'string') return content;
+  if (typeof content === 'string') return sanitizeHumanMemoryText(content);
   if (!Array.isArray(content)) return '';
-  return content.map(extractTextPart).join('');
+  return sanitizeHumanMemoryText(content.map(extractTextPart).join(''));
 };
 
 export const formatMemoryTranscript = (messages: readonly HumanMemoryMessage[]): string =>

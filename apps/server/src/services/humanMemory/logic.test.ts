@@ -8,6 +8,7 @@ import {
   cosineSimilarity,
   MAX_CORE_MEMORY_TOKENS,
   rankEpisodicMemories,
+  sanitizeHumanMemoryText,
   textSimilarity,
 } from './logic';
 
@@ -163,5 +164,16 @@ describe('human memory logic', () => {
     expect(prompt).toContain('Persona and tone:');
     expect(prompt).toContain('User profile:');
     expect(prompt).toContain('Active matters:');
+  });
+
+  it('removes image URLs and encoded payloads before memory processing', () => {
+    const base64 = 'B'.repeat(160);
+    const result = sanitizeHumanMemoryText(
+      `记住我喜欢徒步 ![image](https://cdn.example.test/hike.png) data:image/png;base64,${base64}`,
+    );
+
+    expect(result).toBe('记住我喜欢徒步');
+    expect(result).not.toContain('cdn.example.test');
+    expect(result).not.toContain('data:image');
   });
 });

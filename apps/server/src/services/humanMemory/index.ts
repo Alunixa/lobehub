@@ -19,12 +19,14 @@ import {
   buildRecentMemoryWindow,
   type CoreMemoryOperations,
   DEFAULT_DEDUPLICATION_THRESHOLD,
+  DEFAULT_HUMAN_MEMORY_RECALL_TIMEOUT_MS,
   DEFAULT_HUMAN_MEMORY_WINDOW_SIZE,
   formatMemoryTranscript,
   type HumanMemoryMessage,
   type HumanMemorySlot,
   memorySearchTokens,
   rankEpisodicMemories,
+  sanitizeHumanMemoryText,
   textSimilarity,
 } from './logic';
 
@@ -181,6 +183,8 @@ export class HumanMemoryService {
       input.messages,
       input.windowSize ?? DEFAULT_HUMAN_MEMORY_WINDOW_SIZE,
     );
+    const userMessage = sanitizeHumanMemoryText(input.userMessage);
+    const recallInput = userMessage === input.userMessage ? input : { ...input, userMessage };
     const cached = coreCache.get(this.userId);
     const coreMemory =
       cached && cached.expires > Date.now()
@@ -194,11 +198,11 @@ export class HumanMemoryService {
             cached?.value ?? null,
           );
     const recalled = await withTimeout(
-      this.recall(input).catch((error) => {
+      this.recall(recallInput).catch((error) => {
         log('Memory recall failed: %O', error);
         return { memories: [], mode: 'keyword' as const };
       }),
-      input.timeoutMs ?? 250,
+      input.timeoutMs ?? DEFAULT_HUMAN_MEMORY_RECALL_TIMEOUT_MS,
       { memories: [], mode: 'keyword' as const },
     );
     const recalledMemories = recalled.memories;
@@ -257,7 +261,11 @@ export class HumanMemoryService {
         vectorCache.set(key, value);
         return value;
       });
-      const value = await withTimeout(task, 175, undefined);
+      const value = await withTimeout(
+        task,
+        input.timeoutMs ?? DEFAULT_HUMAN_MEMORY_RECALL_TIMEOUT_MS,
+        undefined,
+      );
       queryEmbedding = value?.embedding;
       embeddingModel = value?.model;
     }
@@ -278,7 +286,8 @@ export class HumanMemoryService {
   }
 
   private async searchCandidates(query: string, embedding?: number[], embeddingModel?: string) {
-    const tokens = memorySearchTokens(query).slice(0, 128);
+    const cleanQuery = sanitizeHumanMemoryText(query);
+    const tokens = memorySearchTokens(cleanQuery).slice(0, 128);
     if (!tokens.length) return [];
     const tokenArray = sql`ARRAY[${sql.join(
       tokens.map((token) => sql`${token}`),
@@ -362,10 +371,10 @@ export class HumanMemoryService {
     provider: HumanMemoryExtractionProvider,
   ): Promise<void> {
     const pureConversation = {
-      assistantReply: input.assistantReply,
+      assistantReply: sanitizeHumanMemoryText(input.assistantReply),
       backfill: input.backfill,
       sourceTopicId: input.sourceTopicId,
-      userMessage: input.userMessage,
+      userMessage: sanitizeHumanMemoryText(input.userMessage),
     };
 
     let failed = false;
@@ -446,9 +455,12 @@ export class HumanMemoryService {
             }
             continue;
           }
-          const content = candidate.content.trim();
+          const rawContent = candidate.content.trim();
+          const content = sanitizeHumanMemoryText(rawContent);
           if (!content) continue;
-          const embedding = candidate.embedding ?? (await provider.embed?.(content));
+          const embedding =
+            (content === rawContent ? candidate.embedding : undefined) ??
+            (await provider.embed?.(content));
           await this.upsertEpisodicMemory({
             content,
             embedding,
@@ -544,7 +556,9 @@ export class HumanMemoryService {
         and(eq(messagesTable.userId, this.userId), eq(messagesTable.topicId, input.sourceTopicId)),
       )
       .orderBy(asc(messagesTable.createdAt), asc(messagesTable.id));
-    const allMessages = sourceMessages.length ? sourceMessages : input.messages;
+    const allMessages: readonly HumanMemoryMessage[] = sourceMessages.length
+      ? sourceMessages
+      : input.messages;
     const recentMessages = buildRecentMemoryWindow(allMessages, input.windowSize);
     const historicalMessages = allMessages
       .slice(0, allMessages.length - recentMessages.length)
@@ -666,7 +680,9 @@ export class HumanMemoryService {
     embeddingModel?: string;
     id?: string;
   }): Promise<void> {
-    const existing = await this.searchCandidates(content, embedding, embeddingModel);
+    const cleanContent = sanitizeHumanMemoryText(content);
+    if (!cleanContent) return;
+    const existing = await this.searchCandidates(cleanContent, embedding, embeddingModel);
     if (id && !existing.some((memory) => memory.id === id)) {
       const [target] = await this.db
         .select()
@@ -692,12 +708,12 @@ export class HumanMemoryService {
                     strengthS: memory.strengthS,
                   },
                 ],
-                query: content,
+                query: cleanContent,
                 queryEmbedding: embedding,
               })[0]?.semanticSim
             : undefined;
         return (
-          (vectorMatch ?? textSimilarity(content, memory.content)) >=
+          (vectorMatch ?? textSimilarity(cleanContent, memory.content)) >=
           DEFAULT_DEDUPLICATION_THRESHOLD
         );
       });
@@ -706,11 +722,12 @@ export class HumanMemoryService {
       await this.db
         .update(userEpisodicMemories)
         .set({
-          content: id || content.length > duplicate.content.length ? content : duplicate.content,
+          content:
+            id || cleanContent.length > duplicate.content.length ? cleanContent : duplicate.content,
           embedding: embedding ?? (id ? null : duplicate.embedding),
           embeddingModel: embedding ? embeddingModel : id ? null : duplicate.embeddingModel,
           searchTokens: memorySearchTokens(
-            id || content.length > duplicate.content.length ? content : duplicate.content,
+            id || cleanContent.length > duplicate.content.length ? cleanContent : duplicate.content,
           ),
           importance: Math.max(duplicate.importance, importance ?? 0.5),
         })
@@ -724,10 +741,10 @@ export class HumanMemoryService {
     }
 
     await this.db.insert(userEpisodicMemories).values({
-      content,
+      content: cleanContent,
       embedding,
       embeddingModel,
-      searchTokens: memorySearchTokens(content),
+      searchTokens: memorySearchTokens(cleanContent),
       importance: Math.max(0.1, Math.min(1, importance ?? 0.5)),
       sourceTopicId,
       userId: this.userId,
