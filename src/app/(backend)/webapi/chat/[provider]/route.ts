@@ -35,8 +35,13 @@ export const POST = checkAuth(async (req: Request, { params, userId, serverDB })
     // ============  2. create chat completion   ============ //
 
     const data = (await req.json()) as ChatStreamPayload;
-    const settings = (await new UserModel(serverDB, userId).getUserSettings())?.memory as
-      UserMemorySettings | undefined;
+    const userSettings = await new UserModel(serverDB, userId).getUserSettings().catch((error) => {
+      console.error('[human-memory] settings unavailable; continuing main chat', {
+        name: error instanceof Error ? error.name : 'Error',
+      });
+      return undefined;
+    });
+    const settings = userSettings?.memory as UserMemorySettings | undefined;
     const userMessage = humanMemoryText(
       data.messages?.findLast((message) => message.role === 'user')?.content,
     );

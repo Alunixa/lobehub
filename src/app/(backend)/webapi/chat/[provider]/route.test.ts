@@ -92,6 +92,22 @@ describe('POST handler', () => {
   });
 
   describe('chat', () => {
+    it('continues the main completion when the optional memory settings query fails', async () => {
+      getUserSettings.mockRejectedValue(new Error('temporary settings failure'));
+      const chat = vi.fn().mockResolvedValue(new Response('main reply'));
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValue(
+        new ModelRuntime({ baseURL: 'fixture', chat }),
+      );
+      const response = await POST(
+        new Request('https://test.com', {
+          method: 'POST',
+          body: JSON.stringify({ model: 'fixture', messages: [{ role: 'user', content: 'hi' }] }),
+        }),
+        { params: Promise.resolve({ provider: 'test-provider' }) },
+      );
+      expect(await response.text()).toBe('main reply');
+      expect(chat).toHaveBeenCalledOnce();
+    });
     it('should correctly handle chat completion with valid payload', async () => {
       const mockParams = Promise.resolve({ provider: 'test-provider' });
       const mockChatPayload = { message: 'Hello, world!' };
