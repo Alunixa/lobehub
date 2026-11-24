@@ -7,8 +7,14 @@ import { UserModel } from '@/database/models/user';
 import { topics } from '@/database/schemas';
 import { authedProcedure, router } from '@/libs/trpc/lambda';
 import { serverDatabase } from '@/libs/trpc/lambda/middleware';
+import { KeyVaultsGateKeeper } from '@/server/modules/KeyVaultsEncrypt';
 import { HumanMemoryService } from '@/server/services/humanMemory';
 import { scheduleHumanMemoryTurn } from '@/server/services/humanMemory/turn';
+import {
+  getUserMemoryRetrievalMode,
+  isConfiguredUserMemoryEmbedding,
+  resolveUserMemoryEmbeddingRuntime,
+} from '@/server/services/memory/userMemory/runtime';
 
 const humanMemoryProcedure = authedProcedure
   .use(serverDatabase)
@@ -38,11 +44,29 @@ export const humanMemoryRouter = router({
   }),
 
   getStatus: humanMemoryProcedure.query(async ({ ctx }) => {
-    const [core, count] = await Promise.all([
+    const [core, count, settings] = await Promise.all([
       ctx.humanMemory.getCoreMemory(),
       ctx.humanMemory.getEpisodicMemoryCount(),
+      new UserModel(ctx.serverDB, ctx.userId).getUserSettings(),
     ]);
-    return { core, count };
+    const memorySettings = settings?.memory as UserMemorySettings | undefined;
+    const keyVaults = await KeyVaultsGateKeeper.getUserKeyVaults(
+      settings?.keyVaults ?? null,
+      ctx.userId,
+    );
+    const configured = isConfiguredUserMemoryEmbedding(memorySettings, keyVaults);
+    const runtime = configured
+      ? await resolveUserMemoryEmbeddingRuntime(ctx.serverDB, ctx.userId).catch(() => undefined)
+      : undefined;
+    const retrievalMode = getUserMemoryRetrievalMode(Boolean(runtime?.model), core?.retrievalMode);
+    return {
+      core: core
+        ? { ...core, retrievalMode }
+        : configured
+          ? { retrievalMode, lastRecallCount: 0 }
+          : null,
+      count,
+    };
   }),
 
   prepareContext: humanMemoryProcedure

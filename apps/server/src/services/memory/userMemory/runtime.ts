@@ -43,6 +43,23 @@ export const normalizeOpenAICompatibleBaseURL = (value: string) =>
     .replace(/\/+$/, '')
     .replace(/\/(?:embeddings|chat\/completions|responses)$/i, '');
 
+export const isConfiguredUserMemoryEmbedding = (
+  settings: UserMemorySettings | null | undefined,
+  keyVaults: { memoryEmbedding?: { apiKey?: string; baseURL?: string } } | null | undefined,
+) => {
+  const embedding = settings?.embedding;
+  const model = embedding?.model?.trim();
+  const apiKey = keyVaults?.memoryEmbedding?.apiKey?.trim();
+  const baseURL = normalizeOpenAICompatibleBaseURL(keyVaults?.memoryEmbedding?.baseURL ?? '');
+
+  return embedding?.enabled === true && Boolean(model && apiKey && baseURL);
+};
+
+export const getUserMemoryRetrievalMode = (
+  configured: boolean,
+  previous: 'keyword' | 'semantic' | null | undefined,
+): 'keyword' | 'semantic' => (configured ? 'semantic' : (previous ?? 'keyword'));
+
 export const resolveUserMemoryEmbeddingRuntime = async ({
   override,
   serverDB,
