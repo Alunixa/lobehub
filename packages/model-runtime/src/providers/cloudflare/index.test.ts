@@ -247,6 +247,7 @@ describe('LobeCloudflareAI', () => {
       mockDebugStream.toReadableStream = () => mockDebugStream;
 
       (globalThis.fetch as Mock).mockResolvedValue({
+        ok: true,
         body: {
           tee: () => [mockProdStream, { toReadableStream: () => mockDebugStream }],
         },

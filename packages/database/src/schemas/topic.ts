@@ -57,6 +57,13 @@ export const topics = pgTable(
     }),
     completedAt: timestamptz('completed_at'),
     memoryMigrated: boolean('memory_migrated').default(false).notNull(),
+    /** Lease and last committed history message for resumable memory backfill. */
+    memoryBackfillState: jsonb('memory_backfill_state').$type<{
+      cursor?: string;
+      lease?: string;
+      leaseUntil?: number;
+      version?: number;
+    }>(),
 
     // ---- Usage & cost aggregates (denormalized roll-up of the topic's operations) ----
     // Kept nullable: NULL means "not measured yet" so in-flight / legacy topics

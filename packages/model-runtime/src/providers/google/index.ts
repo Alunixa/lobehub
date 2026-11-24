@@ -4,11 +4,16 @@ import type {
   ThinkingConfig,
   Tool as GoogleFunctionCallTool,
 } from '@google/genai';
-import { GoogleGenAI } from '@google/genai';
+import { FunctionCallingConfigMode, GoogleGenAI } from '@google/genai';
+import { toRecord } from '@lobechat/utils/object';
 import debug from 'debug';
 
 import type { LobeRuntimeAI } from '../../core/BaseAI';
 import { buildGoogleMessages, buildGoogleTools } from '../../core/contextBuilders/google';
+import {
+  collectSystemMessages,
+  isSystemMessage,
+} from '../../core/contextBuilders/protocolMessages';
 import { GoogleGenerativeAIStream } from '../../core/streams';
 import { LOBE_ERROR_KEY } from '../../core/streams/google';
 import type {
@@ -179,9 +184,10 @@ export class LobeGoogleAI implements LobeRuntimeAI {
       const config: GenerateContentConfig = {
         abortSignal: originalSignal,
         imageConfig:
-          isImageResponseModel && imageAspectRatio && imageAspectRatio !== 'auto'
+          isImageResponseModel &&
+          ((imageAspectRatio && imageAspectRatio !== 'auto') || imageResolution)
             ? {
-                aspectRatio: imageAspectRatio,
+                aspectRatio: imageAspectRatio === 'auto' ? undefined : imageAspectRatio,
                 imageSize: imageResolution,
               }
             : undefined,
@@ -219,8 +225,31 @@ export class LobeGoogleAI implements LobeRuntimeAI {
         // https://ai.google.dev/gemini-api/docs/tool-combination
         // Vertex AI does not support includeServerSideToolInvocations
         toolConfig:
-          !this.isVertexAi && this.needsServerSideToolInvocations(model, tools)
-            ? { includeServerSideToolInvocations: true }
+          tools?.length &&
+          (payload.tool_choice ||
+            (!this.isVertexAi && this.needsServerSideToolInvocations(model, tools)))
+            ? {
+                ...(!this.isVertexAi && this.needsServerSideToolInvocations(model, tools)
+                  ? { includeServerSideToolInvocations: true }
+                  : {}),
+                ...(payload.tool_choice
+                  ? {
+                      functionCallingConfig: {
+                        mode:
+                          payload.tool_choice === 'none'
+                            ? FunctionCallingConfigMode.NONE
+                            : payload.tool_choice === 'required' || toRecord(payload.tool_choice)
+                              ? FunctionCallingConfigMode.ANY
+                              : FunctionCallingConfigMode.AUTO,
+                        allowedFunctionNames:
+                          typeof toRecord(toRecord(payload.tool_choice)?.function)?.name ===
+                          'string'
+                            ? [String(toRecord(toRecord(payload.tool_choice)?.function)?.name)]
+                            : undefined,
+                      },
+                    }
+                  : {}),
+              }
             : undefined,
         tools,
         topP: payload.top_p,
@@ -239,7 +268,14 @@ export class LobeGoogleAI implements LobeRuntimeAI {
         log(JSON.stringify(finalPayload), '\n');
       }
 
-      const geminiStreamResponse = await this.client.models.generateContentStream(finalPayload);
+      const geminiStreamResponse =
+        payload.stream === false
+          ? (async function* (
+              response: Awaited<ReturnType<GoogleGenAI['models']['generateContent']>>,
+            ) {
+              yield response;
+            })(await this.client.models.generateContent(finalPayload))
+          : await this.client.models.generateContentStream(finalPayload);
 
       const googleStream = this.createEnhancedStream(geminiStreamResponse, controller.signal);
       const [prod, useForDebug] = googleStream.tee();
@@ -353,7 +389,12 @@ export class LobeGoogleAI implements LobeRuntimeAI {
     if (payload.tools && payload.tools.length > 0) {
       return createGoogleGenerateObjectWithTools(
         this.client,
-        { contents, model: requestPayload.model, tools: payload.tools },
+        {
+          contents,
+          model: requestPayload.model,
+          tools: payload.tools,
+          system: collectSystemMessages(payload.messages) || undefined,
+        },
         options,
         pricing,
       );
@@ -363,7 +404,12 @@ export class LobeGoogleAI implements LobeRuntimeAI {
     if (payload.schema) {
       return createGoogleGenerateObject(
         this.client,
-        { contents, model: requestPayload.model, schema: payload.schema },
+        {
+          contents,
+          model: requestPayload.model,
+          schema: payload.schema,
+          system: collectSystemMessages(payload.messages) || undefined,
+        },
         options,
         pricing,
       );
@@ -512,25 +558,12 @@ export class LobeGoogleAI implements LobeRuntimeAI {
   }
 
   private buildPayload(payload: ChatStreamPayload) {
-    const systemMessages = payload.messages.filter((m) => m.role === 'system');
-    const user_messages = payload.messages.filter((m) => m.role !== 'system');
+    const user_messages = payload.messages.filter((m) => !isSystemMessage(m));
 
     return {
       ...payload,
       messages: user_messages,
-      system: systemMessages.length
-        ? systemMessages
-            .map((message) =>
-              typeof message.content === 'string'
-                ? message.content
-                : Array.isArray(message.content)
-                  ? message.content
-                      .map((part) => (part.type === 'text' ? part.text : ''))
-                      .join('\n')
-                  : '',
-            )
-            .join('\n\n')
-        : undefined,
+      system: collectSystemMessages(payload.messages) || undefined,
     };
   }
 

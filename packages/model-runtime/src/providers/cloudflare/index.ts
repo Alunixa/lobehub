@@ -1,7 +1,10 @@
 import type { ChatModelCard } from '@lobechat/types';
 import { ModelProvider } from 'model-bank';
+import type OpenAI from 'openai';
 
 import type { LobeRuntimeAI } from '../../core/BaseAI';
+import { convertOpenAIMessages } from '../../core/contextBuilders/openai';
+import { cleanChatPayload } from '../../core/openaiCompatibleFactory/protocolPayload';
 import { createCallbacksTransformer } from '../../core/streams';
 import {
   CloudflareStreamTransformer,
@@ -81,7 +84,7 @@ export class LobeCloudflareAI implements LobeRuntimeAI {
     // Remove internal apiMode parameter to prevent sending to Cloudflare API
     const { model, tools, apiMode: _, ...restPayload } = payload;
     const functions = tools?.map((tool) => tool.function);
-    const headers = options?.headers || {};
+    const headers = { ...options?.requestHeaders };
     if (this.apiKey) {
       headers['Authorization'] = `Bearer ${this.apiKey}`;
     }
@@ -91,7 +94,13 @@ export class LobeCloudflareAI implements LobeRuntimeAI {
     let response: Response;
     try {
       response = await fetch(url, {
-        body: JSON.stringify({ tools: functions, ...restPayload }),
+        body: JSON.stringify({
+          ...cleanChatPayload(restPayload, 'cloudflare'),
+          messages: await convertOpenAIMessages(
+            payload.messages as OpenAI.ChatCompletionMessageParam[],
+          ),
+          tools: functions?.length ? functions : undefined,
+        }),
         headers: { 'Content-Type': 'application/json', ...headers },
         method: 'POST',
         signal: options?.signal,
@@ -106,7 +115,7 @@ export class LobeCloudflareAI implements LobeRuntimeAI {
       });
     }
 
-    if (response.status === 400) {
+    if (!response.ok) {
       const bodyText = await response.text().catch(() => '');
       let parsedBody: unknown = bodyText;
       if (bodyText) {

@@ -2,8 +2,10 @@ import isEqual from 'fast-deep-equal';
 import type { PartialDeep } from 'type-fest';
 
 import { MESSAGE_CANCEL_FLAT } from '@/const/message';
+import { useClientDataSWR } from '@/libs/swr';
 import { shareService } from '@/services/share';
 import { userService } from '@/services/user';
+import { userMemoryService } from '@/services/userMemory';
 import type { StoreSetter } from '@/store/types';
 import type { UserStore } from '@/store/user';
 import type { LobeAgentSettings } from '@/types/session';
@@ -36,6 +38,13 @@ export class UserSettingsActionImpl {
     this.#set = set;
     this.#get = get;
   }
+
+  useFetchHumanMemoryStatus = (enabled: boolean) =>
+    useClientDataSWR(
+      enabled ? ['human-memory-status'] : null,
+      () => userMemoryService.getHumanMemoryStatus(),
+      { revalidateOnFocus: true, refreshInterval: 15_000 },
+    );
 
   addToolToAllowList = async (toolKey: string): Promise<void> => {
     const currentAllowList = this.#get().settings.tool?.humanIntervention?.allowList || [];

@@ -996,23 +996,18 @@ describe('LobeOpenAICompatibleFactory', () => {
           },
           { signal: controller.signal },
         );
+        // Register rejection handling before yielding; overloaded CI timers may fire together.
+        const rejected = expect(chatPromise).rejects.toMatchObject({
+          errorType: 'AgentRuntimeError',
+          error: { name: 'AbortError', message: 'The user aborted a request.' },
+        });
 
         // Give some time for the request to start
         await sleep(50);
 
         controller.abort();
 
-        // Wait and assert that Promise is rejected
-        // Use try-catch to capture and verify errors
-        try {
-          await chatPromise;
-          // If Promise is not rejected, test should fail
-          expect.fail('Expected promise to be rejected');
-        } catch (error) {
-          expect((error as any).errorType).toBe('AgentRuntimeError');
-          expect((error as any).error.name).toBe('AbortError');
-          expect((error as any).error.message).toBe('The user aborted a request.');
-        }
+        await rejected;
         expect(mockCreateMethod).toHaveBeenCalledWith(
           expect.anything(),
           expect.objectContaining({
@@ -2303,7 +2298,7 @@ describe('LobeOpenAICompatibleFactory', () => {
 
       expect(instance['client'].responses.create).toHaveBeenCalledWith(
         {
-          input: payload.messages,
+          input: [{ content: 'mocked input', role: 'user' }],
           model: payload.model,
           // @ts-ignore
           text: { format: { strict: true, type: 'json_schema', ...payload.schema } },
@@ -2441,11 +2436,11 @@ describe('LobeOpenAICompatibleFactory', () => {
 
       expect(instance['client'].responses.create).toHaveBeenCalledWith(
         {
-          input: payload.messages,
+          input: [{ content: 'mocked input', role: 'user' }],
           model: payload.model,
           prompt_cache_key: 'lobe:test-user:gpt-4o',
           // @ts-ignore
-          text: { format: { strict: true, type: 'json_schema', ...payload.schema } },
+          text: { format: { type: 'json_schema', ...payload.schema } },
           safety_identifier: options.user,
         },
         { headers: options.headers, signal: options.signal },

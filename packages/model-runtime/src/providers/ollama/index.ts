@@ -1,11 +1,13 @@
 import type { ChatModelCard } from '@lobechat/types';
 import { imageUrlToBase64 } from '@lobechat/utils';
+import { toRecord } from '@lobechat/utils/object';
 import { ModelProvider } from 'model-bank';
-import type { Tool } from 'ollama/browser';
+import type { ChatResponse, Tool } from 'ollama/browser';
 import { Ollama } from 'ollama/browser';
 import type { ClientOptions } from 'openai';
 
 import type { LobeRuntimeAI } from '../../core/BaseAI';
+import { normalizeToolHistory } from '../../core/contextBuilders/protocolMessages';
 import { convertIterableToStream, createModelPullStream, OllamaStream } from '../../core/streams';
 import type {
   ChatMethodOptions,
@@ -62,7 +64,7 @@ export class LobeOllamaAI implements LobeRuntimeAI {
 
       options?.signal?.addEventListener('abort', abort);
 
-      const response = await this.client.chat({
+      const request = {
         messages: await this.buildOllamaMessages(payload.messages),
         model: payload.model,
         options: {
@@ -70,10 +72,16 @@ export class LobeOllamaAI implements LobeRuntimeAI {
           presence_penalty: payload.presence_penalty,
           temperature: payload.temperature !== undefined ? payload.temperature / 2 : undefined,
           top_p: payload.top_p,
+          num_predict: payload.max_tokens,
         },
-        stream: true,
         tools: payload.tools as Tool[],
-      });
+      };
+      const response =
+        payload.stream === false
+          ? (async function* (value: ChatResponse) {
+              yield value;
+            })(await this.client.chat({ ...request, stream: false }))
+          : await this.client.chat({ ...request, stream: true });
 
       const stream = convertIterableToStream(response);
       const [prod, debug] = stream.tee();
@@ -172,7 +180,30 @@ export class LobeOllamaAI implements LobeRuntimeAI {
   };
 
   private async buildOllamaMessages(messages: OpenAIChatMessage[]) {
-    return Promise.all(messages.map((message) => this.convertContentToOllamaMessage(message)));
+    const names = new Map(
+      messages.flatMap(
+        (message) =>
+          message.tool_calls?.map((call) => [call.id, call.function.name] as const) ?? [],
+      ),
+    );
+    return Promise.all(
+      normalizeToolHistory(messages).map(async (message) => ({
+        ...(await this.convertContentToOllamaMessage(message)),
+        ...(message.tool_calls?.length
+          ? {
+              tool_calls: message.tool_calls.map((call) => ({
+                function: {
+                  arguments: toRecord(JSON.parse(call.function.arguments)) ?? {},
+                  name: call.function.name,
+                },
+              })),
+            }
+          : {}),
+        ...(message.role === 'tool' && message.tool_call_id
+          ? { tool_name: names.get(message.tool_call_id) }
+          : {}),
+      })),
+    );
   }
 
   private convertContentToOllamaMessage = async (
@@ -190,11 +221,11 @@ export class LobeOllamaAI implements LobeRuntimeAI {
     // Collect image processing tasks for parallel execution
     const imagePromises: Array<Promise<string | null> | string> = [];
 
-    for (const content of message.content) {
+    for (const content of message.content ?? []) {
       switch (content.type) {
         case 'text': {
-          // keep latest text input
-          ollamaMessage.content = content.text;
+          // Keep every text segment alongside the interleaved images.
+          ollamaMessage.content += content.text;
           break;
         }
         case 'image_url': {

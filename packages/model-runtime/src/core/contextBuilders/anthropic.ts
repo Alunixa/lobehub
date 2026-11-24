@@ -2,7 +2,7 @@ import type Anthropic from '@anthropic-ai/sdk';
 import { imageUrlToBase64, resolveImageMimeTypeFromBase64 } from '@lobechat/utils';
 import type OpenAI from 'openai';
 
-import type { OpenAIChatMessage, UserMessageContentPart } from '../../types';
+import type { ChatStreamPayload, OpenAIChatMessage, UserMessageContentPart } from '../../types';
 import { parseDataUri } from '../../utils/uriParser';
 
 const ANTHROPIC_SUPPORTED_IMAGE_TYPES = new Set([
@@ -51,7 +51,7 @@ export const buildAnthropicBlock = async (
     }
 
     case 'text': {
-      if (!!content.text) return content as any;
+      if (hasVisibleText(content.text)) return content as any;
 
       return undefined;
     }
@@ -473,6 +473,17 @@ export const buildAnthropicTools = (
       name: fn.name,
     };
   });
+};
+
+export const resolveAnthropicToolChoice = (
+  choice: ChatStreamPayload['tool_choice'],
+  hasTools: boolean,
+): Anthropic.ToolChoice | undefined => {
+  if (!hasTools || !choice) return undefined;
+  if (choice === 'none') return { type: 'none' };
+  if (choice === 'required') return { type: 'any' };
+  if (typeof choice === 'object') return { name: choice.function.name, type: 'tool' };
+  return { type: 'auto' };
 };
 
 export const buildSearchTool = (): Anthropic.WebSearchTool20250305 => {

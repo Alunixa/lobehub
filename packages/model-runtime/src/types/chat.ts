@@ -168,7 +168,7 @@ export interface ChatStreamPayload {
    * Thinking level for Gemini models (e.g., gemini-3.0-pro)
    */
   thinkingLevel?: 'minimal' | 'low' | 'medium' | 'high';
-  tool_choice?: string;
+  tool_choice?: string | { function: { name: string }; type: 'function' };
   tools?: ChatCompletionTool[];
   /**
    * @title Controls the highest probability single token in generated text

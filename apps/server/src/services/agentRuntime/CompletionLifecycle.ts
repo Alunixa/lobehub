@@ -485,7 +485,7 @@ export class CompletionLifecycle {
     const provider = modelRuntimeConfig.provider ?? state?.provider ?? agentConfig.provider;
 
     let currentRuntime: Awaited<ReturnType<typeof initModelRuntimeFromDB>> | undefined;
-    if (model && provider && memorySettings.textModel?.enabled !== true) {
+    if (model && provider) {
       currentRuntime = await initModelRuntimeFromDB(
         this.serverDB,
         userId,
@@ -496,13 +496,9 @@ export class CompletionLifecycle {
     }
 
     const extractionProvider = await createHumanMemoryExtractionProvider({
-      embeddingModel: memorySettings.humanMemoryEmbeddingModel ?? memorySettings.embedding?.model,
-      embeddingRuntime:
-        currentRuntime && memorySettings.embedding?.enabled !== true && model
-          ? { model, runtime: currentRuntime }
-          : undefined,
+      embeddingModel: memorySettings.humanMemoryEmbeddingModel,
       serverDB: this.serverDB,
-      textModel: memorySettings.humanMemoryModel ?? memorySettings.textModel?.model,
+      textModel: memorySettings.humanMemoryModel,
       textRuntime: currentRuntime && model ? { model, runtime: currentRuntime } : undefined,
       userId,
     });

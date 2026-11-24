@@ -20,12 +20,14 @@ import type {
 import { ChatErrorType, TraceTagMap } from '@lobechat/types';
 import { generatedImageFilePath } from '@lobechat/utils/conversationImageResult';
 import { withCurrentTime } from '@lobechat/utils/currentTime';
+import { buildRecentMemoryWindow, humanMemoryText } from '@lobechat/utils/humanMemory';
 import { merge } from 'es-toolkit/compat';
 import { ModelProvider } from 'model-bank';
 
 import { DEFAULT_AGENT_CONFIG } from '@/const/settings';
 import { getSearchConfig } from '@/helpers/getSearchConfig';
 import { isCanUseFC } from '@/helpers/isCanUseFC';
+import { userMemoryService } from '@/services/userMemory';
 import { getAgentStoreState } from '@/store/agent';
 import {
   agentByIdSelectors,
@@ -172,10 +174,15 @@ class ChatService {
     const userLevelMemoryEnabled = settingsSelectors.memoryEnabled(getUserStoreState());
     // Agent-level memory toggle takes priority over user-level setting,
     // matching the logic in useMemoryEnabled hook
-    const enableUserMemories = chatConfig.memory?.enabled ?? userLevelMemoryEnabled;
+    const humanMemoryEnabled =
+      settingsSelectors.currentMemorySettings(getUserStoreState()).humanMemoryEnabled === true;
+    const enableUserMemories =
+      !humanMemoryEnabled && (chatConfig.memory?.enabled ?? userLevelMemoryEnabled);
     const userMemorySettings = settingsSelectors.currentMemorySettings(getUserStoreState());
     const effectiveMemoryEffort =
       chatConfig.memory?.effort ?? userMemorySettings.effort ?? 'medium';
+    if (humanMemoryEnabled)
+      messages = buildRecentMemoryWindow(messages, userMemorySettings.humanMemoryWindowSize);
     const enableAgentMode =
       chatConfig.enableAgentMode !== false && isCanUseFC(payload.model, payload.provider!);
 
@@ -290,7 +297,7 @@ class ChatService {
       agentId: targetAgentId,
       enableAgentMode,
       // Use raw chatConfig values, not selectors with business logic that may force false
-      enableHistoryCount: chatConfig.enableHistoryCount,
+      enableHistoryCount: humanMemoryEnabled ? false : chatConfig.enableHistoryCount,
       enableUserMemories,
       groupId,
       // historyCount is number of history messages; add 1 for current user message
@@ -439,6 +446,22 @@ class ChatService {
        */
       fetcher = async () => {
         try {
+          if (settingsSelectors.currentMemorySettings(getUserStoreState()).humanMemoryEnabled) {
+            const userMessage = payload.messages?.findLast((message) => message.role === 'user');
+            const prepared = await userMemoryService
+              .prepareHumanMemoryContext(humanMemoryText(userMessage?.content))
+              .catch((error) => {
+                console.error('[human-memory] client context unavailable; continuing chat', {
+                  name: error instanceof Error ? error.name : 'Error',
+                });
+                return { memoryPrompt: '' };
+              });
+            if (prepared.memoryPrompt)
+              payload.messages = [
+                { content: prepared.memoryPrompt, role: 'system' },
+                ...(payload.messages ?? []),
+              ];
+          }
           return await this.fetchOnClient({
             payload,
             provider,
@@ -511,7 +534,28 @@ class ChatService {
       method: 'POST',
       onAbort: options?.onAbort,
       onErrorHandle: options?.onErrorHandle,
-      onFinish: options?.onFinish,
+      onFinish: async (data, context) => {
+        await options?.onFinish?.(data, context);
+        if (
+          enableFetchOnClient &&
+          context.type === 'done' &&
+          !context.toolCalls?.length &&
+          settingsSelectors.currentMemorySettings(getUserStoreState()).humanMemoryEnabled
+        ) {
+          const userMessage = payload.messages?.findLast((message) => message.role === 'user');
+          void userMemoryService
+            .recordHumanMemoryTurn({
+              assistantReply: data,
+              model,
+              provider,
+              topicId,
+              userMessage: humanMemoryText(userMessage?.content),
+            })
+            .catch((error) =>
+              console.error('[human-memory] failed to persist client completion', error),
+            );
+        }
+      },
       onMessageHandle: options?.onMessageHandle,
       requestContext: {
         apiMode,

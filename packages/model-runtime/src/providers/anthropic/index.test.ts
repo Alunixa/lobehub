@@ -910,9 +910,9 @@ describe('LobeAnthropicAI', () => {
 
       it('should respect max_tokens in thinking mode when provided', async () => {
         const payload: ChatStreamPayload = {
-          max_tokens: 1000,
+          max_tokens: 4096,
           messages: [{ content: 'Solve this problem', role: 'user' }],
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-sonnet-4-20250514',
           temperature: 0.7,
           thinking: { type: 'enabled', budget_tokens: 0 },
         };
@@ -920,7 +920,7 @@ describe('LobeAnthropicAI', () => {
         const result = await buildDefaultAnthropicPayload(payload);
 
         expect(result).toEqual({
-          max_tokens: 1000,
+          max_tokens: 4096,
           messages: [
             {
               content: [
@@ -929,18 +929,18 @@ describe('LobeAnthropicAI', () => {
               role: 'user',
             },
           ],
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-sonnet-4-20250514',
           system: undefined,
-          thinking: { type: 'enabled', budget_tokens: 999 },
+          thinking: { type: 'enabled', budget_tokens: 1024 },
           tools: undefined,
         });
       });
 
       it('should use budget_tokens in thinking mode when provided', async () => {
         const payload: ChatStreamPayload = {
-          max_tokens: 1000,
+          max_tokens: 4096,
           messages: [{ content: 'Solve this problem', role: 'user' }],
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-sonnet-4-20250514',
           temperature: 0.5,
           thinking: { type: 'enabled', budget_tokens: 2000 },
         };
@@ -948,7 +948,7 @@ describe('LobeAnthropicAI', () => {
         const result = await buildDefaultAnthropicPayload(payload);
 
         expect(result).toEqual({
-          max_tokens: 1000,
+          max_tokens: 4096,
           messages: [
             {
               content: [
@@ -957,9 +957,9 @@ describe('LobeAnthropicAI', () => {
               role: 'user',
             },
           ],
-          model: 'claude-3-5-haiku-20241022',
+          model: 'claude-sonnet-4-20250514',
           system: undefined,
-          thinking: { type: 'enabled', budget_tokens: 999 },
+          thinking: { type: 'enabled', budget_tokens: 2000 },
           tools: undefined,
         });
       });

@@ -15,7 +15,15 @@ import {
 import { resolveCacheTTL } from '../../core/anthropicCompatibleFactory/resolveCacheTTL';
 import { resolveMaxTokens } from '../../core/anthropicCompatibleFactory/resolveMaxTokens';
 import type { LobeRuntimeAI } from '../../core/BaseAI';
-import { buildAnthropicMessages, buildAnthropicTools } from '../../core/contextBuilders/anthropic';
+import {
+  buildAnthropicMessages,
+  buildAnthropicTools,
+  resolveAnthropicToolChoice,
+} from '../../core/contextBuilders/anthropic';
+import {
+  collectSystemMessages,
+  isSystemMessage,
+} from '../../core/contextBuilders/protocolMessages';
 import { resolveModelSamplingParameters } from '../../core/parameterResolver';
 import {
   AWSBedrockClaudeStream,
@@ -37,7 +45,10 @@ import { AgentRuntimeError } from '../../utils/createError';
 import { debugStream } from '../../utils/debugStream';
 import { getModelPricing } from '../../utils/getModelPricing';
 import { StreamingResponse } from '../../utils/response';
-import { shouldDropUnsupportedClaudeAssistantPrefill } from '../anthropic/claudeModelId';
+import {
+  requiresClaudeAdaptiveThinking,
+  shouldDropUnsupportedClaudeAssistantPrefill,
+} from '../anthropic/claudeModelId';
 import { normalizeClaudeThinkingHistoryMessages } from '../anthropic/claudeThinkingHistory';
 
 /**
@@ -272,15 +283,11 @@ export class LobeBedrockAI implements LobeRuntimeAI {
       thinking,
     } = payload;
     const inputStartAt = Date.now();
-    const system_message = messages.find((m) => m.role === 'system');
     const user_messages = normalizeClaudeThinkingHistoryMessages(
-      messages.filter((m) => m.role !== 'system'),
+      messages.filter((m) => !isSystemMessage(m)),
     );
     // Filter out empty/whitespace-only system prompts — Anthropic API rejects them
-    const systemPromptText =
-      typeof system_message?.content === 'string' && system_message.content.trim()
-        ? system_message.content
-        : undefined;
+    const systemPromptText = collectSystemMessages(messages) || undefined;
 
     const { bedrock: bedrockModels } = await import('model-bank');
 
@@ -320,22 +327,28 @@ export class LobeBedrockAI implements LobeRuntimeAI {
       messages: postMessages,
       system: systemPrompts,
       tools: postTools,
+      tool_choice: resolveAnthropicToolChoice(payload.tool_choice, !!postTools?.length),
     };
 
     let anthropicPayload;
 
     if (!!thinking && (thinking.type === 'enabled' || thinking.type === 'adaptive')) {
+      if (anthropicBase.tool_choice?.type === 'any' || anthropicBase.tool_choice?.type === 'tool') {
+        throw new TypeError('Forced tool choice is incompatible with extended thinking.');
+      }
       const resolvedThinking =
-        thinking.type === 'enabled'
+        thinking.type === 'enabled' && !requiresClaudeAdaptiveThinking(model)
           ? {
               budget_tokens: Math.min(thinking?.budget_tokens || 1024, resolvedMaxTokens - 1),
               type: 'enabled' as const,
             }
           : { type: 'adaptive' as const };
+      if (resolvedThinking.type === 'enabled' && resolvedThinking.budget_tokens < 1024)
+        throw new TypeError('Extended thinking requires max_tokens greater than 1024.');
 
       anthropicPayload = {
         ...anthropicBase,
-        ...(thinking.type === 'adaptive' && effort ? { output_config: { effort } } : {}),
+        ...(resolvedThinking.type === 'adaptive' && effort ? { output_config: { effort } } : {}),
         thinking: resolvedThinking,
       };
     } else {

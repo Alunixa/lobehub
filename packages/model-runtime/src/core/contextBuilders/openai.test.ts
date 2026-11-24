@@ -314,8 +314,6 @@ describe('convertOpenAIMessages', () => {
         ],
       },
     ] as OpenAI.ChatCompletionMessageParam[];
-
-    vi.spyOn(Promise, 'all');
     vi.mocked(parseDataUri).mockReturnValue({ type: 'url', base64: null, mimeType: null });
     vi.mocked(imageUrlToBase64).mockResolvedValue({
       base64: 'base64String',
@@ -339,8 +337,6 @@ describe('convertOpenAIMessages', () => {
       },
     ]);
 
-    expect(Promise.all).toHaveBeenCalledTimes(2); // 一次用于消息数组，一次用于内容数组
-
     process.env.LLM_VISION_IMAGE_USE_BASE64 = undefined;
   });
   it('should convert array content messages', async () => {
@@ -353,8 +349,6 @@ describe('convertOpenAIMessages', () => {
         ],
       },
     ] as OpenAI.ChatCompletionMessageParam[];
-
-    vi.spyOn(Promise, 'all');
     vi.mocked(parseDataUri).mockReturnValue({ type: 'url', base64: null, mimeType: null });
     vi.mocked(imageUrlToBase64).mockResolvedValue({
       base64: 'base64String',
@@ -364,8 +358,6 @@ describe('convertOpenAIMessages', () => {
     const result = await convertOpenAIMessages(messages);
 
     expect(result).toEqual(messages);
-
-    expect(Promise.all).toHaveBeenCalledTimes(2); // 一次用于消息数组，一次用于内容数组
   });
 
   it('should filter out reasoning field from messages', async () => {
@@ -398,7 +390,7 @@ describe('convertOpenAIMessages', () => {
       { role: 'user', content: 'Hi' },
     ] as any;
 
-    const result = await convertOpenAIMessages(messages);
+    const result = await convertOpenAIMessages(messages, { model: 'deepseek-v4-pro' });
 
     expect(result).toEqual([
       { role: 'assistant', content: 'Hello', reasoning_content: 'some reasoning content' },
@@ -427,7 +419,7 @@ describe('convertOpenAIMessages', () => {
       },
     ] as any;
 
-    const result = await convertOpenAIMessages(messages);
+    const result = await convertOpenAIMessages(messages, { model: 'deepseek-v4-pro' });
 
     expect(result).toEqual([
       {
@@ -448,7 +440,7 @@ describe('convertOpenAIMessages', () => {
       },
     ] as any;
 
-    const result = await convertOpenAIMessages(messages);
+    const result = await convertOpenAIMessages(messages, { model: 'deepseek-v4-pro' });
 
     expect(result).toEqual([
       { role: 'assistant', content: 'Hello', reasoning_content: 'some reasoning content' },
@@ -469,6 +461,7 @@ describe('convertOpenAIMessages', () => {
             { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{}' } },
           ],
         },
+        { role: 'tool', content: 'Search result', tool_call_id: 'call_1' },
       ] as any;
 
       const result = await convertOpenAIMessages(messages, { model: 'deepseek-v4-flash' });
@@ -487,6 +480,7 @@ describe('convertOpenAIMessages', () => {
             { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{}' } },
           ],
         },
+        { role: 'tool', content: 'Search result', tool_call_id: 'call_1' },
       ] as any;
 
       const result = await convertOpenAIMessages(messages, { model: 'deepseek-v4-pro' });
@@ -544,7 +538,8 @@ describe('convertOpenAIMessages', () => {
       const result = await convertOpenAIMessages(messages, { model: 'deepseek-v4-flash' });
 
       expect((result[0] as any).reasoning_content).toBeUndefined();
-      expect((result[1] as any).reasoning_content).toBeUndefined();
+      expect(result[1].role).toBe('assistant');
+      expect(result[1].content).toContain('Historical tool output');
     });
 
     it('should preserve existing reasoning_content over reasoning.content', async () => {
@@ -597,11 +592,11 @@ describe('convertOpenAIResponseInputs', () => {
       },
     ];
 
-    const result = await convertOpenAIResponseInputs(messages);
+    const result = await convertOpenAIResponseInputs(messages, { strictToolPairing: false });
 
     expect(result).toEqual([
       {
-        arguments: 'test_function',
+        arguments: '{"key": "value"}',
         call_id: 'call_123',
         name: 'test_function',
         type: 'function_call',
@@ -618,7 +613,7 @@ describe('convertOpenAIResponseInputs', () => {
       },
     ];
 
-    const result = await convertOpenAIResponseInputs(messages);
+    const result = await convertOpenAIResponseInputs(messages, { strictToolPairing: false });
 
     expect(result).toEqual([
       {
@@ -677,20 +672,9 @@ describe('convertOpenAIResponseInputs', () => {
       },
     ];
 
-    const result = await convertOpenAIResponseInputs(messages);
-
-    expect(result).toEqual([
-      {
-        role: 'user',
-        content: [
-          { type: 'input_text', text: 'Here is a video' },
-          {
-            type: 'input_video',
-            video_url: 'data:video/mp4;base64,test123',
-          },
-        ],
-      },
-    ]);
+    await expect(convertOpenAIResponseInputs(messages)).rejects.toThrow(
+      'does not support video input',
+    );
   });
 
   it('应该正确转换包含图片和视频的混合消息', async () => {
@@ -715,24 +699,9 @@ describe('convertOpenAIResponseInputs', () => {
       },
     ];
 
-    const result = await convertOpenAIResponseInputs(messages);
-
-    expect(result).toEqual([
-      {
-        role: 'user',
-        content: [
-          { type: 'input_text', text: 'Here is an image and a video' },
-          {
-            type: 'input_image',
-            image_url: 'data:image/jpeg;base64,test123',
-          },
-          {
-            type: 'input_video',
-            video_url: 'data:video/mp4;base64,test456',
-          },
-        ],
-      },
-    ]);
+    await expect(convertOpenAIResponseInputs(messages)).rejects.toThrow(
+      'does not support video input',
+    );
   });
 
   it('应该正确处理带有无效 video_url 的消息', async () => {
@@ -751,14 +720,9 @@ describe('convertOpenAIResponseInputs', () => {
       },
     ];
 
-    const result = await convertOpenAIResponseInputs(messages);
-
-    expect(result).toEqual([
-      {
-        role: 'user',
-        content: [{ type: 'input_text', text: 'Here is a video' }],
-      },
-    ]);
+    await expect(convertOpenAIResponseInputs(messages)).rejects.toThrow(
+      'does not support video input',
+    );
   });
 
   it('应该正确处理混合类型的消息序列', async () => {
@@ -790,7 +754,7 @@ describe('convertOpenAIResponseInputs', () => {
     expect(result).toEqual([
       { role: 'user', content: 'I need help with a function' },
       {
-        arguments: 'get_data',
+        arguments: '{}',
         call_id: 'call_456',
         name: 'get_data',
         type: 'function_call',
@@ -885,7 +849,7 @@ describe('convertOpenAIResponseInputs', () => {
     ]);
   });
 
-  it('should extract reasoning.content into a separate reasoning item', async () => {
+  it('should omit foreign reasoning rather than fabricate a Responses reasoning item', async () => {
     const messages: OpenAIChatMessage[] = [
       { content: 'system prompts', role: 'system' },
       { content: '你好', role: 'user' },
@@ -902,7 +866,6 @@ describe('convertOpenAIResponseInputs', () => {
     expect(result).toEqual([
       { content: 'system prompts', role: 'developer' },
       { content: '你好', role: 'user' },
-      { summary: [{ text: 'reasoning content', type: 'summary_text' }], type: 'reasoning' },
       { content: 'hello', role: 'assistant' },
       { content: '杭州天气如何', role: 'user' },
     ]);
@@ -937,7 +900,6 @@ describe('convertOpenAIResponseInputs', () => {
         ],
         role: 'user',
       },
-      { summary: [{ text: 'analyzing the image', type: 'summary_text' }], type: 'reasoning' },
       { content: 'The image shows a green car.', role: 'assistant' },
       { content: '1 + 1 = ?', role: 'user' },
     ]);
@@ -980,17 +942,13 @@ describe('convertOpenAIResponseInputs', () => {
       { content: 'system prompts', role: 'developer' },
       { content: '你是谁', role: 'user' },
       {
-        summary: [{ text: 'The user is asking', type: 'summary_text' }],
-        type: 'reasoning',
-      },
-      {
         content: [{ text: '我是 Claude', type: 'output_text' }],
         role: 'assistant',
       },
     ]);
   });
 
-  it('should drop assistant image content for Responses API input', async () => {
+  it('should relocate assistant images into legal visual context for Responses API input', async () => {
     const messages: OpenAIChatMessage[] = [
       {
         content: [
@@ -1005,10 +963,18 @@ describe('convertOpenAIResponseInputs', () => {
 
     const result = await convertOpenAIResponseInputs(messages);
 
-    expect(result).toEqual([]);
+    expect(result).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: '[Images generated earlier by the assistant]' },
+          { type: 'input_image', image_url: 'data:image/jpeg;base64,abc123' },
+        ],
+      },
+    ]);
   });
 
-  it('should keep assistant text and drop unsupported assistant media for Responses API input', async () => {
+  it('should keep assistant text and relocate generated images for Responses API input', async () => {
     const messages: OpenAIChatMessage[] = [
       {
         content: [
@@ -1035,6 +1001,13 @@ describe('convertOpenAIResponseInputs', () => {
       {
         content: [{ text: 'Here is the generated image.', type: 'output_text' }],
         role: 'assistant',
+      },
+      {
+        role: 'user',
+        content: [
+          { type: 'input_text', text: '[Images generated earlier by the assistant]' },
+          { type: 'input_image', image_url: 'data:image/jpeg;base64,abc123' },
+        ],
       },
     ]);
   });
@@ -1063,22 +1036,9 @@ describe('convertOpenAIResponseInputs', () => {
       mimeType: 'video/mp4',
     });
 
-    const result = await convertOpenAIResponseInputs(messages, { forceVideoBase64: true });
-
-    expect(result).toEqual([
-      {
-        role: 'user',
-        content: [
-          { type: 'input_text', text: 'Here is a video' },
-          {
-            type: 'input_video',
-            video_url: 'data:video/mp4;base64,forcedBase64',
-          },
-        ],
-      },
-    ]);
-
-    expect(videoUrlToBase64).toHaveBeenCalledWith('https://example.com/video.mp4');
+    await expect(convertOpenAIResponseInputs(messages)).rejects.toThrow(
+      'does not support video input',
+    );
   });
 
   it('should pass forceImageBase64 to convertMessageContent in image_url branch', async () => {

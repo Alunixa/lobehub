@@ -26,7 +26,12 @@ export const normalizeToolJsonSchema = (schema: any): any => {
   // A boolean schema (`true` = accept anything, `false` = accept nothing) is
   // valid JSON Schema but rejected by function-schema validators that expect an
   // object. Collapse it to the permissive empty object schema.
-  if (typeof schema === 'boolean') return {};
+  if (schema === false) {
+    throw new TypeError(
+      'A false tool schema cannot accept any input; configure a satisfiable parameter schema.',
+    );
+  }
+  if (schema === true) return {};
   if (!schema || typeof schema !== 'object') return schema;
   if (Array.isArray(schema)) return schema.map((item) => normalizeToolJsonSchema(item));
 
@@ -93,13 +98,16 @@ export const normalizeToolsParameters = <T extends OpenAI.ChatCompletionTool[] |
   if (!tools) return tools;
 
   return tools.map((tool) => {
-    if (tool.type !== 'function' || !tool.function?.parameters) return tool;
+    if (tool.type !== 'function' || tool.function?.parameters === undefined) return tool;
 
     return {
       ...tool,
       function: {
         ...tool.function,
-        parameters: normalizeToolJsonSchema(tool.function.parameters),
+        parameters:
+          tool.function.parameters === null
+            ? { properties: {}, type: 'object' }
+            : normalizeToolJsonSchema(tool.function.parameters),
       },
     };
   }) as T;

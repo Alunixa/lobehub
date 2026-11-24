@@ -85,7 +85,7 @@ const BaseAzureOpenAI = createOpenAICompatibleRuntime({
       } = payload;
       const requestModel = deploymentName ?? model;
 
-      if (isResponsesAPIModel(model) || enabledSearch) {
+      if (payload.apiMode !== 'chatCompletion' && (isResponsesAPIModel(model) || enabledSearch)) {
         return {
           ...rest,
           apiMode: 'responses',

@@ -126,11 +126,16 @@ export const transformResponseAPIToStream = (data: OpenAI.Responses.Response) =>
         });
       }
 
-      // Always send response.completed event
+      // Preserve the upstream terminal state: a truncated answer is not a completion.
       controller.enqueue({
         response: data,
         sequence_number: 999,
-        type: 'response.completed',
+        type:
+          data.status === 'incomplete'
+            ? 'response.incomplete'
+            : data.status === 'failed' || data.status === 'cancelled'
+              ? 'response.failed'
+              : 'response.completed',
       } as OpenAI.Responses.ResponseStreamEvent);
 
       controller.close();

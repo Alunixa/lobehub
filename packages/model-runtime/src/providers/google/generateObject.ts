@@ -1,5 +1,5 @@
 import type { GenerateContentConfig, GoogleGenAI } from '@google/genai';
-import { FunctionCallingConfigMode, Type as SchemaType } from '@google/genai';
+import { FunctionCallingConfigMode } from '@google/genai';
 import Debug from 'debug';
 import type { Pricing } from 'model-bank';
 
@@ -29,91 +29,9 @@ function getThreshold(model: string): HarmBlockThreshold {
   return HarmBlockThreshold.BLOCK_NONE;
 }
 
-const convertType = (type: string): SchemaType => {
-  switch (type) {
-    case 'string': {
-      return SchemaType.STRING;
-    }
-    case 'number': {
-      return SchemaType.NUMBER;
-    }
-    case 'integer': {
-      return SchemaType.INTEGER;
-    }
-    case 'boolean': {
-      return SchemaType.BOOLEAN;
-    }
-    case 'array': {
-      return SchemaType.ARRAY;
-    }
-    case 'object': {
-      return SchemaType.OBJECT;
-    }
-    default: {
-      return SchemaType.STRING;
-    }
-  }
-};
-
-/**
- * Convert OpenAI JSON schema to Google Gemini schema format
- */
-export const convertOpenAISchemaToGoogleSchema = (openAISchema: GenerateObjectSchema): any => {
-  // Check whether a schema type is (or includes) STRING / OBJECT.
-// Handles both `type: 'string'` and nullable `type: ['string', 'null']`.
-const isStringType = (t: unknown): boolean =>
-  typeof t === 'string' ? t === 'string' : Array.isArray(t) && t.includes('string');
-const isObjectType = (t: unknown): boolean =>
-  typeof t === 'string' ? t === 'object' : Array.isArray(t) && t.includes('object');
-
-const convertSchema = (schema: any): any => {
-    if (!schema) return schema;
-
-    // convertType handles single string types; for array types (nullable)
-    // default to STRING which is safe for Gemini Schema proto.
-    const typeArg: string = Array.isArray(schema.type) ? 'string' : schema.type;
-    const converted: any = {
-      type: convertType(typeArg),
-    };
-
-    if (schema.description) {
-      converted.description = schema.description;
-    }
-
-    // Only include enum if type is STRING and enum is non-empty.
-    // Gemini proto: enum is only allowed for STRING type.
-    // @see https://linear.app/lobehub/issue/
-    if (schema.enum && schema.enum.length > 0 && isStringType(schema.type)) {
-      converted.enum = schema.enum;
-    }
-
-    if (schema.properties) {
-      converted.properties = {};
-      for (const [key, value] of Object.entries(schema.properties)) {
-        converted.properties[key] = convertSchema(value);
-      }
-    }
-
-    if (schema.items) {
-      converted.items = convertSchema(schema.items);
-    }
-
-    // Only include required if type is OBJECT and required is non-empty.
-    // Gemini proto: required is only allowed for OBJECT type.
-    // @see https://linear.app/lobehub/issue/
-    if (schema.required && schema.required.length > 0 && isObjectType(schema.type)) {
-      converted.required = schema.required;
-    }
-
-    if (schema.propertyOrdering) {
-      converted.propertyOrdering = schema.propertyOrdering;
-    }
-
-    return converted;
-  };
-
-  return convertSchema(openAISchema.schema);
-};
+/** Preserve standard JSON Schema; responseJsonSchema avoids lossy proto conversion. */
+export const convertOpenAISchemaToGoogleSchema = (schema: GenerateObjectSchema) =>
+  structuredClone(schema.schema);
 
 /**
  * Generate structured output using Google Gemini API
@@ -125,6 +43,7 @@ export const createGoogleGenerateObject = async (
     contents: any[];
     model: string;
     schema: GenerateObjectSchema;
+    system?: string;
   },
   options?: GenerateObjectOptions,
   pricing?: Pricing,
@@ -146,8 +65,9 @@ export const createGoogleGenerateObject = async (
 
   const config: GenerateContentConfig = {
     abortSignal: options?.signal,
+    systemInstruction: payload.system,
     responseMimeType: 'application/json',
-    responseSchema,
+    responseJsonSchema: responseSchema,
     // avoid wide sensitive words
     safetySettings: [
       {
@@ -211,6 +131,7 @@ export const createGoogleGenerateObjectWithTools = async (
     contents: any[];
     model: string;
     tools: ChatCompletionTool[];
+    system?: string;
   },
   options?: GenerateObjectOptions,
   pricing?: Pricing,
@@ -229,6 +150,7 @@ export const createGoogleGenerateObjectWithTools = async (
 
   const config: GenerateContentConfig = {
     abortSignal: options?.signal,
+    systemInstruction: payload.system,
     // avoid wide sensitive words
     safetySettings: [
       {

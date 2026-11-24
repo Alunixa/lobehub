@@ -1308,6 +1308,22 @@ When I am ___, I need ___
   'tab.advanced.humanMemory.enabled.off': 'Enable',
   'tab.advanced.humanMemory.enabled.on': 'Enabled',
   'tab.advanced.humanMemory.enabled.title': 'Human Memory',
+  'tab.advanced.humanMemory.saveFailed':
+    'Memory settings could not be saved. Your draft is preserved; try again.',
+  'tab.advanced.humanMemory.status.title': 'Memory activity',
+  'tab.advanced.humanMemory.status.desc':
+    'Recent turns stay verbatim; selected long-term facts are recalled when relevant. This does not preserve every historical detail.',
+  'tab.advanced.humanMemory.status.detail':
+    '{{mode}} · Last recall: {{count}} memories · Last extraction: {{time}}',
+  'tab.advanced.humanMemory.status.failed':
+    'The last extraction failed and can be retried. Check the memory model connection, then send another message.',
+  'tab.advanced.humanMemory.status.disabled': 'Disabled',
+  'tab.advanced.humanMemory.status.keyword': 'Keyword retrieval (no embedding connection)',
+  'tab.advanced.humanMemory.status.semantic': 'Semantic retrieval',
+  'tab.advanced.humanMemory.status.never': 'Not yet extracted',
+  'tab.advanced.humanMemory.status.loading': 'Loading memory activity…',
+  'tab.advanced.humanMemory.status.loadFailed':
+    'Memory activity could not be loaded. Refresh to retry.',
   'tab.advanced.humanMemory.refresh': 'Refresh',
   'tab.advanced.humanMemory.title': 'Human Memory',
   'tab.advanced.humanMemory.windowSize.desc':

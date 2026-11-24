@@ -1,4 +1,4 @@
-import { index, jsonb, pgTable, real, text } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, real, text } from 'drizzle-orm/pg-core';
 
 import { idGenerator } from '../utils/idGenerator';
 import { timestamptz } from './_helpers';
@@ -18,6 +18,11 @@ export const userCoreMemories = pgTable('user_core_memory', {
   personaTone: text('persona_tone'),
   userCore: text('user_core'),
   activeMatters: text('active_matters'),
+  lastExtractionAt: timestamptz('last_extraction_at'),
+  lastExtractionError: text('last_extraction_error'),
+  lastRecallAt: timestamptz('last_recall_at'),
+  lastRecallCount: integer('last_recall_count').notNull().default(0),
+  retrievalMode: text('retrieval_mode').$type<'keyword' | 'semantic'>(),
   updatedAt: timestamptz('updated_at').notNull().defaultNow(),
 });
 
@@ -38,6 +43,8 @@ export const userEpisodicMemories = pgTable(
     }),
     content: text('content').notNull(),
     embedding: jsonb('embedding').$type<number[]>(),
+    embeddingModel: text('embedding_model'),
+    searchTokens: text('search_tokens').array().notNull().default([]),
     importance: real('importance').notNull().default(0.5),
     strengthS: real('strength_s').notNull().default(7),
     createdAt: timestamptz('created_at').notNull().defaultNow(),
@@ -47,6 +54,7 @@ export const userEpisodicMemories = pgTable(
     index('user_episodic_memories_user_id_idx').on(table.userId),
     index('user_episodic_memories_user_recalled_idx').on(table.userId, table.lastRecalledAt),
     index('user_episodic_memories_source_topic_id_idx').on(table.sourceTopicId),
+    index('user_episodic_memories_search_tokens_idx').using('gin', table.searchTokens),
   ],
 );
 

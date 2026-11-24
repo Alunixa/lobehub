@@ -36,9 +36,9 @@ describe('cloudflareHelpers', () => {
         transformer['parseChunk'](chunk, controller);
 
         // Assert
-        expect(chunks.length).toBe(2);
-        expect(chunks[0]).toBe('event: text\n');
-        expect(chunks[1]).toBe('data: "response1"\n\n');
+        expect(chunks.length).toBe(1);
+
+        expect(chunks[0]).toBe('event: text\ndata: "response1"\n\n');
       });
 
       it('should not replace `data` in text', () => {
@@ -50,9 +50,9 @@ describe('cloudflareHelpers', () => {
         transformer['parseChunk'](chunk, controller);
 
         // Assert
-        expect(chunks.length).toBe(2);
-        expect(chunks[0]).toBe('event: text\n');
-        expect(chunks[1]).toBe('data: "data: a"\n\n');
+        expect(chunks.length).toBe(1);
+
+        expect(chunks[0]).toBe('event: text\ndata: "data: a"\n\n');
       });
     });
 
@@ -135,7 +135,7 @@ describe('cloudflareHelpers', () => {
         expect(transformer['buffer']).toBe('');
       });
 
-      it('should ignore standalone [DONE]', async () => {
+      it('should pass the terminal marker to the parser', async () => {
         // Arrange
         const chunk = textEncoder.encode('data: [DONE]\n\n');
 
@@ -143,12 +143,12 @@ describe('cloudflareHelpers', () => {
         await transformer.transform(chunk, undefined!);
 
         // Assert
-        expect(transformer['parseChunk']).not.toHaveBeenCalled();
-        expect(chunks.length).toBe(0);
+        expect(transformer['parseChunk']).toHaveBeenCalledOnce();
+        expect(chunks).toEqual(['data: [DONE]']);
         expect(transformer['buffer']).toBe('');
       });
 
-      it('should ignore [DONE] in chunk', async () => {
+      it('should preserve the terminal frame after the last text frame', async () => {
         // Arrange
         const chunk = textEncoder.encode(
           'data: {"key": "value", "response": "response1"}\n\ndata: [DONE]\n\n',
@@ -158,8 +158,9 @@ describe('cloudflareHelpers', () => {
         await transformer.transform(chunk, undefined!);
 
         // Assert
-        expect(chunks.length).toBe(1);
+        expect(chunks.length).toBe(2);
         expect(chunks[0]).toBe('data: {"key": "value", "response": "response1"}');
+        expect(chunks[1]).toBe('data: [DONE]');
         expect(transformer['buffer']).toBe('');
       });
     });

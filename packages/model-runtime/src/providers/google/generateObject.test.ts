@@ -1,5 +1,4 @@
 // @vitest-environment node
-import { Type as SchemaType } from '@google/genai';
 import { describe, expect, it, vi } from 'vitest';
 
 import { buildGoogleTool, sanitizeGeminiSchema } from '../../core/contextBuilders/google';
@@ -27,15 +26,8 @@ describe('Google generateObject', () => {
 
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
-      expect(result).toEqual({
-        properties: {
-          age: { type: SchemaType.NUMBER },
-          count: { type: SchemaType.INTEGER },
-          isActive: { type: SchemaType.BOOLEAN },
-          name: { type: SchemaType.STRING },
-        },
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
     it('should convert array schemas correctly', () => {
@@ -64,25 +56,8 @@ describe('Google generateObject', () => {
 
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
-      expect(result).toEqual({
-        properties: {
-          recipes: {
-            items: {
-              properties: {
-                ingredients: {
-                  items: { type: SchemaType.STRING },
-                  type: SchemaType.ARRAY,
-                },
-                recipeName: { type: SchemaType.STRING },
-              },
-              propertyOrdering: ['recipeName', 'ingredients'],
-              type: SchemaType.OBJECT,
-            },
-            type: SchemaType.ARRAY,
-          },
-        },
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
     it('should handle nested objects', () => {
@@ -111,25 +86,8 @@ describe('Google generateObject', () => {
 
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
-      expect(result).toEqual({
-        properties: {
-          user: {
-            properties: {
-              profile: {
-                properties: {
-                  preferences: {
-                    items: { type: SchemaType.STRING },
-                    type: SchemaType.ARRAY,
-                  },
-                },
-                type: SchemaType.OBJECT,
-              },
-            },
-            type: SchemaType.OBJECT,
-          },
-        },
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
     it('should preserve additional properties like description, enum, required', () => {
@@ -151,21 +109,11 @@ describe('Google generateObject', () => {
 
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
-      expect(result).toEqual({
-        description: 'A person object',
-        properties: {
-          status: {
-            description: 'The status of the person',
-            enum: ['active', 'inactive'],
-            type: SchemaType.STRING,
-          },
-        },
-        required: ['status'],
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
-    it('should handle unknown types by defaulting to STRING', () => {
+    it('should preserve schema types for upstream validation', () => {
       const openAISchema = {
         name: 'test',
         schema: {
@@ -175,13 +123,12 @@ describe('Google generateObject', () => {
 
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
-      expect(result).toEqual({
-        type: SchemaType.STRING,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
     // enum should only be copied for STRING type properties
-    it('should strip enum from non-STRING types', () => {
+    it('should preserve numeric and boolean JSON Schema enums', () => {
       const openAISchema = {
         name: 'test',
         schema: {
@@ -197,18 +144,12 @@ describe('Google generateObject', () => {
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
       // enum should be stripped from number and boolean types
-      expect(result).toEqual({
-        properties: {
-          priority: { type: SchemaType.NUMBER },
-          status: { enum: ['active', 'inactive'], type: SchemaType.STRING },
-          visible: { type: SchemaType.BOOLEAN },
-        },
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
     // enum with empty array should be stripped even for STRING type
-    it('should strip empty enum arrays', () => {
+    it('should preserve an explicitly empty JSON Schema enum', () => {
       const openAISchema = {
         name: 'test',
         schema: {
@@ -221,16 +162,12 @@ describe('Google generateObject', () => {
 
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
-      expect(result).toEqual({
-        properties: {
-          status: { type: SchemaType.STRING },
-        },
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
 
     // required should only be copied for OBJECT types
-    it('should strip required from non-OBJECT types', () => {
+    it('should preserve required constraints in nested objects', () => {
       const openAISchema = {
         name: 'test',
         schema: {
@@ -249,19 +186,8 @@ describe('Google generateObject', () => {
       const result = convertOpenAISchemaToGoogleSchema(openAISchema);
 
       // required should be preserved for OBJECT types (both root and nested)
-      expect(result).toEqual({
-        properties: {
-          nested: {
-            properties: {
-              name: { type: SchemaType.STRING },
-            },
-            required: ['name'],
-            type: SchemaType.OBJECT,
-          },
-        },
-        required: ['nested'],
-        type: SchemaType.OBJECT,
-      });
+      expect(result).toEqual(openAISchema.schema);
+      expect(result).not.toBe(openAISchema.schema);
     });
   });
 
@@ -562,12 +488,12 @@ describe('Google generateObject', () => {
       expect(mockClient.models.generateContent).toHaveBeenCalledWith({
         config: expect.objectContaining({
           responseMimeType: 'application/json',
-          responseSchema: expect.objectContaining({
+          responseJsonSchema: expect.objectContaining({
             properties: expect.objectContaining({
-              age: { type: SchemaType.NUMBER },
-              name: { type: SchemaType.STRING },
+              age: { type: 'number' },
+              name: { type: 'string' },
             }),
-            type: SchemaType.OBJECT,
+            type: 'object',
           }),
           safetySettings: expect.any(Array),
         }),
@@ -611,11 +537,11 @@ describe('Google generateObject', () => {
         config: expect.objectContaining({
           abortSignal: options.signal,
           responseMimeType: 'application/json',
-          responseSchema: expect.objectContaining({
+          responseJsonSchema: expect.objectContaining({
             properties: expect.objectContaining({
-              status: { type: SchemaType.STRING },
+              status: { type: 'string' },
             }),
-            type: SchemaType.OBJECT,
+            type: 'object',
           }),
         }),
         contents,
@@ -1295,7 +1221,7 @@ describe('Google generateObject', () => {
 
       const result = await createGoogleGenerateObjectWithTools(mockClient as any, payload);
 
-      // Should use dummy property for empty parameters
+      // Keep the declared zero-argument contract.
       expect(mockClient.models.generateContent).toHaveBeenCalledWith({
         config: expect.objectContaining({
           tools: [
@@ -1303,7 +1229,7 @@ describe('Google generateObject', () => {
               functionDeclarations: [
                 expect.objectContaining({
                   parametersJsonSchema: expect.objectContaining({
-                    properties: { dummy: { type: 'string' } },
+                    properties: {},
                   }),
                 }),
               ],
@@ -1318,7 +1244,7 @@ describe('Google generateObject', () => {
     });
 
     // buildGoogleTool should sanitize schema to strip enum from non-STRING types
-    it('should sanitize enum from non-STRING types in tool parameters', () => {
+    it('should preserve numeric enums in JSON Schema tool parameters', () => {
       const tool: any = {
         function: {
           description: 'Update status',
@@ -1340,20 +1266,13 @@ describe('Google generateObject', () => {
 
       const result = buildGoogleTool(tool);
 
-      expect(result.parametersJsonSchema).toEqual({
-        properties: {
-          priority: { type: 'integer' },
-          status: { enum: ['active', 'inactive'], type: 'string' },
-        },
-        required: ['status'],
-        type: 'object',
-      });
+      expect(result.parametersJsonSchema).toEqual(tool.function.parameters);
 
       warnSpy.mockRestore();
     });
 
     // buildGoogleTool should sanitize nested tool parameters
-    it('should sanitize nested enum/required in tool parameters', () => {
+    it('should preserve nested JSON Schema tool constraints', () => {
       const tool: any = {
         function: {
           description: 'Complex operation',
@@ -1380,26 +1299,13 @@ describe('Google generateObject', () => {
 
       const result = buildGoogleTool(tool);
 
-      expect(result.parametersJsonSchema).toEqual({
-        properties: {
-          config: {
-            properties: {
-              color: { enum: ['red'], type: 'string' },
-              level: { type: 'number' },
-            },
-            required: ['color'],
-            type: 'object',
-          },
-          role: { type: 'string' },
-        },
-        type: 'object',
-      });
+      expect(result.parametersJsonSchema).toEqual(tool.function.parameters);
 
       warnSpy.mockRestore();
     });
 
     // buildGoogleTool should keep string enum members but drop the null sentinel
-    it('should strip null members from enum on nullable STRING type in tool parameters', () => {
+    it('should preserve nullable enums in JSON Schema tool parameters', () => {
       const tool: any = {
         function: {
           description: 'A tool with nullable enum',
@@ -1422,15 +1328,7 @@ describe('Google generateObject', () => {
       const result = buildGoogleTool(tool);
 
       // nullable type is passed through, but the null enum member is filtered out
-      expect(result.parametersJsonSchema).toEqual({
-        properties: {
-          status: {
-            enum: ['active', 'inactive'],
-            type: ['string', 'null'],
-          },
-        },
-        type: 'object',
-      });
+      expect(result.parametersJsonSchema).toEqual(tool.function.parameters);
 
       warnSpy.mockRestore();
     });

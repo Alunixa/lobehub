@@ -9,6 +9,7 @@ import { imageUrlToBase64, resolveImageMimeTypeFromBase64 } from '@lobechat/util
 import type { ChatCompletionTool, OpenAIChatMessage, UserMessageContentPart } from '../../types';
 import { safeParseJSON } from '../../utils/safeParseJSON';
 import { isPublicExternalUrl, parseDataUri, validateExternalUrl } from '../../utils/uriParser';
+import { isSystemMessage, normalizeToolHistory } from './protocolMessages';
 
 const GOOGLE_SUPPORTED_IMAGE_TYPES = new Set([
   'image/png',
@@ -98,6 +99,7 @@ export const buildGooglePart = async (
     }
 
     case 'text': {
+      if (!content.text.trim()) return undefined;
       return {
         text: content.text,
         thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
@@ -224,51 +226,62 @@ export const buildGoogleMessage = async (
   const content = message.content as string | UserMessageContentPart[];
 
   // Handle assistant messages with tool_calls
-  if (!!message.tool_calls) {
+  if (message.tool_calls?.length) {
+    const textParts: Part[] =
+      typeof content === 'string'
+        ? content.trim()
+          ? [{ text: content }]
+          : []
+        : (await Promise.all((content ?? []).map((part) => buildGooglePart(part, options)))).filter(
+            (part): part is Part => !!part,
+          );
     return {
-      parts: message.tool_calls.map<Part>((tool) => {
-        const parsed = safeParseJSON(tool.function.arguments);
-        // Gemini's functionCall.args requires a plain object, same constraint
-        // as Anthropic's tool_use.input. See anthropic.ts for the full
-        // recovery rationale.
-        let args: Record<string, unknown> = {};
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          args = parsed as Record<string, unknown>;
-        } else if (
-          Array.isArray(parsed) &&
-          parsed.length > 0 &&
-          parsed[0] &&
-          typeof parsed[0] === 'object' &&
-          !Array.isArray(parsed[0])
-        ) {
-          args = parsed[0] as Record<string, unknown>;
-          console.warn(
-            '[google] functionCall.args recovered from array — parsed arguments was wrapped in []',
-            {
-              argumentsLength: tool.function.arguments?.length,
-              arrayLength: parsed.length,
-              name: tool.function.name,
-            },
-          );
-        } else if (parsed !== undefined) {
-          console.warn(
-            '[google] functionCall.args fallback to {} — parsed arguments is not a plain object',
-            {
-              argumentsLength: tool.function.arguments?.length,
-              name: tool.function.name,
-              parsedType: Array.isArray(parsed)
-                ? 'array'
-                : parsed === null
-                  ? 'null'
-                  : typeof parsed,
-            },
-          );
-        }
-        return {
-          functionCall: { args, name: tool.function.name },
-          thoughtSignature: tool.thoughtSignature,
-        };
-      }),
+      parts: [
+        ...textParts,
+        ...message.tool_calls.map<Part>((tool) => {
+          const parsed = safeParseJSON(tool.function.arguments);
+          // Gemini's functionCall.args requires a plain object, same constraint
+          // as Anthropic's tool_use.input. See anthropic.ts for the full
+          // recovery rationale.
+          let args: Record<string, unknown> = {};
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            args = parsed as Record<string, unknown>;
+          } else if (
+            Array.isArray(parsed) &&
+            parsed.length > 0 &&
+            parsed[0] &&
+            typeof parsed[0] === 'object' &&
+            !Array.isArray(parsed[0])
+          ) {
+            args = parsed[0] as Record<string, unknown>;
+            console.warn(
+              '[google] functionCall.args recovered from array — parsed arguments was wrapped in []',
+              {
+                argumentsLength: tool.function.arguments?.length,
+                arrayLength: parsed.length,
+                name: tool.function.name,
+              },
+            );
+          } else if (parsed !== undefined) {
+            console.warn(
+              '[google] functionCall.args fallback to {} — parsed arguments is not a plain object',
+              {
+                argumentsLength: tool.function.arguments?.length,
+                name: tool.function.name,
+                parsedType: Array.isArray(parsed)
+                  ? 'array'
+                  : parsed === null
+                    ? 'null'
+                    : typeof parsed,
+              },
+            );
+          }
+          return {
+            functionCall: { args, id: tool.id, name: tool.function.name },
+            thoughtSignature: tool.thoughtSignature,
+          };
+        }),
+      ],
       role: 'model',
     };
   }
@@ -281,6 +294,7 @@ export const buildGoogleMessage = async (
         parts: [
           {
             functionResponse: {
+              id: message.tool_call_id,
               name: functionName,
               response: { result: message.content },
             },
@@ -293,9 +307,13 @@ export const buildGoogleMessage = async (
 
   const getParts = async () => {
     if (typeof content === 'string')
-      return [{ text: content, thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }];
+      return content.trim()
+        ? [{ text: content, thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }]
+        : [];
 
-    const parts = await Promise.all(content.map(async (c) => await buildGooglePart(c, options)));
+    const parts = await Promise.all(
+      (content ?? []).map(async (c) => await buildGooglePart(c, options)),
+    );
     return parts.filter(Boolean) as Part[];
   };
 
@@ -312,6 +330,7 @@ export const buildGoogleMessages = async (
   messages: OpenAIChatMessage[],
   options?: { model?: string },
 ): Promise<Content[]> => {
+  messages = normalizeToolHistory(messages).filter((message) => !isSystemMessage(message));
   const toolCallNameMap = new Map<string, string>();
 
   // Build tool call id to name mapping
@@ -348,11 +367,35 @@ export const buildGoogleMessages = async (
     const lastIsFunctionResponse =
       last?.role === 'user' && last.parts?.every((p) => p.functionResponse);
 
-    if (isFunctionResponse && lastIsFunctionResponse) {
+    if (
+      (isFunctionResponse && lastIsFunctionResponse) ||
+      (last?.role === content.role && !isFunctionResponse && !lastIsFunctionResponse)
+    ) {
       last!.parts = [...(last!.parts || []), ...(content.parts || [])];
     } else {
       filteredContents.push(content);
     }
+  }
+
+  // Truncated assistant context is context data, not an invented user instruction.
+  // Gemini requires a user/response turn before a function-call turn.
+  if (filteredContents[0]?.role === 'model') {
+    const first = filteredContents[0];
+    if (first.parts?.some((part) => part.functionCall)) {
+      const result = filteredContents[1];
+      first.parts = first.parts.filter((part) => !part.functionCall);
+      if (result?.parts?.some((part) => part.functionResponse)) {
+        first.parts.push({
+          text: `[Historical tool outputs]\n${JSON.stringify(result.parts.map((part) => part.functionResponse).filter(Boolean))}`,
+        });
+        filteredContents.splice(1, 1);
+      }
+    }
+    first.role = 'user';
+    first.parts = [
+      { text: '[Retained context from earlier assistant turns]' },
+      ...(first.parts ?? []),
+    ];
   }
 
   // Add magic signature to all function calls that don't have thoughtSignature.
@@ -483,11 +526,7 @@ export const buildGoogleTool = (tool: ChatCompletionTool): FunctionDeclaration =
   const parameters = functionDeclaration.parameters;
 
   // refs: https://github.com/lobehub/lobe-chat/pull/5002
-  const hasProperties = parameters?.properties && Object.keys(parameters.properties).length > 0;
-
-  const jsonSchema = hasProperties
-    ? sanitizeGeminiSchema(parameters)
-    : { type: 'object', properties: { dummy: { type: 'string' } } };
+  const jsonSchema = parameters ? structuredClone(parameters) : { type: 'object', properties: {} };
 
   return {
     description: functionDeclaration.description,

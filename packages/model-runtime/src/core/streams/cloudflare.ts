@@ -1,36 +1,91 @@
+import { toRecord } from '@lobechat/utils/object';
+
 import { desensitizeUrl } from '../../utils/desensitizeUrl';
 
 class CloudflareStreamTransformer {
   private textDecoder = new TextDecoder();
-  private buffer: string = '';
+  private buffer = '';
+  private streaming = false;
+  private finished = false;
 
-  private parseChunk(chunk: string, controller: TransformStreamDefaultController) {
-    const dataPrefix = /^data: /;
-    const json = chunk.replace(dataPrefix, '');
-    const parsedChunk = JSON.parse(json);
-    const res = parsedChunk?.response;
-    if (!res) return; // TODO: Add test; Handle tool_call parameter.
-    controller.enqueue(`event: text\n`);
-    controller.enqueue(`data: ${JSON.stringify(parsedChunk.response)}\n\n`);
+  private emit(controller: TransformStreamDefaultController, type: string, data: unknown) {
+    controller.enqueue(`event: ${type}\ndata: ${JSON.stringify(data)}\n\n`);
   }
 
-  public async transform(chunk: Uint8Array, controller: TransformStreamDefaultController) {
-    let textChunk = this.textDecoder.decode(chunk);
-    if (this.buffer.trim() !== '') {
-      textChunk = this.buffer + textChunk;
-      this.buffer = '';
+  private finish(controller: TransformStreamDefaultController) {
+    if (this.finished) return;
+    this.finished = true;
+    this.emit(controller, 'stop', 'stop');
+    this.emit(controller, 'done', 'completed');
+  }
+
+  private parseChunk(chunk: string, controller: TransformStreamDefaultController) {
+    if (this.finished || !chunk.trim()) return;
+    const data = chunk.split(/\r?\n/).filter((line) => line.startsWith('data:'));
+    this.streaming ||= data.length > 0;
+    const json = data.length
+      ? data.map((line) => line.slice(5).trimStart()).join('\n')
+      : chunk.trim();
+    if (json === '[DONE]') {
+      this.finish(controller);
+      return;
     }
-    const splits = textChunk.split('\n\n');
-    for (let i = 0; i < splits.length - 1; i++) {
-      if (/\[DONE]/.test(splits[i].trim())) {
-        return;
-      }
-      this.parseChunk(splits[i], controller);
+    if (!data.length && /^(?:event:|:)/.test(json)) return;
+    const envelope = toRecord(JSON.parse(json));
+    const result = toRecord(envelope?.result) ?? envelope;
+    if (!result) throw new TypeError('Cloudflare returned an invalid response object.');
+    if (result.error || envelope?.success === false) {
+      this.finished = true;
+      this.emit(controller, 'error', {
+        type: 'ProviderBizError',
+        body: result.error ?? envelope?.errors,
+      });
+      return;
     }
-    const lastChunk = splits.at(-1)!;
-    if (lastChunk.trim() !== '') {
-      this.buffer += lastChunk; // does not need to be trimmed.
-    } // else drop.
+    if (typeof result.response === 'string' && result.response)
+      this.emit(controller, 'text', result.response);
+    if (Array.isArray(result.tool_calls) && result.tool_calls.length) {
+      this.emit(
+        controller,
+        'tool_calls',
+        result.tool_calls.map((value, index) => {
+          const call = toRecord(value) ?? {};
+          const fn = toRecord(call.function) ?? call;
+          return {
+            function: {
+              arguments:
+                typeof fn.arguments === 'string'
+                  ? fn.arguments
+                  : JSON.stringify(fn.arguments ?? {}),
+              name: fn.name,
+            },
+            id: call.id ?? `cloudflare_tool_${index}`,
+            index,
+            type: 'function',
+          };
+        }),
+      );
+    }
+  }
+
+  transform(chunk: Uint8Array, controller: TransformStreamDefaultController) {
+    this.buffer += this.textDecoder.decode(chunk, { stream: true });
+    const frames = this.buffer.split(/\r?\n\r?\n/);
+    this.buffer = frames.pop() ?? '';
+    for (const frame of frames) this.parseChunk(frame, controller);
+  }
+
+  flush(controller: TransformStreamDefaultController) {
+    this.buffer += this.textDecoder.decode();
+    if (this.buffer.trim()) this.parseChunk(this.buffer, controller);
+    if (this.finished) return;
+    if (!this.streaming) this.finish(controller);
+    else
+      this.emit(controller, 'error', {
+        type: 'StreamChunkError',
+        message:
+          'Cloudflare stream ended before its terminal event. The partial response has been preserved.',
+      });
   }
 }
 

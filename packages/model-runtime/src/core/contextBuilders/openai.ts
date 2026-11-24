@@ -1,4 +1,5 @@
 import { imageUrlToBase64, videoUrlToBase64 } from '@lobechat/utils';
+import { toRecord } from '@lobechat/utils/object';
 import { Buffer } from 'buffer.js';
 import type OpenAI from 'openai';
 import { toFile } from 'openai';
@@ -8,6 +9,7 @@ import type { ChatStreamPayload, OpenAIChatMessage, UserMessageContentPart } fro
 import { isDeepSeekThinkingEligibleModel } from '../../utils/modelParse';
 import { parseDataUri } from '../../utils/uriParser';
 import { isModelHostedMedia } from './modelHostedMedia';
+import { normalizeToolHistory, relocateAssistantImages } from './protocolMessages';
 
 export type ExtendedChatCompletionContentPart = {
   type: 'video_url';
@@ -17,6 +19,8 @@ export type ExtendedChatCompletionContentPart = {
 };
 
 type ConvertMessageContentOptions = {
+  allowReasoning?: boolean;
+  allowVideo?: boolean;
   forceImageBase64?: boolean;
   forceVideoBase64?: boolean;
   model?: string;
@@ -82,57 +86,97 @@ export const convertOpenAIMessages = async (
   messages: OpenAI.ChatCompletionMessageParam[],
   options?: ConvertMessageContentOptions,
 ) => {
-  return (await Promise.all(
-    messages.map(async (message) => {
-      const msg = message as any;
-
-      // Explicitly map only valid ChatCompletionMessageParam fields
-      // Exclude reasoning and reasoning_content fields as they should not be sent in requests
-      const result: any = {
-        content:
-          typeof message.content === 'string'
-            ? message.content
-            : await Promise.all(
-                (message.content || [])
-                  .filter((c) => !isInternalThinkingContentPart(c as OpenAICompatibleContentPart))
-                  .map((c) =>
-                    convertMessageContent(c as OpenAI.ChatCompletionContentPart, options),
-                  ),
-              ),
-        role: msg.role,
-      };
-
-      // Add optional fields if they exist
-      if (msg.name !== undefined) result.name = msg.name;
-      if (msg.tool_calls !== undefined) result.tool_calls = msg.tool_calls;
-      if (msg.tool_call_id !== undefined) result.tool_call_id = msg.tool_call_id;
-      if (msg.function_call !== undefined) result.function_call = msg.function_call;
-
-      // it's compatible for DeepSeek & Moonshot
-      if (msg.reasoning_content !== undefined) result.reasoning_content = msg.reasoning_content;
-      // MiniMax uses reasoning_details for historical thinking, so forward it unchanged
-      if (msg.reasoning_details !== undefined) result.reasoning_details = msg.reasoning_details;
-
-      // For DeepSeek-family models routed via any OpenAI-compatible runtime
-      // (including custom user providers that bypass the dedicated DeepSeek
-      // handlePayload), derive reasoning_content from the structured reasoning
-      // field on assistant messages and force a placeholder when the model is
-      // thinking-mode eligible.
-      if (msg.role === 'assistant' && isDeepSeekModel(options?.model)) {
-        if (result.reasoning_content === undefined && typeof msg.reasoning?.content === 'string') {
-          result.reasoning_content = msg.reasoning.content;
+  const output: OpenAI.ChatCompletionMessageParam[] = [];
+  let generatedImages: OpenAI.ChatCompletionContentPart[] = [];
+  const flushImages = () => {
+    if (!generatedImages.length) return;
+    output.push({
+      content: [
+        { text: '[Images generated earlier by the assistant]', type: 'text' },
+        ...generatedImages,
+      ],
+      role: 'user',
+    });
+    generatedImages = [];
+  };
+  const normalized = normalizeToolHistory(messages as OpenAIChatMessage[]);
+  for (const message of normalized) {
+    if (message.role !== 'tool') flushImages();
+    const msg = toRecord(message)!;
+    const result: Record<string, unknown> = { role: message.role };
+    if (typeof message.content === 'string') result.content = message.content;
+    else if (message.content == null) result.content = message.role === 'assistant' ? null : '';
+    else {
+      const parts: unknown[] = [];
+      for (const part of message.content) {
+        if (part.type === 'thinking') continue;
+        if (part.type === 'video_url' && !options?.allowVideo) {
+          throw new TypeError('This Chat Completions endpoint does not support video input.');
         }
-        if (
-          result.reasoning_content === undefined &&
-          isDeepSeekThinkingEligibleModel(options?.model)
-        ) {
-          result.reasoning_content = '';
+        if (part.type === 'audio_url') {
+          if (message.role !== 'user')
+            throw new TypeError('Audio inputs must use the user role for Chat Completions.');
+          const parsed = parseDataUri(part.audio_url.url);
+          const audio =
+            parsed.type === 'base64'
+              ? { base64: parsed.base64, mimeType: parsed.mimeType }
+              : await imageUrlToBase64(part.audio_url.url);
+          if (audio.mimeType && !/audio\/(?:wav|x-wav|mpeg|mp3)(?:;|$)/i.test(audio.mimeType))
+            throw new TypeError('Chat Completions audio input requires WAV or MP3 data.');
+          const format = audio.mimeType?.includes('wav') ? 'wav' : 'mp3';
+          if (!audio.base64) throw new TypeError('Audio attachment contains no data.');
+          parts.push({ input_audio: { data: audio.base64, format }, type: 'input_audio' });
+          continue;
         }
+        const converted = await convertMessageContent(
+          part as OpenAI.ChatCompletionContentPart,
+          options,
+        );
+        if (message.role === 'assistant' && part.type === 'image_url') {
+          generatedImages.push(converted as OpenAI.ChatCompletionContentPartImage);
+        } else if (message.role === 'assistant' && part.type !== 'text') {
+          throw new TypeError(
+            'Assistant history supports text only for this Chat Completions endpoint.',
+          );
+        } else if (message.role === 'tool' && part.type !== 'text') {
+          generatedImages.push(converted as OpenAI.ChatCompletionContentPartImage);
+        } else parts.push(converted);
       }
-
-      return result;
-    }),
-  )) as OpenAI.ChatCompletionMessageParam[];
+      result.content = parts.length ? parts : message.role === 'assistant' ? null : '';
+    }
+    if (typeof msg.name === 'string' && message.role !== 'tool') result.name = msg.name;
+    if (message.role === 'assistant' && message.tool_calls?.length) {
+      result.tool_calls = message.tool_calls.map((call) => ({
+        function: { arguments: call.function.arguments, name: call.function.name },
+        id: call.id,
+        type: 'function',
+      }));
+    }
+    if (message.role === 'tool') result.tool_call_id = message.tool_call_id;
+    if (msg.function_call != null) result.function_call = msg.function_call;
+    if (
+      message.role === 'assistant' &&
+      (options?.allowReasoning || isDeepSeekModel(options?.model))
+    ) {
+      if (typeof msg.reasoning_content === 'string')
+        result.reasoning_content = msg.reasoning_content;
+      if (msg.reasoning_details !== undefined) result.reasoning_details = msg.reasoning_details;
+      const reasoning = toRecord(msg.reasoning);
+      if (result.reasoning_content === undefined && typeof reasoning?.content === 'string') {
+        result.reasoning_content = reasoning.content;
+      }
+      if (
+        result.reasoning_content === undefined &&
+        isDeepSeekThinkingEligibleModel(options?.model)
+      ) {
+        result.reasoning_content = '';
+      }
+    }
+    if (result.content == null && !result.tool_calls && !result.function_call) continue;
+    output.push(result as unknown as OpenAI.ChatCompletionMessageParam);
+  }
+  flushImages();
+  return output;
 };
 
 /**
@@ -164,7 +208,9 @@ export const convertOpenAIResponseInputs = async (
   messages: OpenAIChatMessage[],
   options?: ConvertMessageContentOptions,
 ) => {
-  const strictToolPairing = options?.strictToolPairing === true;
+  const strictToolPairing = options?.strictToolPairing !== false;
+  if (strictToolPairing) messages = normalizeToolHistory(messages);
+  messages = relocateAssistantImages(messages);
   // OpenAI Responses API rejects inputs that keep a function_call without its matching
   // function_call_output. Example from production:
   // "No tool output found for function call call_w5odMFjtXEYBBVyBUAQNMOh5."
@@ -193,23 +239,23 @@ export const convertOpenAIResponseInputs = async (
     messages.map(async (message) => {
       const items: OpenAI.Responses.ResponseInputItem[] = [];
 
-      // if message has reasoning, add it as a separate reasoning item
-      if (message.reasoning?.content) {
-        items.push({
-          summary: [{ text: message.reasoning.content, type: 'summary_text' }],
-          type: 'reasoning',
-        } as OpenAI.Responses.ResponseReasoningItem);
-      }
-
       // if message is assistant messages with tool calls , transform it to function type item
       if (message.role === 'assistant' && message.tool_calls && message.tool_calls?.length > 0) {
         const toolCalls = strictToolPairing
           ? message.tool_calls.filter((tool) => !!tool.id && pairedToolOutputIds.has(tool.id))
           : message.tool_calls;
 
+        const text =
+          typeof message.content === 'string'
+            ? message.content
+            : (message.content ?? [])
+                .filter((part) => part.type === 'text')
+                .map((part) => (part.type === 'text' ? part.text : ''))
+                .join('\n');
+        if (text.trim()) items.push({ content: text, role: 'assistant' });
         toolCalls.forEach((tool) => {
           items.push({
-            arguments: strictToolPairing ? tool.function.arguments : tool.function.name,
+            arguments: tool.function.arguments,
             call_id: tool.id,
             name: tool.function.name,
             type: 'function_call',
@@ -228,7 +274,26 @@ export const convertOpenAIResponseInputs = async (
 
         items.push({
           call_id: message.tool_call_id,
-          output: message.content,
+          output:
+            typeof message.content === 'string'
+              ? message.content
+              : await Promise.all(
+                  (message.content ?? [])
+                    .filter((part) => part.type === 'text' || part.type === 'image_url')
+                    .map(async (part) =>
+                      part.type === 'text'
+                        ? { text: part.text, type: 'input_text' as const }
+                        : {
+                            image_url: (
+                              (await convertMessageContent(
+                                part as OpenAI.ChatCompletionContentPartImage,
+                                options,
+                              )) as OpenAI.ChatCompletionContentPartImage
+                            ).image_url.url,
+                            type: 'input_image' as const,
+                          },
+                    ),
+                ),
           type: 'function_call_output',
         } as OpenAI.Responses.ResponseFunctionToolCallOutputItem);
 
@@ -236,7 +301,23 @@ export const convertOpenAIResponseInputs = async (
       }
 
       if (message.role === 'system') {
-        items.push({ ...message, role: 'developer' } as OpenAI.Responses.ResponseInputItem);
+        const content =
+          typeof message.content === 'string'
+            ? message.content
+            : (message.content ?? [])
+                .filter((part) => part.type === 'text')
+                .map((part) => (part.type === 'text' ? part.text : ''))
+                .join('\n');
+        if (content.trim()) items.push({ content, role: 'developer' });
+        return items;
+      }
+      if (message.role === 'function') {
+        items.push({
+          content: `[Historical function result: ${message.name ?? 'function'}]\n${
+            typeof message.content === 'string' ? message.content : JSON.stringify(message.content)
+          }`,
+          role: 'assistant',
+        });
         return items;
       }
 
@@ -268,15 +349,10 @@ export const convertOpenAIResponseInputs = async (
                 }
 
                 if (c.type === 'video_url') {
-                  const video = await convertMessageContent(c, options);
-                  if (!('video_url' in video) || !video.video_url?.url) {
-                    return undefined;
-                  }
-                  return {
-                    video_url: video.video_url.url,
-                    type: 'input_video',
-                  };
+                  throw new TypeError('This Responses endpoint does not support video input.');
                 }
+                if (c.type === 'audio_url')
+                  throw new TypeError('This Responses endpoint does not support audio input.');
                 const image = await convertMessageContent(
                   c as OpenAI.ChatCompletionContentPart,
                   options,
@@ -299,13 +375,13 @@ export const convertOpenAIResponseInputs = async (
           ? processedContent
           : processedContent.filter((m) => m !== undefined);
 
-      if (message.role === 'assistant' && Array.isArray(content) && content.length === 0) {
+      if (Array.isArray(content) && content.length === 0) {
         return items;
       }
 
       const item = {
-        ...message,
         content,
+        role: message.role,
       } as OpenAI.Responses.ResponseInputItem;
 
       // remove reasoning field from the message item
@@ -320,8 +396,8 @@ export const convertOpenAIResponseInputs = async (
 };
 
 export const pruneReasoningPayload = (payload: ChatStreamPayload) => {
-  const shouldStream = !disableStreamModels.has(payload.model);
-  const { stream_options, logprobs, top_logprobs, ...cleanedPayload } = payload as any;
+  const shouldStream = payload.stream !== false && !disableStreamModels.has(payload.model);
+  const { stream_options, logprobs, top_logprobs, max_tokens, ...cleanedPayload } = payload as any;
 
   // When reasoning_effort is 'none', allow user-defined temperature/top_p
   const effort = payload.reasoning?.effort || payload.reasoning_effort;
@@ -329,7 +405,12 @@ export const pruneReasoningPayload = (payload: ChatStreamPayload) => {
 
   return {
     ...cleanedPayload,
-    frequency_penalty: 0,
+    frequency_penalty: undefined,
+    ...(max_tokens !== undefined
+      ? payload.apiMode === 'responses'
+        ? { max_tokens }
+        : { max_completion_tokens: max_tokens }
+      : {}),
     messages: payload.messages.map((message: OpenAIChatMessage) => ({
       ...message,
       role:
@@ -339,7 +420,7 @@ export const pruneReasoningPayload = (payload: ChatStreamPayload) => {
             : 'developer'
           : message.role,
     })),
-    presence_penalty: 0,
+    presence_penalty: undefined,
     stream: shouldStream,
     // Only include stream_options when stream is enabled
     ...(shouldStream && stream_options && { stream_options }),

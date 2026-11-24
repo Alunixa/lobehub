@@ -53,6 +53,40 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - run: pnpm install
+      - name: Protocol wire contracts and terminal response semantics
+        working-directory: packages/model-runtime
+        run: |
+          node ../../node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/core/protocolCompliance.wire.test.ts \
+            src/core/contextBuilders/openai.test.ts \
+            src/core/contextBuilders/google.test.ts \
+            src/core/contextBuilders/anthropic.test.ts \
+            src/core/contextBuilders/normalizeToolSchema.test.ts \
+            src/core/openaiCompatibleFactory/index.test.ts \
+            src/core/openaiCompatibleFactory/generateObject.test.ts \
+            src/core/openaiCompatibleFactory/nonStreamToStream.test.ts \
+            src/core/anthropicCompatibleFactory/index.test.ts \
+            src/core/streams/cloudflare.test.ts \
+            src/core/streams/openai/responsesStream.test.ts \
+            src/providers/google/generateObject.test.ts \
+            src/providers/google/index.test.ts \
+            src/providers/anthropic/index.test.ts \
+            src/providers/bedrock/index.test.ts \
+            src/providers/azureai/index.test.ts \
+            src/providers/azureOpenai/index.test.ts \
+            src/providers/cloudflare/index.test.ts \
+            src/providers/ollama/index.test.ts \
+            src/providers/deepseek/index.test.ts \
+            src/providers/qwen/index.test.ts \
+            src/providers/minimax/index.test.ts \
+            src/providers/moonshot/index.test.ts \
+            src/providers/zhipu/index.test.ts
+      - name: Human memory retrieval, correction, isolation and resumable backfill
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            apps/server/src/services/humanMemory/logic.test.ts \
+            apps/server/src/services/humanMemory/index.test.ts \
+            'src/app/(backend)/webapi/chat/[provider]/route.test.ts'
       - name: Community catalogue access and resource lifecycle regressions
         run: |
           node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 --testTimeout=15000 \

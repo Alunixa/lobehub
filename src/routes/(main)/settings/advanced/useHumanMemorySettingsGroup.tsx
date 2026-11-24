@@ -7,11 +7,12 @@ import {
   confirmModal,
   createModal,
   Switch,
+  Text,
   toast,
   useModalContext,
 } from '@lobehub/ui/base-ui';
 import isEqual from 'fast-deep-equal';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { usePermission } from '@/hooks/usePermission';
@@ -52,6 +53,8 @@ const CoreMemoryEditor = ({
     try {
       await onSave(value);
       close();
+    } catch {
+      toast.error(t('tab.advanced.humanMemory.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -95,40 +98,25 @@ export const useHumanMemorySettingsGroup = (): FormGroupItemType => {
     state.setSettings,
     state.isUserStateInit,
   ]);
-  const [coreMemory, setCoreMemory] = useState<CoreMemoryDraft>(EMPTY_CORE_MEMORY);
-  const [episodicCount, setEpisodicCount] = useState(0);
   const [loading, setLoading] = useState(false);
-
-  const refreshMemory = useCallback(async () => {
-    if (!isUserStateInit || !memory.humanMemoryEnabled) return;
-
-    try {
-      const [core, count] = await Promise.all([
-        userMemoryService.getHumanCoreMemory(),
-        userMemoryService.getHumanEpisodicMemoryCount(),
-      ]);
-      setCoreMemory({
-        activeMatters: core?.activeMatters ?? null,
-        personaTone: core?.personaTone ?? null,
-        userCore: core?.userCore ?? null,
-      });
-      setEpisodicCount(count.count);
-    } catch (error) {
-      console.error('Failed to load human memory settings:', error);
-    }
-  }, [isUserStateInit, memory.humanMemoryEnabled]);
-
-  useEffect(() => {
-    void refreshMemory();
-  }, [refreshMemory]);
+  const useFetchHumanMemoryStatus = useUserStore((state) => state.useFetchHumanMemoryStatus);
+  const {
+    data,
+    error,
+    isLoading,
+    mutate: refreshMemory,
+  } = useFetchHumanMemoryStatus(isUserStateInit && memory.humanMemoryEnabled === true);
+  const coreMemory = data?.core ?? EMPTY_CORE_MEMORY;
+  const episodicCount = data?.count ?? 0;
+  const status = data?.core;
 
   const handleSaveCoreMemory = useCallback(
     async (value: CoreMemoryDraft) => {
       await userMemoryService.updateHumanCoreMemory(value);
-      setCoreMemory(value);
+      await refreshMemory();
       toast.success(t('tab.advanced.humanMemory.editor.saveSuccess'));
     },
-    [t],
+    [refreshMemory, t],
   );
 
   const handleOpenEditor = useCallback(() => {
@@ -149,12 +137,12 @@ export const useHumanMemorySettingsGroup = (): FormGroupItemType => {
       okText: t('tab.advanced.humanMemory.clear.action'),
       onOk: async () => {
         await userMemoryService.clearHumanEpisodicMemories();
-        setEpisodicCount(0);
+        await refreshMemory();
         toast.success(t('tab.advanced.humanMemory.clear.success'));
       },
       title: t('tab.advanced.humanMemory.clear.title'),
     });
-  }, [t]);
+  }, [refreshMemory, t]);
 
   const updateMemory = useCallback(
     async (value: Partial<typeof memory>) => {
@@ -163,19 +151,52 @@ export const useHumanMemorySettingsGroup = (): FormGroupItemType => {
       try {
         await setSettings({ memory: value });
         if (value.humanMemoryEnabled) await refreshMemory();
+      } catch {
+        toast.error(t('tab.advanced.humanMemory.saveFailed'));
       } finally {
         setLoading(false);
       }
     },
-    [canManageMemory, refreshMemory, setSettings],
+    [canManageMemory, refreshMemory, setSettings, t],
   );
 
   return {
     children: [
       {
         children: (
+          <Text type={error || status?.lastExtractionError ? 'warning' : 'secondary'}>
+            {error
+              ? t('tab.advanced.humanMemory.status.loadFailed')
+              : isLoading
+                ? t('tab.advanced.humanMemory.status.loading')
+                : !memory.humanMemoryEnabled
+                  ? t('tab.advanced.humanMemory.status.disabled')
+                  : t(
+                      status?.lastExtractionError
+                        ? 'tab.advanced.humanMemory.status.failed'
+                        : 'tab.advanced.humanMemory.status.detail',
+                      {
+                        mode: t(
+                          status?.retrievalMode === 'semantic'
+                            ? 'tab.advanced.humanMemory.status.semantic'
+                            : 'tab.advanced.humanMemory.status.keyword',
+                        ),
+                        count: status?.lastRecallCount ?? 0,
+                        time: status?.lastExtractionAt
+                          ? new Date(status.lastExtractionAt).toLocaleString()
+                          : t('tab.advanced.humanMemory.status.never'),
+                      },
+                    )}
+          </Text>
+        ),
+        desc: t('tab.advanced.humanMemory.status.desc'),
+        label: t('tab.advanced.humanMemory.status.title'),
+        minWidth: undefined,
+      },
+      {
+        children: (
           <Button
-            disabled={!canManageMemory || !memory.humanMemoryEnabled}
+            disabled={!canManageMemory || !memory.humanMemoryEnabled || isLoading || !!error}
             onClick={handleOpenEditor}
           >
             {t('tab.advanced.humanMemory.editor.open')}
@@ -189,7 +210,13 @@ export const useHumanMemorySettingsGroup = (): FormGroupItemType => {
         children: (
           <Button
             danger
-            disabled={!canManageMemory || !memory.humanMemoryEnabled || episodicCount === 0}
+            disabled={
+              !canManageMemory ||
+              !memory.humanMemoryEnabled ||
+              episodicCount === 0 ||
+              isLoading ||
+              !!error
+            }
             onClick={handleClearEpisodic}
           >
             {t('tab.advanced.humanMemory.clear.button', { count: episodicCount })}
@@ -203,7 +230,7 @@ export const useHumanMemorySettingsGroup = (): FormGroupItemType => {
         children: (
           <Button
             disabled={!canManageMemory || !memory.humanMemoryEnabled}
-            loading={loading}
+            loading={loading || isLoading}
             onClick={() => void refreshMemory()}
           >
             {t('tab.advanced.humanMemory.refresh')}

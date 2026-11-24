@@ -593,6 +593,7 @@ describe('google contextBuilders', () => {
         parts: [
           {
             functionCall: {
+              id: 'call_1',
               args: { location: 'London', unit: 'celsius' },
               name: 'get_current_weather',
             },
@@ -625,7 +626,7 @@ describe('google contextBuilders', () => {
       expect(converted).toEqual({
         parts: [
           {
-            functionCall: { args: { content: 'a' }, name: 'writeLocalFile' },
+            functionCall: { id: 'call_array', args: { content: 'a' }, name: 'writeLocalFile' },
           },
         ],
         role: 'model',
@@ -668,6 +669,7 @@ describe('google contextBuilders', () => {
         parts: [
           {
             functionCall: {
+              id: 'grep____searchGitHub____mcp_0_6RnOMTF0',
               args: {
                 language: ['JSON'],
                 path: 'package.json',
@@ -741,15 +743,6 @@ describe('google contextBuilders', () => {
 
         expect(contents).toEqual([
           {
-            parts: [
-              {
-                text: '<plugins>Web Browsing plugin available</plugins>',
-                thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
-              },
-            ],
-            role: 'user',
-          },
-          {
             parts: [{ text: '杭州天气如何', thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }],
             role: 'user',
           },
@@ -757,6 +750,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionCall: {
+                  id: 'call_001',
                   args: { query: '杭州天气', searchEngines: ['google'] },
                   name: 'lobe-web-browsing____search',
                 },
@@ -769,6 +763,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionResponse: {
+                  id: 'call_001',
                   name: 'lobe-web-browsing____search',
                   response: { result: 'Tool execution was aborted by user.' },
                 },
@@ -780,6 +775,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionCall: {
+                  id: 'call_002',
                   args: { query: '杭州 天气', searchEngines: ['bing'] },
                   name: 'lobe-web-browsing____search',
                 },
@@ -792,6 +788,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionResponse: {
+                  id: 'call_002',
                   name: 'lobe-web-browsing____search',
                   response: { result: 'no result' },
                 },
@@ -843,6 +840,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionCall: {
+                  id: 'call_001',
                   args: { query: '杭州天气', searchEngines: ['google'] },
                   name: 'lobe-web-browsing____search',
                 },
@@ -856,6 +854,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionResponse: {
+                  id: 'call_001',
                   name: 'lobe-web-browsing____search',
                   response: { result: 'Tool result' },
                 },
@@ -928,10 +927,7 @@ describe('google contextBuilders', () => {
           {
             parts: [
               {
-                functionCall: {
-                  args: { query: 'first' },
-                  name: 'search',
-                },
+                functionCall: { id: 'call_001', args: { query: 'first' }, name: 'search' },
                 // Magic signature added to all function calls (cross-provider scenario)
                 thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
               },
@@ -942,6 +938,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionResponse: {
+                  id: 'call_001',
                   name: 'search',
                   response: { result: 'First result' },
                 },
@@ -956,10 +953,7 @@ describe('google contextBuilders', () => {
           {
             parts: [
               {
-                functionCall: {
-                  args: { query: 'second' },
-                  name: 'search',
-                },
+                functionCall: { id: 'call_002', args: { query: 'second' }, name: 'search' },
                 thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
               },
             ],
@@ -969,6 +963,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionResponse: {
+                  id: 'call_002',
                   name: 'search',
                   response: { result: 'Second result' },
                 },
@@ -1019,15 +1014,6 @@ describe('google contextBuilders', () => {
 
         expect(contents).toEqual([
           {
-            parts: [
-              {
-                text: '<plugins>Web Browsing plugin available</plugins>',
-                thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
-              },
-            ],
-            role: 'user',
-          },
-          {
             parts: [{ text: '杭州天气如何', thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }],
             role: 'user',
           },
@@ -1035,6 +1021,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionCall: {
+                  id: 'call_001',
                   args: { query: '杭州天气', searchEngines: ['google'] },
                   name: 'lobe-web-browsing____search',
                 },
@@ -1049,6 +1036,7 @@ describe('google contextBuilders', () => {
             parts: [
               {
                 functionResponse: {
+                  id: 'call_001',
                   name: 'lobe-web-browsing____search',
                   response: { result: 'Tool execution was aborted by user.' },
                 },
@@ -1073,7 +1061,7 @@ describe('google contextBuilders', () => {
       const converted = await buildGoogleMessage(message);
 
       expect(converted).toEqual({
-        parts: [{ text: '', thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }],
+        parts: [],
         role: 'user',
       });
     });
@@ -1094,6 +1082,7 @@ describe('google contextBuilders', () => {
         parts: [
           {
             functionResponse: {
+              id: 'call_1',
               name: 'get_current_weather',
               response: { result: '{"success":true,"data":{"temperature":"14°C"}}' },
             },
@@ -1176,6 +1165,7 @@ describe('google contextBuilders', () => {
 
     it('should correctly convert function response message', async () => {
       const messages: OpenAIChatMessage[] = [
+        { role: 'user', content: 'Weather please' },
         {
           content: '',
           role: 'assistant',
@@ -1200,12 +1190,17 @@ describe('google contextBuilders', () => {
 
       const contents = await buildGoogleMessages(messages);
 
-      expect(contents).toHaveLength(2);
+      expect(contents).toHaveLength(3);
       expect(contents).toEqual([
+        {
+          role: 'user',
+          parts: [{ text: 'Weather please', thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }],
+        },
         {
           parts: [
             {
               functionCall: {
+                id: 'call_1',
                 args: { location: 'London', unit: 'celsius' },
                 name: 'get_current_weather',
               },
@@ -1218,6 +1213,7 @@ describe('google contextBuilders', () => {
           parts: [
             {
               functionResponse: {
+                id: 'call_1',
                 name: 'get_current_weather',
                 response: { result: '{"success":true,"data":{"temperature":"14°C"}}' },
               },
@@ -1328,11 +1324,11 @@ describe('google contextBuilders', () => {
         {
           parts: [
             {
-              functionCall: { args: { location: 'London' }, name: 'get_weather' },
+              functionCall: { id: 'call_1', args: { location: 'London' }, name: 'get_weather' },
               thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
             },
             {
-              functionCall: { args: { location: 'Tokyo' }, name: 'get_weather' },
+              functionCall: { id: 'call_2', args: { location: 'Tokyo' }, name: 'get_weather' },
               thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE,
             },
           ],
@@ -1342,12 +1338,14 @@ describe('google contextBuilders', () => {
           parts: [
             {
               functionResponse: {
+                id: 'call_1',
                 name: 'get_weather',
                 response: { result: '{"temperature":"14°C"}' },
               },
             },
             {
               functionResponse: {
+                id: 'call_2',
                 name: 'get_weather',
                 response: { result: '{"temperature":"22°C"}' },
               },
@@ -1394,10 +1392,6 @@ describe('google contextBuilders', () => {
 
       expect(contents).toEqual([
         {
-          parts: [{ text: 'system prompt', thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }],
-          role: 'user',
-        },
-        {
           parts: [{ text: 'LobeChat 最新版本', thoughtSignature: GEMINI_MAGIC_THOUGHT_SIGNATURE }],
           role: 'user',
         },
@@ -1405,6 +1399,7 @@ describe('google contextBuilders', () => {
           parts: [
             {
               functionCall: {
+                id: 'grep____searchGitHub____mcp_0_6RnOMTF0',
                 args: {
                   language: ['JSON'],
                   path: 'package.json',
@@ -1422,6 +1417,7 @@ describe('google contextBuilders', () => {
           parts: [
             {
               functionResponse: {
+                id: 'grep____searchGitHub____mcp_0_6RnOMTF0',
                 name: 'grep____searchGitHub____mcp',
                 response: { result: '' },
               },
@@ -1469,7 +1465,7 @@ describe('google contextBuilders', () => {
       expect(result.parameters).toBeUndefined();
     });
 
-    it('should handle tools with empty parameters using dummy property', () => {
+    it('should keep zero-argument tool contracts without inventing parameters', () => {
       const tool: ChatCompletionTool = {
         function: {
           description: 'A simple function with no parameters',
@@ -1487,7 +1483,7 @@ describe('google contextBuilders', () => {
       expect(result).toEqual({
         description: 'A simple function with no parameters',
         name: 'simple_function',
-        parametersJsonSchema: { type: 'object', properties: { dummy: { type: 'string' } } },
+        parametersJsonSchema: { type: 'object', properties: {} },
       });
     });
 
@@ -1522,7 +1518,7 @@ describe('google contextBuilders', () => {
       expect(result.parametersJsonSchema).toEqual(tool.function.parameters);
     });
 
-    it('should keep nullable type but strip null/empty members from enum (Gemini proto)', () => {
+    it('should preserve nullable JSON Schema enum values without proto conversion', () => {
       const tool: ChatCompletionTool = {
         function: {
           description: 'A tool with nullable enum',
@@ -1541,14 +1537,10 @@ describe('google contextBuilders', () => {
       };
 
       const result = buildGoogleTool(tool);
-
-      // Gemini proto only accepts non-empty STRING enum members; null/'' get coerced
-      // to '' and rejected with "enum[i]: cannot be empty", so they must be filtered.
-      // The nullable `type` is preserved to keep the field optional.
       expect(result.parametersJsonSchema).toEqual({
         properties: {
           status: {
-            enum: ['active', 'inactive'],
+            enum: ['active', 'inactive', null, ''],
             type: ['string', 'null'],
           },
         },
@@ -1559,7 +1551,7 @@ describe('google contextBuilders', () => {
     // Regression: the memory tool's `memoryType` enum carried a trailing `null` sentinel
     // trailing `null` sentinel (`[...MEMORY_TYPES, null]`), which Gemini rejected
     // with `enum[10]: cannot be empty`. The sanitizer must drop the null member.
-    it('should strip the null sentinel from a memory-style nullable enum', () => {
+    it('should preserve the null sentinel in a memory-style JSON Schema enum', () => {
       const memoryTypes = ['fact', 'event', 'people', 'preference'];
       const tool: ChatCompletionTool = {
         function: {
@@ -1586,9 +1578,10 @@ describe('google contextBuilders', () => {
 
       const result = buildGoogleTool(tool) as any;
 
-      expect(result.parametersJsonSchema.properties.set.properties.memoryType.enum).toEqual(
-        memoryTypes,
-      );
+      expect(result.parametersJsonSchema.properties.set.properties.memoryType.enum).toEqual([
+        ...memoryTypes,
+        null,
+      ]);
     });
 
     it('should pass through const values without conversion', () => {

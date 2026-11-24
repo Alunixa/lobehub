@@ -310,6 +310,7 @@ export const callLlm =
               messages: humanMemorySourceMessages,
               userMessage: extractMessageText(lastUserMessage?.content),
               windowSize: humanMemorySettings?.humanMemoryWindowSize,
+              embeddingModel: humanMemorySettings?.humanMemoryEmbeddingModel,
             });
 
             messagesForContext = prepared.recentMessages as UIChatMessage[];
@@ -1086,34 +1087,30 @@ export const callLlm =
         humanMemorySourceMessages &&
         state.metadata?.topicId
       ) {
-        try {
-          const memoryProvider = await createHumanMemoryExtractionProvider({
-            embeddingModel:
-              humanMemorySettings.humanMemoryEmbeddingModel ?? humanMemorySettings.embedding?.model,
-            embeddingRuntime:
-              humanMemorySettings.embedding?.enabled === true
-                ? undefined
-                : { model, runtime: modelRuntime },
-            serverDB: ctx.serverDB,
-            textModel: humanMemorySettings.humanMemoryModel ?? humanMemorySettings.textModel?.model,
-            textRuntime:
-              humanMemorySettings.textModel?.enabled === true
-                ? undefined
-                : { model, runtime: modelRuntime },
-            userId: ctx.userId!,
-          });
-
-          if (memoryProvider) {
-            new HumanMemoryService(ctx.serverDB, ctx.userId!).scheduleLazyBackfill({
-              messages: humanMemorySourceMessages,
-              provider: memoryProvider,
-              sourceTopicId: state.metadata.topicId,
-              windowSize: humanMemorySettings.humanMemoryWindowSize,
+        // Resolving the extraction model must not delay the main model's first token.
+        const memoryTopicId = state.metadata.topicId;
+        void (async () => {
+          try {
+            const memoryProvider = await createHumanMemoryExtractionProvider({
+              embeddingModel: humanMemorySettings.humanMemoryEmbeddingModel,
+              serverDB: ctx.serverDB,
+              textModel: humanMemorySettings.humanMemoryModel,
+              textRuntime: { model, runtime: modelRuntime },
+              userId: ctx.userId!,
             });
+
+            if (memoryProvider) {
+              new HumanMemoryService(ctx.serverDB, ctx.userId!).scheduleLazyBackfill({
+                messages: humanMemorySourceMessages,
+                provider: memoryProvider,
+                sourceTopicId: memoryTopicId,
+                windowSize: humanMemorySettings.humanMemoryWindowSize,
+              });
+            }
+          } catch (error) {
+            log('Failed to schedule human memory backfill: %O', error);
           }
-        } catch (error) {
-          log('Failed to schedule human memory backfill: %O', error);
-        }
+        })();
       }
 
       // Construct ChatStreamPayload

@@ -1,3 +1,4 @@
+import { estimateTokenCount } from 'tokenx';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -5,11 +6,14 @@ import {
   buildHumanMemoryPrompt,
   buildRecentMemoryWindow,
   cosineSimilarity,
+  MAX_CORE_MEMORY_TOKENS,
   rankEpisodicMemories,
   textSimilarity,
 } from './logic';
 
-const memory = (overrides: Partial<Parameters<typeof rankEpisodicMemories>[0]['memories'][number]>) => ({
+const memory = (
+  overrides: Partial<Parameters<typeof rankEpisodicMemories>[0]['memories'][number]>,
+) => ({
   content: '用户喜欢在周末徒步',
   id: 'memory-1',
   importance: 0.7,
@@ -121,5 +125,43 @@ describe('human memory logic', () => {
     expect(textSimilarity('周末徒步', '用户喜欢在周末徒步')).toBeGreaterThan(0.5);
     expect(cosineSimilarity([1, 0], [1, 0])).toBe(1);
     expect(cosineSimilarity([1], [1, 0])).toBeUndefined();
+  });
+
+  it('never recalls a fresh maximally important but unrelated fact for hi', () => {
+    const now = new Date();
+    expect(
+      rankEpisodicMemories({
+        memories: [memory({ content: '用户部署了项目', importance: 1, lastRecalledAt: now })],
+        now,
+        query: 'hi',
+      }),
+    ).toEqual([]);
+  });
+
+  it('retains complete turns including tool calls and assistant retries', () => {
+    const messages = [
+      { role: 'user', id: 'u1' },
+      { role: 'assistant', id: 'a1' },
+      { role: 'tool', id: 't1' },
+      { role: 'assistant', id: 'retry' },
+      { role: 'user', id: 'u2' },
+    ];
+    expect(buildRecentMemoryWindow(messages, 2)).toEqual(messages);
+    expect(buildRecentMemoryWindow(messages, 1)).toEqual([messages[4]]);
+  });
+
+  it('bounds the complete Core prompt using tokens rather than characters per slot', () => {
+    const prompt = buildHumanMemoryPrompt({
+      coreMemory: {
+        personaTone: '语气'.repeat(3200),
+        userCore: '事实'.repeat(3200),
+        activeMatters: '计划'.repeat(3200),
+      },
+      recalledMemories: [],
+    });
+    expect(estimateTokenCount(prompt)).toBeLessThan(MAX_CORE_MEMORY_TOKENS + 100);
+    expect(prompt).toContain('Persona and tone:');
+    expect(prompt).toContain('User profile:');
+    expect(prompt).toContain('Active matters:');
   });
 });

@@ -7,7 +7,9 @@ import { ModelProvider } from 'model-bank';
 import type OpenAI from 'openai';
 
 import type { LobeRuntimeAI } from '../../core/BaseAI';
+import { convertOpenAIMessages } from '../../core/contextBuilders/openai';
 import { transformResponseToStream } from '../../core/openaiCompatibleFactory';
+import { cleanChatPayload } from '../../core/openaiCompatibleFactory/protocolPayload';
 import { createSSEDataExtractor, OpenAIStream } from '../../core/streams';
 import type { ChatMethodOptions, ChatStreamPayload } from '../../types';
 import { AgentRuntimeErrorType } from '../../types/error';
@@ -66,12 +68,14 @@ export class LobeAzureAI implements LobeRuntimeAI {
     try {
       const response = this.client.path('/chat/completions').post({
         body: {
-          messages: updatedMessages as OpenAI.ChatCompletionMessageParam[],
-          model,
-          ...params,
+          messages: await convertOpenAIMessages(
+            updatedMessages as OpenAI.ChatCompletionMessageParam[],
+            { model },
+          ),
+          ...cleanChatPayload({ ...params, model }, 'azureai'),
           stream: enableStreaming,
           temperature: model.includes('o3') || model.includes('o4') ? undefined : temperature,
-          tool_choice: params.tools ? 'auto' : undefined,
+          tool_choice: params.tools?.length ? (params.tool_choice ?? 'auto') : undefined,
           top_p: model.includes('o3') || model.includes('o4') ? undefined : top_p,
         },
       });

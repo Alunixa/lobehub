@@ -157,3 +157,13 @@ export const shouldDropUnsupportedClaudeAssistantPrefill = (model: string): bool
     parsed.minorVersion <= 8
   );
 };
+
+/** Newer Claude generations accept adaptive thinking instead of manual budgets. */
+export const requiresClaudeAdaptiveThinking = (model: string): boolean => {
+  const parsed = parseClaudeModelId(model);
+  return (
+    !!parsed &&
+    (parsed.majorVersion >= 5 ||
+      (parsed.majorVersion === 4 && parsed.family === 'opus' && (parsed.minorVersion ?? 0) >= 7))
+  );
+};

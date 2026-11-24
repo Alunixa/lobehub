@@ -49,6 +49,26 @@ class UserMemoryService {
   getHumanCoreMemory = async () => {
     return lambdaClient.humanMemory.getCoreMemory.query();
   };
+  getHumanMemoryStatus = async () => lambdaClient.humanMemory.getStatus.query();
+
+  prepareHumanMemoryContext = async (userMessage: string) =>
+    lambdaClient.humanMemory.prepareContext.mutate(
+      { userMessage: userMessage.slice(-24_000) },
+      { signal: AbortSignal.timeout(1000) },
+    );
+
+  recordHumanMemoryTurn = async (params: {
+    assistantReply: string;
+    model: string;
+    provider: string;
+    topicId?: string;
+    userMessage: string;
+  }) =>
+    lambdaClient.humanMemory.recordTurn.mutate({
+      ...params,
+      assistantReply: params.assistantReply.slice(0, 120_000),
+      userMessage: params.userMessage.slice(-24_000),
+    });
 
   getHumanEpisodicMemoryCount = async () => {
     return lambdaClient.humanMemory.getEpisodicMemoryCount.query();

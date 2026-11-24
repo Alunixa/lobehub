@@ -23,8 +23,8 @@ const defaultOpenAIBaseURL = 'https://api.moonshot.cn/v1';
 const anthropicBaseURL = 'https://api.moonshot.cn/anthropic';
 
 // Mock the console.error and console.warn to avoid polluting test output
-vi.spyOn(console, 'error').mockImplementation(() => { });
-vi.spyOn(console, 'warn').mockImplementation(() => { });
+vi.spyOn(console, 'error').mockImplementation(() => {});
+vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 beforeEach(() => {
   loadModelsMock.mockResolvedValue([]);
@@ -575,9 +575,8 @@ describe('LobeMoonshotAnthropicAI', () => {
           (message: any) => message.role === 'assistant',
         );
 
-        expect(assistantMessage?.content).toEqual(
-          expect.arrayContaining([expect.objectContaining({ text: ' ' })]),
-        );
+        // Whitespace-only Anthropic history must be omitted, not sent as an empty text block.
+        expect(assistantMessage).toBeUndefined();
       });
     });
 
@@ -890,10 +889,9 @@ describe('LobeMoonshotAnthropicAI', () => {
           (message: any) => message.role === 'assistant',
         );
 
-        // forceThinking adds a text placeholder for empty content
+        // Preserve the thinking block without adding an invalid whitespace-only text block.
         expect(assistantMessage?.content).toEqual([
           { type: 'thinking', thinking: 'My reasoning process' },
-          { type: 'text', text: ' ' },
         ]);
       });
 

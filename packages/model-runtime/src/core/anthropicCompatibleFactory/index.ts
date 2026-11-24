@@ -6,7 +6,10 @@ import debug from 'debug';
 import type { Pricing } from 'model-bank';
 
 import { ErrorClassifier } from '../../errors';
-import { shouldDropUnsupportedClaudeAssistantPrefill } from '../../providers/anthropic/claudeModelId';
+import {
+  requiresClaudeAdaptiveThinking,
+  shouldDropUnsupportedClaudeAssistantPrefill,
+} from '../../providers/anthropic/claudeModelId';
 import type {
   ChatCompletionErrorPayload,
   ChatMethodOptions,
@@ -30,7 +33,9 @@ import {
   buildAnthropicMessages,
   buildAnthropicTools,
   buildSearchTool,
+  resolveAnthropicToolChoice,
 } from '../contextBuilders/anthropic';
+import { collectSystemMessages, isSystemMessage } from '../contextBuilders/protocolMessages';
 import { resolveModelSamplingParameters } from '../parameterResolver';
 import { AnthropicStream, type AnthropicStreamOptions } from '../streams';
 import { type ComputeChatCostOptions } from '../usageConverters/utils/computeChatCost';
@@ -153,6 +158,7 @@ export const buildDefaultAnthropicPayload = async (
     effort,
     enabledContextCaching = true,
     enabledSearch,
+    tool_choice,
   } = payload;
 
   const { anthropic: anthropicModels } = await import('model-bank');
@@ -165,12 +171,8 @@ export const buildDefaultAnthropicPayload = async (
   });
 
   // Filter out empty/whitespace-only system prompts — Anthropic API rejects them
-  const systemMessage = messages.find((message) => message.role === 'system');
-  const userMessages = messages.filter((message) => message.role !== 'system');
-  const systemPromptText =
-    typeof systemMessage?.content === 'string' && systemMessage.content.trim()
-      ? systemMessage.content
-      : undefined;
+  const userMessages = messages.filter((message) => !isSystemMessage(message));
+  const systemPromptText = collectSystemMessages(messages) || undefined;
 
   const systemPrompts = systemPromptText
     ? ([
@@ -198,15 +200,24 @@ export const buildDefaultAnthropicPayload = async (
     const webSearchTool = buildSearchTool();
     postTools = postTools?.length ? [...postTools, webSearchTool] : [webSearchTool];
   }
+  const toolChoice = resolveAnthropicToolChoice(tool_choice, !!postTools?.length);
 
   if (!!thinking && (thinking.type === 'enabled' || thinking.type === 'adaptive')) {
+    if (toolChoice?.type === 'any' || toolChoice?.type === 'tool') {
+      throw new TypeError(
+        'Forced tool choice is incompatible with extended thinking. Use auto or disable thinking.',
+      );
+    }
     const resolvedThinking: Anthropic.MessageCreateParams['thinking'] =
-      thinking.type === 'enabled'
+      thinking.type === 'enabled' && !requiresClaudeAdaptiveThinking(model)
         ? {
             budget_tokens: Math.min(thinking?.budget_tokens || 1024, resolvedMaxTokens - 1),
             type: 'enabled',
           }
         : { type: 'adaptive' };
+    if (resolvedThinking.type === 'enabled' && resolvedThinking.budget_tokens < 1024) {
+      throw new TypeError('Extended thinking requires max_tokens greater than 1024.');
+    }
 
     return {
       max_tokens: resolvedMaxTokens,
@@ -216,6 +227,7 @@ export const buildDefaultAnthropicPayload = async (
       system: systemPrompts,
       thinking: resolvedThinking,
       tools: postTools as Anthropic.MessageCreateParams['tools'],
+      tool_choice: toolChoice,
     } as Anthropic.MessageCreateParams;
   }
 
@@ -235,6 +247,7 @@ export const buildDefaultAnthropicPayload = async (
     system: systemPrompts,
     temperature: resolvedSamplingParams.temperature,
     tools: postTools as Anthropic.MessageCreateParams['tools'],
+    tool_choice: toolChoice,
     top_p: resolvedSamplingParams.top_p,
   };
 

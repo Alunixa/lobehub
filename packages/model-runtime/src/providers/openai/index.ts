@@ -27,7 +27,7 @@ export const params = {
     handlePayload: (payload) => {
       const { enabledSearch, instructions, model, verbosity, ...rest } = payload;
 
-      if (isResponsesAPIModel(model) || enabledSearch) {
+      if (payload.apiMode !== 'chatCompletion' && (isResponsesAPIModel(model) || enabledSearch)) {
         return {
           ...rest,
           apiMode: 'responses',

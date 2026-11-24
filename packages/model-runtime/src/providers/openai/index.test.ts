@@ -393,7 +393,7 @@ describe('LobeOpenAI', () => {
 
       const createCall = (instance['client'].responses.create as Mock).mock.calls[0][0];
       expect(createCall.tools).toEqual([
-        { description: 'test', name: 'test', type: 'function' },
+        { description: 'test', name: 'test', strict: false, type: 'function' },
         { type: 'web_search' },
       ]);
     });

@@ -589,7 +589,7 @@ describe('LobeOllamaAI', () => {
       const ollamaMessage = await ollamaAI['convertContentToOllamaMessage'](message as any);
 
       expect(ollamaMessage).toEqual({
-        content: 'Second text', // Should keep latest text
+        content: 'First textSecond text', // Preserve both segments.
         role: 'user',
         images: ['abc123', 'def456'],
       });
@@ -706,7 +706,7 @@ describe('LobeOllamaAI', () => {
       const ollamaMessage = await ollamaAI['convertContentToOllamaMessage'](message as any);
 
       expect(ollamaMessage).toEqual({
-        content: 'Text 3', // Should keep latest text
+        content: 'Text 1Text 2Text 3', // Preserve all segments.
         role: 'user',
         images: ['img1', 'img2'],
       });

@@ -25,7 +25,12 @@ export const resolveMaxTokens = async ({
 
   const preferredMaxTokens = max_tokens ?? defaultMaxOutput;
 
-  if (preferredMaxTokens) return preferredMaxTokens;
+  if (preferredMaxTokens !== undefined) {
+    if (!Number.isInteger(preferredMaxTokens) || preferredMaxTokens < 1) {
+      throw new TypeError('max_tokens must be a positive integer.');
+    }
+    return defaultMaxOutput ? Math.min(preferredMaxTokens, defaultMaxOutput) : preferredMaxTokens;
+  }
 
   if (thinking?.type === 'enabled') return 32_000;
   if (thinking?.type === 'adaptive') return 64_000;

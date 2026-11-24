@@ -4,6 +4,7 @@ import type { Pricing } from 'model-bank';
 
 import type { GenerateObjectOptions, GenerateObjectPayload } from '../../types';
 import { buildAnthropicMessages, buildAnthropicTools } from '../contextBuilders/anthropic';
+import { collectSystemMessages, isSystemMessage } from '../contextBuilders/protocolMessages';
 import { buildAnthropicInitialUsage } from '../usageConverters/anthropic';
 import { withUsageCost } from '../usageConverters/utils/withUsageCost';
 
@@ -43,10 +44,8 @@ export const buildAnthropicGenerateObjectRequest = async (
 
   // Convert messages to Anthropic format.
   // Filter out empty/whitespace-only system prompts — Anthropic API rejects them.
-  const system_message = messages.find((m) => m.role === 'system')?.content;
-  const systemPromptText =
-    typeof system_message === 'string' && system_message.trim() ? system_message : undefined;
-  const user_messages = messages.filter((m) => m.role !== 'system');
+  const systemPromptText = collectSystemMessages(messages) || undefined;
+  const user_messages = messages.filter((m) => !isSystemMessage(m));
   const anthropicMessages = await buildAnthropicMessages(user_messages);
 
   log('converted %d messages to Anthropic format', anthropicMessages.length);

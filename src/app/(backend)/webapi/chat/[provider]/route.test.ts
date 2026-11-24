@@ -5,7 +5,9 @@ import { ChatErrorType } from '@lobechat/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/auth';
+import { UserModel } from '@/database/models/user';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
+import { HumanMemoryService } from '@/server/services/humanMemory';
 
 import { POST } from './route';
 
@@ -29,6 +31,7 @@ vi.mock('@/auth', () => ({
 // 模拟请求和响应
 let request: Request;
 beforeEach(() => {
+  vi.spyOn(UserModel.prototype, 'getUserSettings').mockResolvedValue({ memory: {} });
   request = new Request(new URL('https://test.com'), {
     method: 'POST',
     body: JSON.stringify({ model: 'test-model' }),
@@ -43,6 +46,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.clearAllMocks();
+  vi.restoreAllMocks();
 });
 
 describe('POST handler', () => {
@@ -104,7 +108,45 @@ describe('POST handler', () => {
       expect(mockRuntime.chat).toHaveBeenCalledWith(mockChatPayload, {
         user: 'test-user-id',
         signal: expect.anything(),
+        callback: { onFinal: expect.any(Function) },
       });
+    });
+
+    it('injects Core Memory into direct chat while retaining the selected recent turns', async () => {
+      vi.spyOn(UserModel.prototype, 'getUserSettings').mockResolvedValue({
+        memory: { humanMemoryEnabled: true, humanMemoryWindowSize: 1 },
+      });
+      const user = { content: 'Remember my preference', role: 'user' as const };
+      vi.spyOn(HumanMemoryService.prototype, 'prepareContext').mockResolvedValue({
+        coreMemory: null,
+        memoryPrompt: '[Human Memory]\nPrefers concise answers.',
+        recalledMemories: [],
+        recentMessages: [user],
+      });
+      const chat = vi.fn().mockResolvedValue(new Response('ok'));
+      vi.mocked(initModelRuntimeFromDB).mockResolvedValue(
+        new ModelRuntime({ baseURL: 'fixture', chat }),
+      );
+      const response = await POST(
+        new Request('https://test.com', {
+          method: 'POST',
+          body: JSON.stringify({
+            model: 'fixture',
+            messages: [
+              { role: 'system', content: 'Persona' },
+              { role: 'user', content: 'Old turn' },
+              user,
+            ],
+          }),
+        }),
+        { params: Promise.resolve({ provider: 'test-provider' }) },
+      );
+      expect(await response.text()).toBe('ok');
+      expect(chat.mock.calls[0][0].messages).toEqual([
+        { content: '[Human Memory]\nPrefers concise answers.', role: 'system' },
+        { content: 'Persona', role: 'system' },
+        user,
+      ]);
     });
 
     it('should return an error response when chat completion fails', async () => {

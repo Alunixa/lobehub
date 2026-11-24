@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { normalizeToolJsonSchema, normalizeToolsParameters } from './normalizeToolSchema';
 
 describe('normalizeToolJsonSchema', () => {
-  it('collapses a top-level boolean schema to an empty object', () => {
+  it('normalizes an unrestricted schema without widening an impossible schema', () => {
     expect(normalizeToolJsonSchema(true)).toEqual({});
-    expect(normalizeToolJsonSchema(false)).toEqual({});
+    expect(() => normalizeToolJsonSchema(false)).toThrow('false tool schema');
   });
 
   it('returns primitives untouched', () => {
@@ -111,6 +111,29 @@ describe('normalizeToolJsonSchema', () => {
 });
 
 describe('normalizeToolsParameters', () => {
+  it('rejects a false root parameter schema and treats null as a zero-argument schema', () => {
+    expect(() =>
+      normalizeToolsParameters([
+        {
+          type: 'function',
+          function: { name: 'impossible', parameters: false },
+        },
+      ] as unknown as OpenAI.ChatCompletionTool[]),
+    ).toThrow('false tool schema');
+    expect(
+      normalizeToolsParameters([
+        {
+          type: 'function',
+          function: { name: 'empty', parameters: null },
+        },
+      ] as unknown as OpenAI.ChatCompletionTool[]),
+    ).toEqual([
+      {
+        type: 'function',
+        function: { name: 'empty', parameters: { properties: {}, type: 'object' } },
+      },
+    ]);
+  });
   it('returns undefined when no tools are provided', () => {
     expect(normalizeToolsParameters(undefined)).toBeUndefined();
   });

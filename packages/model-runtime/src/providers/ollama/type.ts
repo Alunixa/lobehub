@@ -5,4 +5,6 @@ export interface OllamaMessage {
   content: string;
   images?: string[];
   role: string;
+  tool_calls?: { function: { arguments: Record<string, unknown>; name: string } }[];
+  tool_name?: string;
 }

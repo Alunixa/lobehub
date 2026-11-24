@@ -1,4 +1,5 @@
-import type { GenerateContentResponse, Part } from '@google/genai';
+import type { Part } from '@google/genai';
+import { GenerateContentResponse } from '@google/genai';
 import type { GroundingSearch } from '@lobechat/types';
 
 import type { ChatStreamCallbacks } from '../../../types';
@@ -142,14 +143,32 @@ const transformGoogleGenerativeAIStream = (
       })) || [];
 
   if (functionCalls.length > 0) {
+    const otherParts = candidate?.content?.parts?.filter((part) => !part.functionCall) ?? [];
+    const otherChunks = otherParts.length
+      ? transformGoogleGenerativeAIStream(
+          Object.assign(new GenerateContentResponse(), chunk, {
+            candidates: [
+              {
+                ...candidate,
+                content: { ...candidate?.content, parts: otherParts },
+                finishReason: undefined,
+              },
+            ],
+            usageMetadata: undefined,
+          }),
+          context,
+          payload,
+        )
+      : [];
     return [
+      ...(Array.isArray(otherChunks) ? otherChunks : [otherChunks]),
       {
         data: functionCalls.map((value, index: number): StreamToolCallChunkData => ({
           function: {
             arguments: JSON.stringify(value.args),
             name: value.name,
           },
-          id: generateToolCallId(index, value.name),
+          id: value.id || generateToolCallId(index, value.name),
           index,
           thoughtSignature: value.thoughtSignature,
           type: 'function',
