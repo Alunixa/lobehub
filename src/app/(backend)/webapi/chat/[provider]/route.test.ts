@@ -5,11 +5,17 @@ import { ChatErrorType } from '@lobechat/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { auth } from '@/auth';
-import { UserModel } from '@/database/models/user';
 import { initModelRuntimeFromDB } from '@/server/modules/ModelRuntime';
 import { HumanMemoryService } from '@/server/services/humanMemory';
 
 import { POST } from './route';
+
+const { getUserSettings } = vi.hoisted(() => ({ getUserSettings: vi.fn() }));
+vi.mock('@/database/models/user', () => ({
+  UserModel: class {
+    getUserSettings = getUserSettings;
+  },
+}));
 
 vi.mock('@/app/(backend)/middleware/auth/utils', () => ({
   checkAuthMethod: vi.fn(),
@@ -31,7 +37,7 @@ vi.mock('@/auth', () => ({
 // 模拟请求和响应
 let request: Request;
 beforeEach(() => {
-  vi.spyOn(UserModel.prototype, 'getUserSettings').mockResolvedValue({ memory: {} });
+  getUserSettings.mockResolvedValue({ memory: {} });
   request = new Request(new URL('https://test.com'), {
     method: 'POST',
     body: JSON.stringify({ model: 'test-model' }),
@@ -113,7 +119,7 @@ describe('POST handler', () => {
     });
 
     it('injects Core Memory into direct chat while retaining the selected recent turns', async () => {
-      vi.spyOn(UserModel.prototype, 'getUserSettings').mockResolvedValue({
+      getUserSettings.mockResolvedValue({
         memory: { humanMemoryEnabled: true, humanMemoryWindowSize: 1 },
       });
       const user = { content: 'Remember my preference', role: 'user' as const };

@@ -634,9 +634,10 @@ export const createOpenAICompatibleRuntime = <T extends Record<string, any> = an
             ...postPayload.messages,
           ],
           {
-            allowReasoning: /deepseek|moonshot|kimi|minimax|openrouter|qwen|zhipu|glm|mimo/i.test(
-              `${this.id} ${postPayload.model}`,
-            ),
+            allowReasoning:
+              /deepseek|moonshot|kimi|minimax|openrouter|qwen|zhipu|glm|mimo|hunyuan|hy3|nvidia/i.test(
+                `${this.id} ${postPayload.model}`,
+              ),
             allowVideo: /qwen|glm|mimo|minimax/i.test(`${this.id} ${postPayload.model}`),
             forceImageBase64: chatCompletion?.forceImageBase64,
             forceVideoBase64: chatCompletion?.forceVideoBase64,

@@ -6,6 +6,7 @@ import { LobeGoogleAI } from '../providers/google';
 import { convertOpenAISchemaToGoogleSchema } from '../providers/google/generateObject';
 import { LobeOllamaAI } from '../providers/ollama';
 import { LobeOpenAI } from '../providers/openai';
+import { LobeOpenRouterAI } from '../providers/openrouter';
 import type { ChatStreamPayload } from '../types';
 import * as pricing from '../utils/getModelPricing';
 import { buildGoogleMessages, buildGoogleTool } from './contextBuilders/google';
@@ -75,6 +76,36 @@ describe('protocol contracts at the HTTP and full response boundaries', () => {
     expect(request.body.max_completion_tokens).toBe(64);
     expect(request.body.stream).toBe(false);
     expect(request.body).not.toHaveProperty('max_tokens');
+  });
+
+  it('retains provider-declared image parameters on OpenRouter without leaking them to standard Chat', async () => {
+    let captured: Record<string, unknown> | undefined;
+    const runtime = new LobeOpenRouterAI({
+      apiKey: 'fixture',
+      maxRetries: 0,
+      fetch: async (_input, options) => {
+        captured = JSON.parse(String(options?.body));
+        return Response.json({ error: { message: 'capture' } }, { status: 400 });
+      },
+    });
+    await expect(
+      runtime.chat({
+        messages: [{ role: 'user', content: 'hi' }],
+        model: 'google/gemini-image',
+        stream: false,
+        imageAspectRatio: '16:9',
+        imageResolution: '4K',
+      }),
+    ).rejects.toBeDefined();
+    expect(captured?.image_config).toEqual({ aspect_ratio: '16:9', image_size: '4K' });
+    const standard = await captureOpenAI({
+      messages: [{ role: 'user', content: 'hi' }],
+      model: 'gpt-4o',
+      stream: false,
+      imageAspectRatio: '16:9',
+      imageResolution: '4K',
+    });
+    expect(standard.body).not.toHaveProperty('image_config');
   });
 
   it('omits tool controls when a Responses request has no callable tools', async () => {

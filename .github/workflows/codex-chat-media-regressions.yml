@@ -80,6 +80,11 @@ jobs:
             src/providers/qwen/index.test.ts \
             src/providers/minimax/index.test.ts \
             src/providers/moonshot/index.test.ts \
+            src/providers/openrouter/index.test.ts \
+            src/providers/internlm/index.test.ts \
+            src/providers/hunyuan/index.test.ts \
+            src/providers/vercelaigateway/index.test.ts \
+            src/providers/akashchat/index.test.ts \
             src/providers/zhipu/index.test.ts
       - name: Human memory retrieval, correction, isolation and resumable backfill
         run: |

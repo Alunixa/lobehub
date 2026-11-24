@@ -79,6 +79,16 @@ const extensionFields = new Set([
   'safe_prompt',
   'random_seed',
 ]);
+// Preserve extensions constructed by the existing provider adapters, only on their own wire.
+const providerFields: Record<string, readonly string[]> = {
+  akashchat: ['allowed_openai_params', 'cache', 'chat_template_kwargs'],
+  hunyuan: ['citation', 'enable_enhancement', 'enable_speed_search', 'search_info'],
+  internlm: ['thinking_mode'],
+  openrouter: ['image_config'],
+  vercelaigateway: ['providerOptions', 'reasoning'],
+  zenmux: ['reasoning'],
+  zhipu: ['tool_stream'],
+};
 
 /** Provider extensions are retained deliberately, never inferred from the SDK alone. */
 export const cleanChatPayload = <T extends Record<string, unknown>>(
@@ -87,13 +97,17 @@ export const cleanChatPayload = <T extends Record<string, unknown>>(
 ): T => {
   const model = String(payload.model ?? '').toLowerCase();
   const nativeExtensions =
+    Object.hasOwn(providerFields, provider) ||
     /^(?:deepseek|moonshot|minimax|qwen|zhipu|mimo|stepfun|hunyuan|xai|openrouter|perplexity|groq|togetherai|fireworksai|siliconcloud|vllm|lmstudio)$/i.test(
       provider,
     ) ||
     /deepseek|moonshot|kimi|minimax|qwen|qvq|qwq|glm|zhipu|mimo|step|hunyuan|hy3|grok/.test(model);
   const result = Object.fromEntries(
     Object.entries(payload).filter(
-      ([key]) => chatFields.has(key) || (nativeExtensions && extensionFields.has(key)),
+      ([key]) =>
+        chatFields.has(key) ||
+        providerFields[provider]?.includes(key) ||
+        (nativeExtensions && extensionFields.has(key)),
     ),
   ) as T;
   for (const key of internalFields) delete result[key];
