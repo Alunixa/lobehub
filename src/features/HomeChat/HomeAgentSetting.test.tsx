@@ -44,6 +44,7 @@ describe('account home agent setting', () => {
   });
   it('offers assistants with metadata, excludes groups and persists the selected account setting', async () => {
     const { result } = renderHook(() => useHomeAgentSetting());
+    if (!Array.isArray(result.current.children)) throw new Error('Expected setting items');
     const select = result.current.children[0].children as React.ReactElement<{
       value: string;
       options: { value: string }[];
@@ -59,6 +60,7 @@ describe('account home agent setting', () => {
   it('displays the default option when the saved assistant has been deleted', () => {
     fixture.selected = 'deleted';
     const { result } = renderHook(() => useHomeAgentSetting());
+    if (!Array.isArray(result.current.children)) throw new Error('Expected setting items');
     const select = result.current.children[0].children as React.ReactElement<{ value: string }>;
     expect(select.props.value).toBe('');
   });
