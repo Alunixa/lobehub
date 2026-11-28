@@ -104,6 +104,13 @@ vi.mock('@/store/global/selectors', () => ({
   },
 }));
 
+vi.mock('@/store/user', () => ({
+  useUserStore: (selector: (state: unknown) => unknown) => selector({}),
+}));
+vi.mock('@/store/user/selectors', () => ({
+  settingsSelectors: { currentSettings: () => ({ general: {} }) },
+}));
+
 vi.mock('@/store/chat', () => {
   const useChatStore = (selector: (state: typeof chatState) => unknown) => selector(chatState);
   useChatStore.getState = () => chatState;
@@ -164,7 +171,7 @@ describe('Home InputArea useSend', () => {
         onTopicCreated: expect.any(Function),
       }),
     );
-    expect(routerMock.push).toHaveBeenCalledWith('/agent/agt_inbox');
+    expect(routerMock.push).not.toHaveBeenCalled();
 
     const sentPayload = sendMessageMock.mock.calls[0][0];
 
@@ -172,7 +179,19 @@ describe('Home InputArea useSend', () => {
       await sentPayload.onTopicCreated('tpc_created');
     });
 
-    expect(routerMock.replace).toHaveBeenCalledWith('/agent/agt_inbox/tpc_created');
+    expect(routerMock.push).toHaveBeenCalledExactlyOnceWith('/agent/agt_inbox/tpc_created');
+    expect(routerMock.replace).not.toHaveBeenCalled();
+  });
+
+  it('keeps an immediate topic callback as the final route without a later blank redirect', async () => {
+    sendMessageMock.mockImplementation(async (payload) => payload.onTopicCreated('tpc_fast'));
+    const { result } = renderHook(() => useSend());
+    await act(async () => {
+      await result.current.send({
+        getMarkdownContent: () => 'hello',
+      } as Parameters<SendButtonHandler>[0]);
+    });
+    expect(routerMock.push).toHaveBeenCalledExactlyOnceWith('/agent/agt_inbox/tpc_fast');
   });
 
   it('drops editorData when sending the placeholder hint so the user message renders the markdown content', async () => {

@@ -45,6 +45,10 @@ vi.mock('@/hooks/useEnabledChatModels', () => ({
   useEnabledChatModels: () => testState.aiInfra.enabledChatModelList,
 }));
 
+vi.mock('@/features/ChatInput/hooks/useEffectiveModel', () => ({
+  useEffectiveModel: () => ({ model: testState.agent.model, provider: testState.agent.provider }),
+}));
+
 vi.mock('@/store/agent', () => ({
   useAgentStore: <T,>(selector: StoreSelector<T, typeof testState.agent>) =>
     selector(testState.agent),
@@ -82,6 +86,16 @@ describe('useChatInputNotice', () => {
     const { result } = renderHook(() => useChatInputNotice());
 
     expect(result.current).toBeUndefined();
+  });
+
+  it('matches an enabled custom provider instead of treating its model as retired', () => {
+    testState.agent.provider = 'custom-gemini';
+    testState.agent.model = 'gemini-3.0-flash';
+    testState.aiInfra.isInitAiProviderRuntimeState = true;
+    testState.aiInfra.enabledChatModelList = [
+      { id: 'custom-gemini', children: [{ id: 'gemini-3.0-flash' }] },
+    ];
+    expect(renderHook(() => useChatInputNotice()).result.current).toBeUndefined();
   });
 
   it('returns unavailable model copy when the ready model config no longer contains the selected model', () => {

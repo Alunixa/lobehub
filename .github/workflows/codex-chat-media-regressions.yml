@@ -53,6 +53,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup-env
       - run: pnpm install
+      - name: Home agent selection, model persistence and new-topic routing
+        run: |
+          node node_modules/vitest/vitest.mjs run --silent=passed-only --maxWorkers=2 \
+            src/features/HomeChat/selection.test.ts \
+            src/features/HomeChat/HomeAgentSetting.test.tsx \
+            src/features/ChatInput/hooks/useTopicModelSwitch.test.ts \
+            src/features/ChatInput/hooks/useEffectiveModel.test.ts \
+            src/features/ChatInput/ChatInputNotice/useChatInputNotice.test.tsx \
+            'src/routes/(main)/home/features/InputArea/useSend.test.ts' \
+            'src/routes/(main)/settings/advanced/index.test.tsx'
       - name: Protocol wire contracts and terminal response semantics
         working-directory: packages/model-runtime
         run: |

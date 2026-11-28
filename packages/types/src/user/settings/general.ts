@@ -52,6 +52,8 @@ export interface UserGeneralConfig {
   enableTopicReference?: boolean;
   fontSize: number;
   highlighterTheme?: HighlighterProps['theme'];
+  /** Account-synced home composer agent; empty uses the builtin default agent. */
+  homeDefaultAgentId?: string;
   /** Attach a fresh minute-resolution timestamp to every model request. Default: false. */
   injectCurrentTime?: boolean;
   isDevMode: boolean;

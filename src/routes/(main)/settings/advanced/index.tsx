@@ -2,8 +2,8 @@
 
 import { isDesktop } from '@lobechat/const';
 import { type FormGroupItemType, type FormItemProps } from '@lobehub/ui';
-import { Form, Icon, InputNumber, Skeleton } from '@lobehub/ui';
-import { Select, Switch, toast } from '@lobehub/ui/base-ui';
+import { Form, Icon, InputNumber } from '@lobehub/ui';
+import { Select, Skeleton, Switch, toast } from '@lobehub/ui/base-ui';
 import { createStaticStyles } from 'antd-style';
 import isEqual from 'fast-deep-equal';
 import { Loader2Icon } from 'lucide-react';
@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import AsyncError from '@/components/AsyncError';
 import { FORM_STYLE } from '@/const/layoutTokens';
+import { useHomeAgentSetting } from '@/features/HomeChat/HomeAgentSetting';
 import SettingHeader from '@/routes/(main)/settings/features/SettingHeader';
 import { autoUpdateService } from '@/services/electron/autoUpdate';
 import { serverConfigSelectors, useServerConfigStore } from '@/store/serverConfig';
@@ -82,6 +83,7 @@ const Page = memo(() => {
   const [automaticUpdatesEnabled, setAutomaticUpdatesEnabled] = useState(false);
   const [automaticUpdatesLoading, setAutomaticUpdatesLoading] = useState(true);
   const memoryEmbeddingGroup = useMemoryEmbeddingSettingsGroup();
+  const homeAgentGroup = useHomeAgentSetting();
   const humanMemoryGroup = useHumanMemorySettingsGroup();
   const memoryTextModelGroup = useMemoryTextModelSettingsGroup();
 
@@ -150,7 +152,7 @@ const Page = memo(() => {
           onRetry={() => refreshUserState()}
         />
       );
-    return <Skeleton active paragraph={{ rows: 5 }} title={false} />;
+    return <Skeleton.Text rows={5} />;
   }
 
   const advancedGroup: FormGroupItemType = {
@@ -405,6 +407,7 @@ const Page = memo(() => {
   const items = isDesktop
     ? [
         advancedGroup,
+        homeAgentGroup,
         conversationReadingGroup,
         humanMemoryGroup,
         updateChannelGroup,
@@ -414,6 +417,7 @@ const Page = memo(() => {
       ]
     : [
         advancedGroup,
+        homeAgentGroup,
         conversationReadingGroup,
         humanMemoryGroup,
         memoryEmbeddingGroup,

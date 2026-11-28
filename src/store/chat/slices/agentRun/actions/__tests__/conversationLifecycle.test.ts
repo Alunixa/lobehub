@@ -102,6 +102,30 @@ const createTestContext = (agentId: string = TEST_IDS.SESSION_ID) => ({
 });
 
 describe('ConversationLifecycle actions', () => {
+  it('notifies the isolated home composer of a gateway-created topic', async () => {
+    const onTopicCreated = vi.fn();
+    vi.spyOn(useChatStore.getState(), 'executeGatewayAgent').mockResolvedValue({
+      agentId: TEST_IDS.SESSION_ID,
+      autoStarted: true,
+      createdAt: new Date().toISOString(),
+      message: 'Started',
+      status: 'running',
+      success: true,
+      timestamp: new Date().toISOString(),
+      assistantMessageId: TEST_IDS.ASSISTANT_MESSAGE_ID,
+      userMessageId: TEST_IDS.USER_MESSAGE_ID,
+      operationId: 'home-gateway-op',
+      topicId: 'home-created-topic',
+    });
+    await useChatStore.getState().sendMessage({
+      context: { ...createTestContext(), isolatedTopic: true },
+      forceRuntime: 'gateway',
+      message: 'Home first message',
+      onTopicCreated,
+    });
+    expect(onTopicCreated).toHaveBeenCalledExactlyOnceWith('home-created-topic');
+  });
+
   describe('conversation model isolation', () => {
     const a = { model: 'topic-a-model', provider: 'topic-a-provider' };
     const b = { model: 'topic-b-model', provider: 'topic-b-provider' };

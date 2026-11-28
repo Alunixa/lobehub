@@ -93,6 +93,8 @@ export interface PublicState {
   mobile?: boolean;
   onMarkdownContentChange?: (content: string) => void;
   onSend?: SendButtonHandler;
+  /** Persist blank home-composer model choices as the agent's next-chat default. */
+  persistNewTopicModel?: boolean;
   rightActions: ActionKeys[];
   sendButtonProps?: SendButtonProps;
   sendMenu?: MenuProps;

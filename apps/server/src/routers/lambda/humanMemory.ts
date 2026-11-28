@@ -56,14 +56,33 @@ export const humanMemoryRouter = router({
     );
     const configured = isConfiguredUserMemoryEmbedding(memorySettings, keyVaults);
     const runtime = configured
-      ? await resolveUserMemoryEmbeddingRuntime(ctx.serverDB, ctx.userId).catch(() => undefined)
+      ? await resolveUserMemoryEmbeddingRuntime({
+          serverDB: ctx.serverDB,
+          userId: ctx.userId,
+        }).catch((error) => {
+          console.error('[human-memory:getStatus] Failed to resolve embedding runtime', {
+            name: error instanceof Error ? error.name : 'Error',
+          });
+          return undefined;
+        })
       : undefined;
     const retrievalMode = getUserMemoryRetrievalMode(Boolean(runtime?.model), core?.retrievalMode);
     return {
       core: core
         ? { ...core, retrievalMode }
         : configured
-          ? { retrievalMode, lastRecallCount: 0 }
+          ? {
+              retrievalMode,
+              lastRecallCount: 0,
+              activeMatters: null,
+              personaTone: null,
+              userCore: null,
+              lastExtractionAt: null,
+              lastExtractionError: null,
+              lastRecallAt: null,
+              userId: ctx.userId,
+              updatedAt: new Date(),
+            }
           : null,
       count,
     };

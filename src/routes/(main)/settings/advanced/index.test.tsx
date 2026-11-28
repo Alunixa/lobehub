@@ -9,6 +9,10 @@ import { useUserStore } from '@/store/user';
 
 import Page from './index';
 
+vi.mock('@/features/HomeChat/HomeAgentSetting', () => ({
+  useHomeAgentSetting: () => ({ title: 'home-agent', children: [] }),
+}));
+
 vi.hoisted(() => {
   Object.defineProperty(globalThis, 'localStorage', {
     configurable: true,
@@ -72,6 +76,8 @@ vi.mock('@lobehub/ui', () => ({
 }));
 
 vi.mock('@lobehub/ui/base-ui', () => ({
+  Text: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+  Skeleton: { Text: () => <div>loading</div> },
   Button: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
     <button onClick={onClick}>{children}</button>
   ),

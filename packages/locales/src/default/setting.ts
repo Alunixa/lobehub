@@ -1,4 +1,11 @@
 export default {
+  'tab.advanced.homeAgent.title': 'Home quick chat agent',
+  'tab.advanced.homeAgent.desc':
+    'Choose the agent used by the home composer. Deleted agents fall back to the default agent.',
+  'tab.advanced.homeAgent.default': 'Default agent',
+  'tab.advanced.homeAgent.untitled': 'Untitled agent',
+  'tab.advanced.homeAgent.retry': 'Retry loading agents',
+  'tab.advanced.homeAgent.saveError': 'Failed to save the home agent',
   'globalBackground.title': 'Global background',
   'globalBackground.description':
     'Personalize the entire workspace, including Home and topic sidebars. Desktop and mobile have independent, account-synced settings.',

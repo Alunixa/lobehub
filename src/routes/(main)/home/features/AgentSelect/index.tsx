@@ -1,6 +1,7 @@
 'use client';
 
-import { ActionIcon, Avatar, Block, Flexbox, Popover, Skeleton, Text } from '@lobehub/ui';
+import { Block, Flexbox, Popover } from '@lobehub/ui';
+import { ActionIcon, Avatar, Skeleton, Text } from '@lobehub/ui/base-ui';
 import { createStaticStyles, cssVar } from 'antd-style';
 import { ChevronsUpDownIcon } from 'lucide-react';
 import { memo, useState } from 'react';
@@ -11,9 +12,9 @@ import { useFetchAgentList } from '@/hooks/useFetchAgentList';
 import { agentService } from '@/services/agent';
 import { useAgentStore } from '@/store/agent';
 import { agentSelectors, builtinAgentSelectors } from '@/store/agent/selectors';
-import { useGlobalStore } from '@/store/global';
 import { useHomeStore } from '@/store/home';
 import { homeAgentListSelectors } from '@/store/home/selectors';
+import { useUserStore } from '@/store/user';
 
 import AgentList from './AgentList';
 import { useResolvedHomeAgentId } from './useResolvedHomeAgentId';
@@ -46,7 +47,7 @@ const AgentSelect = memo(() => {
 
   const isLoading = useAgentStore(agentSelectors.isAgentConfigLoading);
   const inboxAgentId = useAgentStore(builtinAgentSelectors.inboxAgentId);
-  const updateSystemStatus = useGlobalStore((s) => s.updateSystemStatus);
+  const setSettings = useUserStore((s) => s.setSettings);
 
   const { agentId: resolvedAgentId, isInbox: isInboxDisplay } = useResolvedHomeAgentId();
   const displayAgentId = resolvedAgentId ?? '';
@@ -68,11 +69,8 @@ const AgentSelect = memo(() => {
   const displayBackground = displayMeta?.backgroundColor || undefined;
 
   const handleSelect = (agentId: string) => {
-    // Persist selection (localStorage via systemStatus) so the home ChatInput
-    // + send logic uses this agent across reloads. We always store a concrete
-    // agent id — including inbox — because lodash `merge` skips `undefined`
-    // source values, so we cannot clear the field by passing `undefined`.
-    updateSystemStatus({ homeSelectedAgentId: agentId });
+    // Share the same account preference as Advanced Settings.
+    void setSettings({ general: { homeDefaultAgentId: agentId } }).catch(console.error);
     setOpen(false);
 
     // Eagerly hydrate `agentMap` for the picked agent so the home ChatInput's
@@ -92,14 +90,10 @@ const AgentSelect = memo(() => {
   if (isLoading)
     return (
       <Flexbox horizontal align={'center'} gap={8} height={40} padding={4}>
-        <Skeleton.Button
-          active
-          size={'small'}
+        <Skeleton
           style={{ borderRadius: cssVar.borderRadius, height: 32, minWidth: 32, width: 32 }}
         />
-        <Skeleton.Button
-          active
-          size={'small'}
+        <Skeleton
           style={{ borderRadius: cssVar.borderRadius, height: 16, minWidth: 96, opacity: 0.5 }}
         />
       </Flexbox>

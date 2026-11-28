@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useUploadFiles } from '@/components/DragUploadZone';
 import { type ActionKeys } from '@/features/ChatInput';
 import { ChatInputProvider, DesktopChatInput } from '@/features/ChatInput';
+import { useHomeModelFallback } from '@/features/HomeChat/useHomeModelFallback';
 import { useHomeDailyBrief } from '@/hooks/useHomeDailyBrief';
 import { useInitAgentConfig } from '@/hooks/useInitAgentConfig';
 import { useAgentStore } from '@/store/agent';
@@ -34,6 +35,7 @@ const InputArea = () => {
   // Library submenu doesn't reflect server-side toggles. Pass `agentId`
   // explicitly so AgentSelect switches refetch too.
   useInitAgentConfig(agentId);
+  const isModelReady = useHomeModelFallback(agentId);
   // Use the "config absent from agentMap" loading shape (same as Memory /
   // Search / History) instead of SWR's `isLoading`, which would flash on
   // every mount-time revalidation even when inbox data is already cached.
@@ -138,8 +140,10 @@ const InputArea = () => {
           onUploadFiles={handleUploadFiles}
         >
           <ChatInputProvider
+            persistNewTopicModel
             agentId={agentId}
             allowExpand={false}
+            conversationContext={{ agentId: agentId ?? '', topicId: null }}
             leftActions={leftActions}
             rightActions={rightActions}
             slashPlacement="bottom"
@@ -148,7 +152,7 @@ const InputArea = () => {
               useChatStore.setState({ mainInputEditor: instance });
             }}
             sendButtonProps={{
-              disabled: loading || isAgentConfigLoading,
+              disabled: loading || isAgentConfigLoading || !isModelReady,
               generating: loading,
               onStop: () => {},
               shape: 'round',

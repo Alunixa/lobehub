@@ -1,5 +1,5 @@
-import { AGENT_CHAT_TOPIC_URL, AGENT_CHAT_URL } from '@lobechat/const';
-import { useCallback } from 'react';
+import { AGENT_CHAT_TOPIC_URL } from '@lobechat/const';
+import { useCallback, useRef } from 'react';
 
 import type { SendButtonHandler } from '@/features/ChatInput/store/initialState';
 import { useHomeDailyBrief } from '@/hooks/useHomeDailyBrief';
@@ -35,6 +35,7 @@ const ensureAgentConfigLoaded = async (agentId: string): Promise<void> => {
 };
 
 export const useSend = () => {
+  const sending = useRef(false);
   const router = useQueryRoute();
   const sendMessage = useChatStore((s) => s.sendMessage);
   const clearChatUploadFileList = useFileStore((s) => s.clearChatUploadFileList);
@@ -42,10 +43,7 @@ export const useSend = () => {
 
   const homeInputLoading = useHomeStore((s) => s.homeInputLoading);
 
-  // Resolve the agent that the home input is currently bound to. Defaults to the
-  // inbox agent; AgentSelect can override via systemStatus.homeSelectedAgentId.
-  // The hook also rewrites stale ids (e.g. left over from a different account
-  // on the same browser) back to inbox so we don't try to send to a missing id.
+  // Use the account's home preference, falling back after deleted-agent hydration.
   const { agentId: activeAgentId } = useResolvedHomeAgentId();
 
   // Daily-brief hint paired with the home WelcomeText. Pressing Enter on an
@@ -89,6 +87,16 @@ export const useSend = () => {
       // Require input content (except for default inbox which can have files/context)
       if (!message && fileList.length === 0 && contextList.length === 0) return;
 
+      if (sending.current) return;
+      sending.current = true;
+      let cleared = false;
+      const clearComposer = () => {
+        if (cleared) return;
+        cleared = true;
+        clearChatUploadFileList();
+        clearChatContextSelections();
+        mainInputEditor?.clearContent();
+      };
       try {
         switch (inputActiveMode) {
           case 'agent': {
@@ -120,25 +128,23 @@ export const useSend = () => {
             // yet — block on the fetch so sendMessage finds a real config below.
             await ensureAgentConfigLoaded(activeAgentId);
 
-            sendMessage({
+            await sendMessage({
               context: { agentId: activeAgentId, isolatedTopic: true },
               contexts: contextList,
               editorData,
               files: fileList,
               message,
               onTopicCreated: (topicId) => {
-                router.replace(AGENT_CHAT_TOPIC_URL(activeAgentId, topicId, false));
+                clearComposer();
+                router.push(AGENT_CHAT_TOPIC_URL(activeAgentId, topicId, false));
               },
             });
-
-            router.push(AGENT_CHAT_URL(activeAgentId, false));
           }
         }
       } finally {
+        sending.current = false;
         // Clear input and files after send
-        clearChatUploadFileList();
-        clearChatContextSelections();
-        mainInputEditor?.clearContent();
+        clearComposer();
       }
     },
     [

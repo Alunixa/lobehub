@@ -916,10 +916,12 @@ export class ConversationLifecycleActionImpl {
           resolveOptimisticTopic(heteroData.topicId, newTopicTitle);
           void Promise.resolve(this.#get().refreshTopic()).catch(console.error);
         }
-        await this.#get().switchTopic(heteroData.topicId, {
-          clearNewKey: true,
-          skipRefreshMessage: true,
-        });
+        if (context.isolatedTopic) await onTopicCreated?.(heteroData.topicId);
+        else
+          await this.#get().switchTopic(heteroData.topicId, {
+            clearNewKey: true,
+            skipRefreshMessage: true,
+          });
       }
 
       // Clean up temp messages
@@ -1072,6 +1074,8 @@ export class ConversationLifecycleActionImpl {
         // the new topic, so the shared hook reads the persisted conversation from
         // the store and titles it. Fire-and-forget.
         if (result.topicId) {
+          if (!operationContext.topicId && context.isolatedTopic)
+            await onTopicCreated?.(result.topicId);
           void sendRunLifecycle
             .afterUserMessagePersisted({
               assistantMessageId: result.assistantMessageId,
